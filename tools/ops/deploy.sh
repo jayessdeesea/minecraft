@@ -1,8 +1,10 @@
 #!/bin/sh
-# Deploys what's committed as a garrison run: cleans stale classes, installs the modules and packages the app without
-# tests (commit.sh ran the suite), checks the fat jar, then stops the running garrison by its PID (never all java),
-# copies the jar to $S/garrison-app.jar and starts the new run from the copy - so the troops stay in the field
-# through the build.
+# Deploys origin/main as a garrison run: every commit there passed its verify (commit.sh), so that - not the tree here,
+# which may be mid-change or a commit ahead - is what goes out. It's checked out and built in a worktree of its own
+# (DEPLOY_WORKTREE, default C:/mc-worktrees/deploy): the modules installed and the app packaged without tests, the fat
+# jar checked. Then the running garrison is stopped by its PID (never all java), the jar copied to $S/garrison-app.jar
+# and the new run started from the copy - so the troops stay in the field through the build. The garrison runs from
+# this tree's root, where its state is (minecraft.state-dir).
 # $S is GARRISON_RUNS, default C:/mc-state/garrison, outside any cloud-sync folder, which holds files open. The
 # garrison writes its PID to $S/garrison.pid and its log to $S/logs, a file an hour (start-garrison.sh). Each run is a
 # line of $S/runs.log - "<name> <started, UTC> <commit> <PID>" - which run-log.sh picks a run's lines out of the log by.
@@ -10,16 +12,18 @@
 # Usage: deploy.sh [<run-name>]
 set -e
 S="${GARRISON_RUNS:-C:/mc-state/garrison}"
+W="${DEPLOY_WORKTREE:-C:/mc-worktrees/deploy}"
 mkdir -p "$S"
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+ROOT=$(pwd)
 LAST=$(tail -1 "$S/runs.log" 2>/dev/null | cut -d' ' -f1)
 RUN="${1:-$(echo "$LAST" | sed -E 's/[0-9]+$//')$(( $(echo "$LAST" | grep -oE '[0-9]+$') + 1 ))}"
 if ! echo "$RUN" | grep -qE '^[A-Za-z]+[0-9]+$' || grep -q "^$RUN " "$S/runs.log" 2>/dev/null; then echo "no run name to deploy as ('$RUN'): name a new one - deploy.sh <run-name>" >&2; exit 2; fi
-# Only what's committed and pushed is deployed: commit.sh pushes a commit only once its verify passes, so what's on
-# origin/main is verified, and a tree with uncommitted changes to tracked files (field556 went out so, its verify
-# failed) or a commit still being verified is not.
-if ! git diff --quiet HEAD -- . ':!Claude outputs'; then echo "the tree has uncommitted changes - verify and commit them first; not deploying" >&2; exit 1; fi
-if ! git merge-base --is-ancestor HEAD origin/main; then echo "HEAD isn't on origin/main - not verified and pushed yet (commit.sh); not deploying" >&2; exit 1; fi
+git fetch -q origin main
+COMMIT=$(git rev-parse --short origin/main)
+if [ -e "$W/.git" ]; then git -C "$W" checkout -q --detach origin/main; else git worktree prune; git worktree add -q --detach "$W" origin/main; fi
+echo "deploying $COMMIT as $RUN: $(git log -1 --format=%s origin/main)"
+cd "$W"
 # The IDE's Java build writes into the same target/classes: a build that meets one of its writes fails
 # to assemble a jar (field368, field374). Tried again, from clean, up to three times; then not deployed.
 built=no
@@ -63,6 +67,7 @@ if [ -n "$PID" ] && tasklist //FI "PID eq $PID" //FO CSV //NH 2>/dev/null | grep
 fi
 rm -f "$S/garrison.pid"
 cp app/target/app.jar "$S/garrison-app.jar"
+cd "$ROOT"
 STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 echo "app.jar $SIZE bytes; starting $RUN"
 nohup sh tools/ops/start-garrison.sh > /dev/null 2>&1 &
@@ -72,5 +77,5 @@ for wait in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
   sleep 2
 done
 if [ ! -s "$S/garrison.pid" ]; then echo "$RUN didn't start - see $S/garrison-console.log and the newest file under $S/logs" >&2; exit 1; fi
-echo "$RUN $STARTED $(git rev-parse --short HEAD) $(cat "$S/garrison.pid")" >> "$S/runs.log"
+echo "$RUN $STARTED $COMMIT $(cat "$S/garrison.pid")" >> "$S/runs.log"
 tail -1 "$S/runs.log"

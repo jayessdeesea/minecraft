@@ -94,6 +94,11 @@ plans, not whether a cheaper route exists (backlog/simulator-fidelity.md).
 skeleton or creeper, and a squad against a pack (`Battle`: rough approximations, not vanilla mob
 AI), and prints how the fights end. Use it to measure a change to combat behaviour: `-Dcombat.seeds=200` for more.
 
+**The eval matrices.** `bot`'s `CombatMatrixTest`, `CombatConditionMatrixTest`, `CombatPairsMatrixTest`,
+`CombatPairsConditionMatrixTest` and `CombatSquadMatrixTest` (the `scenario` package) hold each cell to a pass rate over
+seeds, a cell short of it listed in the class's known set; `app`'s `StuckEvalsTest` replays each recorded stuck soldier
+under `stuck/`. What they don't cover yet is backlog/scenario-matrix.md.
+
 **Squad-leader evaluation.** `app`'s `SquadLeaderScenarioIT` runs the real squad leader, with its
 real prompt, against Ollama on the same scenarios. It prints a pass rate per family rather than
 pass/fail. Re-run it after any prompt or model change:
@@ -250,7 +255,8 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
   whole suite (`verify.sh`) in a worktree of its own (`VERIFY_WORKTREE`, default `C:/mc-worktrees/verify`), and
   pushes it only on BUILD SUCCESS. The tree is free to work in meanwhile; a commit that fails is taken back, its
   changes left staged. It says when the commit count makes a profile due.
-- `deploy.sh [<run>]` builds what's committed and pushed, checks the fat jar, stops the run before by the PID in
+- `deploy.sh [<run>]` builds `origin/main` - what's verified and pushed, whatever state the tree here is in - in a
+  worktree of its own (`DEPLOY_WORKTREE`, default `C:/mc-worktrees/deploy`), checks the fat jar, stops the run before by the PID in
   `garrison.pid` and starts the new one from a copy of the jar (`start-garrison.sh`). Each run is a line of
   `runs.log` there - its name, when it started (UTC), its commit and its PID; with no name, the new run is the next
   number after the last. Its arguments - your name, the camp, the mission - are yours, one a line in `garrison.args`

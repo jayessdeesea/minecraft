@@ -4,33 +4,30 @@ priority: P2
 doctrine: ATP 3-21.8 (weapons employment; direct fire)
 ---
 
-# Ranged weapons and choosing a weapon
+# Ranged weapons: the crossbow, a moving target, the hostile on a ledge
 
 ## Why
-The kit report counts bows and crossbows as weapons, but no soldier fires one. A soldier holding
-only a bow fights bare-handed. Every fight is decided at arm's length, including against a
-skeleton on a ledge or across water, where closing is slow or impossible.
+A soldier shoots a bow at full draw at a hostile beyond its sword or out of reach, and makes its arrows from
+flint and feathers (docs/military-doctrine.md § 8, § 11). It can't fire a crossbow, it aims where a moving
+target was, and no eval shows the case the bow is for: a skeleton on a ledge it can't climb to.
+
+When to use which weapon is backlog/engagement-doctrine.md's (the exchange); the bow and arrows in each load
+are backlog/load-plans.md's.
+
+## What's left
+- **The crossbow:** load, then fire.
+- **Aim leading a moving target**, and a shorter draw for a close one.
+- **The ledge, measured in `CombatScenarioTest`.**
+- **String on purpose.** A bow is made only from string already carried (`bot.craft.Ladder`); string comes
+  from spiders, or cobwebs broken with a sword.
 
 ## Done when
-Built: shooting a bow, with the reflex choosing it beyond sword range or where it can't close
-(docs/military-doctrine.md § 8). What's left:
-- **Choosing a weapon, the rest:** each tick the reflex picks one for the nearest visible hostile.
-  - Melee (sword, else axe, else fists) when it's within a few blocks and reachable.
-  - Bow or crossbow, with arrows, when it's farther away, or when it's visible but the pathfinder
-    can't reach it: a ledge, across water, behind a drop.
-  - Accessibility, not just distance, decides it, since the reachability and line-of-sight checks
-    already exist.
-- **Shooting, the rest:** aim leading a moving target, a shorter draw for a close one, and the
-  crossbow: load, then fire.
-- **Making them, the rest** (a bow from carried string, and arrows from flint and feathers it
-  fetches, are built - § 11): a bow is 3 sticks and 3 string, and string comes only from spiders,
-  or from cobwebs broken with a sword. Fetching string on purpose is what's left.
-- Measured in `CombatScenarioTest`: against a skeleton on an unreachable ledge, a soldier with a bow
-  kills it; one without reports it can't engage, rather than standing below taking arrows.
+- Against a skeleton on an unreachable ledge, a soldier with a bow kills it; one without reports it can't
+  engage, rather than standing below taking arrows.
+- A soldier carrying a crossbow and arrows loads and fires it.
+- Hits on a hostile crossing its front at range, in the battle simulation, against today's rate.
 
 ## Notes
-- Arrows are entities: the drop is visible in `EntityTracker`, and a missed arrow can be picked
-  back up.
-- Squad level: ranged soldiers give supporting fire while others close. That's the fire-and-
-  movement half of react-to-contact (docs/military-doctrine.md § 8), and a reason for fire teams
-  of four (backlog/scenario-matrix.md, Notes).
+- Arrows are entities: a missed arrow can be picked back up.
+- Squad level: ranged soldiers give supporting fire while others close - the fire-and-movement half of
+  react-to-contact.

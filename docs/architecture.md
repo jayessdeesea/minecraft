@@ -109,7 +109,9 @@ reference-counted (loaded by which connections). A chunk another connection hold
 its block updates keep it current, and a chunk sent earlier can arrive after another stream's update - and a soldier
 that respawns lets go of every chunk it held, since the server never unloads what it saw before. A chunk sent again is
 also the model's check on itself: where it differs from the one kept, the log says how many blocks and the first few
-(`[World]`, `ChunkCache.Divergence`). `ConcurrentHashMap.compute()`
+(`[World]`, `ChunkCache.Divergence`). The camp's chunks are held the whole time and never sent again, so every 10 minutes the
+runner logs the camp's wall, the farm's soil and the two cells over it, and the stockpile chest as the model holds them
+(`[Sweep]`, `SoldierRunner.SWEEP_EVERY_MILLIS`), for a console sweep against the server. `ConcurrentHashMap.compute()`
 gives atomic, per-chunk-key read-modify-write for that bookkeeping directly — no dedicated writer
 thread or event queue needed; reads (`isSolid`, called every tick, from every soldier) stay
 lock-free `get()`s, which matters because the tick loop is the one place in this system latency is
@@ -199,7 +201,10 @@ farm's and the wood's duties, routing), each under the 1000-line limit:
 - **The server** is `SimServer`: one world, and a `PlaySession` per soldier answering as the
   vanilla server does - blocks broken and placed, drops picked up, slots swapped, the time of day,
   ground tilled and sown, wheat that ripens a stage every 10 seconds (far faster than the server's
-  random ticks) - and refusing what's out of reach. What it doesn't model throws, naming the action.
+  random ticks) - and refusing what's out of reach. A dig is timed by the tool in hand, as the server times it, and
+  one finished too fast is refused (`SimItems.dugTooFast`); a bucket's pour traces its ray as the server does, stopping
+  at the first block that's neither air nor water - a crop or grass included (`SimBuckets`). What it doesn't model
+  throws, naming the action.
 - **The platoon leader and squad leader are scripted**: a `PlatoonLeader` that hands out a fixed objective, and
   a `ChatModel` that answers a fixed `SquadOrder`.
 

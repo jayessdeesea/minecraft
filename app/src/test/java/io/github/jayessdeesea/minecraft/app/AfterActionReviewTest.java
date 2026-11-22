@@ -32,7 +32,7 @@ class AfterActionReviewTest {
         assertTrue(review.contains("casualties: 3") && review.contains("death.fell.accident.generic: Hal, Dana"), review);
         assertTrue(review.contains("idle by day: {Gus=1}"), review);
 
-        // Each site's level and what its next lacks (command.Site; backlog/maturity-model.md).
+        // Each site's level and what its next lacks (command.Site; docs/military-doctrine.md § 17).
         aar.sites(List.of(io.github.jayessdeesea.minecraft.command.Site.camp(camp)));
         aar.supplies(List.of(new io.github.jayessdeesea.minecraft.command.Supply("Class I (rations)", 300, 80, 20, 1)));
         aar.estimates(List.of(io.github.jayessdeesea.minecraft.command.MissionEstimate.keep(2_640, 4_096, 2_000, 8, 10, 3, 1_000)));

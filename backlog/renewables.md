@@ -1,293 +1,136 @@
 ---
 status: proposed
 priority: P1
-depends-on: [patrol-base, subsistence]
-doctrine: ATP 3-37.10 (base camps)
+doctrine: ATP 3-37.10 (base camps); FM 4-0, ATP 4-90 (supply points)
 ---
 
-# Renewable resources: tree and food farms
+# Renewable resources: tree and food farms, and the supply point
 
 ## Why
-Gathering strips what's near and moves on. A force that holds ground for days needs supply that
-grows back where it stands. Which kind is possible depends entirely on the terrain. That's a real
-planning decision for the general: read the survey, pick what the ground supports.
+Wheat and wood are farmed by duty on whole chunks (docs/military-doctrine.md, the farm by duty, wood by duty, the
+camp's farm; `bot.farm.ChunkFarm`, `TreeChunk`, `FarmSite`), but the supply doesn't yet hold a force for days: the
+farm's yield, not its duties, is what's short (field448: about 300 wheat a day baked and eaten as it came, the stores
+at 0-3); a grove is felled as fast as it's planted (field570: 34 to 42 of 48 cells, then back to 34); producers break
+grass and leaves for seed and saplings the chests already hold; and the platoon leader doesn't yet choose sites.
 
-## Production duties (operator, 2026-11-18)
-The platoon leader puts a squad or two at the camp on renewables by need (docs/echelons/tenets.md,
-stock levels drive production); the squad leader gives each soldier a duty, an area and a chest; the
-soldier does only the how.
-- **Wood: woodcutters and a planter.** Built for the wild forest (docs/military-doctrine.md § 12, wood
-  by duty). Left: the grove's turn - the squad on the grove once it's planted, the wild forest only
-  when the force is short; the planter drawing saplings from the depot before it breaks leaves; the
-  squad leader (DrillSquadLeader) giving the duties as its plans, so they show in its view, rather
-  than the runner deriving them from the objective.
-- **Wheat and bread: harvesters and a baker.** Built (docs/military-doctrine.md § 12, the farm by
-  duty). Left: a harvester drawing seed from the depot when it's out, before it breaks grass for
-  it.
-- **Stock levels**: built (`command.ProductionLevels`, shown to the platoon leader, logged as
-  `[Stores]`; a producing squad kept on it to its most, docs/echelons/platoon-leader/operator-rules.md).
-  Left: the levels raised for a mission (`ProductionLevels.with`) by the platoon leader.
-- **Seen live (field448):** two farm squads harvested about 300 wheat in a day, and it was baked and
-  eaten as it came - the harvesters under their basic load bake for themselves, the stockpile held
-  0-3 wheat at each of the baker's four draws, and rations were cross-levelled one at a time. The
-  farm's yield, not its duties, is what's short: more ground and denser farms.
+## What's left
 
-Done when: a live day with logs and bread both under their minimum puts one squad on each, every
-producer working only its duty's share, and both stocks rising to their most.
+### The layout, once
+Every production chunk - wheat, trees, the supply point - is one chunk of the server's grid, flat at sea level, fenced
+on its x%16==0 and z%16==0 lines (shared with the next chunk), a post at each corner and a gate on each line beside
+each corner (eight a chunk), a torch on every fourth post. Wheat and tree chunks alternate on the camp's chunk grid,
+inside the area of influence. The wheat chunk's inside is `ChunkFarm`'s, the tree chunk's `TreeChunk`'s; whether the
+wheat layout is the best one is backlog/wheat-chunk-layout.md.
 
-## Where they go: production chunks (operator, 2026-11-17)
-The long-term shape: whole chunks set aside at sea level for production - one or more for wheat,
-one or more for trees - each levelled, fenced round, and entered by gates, so the work is laid
-out on a grid the force can plan by the chunk (yield a chunk a day, hands a chunk) rather than
-fitted round whatever ground is near the camp. Until then: the camp's farm by its water, and the
-keep's grove, cleared for if the ground near the depot is wooded.
+### Sites by bids, once (operator, 2026-11-20 and 2026-11-21)
+One cycle for wheat chunks, tree chunks and the supply point; only the template and its stages differ.
+- The platoon leader, short of food or wood, asks for bids on sites within 64 blocks of the camp (4 chunks). Each
+  squad leader hands it to its soldiers, who cost the chunks nearest them from the world model (a walk only for a
+  chunk beyond it): blocks to dig and fill to the level, seeds (216 a wheat chunk) or saplings, coal for torches, iron
+  for a bucket on land, logs for the fence, the walk from the camp.
+- Flat is the requirement (`ChunkFarm.MIN_CELLS` at one level), sea level the preference, costed as the earthwork to
+  it, then the nearer. `ChunkFarm.site` exists and is unused till the bids choose one; `TreeChunk.site` is the tree
+  chunk's.
+- The platoon leader takes the cheapest bids in turn while the supply to Producing covers them and the need wants
+  more; a fence waits for its logs and doesn't hold a site back from Producing. The winning squad gets the build order
+  with the template, its bid the plan it's measured by.
+- A wheat chunk on land has its four holes dug and filled by bucket; over shallow water the ground is built up round
+  the water and the holes left as the water already there - no bucket, no ore. The platoon leader chooses among bids.
+- **The soldier's planner**: its order carries the template; it compares the template with the world, knows its
+  stage, and plans the cheapest sequence of digs, fills, floors, pours, tills, sowings and placements from what it
+  carries - a pure planner over the world model, as the route planner is. The same planner run from a site's surveyed
+  ground is the bid's cost.
+- Which chunks a squad may work, several sites at once, and the measure of work against its estimate are
+  backlog/authority-and-missions.md's (steps 3 and 7), as is a tree chunk never sited on a mission's chunk (step 3).
 
-Built so far: the keep's grove sited round its depot, any depth under it, and its ground cleared by
-the wood party when none qualifies; trees felled whole and replanted (docs/military-doctrine.md § 4); a
-farm's, a grove's and a wood's ground whole chunks on the server's grid (`command.WorkArea`).
-Left: levelling production chunks; gates worked on a route (see More farmland below).
+### Wheat
+- A gate worked on a route - opened, walked through, shut - so the gates can stand shut against mobs.
+- Holed farmland mended by the tender; the baker drawing from farm chests (it draws from the nearest chest known to
+  hold wheat).
+- A harvester out of seed draws it from the depot before it breaks grass for it.
+- The stock levels raised for a mission by the platoon leader (`ProductionLevels.with`, called from nowhere yet).
+- Before the bucket: the stream dammed to a block deep with dirt and farmed along its banks; trenches for a squad's
+  FARM order's plot, which is sited round its water alone.
+- A fenced site's Fenced stage brought forward when it loses cells to trampling.
+- Post torches on a chunk farm's fence: a torch's cell is over a post's 1.5-high collision (`solidHere`, not
+  `isSolid`), and a torch builder takes such a torch as placed. Nothing high left beside a fence - zombies came in
+  off a tree (operator's prototype, 2026-11-19). A cover over each water hole is skipped (operator, 2026-11-20).
+- Live bug (field506): farmers reported "no route from (-6, 63, 98) to within 0 of (-6, 61, 98)" 25 times in ten
+  minutes at the camp's farm - a stand two under its farmland, likely `Farmer.trenchStand`'s; probe with
+  `TerrainProbeIT` with the garrison stopped.
+- Live bug (field495): Ivy jumped 123 times from (-12, 65, 71), a one-block step climbed and come back down while a
+  crop at (-12, 63, 87) was started three times and never done - a routine walking it out and back.
 
-## Tree chunks: the high-density grove (operator, 2026-11-21)
-Built: the template, `bot.farm.TreeChunk` - its 16 trunks, nine torches, chest and the chunk farms' grid; its stage from
-the world; its site within 64 blocks, beside a wheat chunk, sea level, near; a TREE_FARM squad plants it; its forester
-puts up the nine ground torches and the chest once its trunks are in (docs/military-doctrine.md). Left: what goes in the
-chest, the rotation, the fence, the bids.
-A tree farm a chunk, laid out like the wheat chunk and beside them, alternating wheat and trees on the camp's chunk
-grid, inside the area of influence (32 blocks out from the camp's edge):
-- **Ground** flat at sea level, dirt or grass.
-- **16 birch** at local 2, 6, 10, 14 both ways - `bot.farm.TreeFarm`'s world grid already.
-- **Fence** on the x%16==0 and z%16==0 lines, shared with the next chunk; each corner a post, and every fence cell
-  beside a corner a gate - both sides, eight a chunk, as `ChunkFarm` lays the wheat chunks out (one grid).
-- **Torches**: nine on the ground at local 4, 8, 12 both ways - light 10 at each trunk, growth wants 9 - and one on
-  every fourth fence post, so nothing spawns against the fence.
-- **Chest** at local (1, 1): two axes, so cutters needn't carry them; a reserve of saplings (64) to replant after a
-  disaster or start another; spare torches.
-- **Worked by rotation**: one tender fells each tree as it's grown, whole, replants its cell, takes its steps down,
-  and picks up what the leaves drop - saplings and sticks - before it despawns (5 minutes). Its saplings past its
-  pack's go in the chunk's chest, to 256 (as a wheat chunk's seed).
-- **A site through stages**, wood from the second - the fence isn't needed to grow wood: (1) **Ground** - flat at its
-  level, dirt or grass at each trunk cell; (2) **Planted** - a sapling at each trunk cell, the chest up; (3) **Lit** -
-  its ground torches, growth by night and nothing spawning; (4) **Producing** - trees standing to fell; (5) **Fenced**
-  - fence, gates, post torches, when wood isn't short. Its yield measured in the squad simulation against a baseline.
-- **By bids, like the wheat chunks** (operator, 2026-11-21): the platoon leader, short of wood, asks for bids on tree
-  sites; each squad leader hands it to its soldiers, who cost the chunks nearest them from the world model (blocks to
-  dig and fill to the level, saplings, coal, logs, the walk); the bids go up through the squad leader, the platoon
-  leader takes the cheapest the wood wants, and the winning squad gets the build order with the template, its bid the
-  plan it's measured by. One cycle for wheat and trees (the sites-by-bids section above is the wheat's): the template
-  and its stages differ, the asking, costing and choosing don't.
-- **Remembered**: the platoon leader keeps every tree site and its stage across restarts, and sends a squad to fell
-  and replant one that's producing, as it sends farmers to a producing wheat chunk.
-- **Sited near, flat, and built fast** (operator, 2026-11-21): in the airhead and the early phases the renewables are
-  all close by. One site search for wheat and tree chunks (and the supply point), from the camp outward chunk by chunk to
-  64 blocks (4 chunks; operator, 2026-11-21):
-  flat is the requirement - enough of the chunk at one level (`ChunkFarm.MIN_CELLS`) - sea level the preference, costed
-  as the earthwork to it, then the nearer; and the first of each built as soon as one qualifies, a tree chunk growing
-  from its second stage, before its fence. Built for the tree chunk (`TreeChunk.site`); a wheat chunk is the farm
-  mission's, on the chunk the operator names (`ChunkFarm.site` is left unused till the bids choose one). A grove sited for a camp the force has left is given up for the camp's
-  nearest: live (field630), foresters walked 200 to 330 blocks to plant at one by the old keep, (-30, -73).
-- **Felled, replanted, swept** (operator, 2026-11-21): the rotation fells every tree of an area whole and replants each
-  stump at once, under its own decaying leaves (`TreeFarm.plantable` lets them be), then comes back a couple of minutes on
-  - most leaves decayed, well inside the 5 minutes a drop lies - and sweeps up the saplings and sticks they let fall.
-  Today a cutter stands under each tree while its scavenger takes the logs, and walks on; what decays after is lost.
-- **Saplings supplied, not hoped for** (the errand ledger, field630): foresters failed "no sapling, and no leaves within
-  32 blocks" 117 times in a run, each failure a cooldown and a try again, while soldiers off the grove carried 6 and 11
-  saplings; and walked 200 to 330 blocks to plant one at a grove by (-30, -73). Wanted: saplings in the kit's report;
-  a forester with none drawing from a squadmate's spares or the tree chunk's chest (to 256); a squad with no saplings and
-  no leaves in reach not put on planting, its resources line saying so; and the grove planted the one nearest the camp
-  that wants it - the tree chunk beside the wheat, when there is one.
+### Trees
+- **The rotation** (operator, 2026-11-14 and 2026-11-21): one pass fells every tree of an area whole and replants
+  each stump at once, under its own decaying leaves (`TreeFarm.plantable` lets them be); then back a couple of minutes
+  on - most leaves decayed, inside the 5 minutes a drop lies - to sweep up the saplings and sticks. Dropped saplings
+  are taken before any leaf is broken for one. Several groves, so one grows while another is cut.
+- **Saplings supplied** (field630: "no sapling, and no leaves within 32 blocks" 117 times in a run while soldiers off
+  the grove carried 6 and 11): saplings in the kit's report; a forester with none draws from a squadmate's spares, the
+  tree chunk's chest or the depot; a squad with no saplings and no leaves in reach isn't put on planting, its
+  resources line saying so.
+- **The tree chunk's chest** at local (1, 1): two axes, a reserve of 64 saplings, spare torches; saplings past the
+  tender's pack go in it, to 256.
+- **Its fence** (stage 5, Fenced, when wood isn't short), with the post torches.
+- **Remembered**: the platoon leader keeps every tree site and its stage across restarts and sends a squad to fell and
+  replant one that's producing.
+- **The grove's turn**: the squad on the grove once it's planted, the wild forest only when the force is short;
+  whether woodcutters fell a grove's own trees faster than they're planted.
+- **The keep's grove**: a second grove sited once the first is planted, so the wood standard's ceiling grows with the
+  groves; the keep's grove planted only by its building crew's wood party (`PlatoonSergeant.woodParty`), none while
+  the keep has nothing to build. A grove sited for a camp the force has left is given up for the camp's nearest
+  (field630: foresters walked 200 to 330 blocks to one at (-30, -73)).
+- 16 to 32 trees growing at once, so wood is never short (operator, 2026-11-14).
+- Who works a grove, and the standing rule that puts a spare squad on planting (`DayGuardrails`), are
+  backlog/authority-and-missions.md's (steps 4 and 5).
 
-## The supply point: a chunk of stores (operator, 2026-11-21)
-The camp's stores on a chunk of their own, laid out like the wheat and tree chunks and on their grid: flat at sea
-level, fenced on the chunk's lines, a post at each corner and a gate each side of it. Called the **supply point** - the
-Army's and the Air Force's place supplies are held and issued from (FM 4-0, ATP 4-90): a depot is a theater's, a dump
-the old word for a temporary one, and the stockpile is what's held, not where (its levels are ProductionLevels').
-- **Chests by class of supply**, rows of double chests along x - six to a half-row, a cross-aisle at local x=8 - with
-  two aisles between rows, each chest reached from both sides: local z=3 Class I (food), z=6 Class IV (cobblestone,
-  dirt, logs, planks), z=9 Classes II and IX (tools, armour, ore, ingots), z=12 Classes III and V (coal, torches,
-  arrows) - 24 double chests in all. Nothing solid over a chest: a block on it won't let it open (a torch is fine).
-- **Seeds and saplings stay with their farms** - each wheat chunk's chest, each tree chunk's - and come here only while
-  there's no farm of theirs to hold them: the seed for a first farm, the saplings to start a grove or replant after a
-  disaster (operator, 2026-11-21).
+### The supply point: a chunk of stores (operator, 2026-11-21)
+The camp's stores on a chunk of their own, on the layout above. The name is the Army's for where supplies are held
+and issued (FM 4-0, ATP 4-90); the stockpile is what's held (`ProductionLevels`). Today "supply point" in the code is
+one chest (`Foothold.dump`).
+- **Chests by class of supply**: rows of double chests along x, six to a half-row, a cross-aisle at local x=8, two
+  aisles between rows, each chest reached from both sides - local z=3 Class I (food), z=6 Class IV (cobblestone, dirt,
+  logs, planks), z=9 Classes II and IX (tools, armour, ore, ingots), z=12 Classes III and V (coal, torches, arrows);
+  24 double chests in all. Nothing solid over a chest (a torch is fine).
+- **Seeds and saplings stay with their farms**, and come here only while there's no farm of theirs to hold them.
 - **Not filled at first**: a row goes up when its class's stock nears what its chests hold - food and Class IV first.
-- **Ground torches** in the aisles at local x=2, 7, 12 on z=2, 7, 11; a torch on every fourth post, and spare torches in
-  its Class III chest. A **workshop** by a gate along local z=14: a crafting table and a bank of furnaces (operator,
-  2026-11-21: a furnace and a crafting table, and a bunch of furnaces) - smelting ore and cooking from the stores
-  beside them, several loads at once, so a soldier crafting needn't cross the chunk or carry the stores away to do it.
-- **The ad hoc chests consolidated into it** (operator, 2026-11-21): once it's stocked, the chests the camp has
-  scattered - the workshop's row, a keep's depot, chests found full - are looked through (the world model's known
-  chests and what each was last seen holding), and their contents hauled to the supply point by class, a chest
-  emptied before it's dug up; a haul is a task like any other, measured by what arrived against what was taken.
+- **Ground torches** at local x=2, 7, 12 on z=2, 7, 11; spare torches in its Class III chest.
+- **A workshop** by a gate along local z=14: a crafting table and a bank of furnaces.
 - **Stages, the fence before the stores**: (1) ground, (2) fenced and lit, (3) stocked - the first row up, (4) grown, a
-  row a class as it needs. Unlike a grove, which grows wood before its fence: a creeper among the chests is the loss
-  that sends a site to RECONSTITUTE (backlog/sites.md), and the fence keeps the ground ones out.
-- **Moved, as any template can be** (operator, 2026-11-21: move this tree farm over here): a site - wheat chunk, tree
-  chunk, supply point - is moved by building the new one through its stages first, then running the old one down -
-  its crop or trees harvested and not replanted, its chest's contents hauled to the new one, its fixtures taken up -
-  and its ground given back to the flatten. The platoon leader orders it like a build, by bids, with the old site's
-  run-down costed in.
-- **By bids, the same cycle as the farms** (backlog/renewables.md), costed by where it stands as much as by its
-  ground: the earthwork to level it, and the trips to it - from the farms, the groves and the mine's head, which bring,
-  and from the camp and the keep, which draw. The middle of the ring of farm and tree chunks round the camp, rougher
-  ground there before flatter ground far out.
+  row a class as it needs. A creeper among the chests is the loss that sends a site to RECONSTITUTE (backlog/sites.md).
+- **Sited** by the bids above, costed by its trips as much as its ground - the farms, groves and mine head bring, the
+  camp and keep draw: the middle of the ring of farm and tree chunks, rougher ground there before flatter far out.
+- **The ad hoc chests consolidated into it** once it's stocked: the workshop's row, a keep's depot, chests found full
+  - looked through from the world model's known chests, their contents hauled by class, a chest emptied before it's
+  dug up; a haul is a task measured by what arrived against what was taken.
+- **Moved, as any template can be** (wheat chunk, tree chunk, supply point): the new one built through its stages
+  first, then the old one run down - its crop or trees harvested and not replanted, its chest's contents hauled, its
+  fixtures taken up, its ground given back to the flatten. Ordered like a build, by bids, the run-down costed in.
 
-## The keep's grove (operator, 2026-11-17)
-No site near the depot holds 16 cells: several groves, each what the ground holds, and the search
-for them travels farther. Built: a grove of 8 cells or more, sought out to 96 blocks
-(`SoldierRunner.GROVE_MIN_CELLS`, `GROVE_RINGS`). The wood standard asks every cell of the camp's and the keep's groves
-planted, 16 to 48, and names a cell still bare; past the SEIZURE, unmet with nobody on TREE_FARM, a squad spare of the
-shortfalls is put on planting there (`DayGuardrails`; operator, 2026-11-20: grow more trees). Live (field570) it went
-34 to 42 of 48 in minutes, then back to 34 - felled as fast as planted. Left: whether the woodcutters fell the
-groves' own trees faster than they're planted, and the wild instead while the groves grow; a second grove sited once
-the first is planted - the keep holds one (`keepGrove`) - so the standard's ceiling grows with the groves; and the
-keep's grove planted only by its building crew's wood party (PlatoonSergeant.woodParty), none while the keep has
-nothing to build.
+### Other farms
+- Nether wart and animal pens - a chicken pen first: feathers are the one part of an arrow with no other source but
+  skeletons (backlog/load-plans.md).
+- The platoon leader's choice follows the terrain (table in Notes).
 
-## Doctrine
-**Base camps** (ATP 3-37.10): a camp that is held longer develops its own sustainment instead of
-living off resupply runs. What gets built depends on the site.
+## Done when
+- A live day with logs and bread both under their minimum puts one squad on each, every producer working only its
+  duty's share, and both stocks rising to their most.
+- A live run sees a grove grow, cut in one pass, and planted again from its own drops.
+- A squad-simulation scenario: bids from two squads, the cheapest site built to Producing from its template.
+- A scenario with no water nearby never yields a wheat order.
+- The supply point stands at stage 3 live, the ad hoc chests emptied into it.
 
-## Mapping to Minecraft
-What the ground supports:
+## Notes
+- What the ground supports:
 
 | Farm | Needs | Not possible where |
 |---|---|---|
-| Tree farm | Saplings (they drop from leaves when a tree is cut), dirt or grass, light 9+ | Nether: crimson and warped fungi need nylium and bone meal, and their stems make no charcoal |
-| Wheat | Seeds (from breaking grass), a wooden hoe (2 planks and 2 sticks), farmland within 4 blocks of water, light 9+ | Nether: water evaporates (`water_evaporates` in its dimension type) |
-| Nether wart | Soul sand. Wart is found only in fortresses | Overworld: it can be grown there, but has to be brought back |
-| Animal pen | Two of a kind plus their breeding food, and a fenced pen | Wherever no passive mobs spawn: deserts, much of the Nether |
+| Tree farm | Saplings, dirt or grass, light 9+ | Nether: fungi need nylium and bone meal, and their stems make no charcoal |
+| Wheat | Seeds, a hoe, farmland within 4 blocks of water, light 9+ | Nether: water evaporates |
+| Nether wart | Soul sand; wart found only in fortresses | Overworld: grown there, but has to be brought back |
+| Animal pen | Two of a kind, their breeding food, a fenced pen | Where no passive mobs spawn: deserts, much of the Nether |
 
-The survey (§ 12) reports what's nearby. The general picks the farm the ground supports, the squad
-builds it beside the patrol base (docs/military-doctrine.md section 14), and the base's light already meets the
-light requirement.
-
-## Done when
-Built: wheat (docs/military-doctrine.md § 12, FARM) and a tree farm planted from saplings it breaks
-leaves for (§ 12, TREE_FARM). What's left:
-- **The grove's harvest cycle (operator, 2026-11-14).** A pass that cuts every log in the grove, a
-  wait for the leaves to decay (leaves with no log within six blocks drop their saplings over the
-  next random ticks - a minute or two), then a pass that picks the dropped saplings up off the ground
-  and plants them back on the grid. The planter's forester breaks leaves for a sapling today, and
-  outranks the scavenger that would pick dropped ones up: it should take the ones lying in the grove
-  first. Large groves, or several, so one is grown while another is cut and nobody waits on a crop.
-  Done when: a live run sees the keep's grove grow, cut in one pass, and planted again from its own
-  drops.
-- **A flat grove at sea level (operator, 2026-11-14).** The grove's ground flattened before it's
-  planted, as the keep's is - the foreman's level-by-level plan over a second site - at sea level
-  where the depot's ground allows. Today the grove is sited on the flattest ground near the depot as
-  it stands.
-- 16 to 32 trees growing at once, so wood is never short (operator, 2026-11-14): one grove of
-  radius 8 on the four-block grid is 16.
-- Nether wart and animal pens - a chicken pen first: feathers are the one part of an arrow with no other
-  source but skeletons, and the bow joins every load plan at BUILDUP (backlog/load-plans.md).
-- The general's choice follows the terrain. A scenario test with no water nearby never yields a
-  wheat order.
-
-## Notes
-- Saplings are a side product of the tree gathering we already do. Picking them up is the cheap
-  first slice.
-- Growth is slow and random (random ticks), so live verification needs patience, or a test
-  server with a higher `randomTickSpeed`.
-
-## Chunk farms as sites, each through its stages (operator, 2026-11-20)
-Not one chunk farm at a time but several, each a site of its own (`command.Site`), measured in stages from the world
-and shown to the platoon leader - its stage and what the next wants - who sends constructors to one below Producing
-and farmers to one at it; a farm counts toward food only from Producing:
-1. **Ground** - the 15x15 inside its fence lines at one level, its four hole cells open with a floor under each:
-   flattened down to it, or built up over shallow water. The camp's own chunk farm's tender levels its ground itself
-   (`Farmer.earthwork`, `groundToFill`); a site with no tender yet wants constructors.
-2. **Watered** - its four holes full. One soldier with a bucket.
-3. **Producing** - tilled, sown, its four field torches up: viable for food. Kept lit and hydrated - a dry hole or a
-   torch knocked off drops it back a stage, to be put right. Farmers.
-4. **Fenced** - its fence and gates, when wood isn't short; brought forward when it loses cells to trampling.
-   Constructors with logs.
-
-**Both ground and water, the platoon leader's to choose** (operator, 2026-11-20): on land the ground is flattened and
-its four holes dug, their water by bucket - iron; over shallow water the ground is built up round the water, the hole
-cells left as the water already there - no bucket, no ore. Most sites will be land.
-
-**A state machine, its route planned** (operator, 2026-11-20): each site has a start - its ground as it stands - and
-the finish, Producing then Fenced; the moves are the digs, fills, floors, pours, tills, sowings and placements. The
-soldier owns how: its order carries the **template** (the layout at its level), and it compares the template with
-the world, knows its stage, and plans the cheapest sequence there from what it carries - a pure planner over the
-world model, as the route planner is. The same planner run from a site's surveyed ground is the cost the platoon
-leader is shown; what the work spends is measured against it, a site under 90% of its plan flagged (as the flatten's
-`LevelPace` is against its best).
-
-**Sites by bids** (operator, 2026-11-20): the platoon leader asks for a farming evaluation - bids on farm sites
-within some chunks of the camp; each squad leader hands it to its soldiers, each costing the chunks nearest it with
-the planner (blocks to dig and fill, iron, logs, steps, the walk from the camp) - from the world model, which holds
-every chunk in view, a walk only for one beyond it; the bids go up, the platoon leader takes the cheapest - as many as
-the food wants - and the winning squad gets the build order with the template, its bid the plan it's measured by.
-
-**As many as the supply covers** (operator, 2026-11-20): each bid says what its site wants - blocks to fill, 216 seeds
-to sow, coal for its torches, iron for a bucket on land, logs for its fence - and the supply is what the stores and
-the squads carry, counted as now. The platoon leader takes the cheapest bids in turn while the supply to Producing
-covers them and the food wants more; a farm's fence waits for its logs, so the logs don't hold a farm back from
-Producing.
-
-Built toward it: the layout, the holes' floors, the field torches, the tender (docs/military-doctrine.md § 4).
-Built: a site's stage and the work left to each from the world (`bot.farm.FarmSite`, its supply to Producing; logged
-`[Farm]` as it moves); the camp's chunk farm levelled to its template by its tender; a wheat chunk put on a chunk the
-operator names, by the farm mission - flattened, floored, the template on it, a step at a time, the camp's farm taking
-it in (docs/echelons/platoon-leader/decisions.md). The camp's farm no longer sites a chunk farm of its own. Left, in
-order: the planner's sequence for the soldier, from its template; the bids and the platoon leader's choice of sites by
-itself; several missions worked at once; the 90% measure.
-
-## More farmland: the farm by phase (operator, 2026-11-19)
-Overnight (field480-489) the farm fed about a third of the force: some 85 harvests a game day, about 28 loaves,
-stores at 0 bread and wheat. The answer is more farmland, gradually flattened to sea level, and denser farms as
-the force can build them:
-- **Airhead:** ad hoc farms round the ponds by the camp, as now.
-- **A stand two under the farm (field506):** Ned, Olga and Carol reported "no route from (-6, 63, 98) to within 0 of
-  (-6, 61, 98)" 25 times in ten minutes at the camp's farm by its pond at (-4, 62, 93) - a farmer's stand in a cell
-  two under its farmland, likely the trench cutter's (`Farmer.trenchStand`); to probe with `TerrainProbeIT` at
-  (-6, 61, 98) with the garrison stopped.
-- **Before the bucket:** trenches off a pond, built (docs/military-doctrine.md, the camp's farm). Left: the
-  stream dammed to a block deep with dirt and farmed along its banks; trenches for a squad's FARM order's plot,
-  which is sited round its water alone.
-- **With a bucket (three iron), from the first (operator, 2026-11-20: as soon as can be):** built - the bucket, its carrying (`bot.supply.WaterCarrier`), and the camp's
-  first chunk farm sited, its holes dug and filled, its fence, gates and chest put up, its ground tilled
-  (docs/military-doctrine.md, the camp's farm). Left: a gate worked on a route - opened, walked through, shut - so the
-  gates can stand shut against mobs; its chunk flattened to one level - sea level in time; (the next chunk farm
-  is built: taken in once every one is past SURVEYED, docs/military-doctrine.md) the design as the operator gave it: chunk farms, built one at a time. Each a chunk, flat at sea level,
-  fenced on its x%16==0 and z%16==0 lines (shared with the next farm), a gate each side of each corner; tilled but for
-  four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) - each hydrates the 9x9 round it - in the farmland's
-  own layer (water a block below hydrates nothing); and a chest at local (13, 13) for its seed (to 256) and wheat.
-  In steady state one soldier tends one farm - harvesting, replanting and mending holed ground as it goes - so the
-  farm stays within a player's simulation distance and grows. Built: the tender's duty order, its chunk its ground and
-  its chest its dump (`FarmDuties.Tended`), its wheat and seed past its pack's into the chest, the seed to 256 a farm chest and 256 in the general stockpile
-  (operator, 2026-11-20). Left: holed ground mended; the baker drawing
-  from farm chests (it draws from the nearest chest known to hold wheat).
-- **The operator's prototype (2026-11-19; the cover over each hole keeps the farm lit - skipped for now, 2026-11-20):** fence on x = -81 and -65, z = 96 and 112 (x a block off the chunk lines -
-  backlog/questions-overnight.md); eight gates, one on each line beside each corner; torches on the corner and middle
-  posts; a grass block and a torch over each water hole; and nothing high beside the fence - zombies came in off a tree
-  there. Tried and not landed (kept as a patch outside the tree): torches on the posts (a torch's cell is
-  over a post's 1.5-high collision - `solidHere`, not `isSolid` - and a torch builder takes a torch as placed); the
-  ground and trees beside the fence dug as earthwork; a chunk farm's fence kept off the camp's walled ground (a line
-  through it was dug as fast as it went up); a failed fixture's cells passed over. In the squad simulation the farmer
-  stopped working once its eight gates were up and the chest never went up - to dig into before it lands.
-The first food report (field490, a game day): the force burnt 176 hunger - jumping 87, healing 45, sprinting 37,
-fighting 7 - about 16 loaves at 11 hunger and saturation a loaf, against 15 made from 38 harvests and 10 eaten.
-Jumping is half of it: some 7,000 jumps among fourteen soldiers, about one every two seconds walking. Halving
-it would put the farm in surplus as it is. Left: where those jumps are - real step-ups on rough ground, or
-soldiers jumping in place - from the report's jumped-most cells, and the fix for whichever it is. field491's day: 85 of
-235 burnt jumping, the hotspots on the keep's rough ground (x -44..-57, z 38..50, y 72-77), one soldier 51 times
-from one cell while cutting logs there; each cell now says the order and report it was jumped from at, to tell a
-route's step-ups from a routine's jumps in place. field493's day: 100 of 261 burnt jumping, its hotspots mostly on routes
-(Moving 143 of 330 counted, Working 83 round the camp's dig); a corner clipped walking a level stretch was jumped onto
-before any slide along it, and is now slid along. Left: the step-ups real rough ground costs - the flatten's to answer. field495's
-day, with that fix in: 122 of 281 burnt jumping - more, not less. Its top cell, (-12, 65, 71), jumped from 123 times by
-Ivy while she reported she couldn't keep the farm: a one-block step with open head room, climbed and come back down
-again and again, a crop at (-12, 63, 87) started on three times and never done. A soldier walking back and forth over
-a step - a routine that sends it out and back, not the step - is what to find next. Later that day healing took the lead:
-173 of 362, health lost and healed again and again for small net losses (Pete healed 18 to be 3 down); the report now says
-by what each soldier was doing its health was lost - fights apart from falls - for the next to read.
-Measure first: a farm's ripe cells an hour before deciding how many the force needs (a solid block of one crop
-may grow slower than rows); and where the food goes (`[Food]`, `app.FoodLedger`) - if healing dominates, fewer
-falls and fights save more than more farms.
-
-## The wild forest near the camp is cut out (field470)
-A full day on wood duty felled 12 trees: the woodcutters' strips held no trees, and the stockpile stayed at 0
-logs. Built since: a wood cut out is dropped from the sightings and its trees from the survey, which looks out
-to 112 blocks once every wood within 64 is spent (docs/military-doctrine.md, wood by duty). Left: saplings are
-0, so the grove (the lasting answer) waits on the planter's drops.
+- Growth is random ticks: live verification needs patience, or a test server with a higher `randomTickSpeed`.
+- Measure before adding farms: a farm's ripe cells an hour, and where the food goes (`[Food]`, `app.FoodLedger`) -
+  if healing dominates, fewer falls and fights save more than more farmland.

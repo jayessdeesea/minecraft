@@ -29,7 +29,9 @@ import java.util.Set;
  *
  * <p>The one transition with no inbound trigger - HANDSHAKE -&gt; LOGIN/STATUS, since Handshake
  * has no response at all - can't happen autonomously; whoever sends the Handshake packet calls
- * {@link #transitionTo} once, explicitly, from {@code channelActive}.
+ * {@link #beginHandshake} once, explicitly, from {@code channelActive}. That is the only way in from
+ * outside this class: every other transition is its own, so no handler can flip the state
+ * (docs/protocol-pipeline.md, control-plane tenet 2).
  */
 public final class SessionStateManager extends SimpleChannelInboundHandler<Packet> {
 
@@ -48,7 +50,20 @@ public final class SessionStateManager extends SimpleChannelInboundHandler<Packe
         return List.copyOf(observed);
     }
 
-    public void transitionTo(ChannelHandlerContext ctx, ProtocolState next) {
+    /**
+     * The Handshake's own transition, for the handler that just sent it: out of HANDSHAKE, to the state the
+     * Handshake named - LOGIN or STATUS.
+     *
+     * @throws IllegalStateException if a handshake has already been begun on this connection
+     */
+    void beginHandshake(ChannelHandlerContext ctx, ProtocolState next) {
+        if (state != ProtocolState.HANDSHAKE) {
+            throw new IllegalStateException("A handshake was already begun: the connection is in " + state);
+        }
+        transitionTo(ctx, next);
+    }
+
+    private void transitionTo(ChannelHandlerContext ctx, ProtocolState next) {
         if (!state.canTransitionTo(next)) {
             throw new IllegalStateException("Illegal transition " + state + " -> " + next);
         }

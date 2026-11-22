@@ -135,7 +135,7 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
         ctx.writeAndFlush(new HandshakePacket(protocolVersion, host, port, HandshakePacket.NEXT_STATE_LOGIN));
-        ctx.pipeline().get(SessionStateManager.class).transitionTo(ctx, ProtocolState.LOGIN);
+        ctx.pipeline().get(SessionStateManager.class).beginHandshake(ctx, ProtocolState.LOGIN);
         // Offline mode derives its own UUID from the username and ignores ours - see LoginStartPacket.
         ctx.writeAndFlush(new LoginStartPacket(username, new UUID(0, 0)));
     }

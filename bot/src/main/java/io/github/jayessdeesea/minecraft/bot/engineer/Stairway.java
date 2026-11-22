@@ -213,7 +213,7 @@ public final class Stairway {
      * The cells to dig for the shortest stair from {@code feet} - where a soldier stands boxed in
      * below the ground - up and out, one block up and one along a step: each step's body room, and
      * the head room over the step before it, so the soldier jumps up into it. Empty if none can be
-     * laid: on every heading a cell no clear digs (cobblestone, a table), water, no floor to step
+     * laid: on every heading a cell no clear digs (a kept cell, one too hard), water, no floor to step
      * onto, more than {@link #MAX_STEPS_UP} steps, or a cut under sand or gravel - which would come
      * down on the digger's head - or under water or lava (operator, 2026-11-13: cut above only toward
      * what's known, never under a falling block or a liquid). Live, a soldier waited two runs in a

@@ -69,7 +69,7 @@ public final class JoinClientHandler extends SimpleChannelInboundHandler<Packet>
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
         ctx.writeAndFlush(new HandshakePacket(protocolVersion, host, port, HandshakePacket.NEXT_STATE_LOGIN));
-        sessionState(ctx).transitionTo(ctx, ProtocolState.LOGIN);
+        sessionState(ctx).beginHandshake(ctx, ProtocolState.LOGIN);
         // Offline mode derives its own UUID from the username and ignores ours - see LoginStartPacket.
         ctx.writeAndFlush(new LoginStartPacket(username, new UUID(0, 0)));
     }

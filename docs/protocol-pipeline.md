@@ -82,7 +82,7 @@ up:
 1. **`channelActive` fires** — this is the one moment with no packet to react to yet, so it's the
    only place a control handler acts without being told to. `JoinClientHandler.channelActive`
    sends `HandshakePacket`, then makes the *one* explicit cross-handler call in this whole design:
-   `sessionState(ctx).transitionTo(ctx, LOGIN)` — because Handshake has no response at all, so
+   `sessionState(ctx).beginHandshake(ctx, LOGIN)` — because Handshake has no response at all, so
    nothing will trigger this transition on its own.
 2. **Bytes come back.** `FrameDecoder` buffers until it has one complete frame.
    `CompressionDecoder` passes it through (still disabled). `MarshallingDecoder` reads the packet
@@ -145,8 +145,8 @@ explicitly, not left scattered across commit history and prose:
    control handler may *read* `SessionStateManager.state()` for its own narrow, local bookkeeping
    (today: whether to keep resetting its completion deadline), but it must never be the thing that
    flips `ProtocolState`, touches `compressionThreshold`, or swaps the active marshaller. Reading is
-   fine; writing crosses a boundary that belongs one tier down. (Making the API enforce this is
-   backlog/session-state-narrowing.md.)
+   fine; writing crosses a boundary that belongs one tier down. The API enforces it:
+   `transitionTo` is private, and the one way in from a handler is `beginHandshake`, out of HANDSHAKE only.
 3. **A reply must be fully self-contained - zero external/business input required.** This is the
    same test that draws the control-plane/application-plane line above: "does replying require any
    input from outside `protocol`?" `ClientInformationPacket.defaults()` being hardcoded here today

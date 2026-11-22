@@ -514,7 +514,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     /** An in-game day on the clock: 24,000 ticks at 50 ms. */
     static final long DAY_MILLIS = 24_000L * 50;
-    /** First figures for the days making more takes (backlog/maturity-model.md): wheat's ripening, a grove's cut and the wood party's run. */
+    /** First figures for the days making more takes (docs/military-doctrine.md § 17): wheat's ripening, a grove's cut and the wood party's run. */
     static final double RATIONS_LEAD_DAYS = 1, LOGS_LEAD_DAYS = 1;
     /** Each class's measured burn - the main loop's. */
     private final Supply.Burn rationsBurn, logsBurn; // kept across restarts (BurnStore)
@@ -527,7 +527,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Supply.State> supplyStates = new HashMap<>();
 
     /**
-     * The force's classes of supply in days, at the camp (command.Supply; backlog/maturity-model.md):
+     * The force's classes of supply in days, at the camp (command.Supply; docs/military-doctrine.md § 17):
      * Class I, the rations every soldier carries and the stockpile holds; Class IV, the logs. Upkeep is
      * measured from their falls; nothing is committed yet - the mission estimates are to say what is.
      */
@@ -596,7 +596,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, String> siteLines = new HashMap<>();
 
     /**
-     * The force's sites and how far each is built up (command.Site; backlog/maturity-model.md): the
+     * The force's sites and how far each is built up (command.Site; docs/military-doctrine.md § 17): the
      * camp from its foothold; the keep, by its depot, its dig and its slab; the mine base, by its stairs
      * and its landing's workshop - what can be measured of each today.
      */
@@ -702,7 +702,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         campWallKey = best.map(Map.Entry::getKey).orElse(null);
         List<BlockPos> wall = best.map(Map.Entry::getValue).orElse(null);
         int wallLeft = wall == null ? -1 : Perimeter.open(world, wall).size();
-        // Of stone: an enderman picks a dirt block out of a wall and opens a hole (backlog/building-guide.md).
+        // Of stone: an enderman picks a dirt block out of a wall and opens a hole (docs/military-doctrine.md § 15).
         Set<BlockPos> wallCells = wall == null ? Set.of() : Set.copyOf(wall);
         long wallSoft = wall == null ? 0 : wall.stream().filter(c -> softInWall(c, camp[0], camp[1], wallCells)).count();
         campWalled = wall == null || wallLeft == 0 && wallSoft == 0;
@@ -2704,7 +2704,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Set.copyOf(keepState.spent.keySet()).forEach(n -> Optional.ofNullable(keepState.spent.remove(n)).ifPresent(m -> spent.put(n, Map.copyOf(m))));
                 LevelPace pace = new LevelPace(plan.level(), now - keepState.levelAt, digs, plan.crew().size(), spent);
                 keepState.run = keepState.run.plus(pace);
-                // Who stood with a rectangle and nothing its clearer would cut (backlog/keep-pace.md),
+                // Who stood with a rectangle and nothing its clearer would cut (backlog/flatten-campaign.md),
                 // a tenth of its ticks or more, and what it held at the level's end.
                 KeepState.Plan ended = plan;
                 spent.forEach((n, m) -> {
@@ -2728,7 +2728,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }
             // A level that rises again - ground come back over one dug - says which columns raised it and
-            // whether they're seen or remembered: backlog/keep-pace.md's flicker in the bench's outer rows.
+            // whether they're seen or remembered: backlog/flatten-campaign.md's flicker in the bench's outer rows.
             // With each column, its top in this scan, in the last cycle's, and as read live - so a rise is told
             // apart: a column the last scan didn't have (the scan's), one it had and the live read dropped
             // (the live check's), or ground really come back (both had it lower).
@@ -3846,7 +3846,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * Records in the squad's register what each soldier is on this cycle - the work it was handed,
      * in the order its hands take it - with its report and what's left as the world measures it,
      * and logs what changed: a tasking given, done or dropped, a CANTCO, a report the world
-     * doesn't bear out (backlog/task-register.md).
+     * doesn't bear out (docs/military-doctrine.md § 4).
      */
     private void register(String squad, SquadState state, List<SoldierStatus> statuses) {
         Map<String, TaskRegister.Assignment> on = new LinkedHashMap<>();
@@ -4030,7 +4030,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /**
      * Whether the force is short of iron: nobody carries an iron pickaxe, and there isn't the iron to
-     * make one (backlog/maturity-model.md, basis of issue: at AIRHEAD the iron pickaxe is the iron
+     * make one (docs/military-doctrine.md § 11, basis of issue: at AIRHEAD the iron pickaxe is the iron
      * authorised - it opens the keep's emerald and the diamonds). A mine worked out is run on while it is.
      */
     /** Whether the force wants ore: short of iron, or a soldier wearing less than a full set of armour. */
@@ -7607,7 +7607,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                 ? "done, waiting for the level"
                                 // Held off its rectangle by another order - an errand, a fight's move -
                                 // not by its clearer: its squad's order isn't its dig, so no cover is
-                                // routed (backlog/keep-pace.md's "nothing to cut").
+                                // routed (backlog/flatten-campaign.md's "nothing to cut").
                                 : levelPlan != null && levelPlan.boxes().containsKey(name) && !clearing.containsKey(name)
                                 ? "held off its rectangle (" + status.order().getClass().getSimpleName() + ")"
                                 : levelPlan == null || levelPlan.boxes().containsKey(name)
@@ -7997,7 +7997,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 setAside.getOrDefault(material, 0) == 0 && Armourer.canDig(material, inventory, world, at, treeClaims)
                         || nearStockpile && pool.map(st -> material == ItemClass.RAW_COPPER ? st.rawCopper()
                         : material == ItemClass.RAW_IRON ? st.rawIron() : 0).orElse(0) > 0;
-        // Past no rung the camp's level doesn't authorise (backlog/maturity-model.md, basis of issue); with no camp there's no level to go by.
+        // Past no rung the camp's level doesn't authorise (docs/military-doctrine.md § 11, basis of issue); with no camp there's no level to go by.
         Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig,
                 upgradeAllowed.getOrDefault(name, false) ? highest : Math.min(highest, Ladder.BASIC_LOAD),
                 camp == null ? Optional.empty() : Optional.of(campLevel));

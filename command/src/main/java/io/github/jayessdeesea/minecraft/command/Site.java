@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
 
 /**
  * A place the force works from, and how far it's built up, the lodgment's way for every kind of site
- * (backlog/maturity-model.md; FM 3-99's lodgment phases; ATP 3-37.10's construction standards): a
+ * (docs/military-doctrine.md § 17; FM 3-99's lodgment phases; ATP 3-37.10's construction standards): a
  * level says what a site can do, measured by its standards, never judged. Each kind fills in what a
  * level means there, and a level with no standards of its kind is met as it stands - the keep needs
  * no shelter, being supplied from the camp.

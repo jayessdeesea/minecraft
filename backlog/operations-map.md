@@ -1,52 +1,38 @@
 ---
 status: proposed
 priority: P2
+depends-on: [authority-and-missions]
 doctrine: FM 6-0 (common operational picture, running estimates, unit journal)
 ---
 
-# The general's operations map and journal
+# The platoon leader's operations map: stations, and its own intent, in its prompt
 
 ## Why
-The general decides from what one prompt shows it: the mission, the time, the foothold's
-standards, and each squad's status now. It keeps nothing between calls but each squad's
-objective. So it can't know where the base's chests of copper ingots are, that a furnace stands
-by the mine head, how long Bravo has been on the wall, or why the last order failed. The operator
-expected it to keep notes:
-- by place, keyed on the 16-block cell: f(x/16, y/16, z/16) = what's there;
-- on the missions under way;
-- by squad: f(Alpha, Bravo, ...) = what each is working on.
+The platoon leader's books are kept by code - the chunk register, the task register, the stores chest by
+chest (docs/echelons/platoon-leader/decisions.md, "Its registers"; `app.StoresBook`) - but its decision prompt
+isn't shown them, and it keeps nothing between calls but each squad's current task. So it can't know that a
+furnace stands by the mine head, how long Bravo has been on the wall, or what it meant a squad to do next.
 
-## Doctrine
-A headquarters keeps a **common operational picture** (an overlay on the map of what's where),
-a **running estimate** for each line of effort (what's happening, how far along, what's in the
-way), and a **unit journal** of what was ordered and reported, in order (FM 6-0). Nobody
-remembers it; it's written down, and the commander reads it before deciding.
-
-## Design sketch
-- **The map is measured, not written by the model.** Keyed on the cell (chunk x and z, and y/16
-  for mine levels): stations (table, furnace, chest and what's in it), patrol bases, walls, mine
-  heads and how deep, the farm, tree farm and pens, and the danger seen there (deaths by cause,
-  lava, water). Code keeps it from what the soldiers see. Same rule as `<objective_ground>`: the
-  lookup is done for the model, and it can't drift from the world or invent a chest.
-- **The squad notes are measured too:** each squad's task, since when, its progress (blocks left,
-  steps cut), and the last CANTCO with its reason.
-- **The model writes only intent.** One line per squad: what the general means it to achieve
-  next, beside its objective. It's read back on the next call, so the general continues a plan
-  rather than re-deciding from scratch every two minutes. That's the one thing only it can know.
-- **The journal is the order trace** (`OrderTrace`), already logged. The general sees the last few
-  entries per squad, not all of them.
-- **Kept small:** the prompt shows only the cells near each squad's objective and near the camp,
-  and the nearest of each kind of station. A map dumped whole is a grid to decode, and the models
-  don't read grids (docs/architecture.md, behaviour modelling).
-- **Persisted** under `minecraft.state-dir`, like the wall layout (`WallStore`), so a restart
-  doesn't forget it.
+## What's left
+- **Stations on the map, measured.** Tables, furnaces and chests with what's in them, mine heads and how deep,
+  pens, and the danger seen there (deaths by cause, lava, water), keyed on the chunk (and y/16 for mine
+  levels), kept by code from what the soldiers see. Never written by the model: it can't drift from the world
+  or invent a chest.
+- **The registers in the decision prompt, kept small:** the nearest of each kind of station and stock with its
+  place, the cells near each squad's objective and near the camp, and each squad's task with since when, its
+  progress and its last CANTCO. A map dumped whole is a grid to decode, and the models don't read grids.
+- **The model writes only intent:** one line a squad - what it means the squad to achieve next - read back on
+  its next call, so it continues a plan rather than deciding afresh.
+- **The last few orders a squad** (`app.OrderTrace`) beside them.
 
 ## Done when
-- The general's prompt carries the nearest of each station and stock with its place, and each
-  squad's progress and intent line.
-- A `PlatoonLeaderScenarioIT` situation where the right answer depends on a remembered station (send a
-  squad with raw iron to the furnace by the mine) passes 5 of 5.
+- The platoon leader's prompt carries the nearest of each station and stock with its place, and each squad's
+  progress and intent line.
+- A `PlatoonLeaderScenarioIT` situation where the right answer depends on a remembered station (send a squad
+  with raw iron to the furnace by the mine) passes 5 of 5.
 
 ## Notes
-- Depends on the soldiers recording what's in a chest they open; they already open them to
-  stockpile (`SupplyRun`).
+- Follows backlog/authority-and-missions.md step 1, which renames the task register's table and types and
+  adds the mission and order tables these lines read from.
+- A task's sites - a workshop, a farm, a mine head - are handed here when the task ends
+  (backlog/authority-and-missions.md).

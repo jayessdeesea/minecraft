@@ -3,79 +3,48 @@ status: proposed
 priority: P1
 ---
 
-# Mobility: climbing by digging steps and building them
+# Mobility: swimming, water lifts, and stairs into a tall face
 
 ## Why
-On foot a soldier steps up one block and drops three. In hills or mountains much of the ground is
-out of reach that way:
-- Bravo, in a valley at the foot of the spawn mountain, surveys "1/81 reachable" and reports "no
-  route" to every objective the general picks on the high ground around it.
-- A squad leaving its patrol base onto a slope does the same.
+A soldier steps up one, drops three, pillars, cuts and builds steps, and is dug out of a pocket or off a ledge by the
+recovery drill (docs/echelons/soldier/capabilities.md, docs/military-doctrine.md § 7). What it still can't do: move
+through water anywhere but the surface, climb a tall face with nothing carried, or build steps toward a place further
+than one search reaches. The platoon leader still picks ground a squad can't get to.
 
-The general keeps choosing places it can see but the squad can't reach, and the squad can only
-report CANTCO. A player in the same spot would dig a staircase into the hillside, or put a block
-down and jump onto it.
+## What's left
+- **Swim as moves.** The planner knows a swimmer only at the surface (water at the feet, air at the head,
+  `Pathfinder.swimmable`): a soldier wholly underwater has no footing in its plan. Wanted: rise a block through water
+  (jump held), sink a block, and swim forward into a step at the surface - each a move at a swim's cost, so a flooded
+  stair or a pool with a bank is swum, not stranded in. (Live, three soldiers floated for hours in the flooded spiral
+  stair of the camp's mine; the stuck-in-water drill got them out by filling the water into steps.)
+- **Water columns as lifts.** A 1x1 shaft of water sources is a ladder to swim up and drop down without damage; soul
+  sand at its foot makes a bubble column that lifts, magma one that pulls down. For the mine (backlog/mining.md:
+  "ladders down a 1x1 shaft"), a water elevator beside the staircase is the fast way between levels. The engineer
+  lays it out at the mine base - the shaft cut, filled from water buckets (`Recipe.BUCKET` exists; carrying water
+  needs the bucket's use), a plain column until there's Nether access for soul sand - and a soldier's moves include
+  riding it.
+- **A staircase into a face taller than three blocks, with nothing carried.** A step is cut only where it comes out
+  under open air, so the planner never tunnels and the survey's flood fill stays bounded.
+- **Built steps toward an objective beyond one search.** Offered on a partial route they led the scenario soldier
+  astray (lakes and ravines), so a soldier builds only when the plan reaches.
+- **A stair up whose cut stalls midway** - a cell that won't break, water found - is laid again from where the soldier
+  stands. Today it's laid again only once the soldier is more than 6 off every cell of it (docs/military-doctrine.md
+  § 7); check whether a stalled cut is covered before building anything.
+- **The survey takes the top ground in each column.** In a valley or under an overhang that's often far above the
+  squad, which is part of why the high ground dominates its picture.
+- **The respawn platform, live.** Replacements respawn on a patch of glass at y=102 near (-5, 9), 17 blocks over the
+  ground. The recovery drill's stair passes the squad simulation's copy of it; it wants seeing live, the next time a
+  replacement lands there.
 
 ## Done when
-Pillaring, cutting steps (soil by hand, stone with a pickaxe) and building steps down a drop or up to
-ground above are live (docs/echelons/soldier/capabilities.md, docs/military-doctrine.md section 7). Left:
-- **A staircase into a face taller than three blocks, with nothing carried.** A step is cut only
-  where it comes out under open air, so the planner never tunnels and the survey's flood fill
-  stays bounded.
-- **Built steps toward an objective beyond one search.** Offered on a partial route they led the
-  scenario soldier astray (lakes and ravines), so a soldier builds only when the plan reaches.
-- **Swimming up and down, and water elevators.** The planner knows a swimmer only at the surface
-  (water at the feet, air at the head, `Pathfinder.swimmable`): a soldier wholly underwater has no
-  footing in its plan, and a step one block above the water is the only way out it sees. Live, three
-  soldiers floated for hours in the flooded spiral stair of the camp's mine; the stuck-in-water drill
-  got them out by filling the water into steps (docs/echelons/soldier/capabilities.md), not by
-  swimming. What a player does instead:
-  - **Swim as moves:** rise a block through water (jump held), sink a block, and swim forward into
-    a step at the surface - each a move the planner can take, at a swim's cost, so a flooded stair
-    or a pool with a bank is swum, not stranded in.
-  - **Water columns as lifts:** a 1x1 shaft of water sources is a ladder you swim up and drop down
-    without damage; with soul sand at its foot it's a bubble column that lifts a body, with magma it
-    pulls one down. For the mine (backlog/mining.md: "ladders down a 1x1 shaft"), a water elevator
-    beside the staircase is the fast way between levels.
-  - **The engineer builds it:** a blueprint the engineer lays out at the mine base - the shaft cut,
-    filled from water buckets (`Recipe.BUCKET` exists; carrying water needs the bucket's use), soul
-    sand at the foot once there's Nether access, or a plain column until then - and a soldier's moves
-    include riding it.
-- **Stranded, starving, with only a pickaxe.** Live (field50-52), Eli stood for an hour on a
-  cobblestone ledge outside the camp's wall at 8 health and food 0: every way down a fall that
-  would kill it, nobody in the squad carrying 24 blocks, and its own 8 logs spent on a sword and a
-  pickaxe before the recovery drill (docs/military-doctrine.md § 7) could have it build its own
-  stair. A player there digs down: a stair cut into the block underfoot and on down, as
-  `Stairway.up` cuts one up. And the drill could send a squadmate with bread to anyone stranded
-  at food 0, since health only comes back fed.
-- **Sealed in a cobblestone pocket under the camp's edge.** Live (field60), three soldiers stood in
-  a 5x1 pocket at y=63 under the camp's south-west corner, roofed and walled in cobblestone where
-  the wall's footing and the camp's fill had closed over a dip. The recovery drill laid no stair
-  up: `Stairway.up` cuts only what `Clearing.diggable` takes (soil, natural stone, gravel, trees),
-  never cobblestone, so as never to breach the wall or a hut; and sent at MEDIUM risk they had no
-  route either. Letting the stair up cut cobblestone outside the camp's keep (`campKeep`) is the
-  shape of it, but the dig goes through the Clearer, `Clearing.toClear`/`next` and the Digger's
-  targets, which all take `diggable` - so cobblestone would join the camp's ground work too, and
-  every placed block round the camp with it. A choice to make deliberately, not in passing.
-- **The respawn platform, live.** Replacements respawn on a patch of glass at y=102 near (-5, 9),
-  17 blocks over the ground. The recovery drill's stair (docs/military-doctrine.md § 7) passes the
-  squad simulation's copy of it; it wants seeing live, the next time a replacement lands there.
+- Squad simulation: a soldier in a flooded stair swims up and out; one across a pool with a bank swims to it.
+- Squad simulation: a soldier with nothing carried reaches ground four or more blocks up a face by steps it cuts.
+- A soldier sent past one search's reach builds toward it without being led into water or a ravine, in the scenario
+  that failed.
+- A water lift at a mine base is laid out, filled and ridden both ways, in the simulation.
+- Live: a replacement on the respawn platform is down and linked up without help.
 
 ## Notes
-- Blocks come from what the soldier carries (`Builder`'s cobblestone, planks, logs), or from what
-  it dug on the way up.
-- Also open: the survey takes the top ground in each column. In a valley or under an overhang
-  that's often far above the squad, which is part of why the high ground dominates its picture.
-- **Something unseen in the pocket at the mine's bottom (field161-168).** Bob, a day at
-  (-40, 31, 42), was stopped by something the chunk data doesn't show two cells west, at
-  (-42, 31, 42): stuck short of it three times a minute with the cell air on the server (a dig of
-  it "didn't come") and no squadmate in it - an entity, or the server putting him back for a reason
-  the client can't see. A console probe `execute as @e[x=-42,y=31,z=42,distance=..1,type=!player]
-  run say PROBE` found nothing there later. The tunnel up (docs/military-doctrine.md § 7) gets him
-  out whatever it was; if it shows again, that probe while he's stuck.
-- **A stair up that fails midway.** The engineer lays the cut once; a cell of it that won't break
-  (water found, a block beyond the tools) fails the clearer's cut and the soldier stands in a
-  half-dug stair until a squadmate comes. Lay it again from where it stands when the cut stalls.
-- **The shut-in drill underground.** A soldier the world shows shut in a small room (§14) cuts a
-  doorway toward its squad at its own level; 25 blocks down, that's a tunnel sideways under the
-  camp. Deep down, the way out is the recovery drill's stair up, not a door.
+- If something unseen stops a soldier again as at the mine's bottom (field161-168: Bob stuck three times a minute short
+  of (-42, 31, 42), the cell air on the server), run this from the console while it's stuck:
+  `execute as @e[x=-42,y=31,z=42,distance=..1,type=!player] run say PROBE` with the cell's own coordinates.

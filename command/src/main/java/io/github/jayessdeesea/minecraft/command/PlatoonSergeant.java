@@ -237,7 +237,7 @@ public final class PlatoonSergeant {
      * Half of it while the squad is {@code hungry} (RED, or one hungry with nothing to eat and no
      * squadmate to share) or the force's rations are below their safety level (PAUSE: stop and fill
      * up); one soldier while the squad is merely {@code short} or the force's rations are below their
-     * reorder point (backlog/maturity-model.md: the platoon sergeant tasks producers when the stock
+     * reorder point (docs/military-doctrine.md § 17: the platoon sergeant tasks producers when the stock
      * crosses it); none otherwise. {@code rations} is the force's Class I as measured, empty before
      * the first look; with no burn measured yet its levels say nothing.
      */

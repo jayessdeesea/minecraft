@@ -50,3 +50,11 @@ Each cell's yield and its time to detection logged, so a regression shows as a n
 - The eval's cells pass, the misses each detected within one spell (`ShareWatch.DUE_MILLIS`) and answered by
   their rule.
 - Live: bread made each day the stores hold wheat; no "behind its share" alarm raised twice running for one cause.
+
+## Notes
+- **Before starting, reconcile with backlog/authority-and-missions.md step 4 (sectors).** The woodcutter's sector, the
+  harvester's plot and who writes a soldier's ground are that step's - the squad leader splitting its AO into a box a
+  soldier; this item's orders name the makings (source, table, batch, dump) on top of that ground, not a second way
+  of giving it.
+- The wood's ground read from the order (the woodcutter's `Order.Gather` box, the planter's grove) is also listed in
+  backlog/soldier-order.md, Design; it's one piece of work, done here.

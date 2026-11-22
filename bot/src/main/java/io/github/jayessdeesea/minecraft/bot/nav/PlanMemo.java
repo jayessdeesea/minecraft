@@ -6,7 +6,7 @@ import java.util.function.Supplier;
 /**
  * The last route search a soldier made and what it found: asked the same again - from the same cell, to the same goal,
  * over the same ground (WorldView#stamp), round the same cells, with the same blocks to build with - it's the same
- * answer, not another search (backlog/route-planning-cost.md: commit 832's profile, a third of the garrison's samples a
+ * answer, not another search (commit 832's profile, a third of the garrison's samples a
  * wide search made again from where the last one was made). Not thread-safe: one soldier's tick loop.
  */
 public final class PlanMemo {

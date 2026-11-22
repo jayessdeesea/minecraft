@@ -54,7 +54,8 @@ In its user prompt (`command-ai/src/main/resources/prompts/platoon-leader-user-p
   exception: a sealed one is kept through the night. Each time it keeps such an order anyway, the
   log says so (`[Feedback]`).
 
-It keeps nothing between calls but each squad's current objective (backlog/operations-map.md).
+Between calls the model keeps nothing: its books are kept by code (below), and its decision prompt isn't shown them
+yet (backlog/operations-map.md).
 
 ## Its registers
 The platoon leader's books are kept by code, never asked of the model (operator, 2026-11-21): an embedded H2 database
@@ -144,7 +145,7 @@ Code-sited chunk farms are gone: the camp's farm takes in only the chunk farms i
 holds.
 
 ## When it decides
-When woken, never on a clock (backlog/fleet-command.md): at once on an operator's mission or
+When woken, never on a clock (what's next for it: backlog/authority-and-missions.md, step 5): at once on an operator's mission or
 remark, dawn, dusk and dusk near, a squad with no objective, and an escort attached or ended; and,
 if a minute has passed since its last decision, on a squad's task finished or stalled, its Class I
 RED, or its squad leader's CANTCO. Contact wakes nobody: it's the squad's to handle, and live, a new

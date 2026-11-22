@@ -16,6 +16,11 @@ taken off the flatten after 24 s, Eli's order flipping 134 times in a run. Two s
 and Delta's stale farm at chunk (1, 3); all four squads down the camp's one mine by night; the camp's tree chunk sited
 on the farm mission's chunk), and nothing records how a soldier's work ties to the mission it serves.
 
+**Who may change an order** (operator, 2026-11-22): its issuer. A squad leader or a soldier doesn't rewrite the order it
+was given, or make one up, except in specific circumstances: to defend against hostiles - then back to the same order
+(backlog/soldier-order.md, the stack for interruptions) - and when it can't be carried out, said up as CANTCO with why,
+for the issuer to answer. Anything else that changes what a soldier or squad is on is a rule to remove, not to keep.
+
 ## The terms
 One home: docs/echelons/platoon-leader/decisions.md, "Terms". A mission is what the operator gives the platoon; its
 operation runs in phases; each phase - and each assignment the platoon leader makes by its own decision - is a task to
@@ -29,8 +34,21 @@ a squad; an objective is a place. The code's `Objective` type and `objective` ta
    PLANNED, ACTIVE, ON_HOLD, REPORTED, VERIFYING, ACCOMPLISHED (done and verified), FAILED (time - with what was and
    wasn't done), CANCELLED (the issuer rescinded), SUPERSEDED (a newer order replaced it), CANTCO - each with its
    reason. The short form (first 8 hex) in logs and chat. Java types renamed with the table.
+   With the renames, the keep's task and log tag become the flatten's (`Objective.Task.Keep`, `[Keep]`): what it does is
+   flatten ground (backlog/flatten-campaign.md).
+   Requests are tasks going up: `app.RequestLedger` folds into the task register - a squad's request (a task finished
+   or stalled, Class I RED, Class IV) is a row with its issuer, recipient, given-at and state like any other, overdue
+   by the same rule, so there is one register and one review of it, not two.
 2. **Reports against task keys**: a soldier says "WORKING 3f9a2c1b (mission 7d01e4aa, phase 1): 33 left"; its squad
    leader tracks against the key.
+   Eval: a report names the task it's about, so a CANTCO from a side job - lighting, making a tool - never reads as
+   its task's, and the register (`TaskRegister`) leaves the soldier on it: in the squad simulation, a builder whose
+   torch-lighting fails every try stays on its dig and its count falls (live, field165: Hal put on `dig the keep` and
+   taken off a second later for "can't light the ground: 4 tries in a row failed"). Today the report chain gates each
+   routine's CANTCO case by case (`SoldierRunner`, the lamplighter's, the mason's, the depositor's).
+   The same churn from the soldier's side is its `[State]` line (`bot.ActivityTrack`): in the squad simulation a farm
+   squad in a fight goes keep the farm -> fighting -> no task -> keep the farm 124 times - the register drops the task
+   for the fight and gives it again. A fight is an interruption, not a change of task: the count to cap.
 3. **Areas of operations**: every squad's task comes with an AO of whole chunks; concurrent worksites (a chunk and its
    slope ring) never touch; a big dig runs in waves - chunk coordinates stepped by 2, at most four waves, a later
    chunk's slope flags off toward finished neighbours; chunks chosen by work (blocks to cut and fill) plus walking
@@ -47,6 +65,14 @@ a squad; an objective is a place. The code's `Objective` type and `objective` ta
    and dawn, the operator's tweak - with the night rule and the guardrails folded into how the order is made, once,
    not rewriting it each cycle. By night daytime missions go ON_HOLD (their clock runs; nobody works them) and the
    squads go to their mine sites; by day they're ACTIVE again. The operator can hold or resume a mission from the chat.
+   The platoon leader sees its open tasks when it decides: each squad's open task one line in its decision prompt - the
+   short key, the task, the squad, state, age and last report - and the same lines in the dawn `[AAR]`; today the
+   register (`app.ObjectiveBook`) is read only by the operator's chat and the `[Objectives]` log line.
+   The decision prompt shows each squad's summary, not each soldier's report: live (field35x-369), four times in a
+   morning the platoon leader answered one objective a soldier - Alpha four times over, each from one soldier's line -
+   or left a squad out, and the decision was dropped ("[PL] no decision - keeping the current objectives: two
+   objectives for squad Alpha"). Eval: a `PlatoonLeaderScenarioIT` situation with four soldiers reporting differently
+   in one squad gets one task for that squad, 5 of 5.
 6. **Trust but verify**: a squad's DONE is REPORTED; the platoon leader tasks another squad with an area
    reconnaissance of the objective - on site, so its own connection streams the chunks fresh, and inspecting by the
    task's standard with a different check from the reporter's; confirmed, ACCOMPLISHED; else a `[Fault]` naming

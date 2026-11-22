@@ -190,7 +190,7 @@ class PlatoonSergeantTest {
     /** A cutter part-loaded stays out until its load is in. */
     /**
      * With the logs' burn measured, the party goes out at their reorder point and back at their stockage
-     * objective (backlog/maturity-model.md): a camp burning 40 logs a day reorders long before 8.
+     * objective (docs/military-doctrine.md § 17): a camp burning 40 logs a day reorders long before 8.
      */
     @Test
     void theWoodPartyGoesOutAtTheLogsReorderPointAndBackAtTheirObjective() {

@@ -182,7 +182,7 @@ public final class Mason {
 
     /**
      * Each tick, with no wall cell it can build: replaces the wall's {@code soft} cells - dirt or grass,
-     * which an enderman picks up and opens a hole with (backlog/building-guide.md) - with
+     * which an enderman picks up and opens a hole with (docs/military-doctrine.md § 15) - with
      * cobblestone, one at a time while {@code free} and carrying some: dug out, then built again.
      */
     public synchronized void repoint(Position soldier, WorldView world, BlockPos centre, int radius, List<BlockPos> soft, boolean free) {

@@ -73,11 +73,15 @@ seconds or when stuck - a wide search asked again from the same cell to the same
   a squadmate with blocks is sent to build it a stair (docs/military-doctrine.md § 7). Live, two
   soldiers floated in a flooded shaft for hours reporting the wood they meant to gather.
 - **Searches wider for a goal its cheap searches can't reach.** Once its plans gain no ground, it
-  searches 15 times wider (`DeterministicSoldier.LONG_PLAN_BUDGET`) and, finding the way, goes on
+  searches 15 times wider (`Mover.LONG_PLAN_BUDGET`) and, finding the way, goes on
   searching that wide for that goal: a cheap replan on the way round would lead back to the wall.
   A wide search that doesn't get there isn't made again for that goal for 5 seconds
   (`WIDE_RETRY_TICKS`): soldiers at a mine's bottom with no way out made one at the end of every
-  partial route, two thirds of the soldiers' CPU. Nor after a cheap one that tried every cell it could get to
+  partial route, two thirds of the soldiers' CPU. A wide search that doesn't reach the goal still gives a leg, if it
+  ends on ground at least 8 blocks nearer (`Mover.isLeg`, `LEG_GAIN`): the soldier walks that and plans again from
+  its end. From the surface a leg must end on the surface - never down into a cave toward a goal there's no walk to.
+  A leg planned again from the cell the last began at goes round that one's first 4 cells (`LEG_AVOID_CELLS`), with
+  a WARN. Nor after a cheap one that tried every cell it could get to
   (`Pathfinder.Result.exhausted`). And a plan that found no way at all is tried again after a second,
   then two, four, eight - sixteen at most - as its failures toward one task mount (`Mover.NO_ROUTE_RETRY_TICKS`):
   a soldier in a dig whose every cut's stand had no way in planned three and four searches a second,

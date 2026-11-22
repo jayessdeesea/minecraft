@@ -4,83 +4,46 @@ priority: P1
 doctrine: ATP 3-37.10 (base camp standard designs); FM 6-0 (staff functions)
 ---
 
-# Echelon contracts: concrete soldier commands, and an engineer between the general and the work
+# The engineer: blueprints as data, standards inspected from the world
 
 ## Why
-The echelons (docs/echelons/) show the abstractions don't hold:
-- **The soldier knows too much about structures.** `Mason` knows the camp wall's layout,
-  `PatrolBase` the hut's, `Lamplighter` "light this ground". Design knowledge sits in the one
-  echelon that should know only how to work and how to survive.
-- **The soldier's work has no command.** Its only order is `MoveTo` or `Idle`. What it works on
-  comes from `app.SoldierRunner` (41 per-soldier maps) reading the general's `Task`, past the
-  squad leader.
-- **The structures can't vary.** A foothold and a main base, a forest and a coast, all get the same
-  hut and the same ring wall, because the layout is code in the routine.
+The soldier knows too much about structures: `bot.supply.Mason` holds the camp wall's layout,
+`command.PatrolBase` the hut's, `bot.supply.Lamplighter` "light this ground". So a foothold and a main base, a
+forest and a coast, all get the same hut and the same ring wall, because the layout is code in a routine. The
+soldier's orders are `MoveTo`, `Idle`, `Place`, `Dig`, `Fill` and `Gather` (`command.Order`); nothing says
+"make this" or "hold this ground".
 
-## Design
-Four layers, each knowing only what it needs:
+Who gives a soldier its work is backlog/soldier-order.md; who splits the ground among soldiers is
+backlog/authority-and-missions.md, step 4; emptying `SoldierRunner` is backlog/split-oversized-sources.md.
+
+## What's left
+- **The engineer is a staff function, not an echelon** - geometry done by code, as `Formations` is, so no
+  model spends a call on fence posts. It turns "a foothold cell, forest style, at chunk C" into cells and
+  blocks.
+- **Blueprints are data files**, one per structure type and biome, so a style guide is a new file, not new
+  code. backlog/cells.md's cell is one blueprint type; backlog/sites.md's Notes hold the style vocabulary.
+- **Standards are inspected by the engineer, not the soldier.** "Every floor cell of the camp at block light 1
+  or more" is checked from the world every cycle, and each shortfall becomes a concrete order -
+  `Place(torch, cell)`. The soldier never knows there's a camp.
+- **`FORTIFY`, `SECURE` and `PATROL_BASE` become blueprints and inspections**, their layouts out of `Mason`,
+  `Lamplighter` and `PatrolBase`.
+- **Two more orders:** `Craft(item, count)` and `Hold(area)`, each with its WILCO, its CANTCO with the reason,
+  and its completion, as the others have.
 
 | Who | Knows | Decides |
 |---|---|---|
-| General (model) | the mission, the site's character (foothold or main base, forest or ocean) | what to build where, in which style, and in what order |
-| Engineer (deterministic) | the style guide: a blueprint per structure type and biome | turns "a foothold cell, forest style, at chunk C" into cells and blocks; inspects the standards against the world |
-| Squad leader (model, then drills) | its soldiers and their state | who takes which work package, security while working, sequencing |
-| Soldier (deterministic) | its own survival, and the commands below | how to carry out this command safely |
-
-- **The engineer is a staff function, not an echelon.** Like `Formations`, it's geometry done by
-  code, so no model spends a call on fence posts. Blueprints are data files, so a style guide -
-  form over function, later - is a new file, not new code. `backlog/cells.md`'s cell is one
-  blueprint type.
-- **Standards are inspected by the engineer, not the soldier.** "Every floor cell of the camp at
-  block light 1 or more" is checked from the world every cycle. Each dark cell becomes a
-  `Place(torch, cell)` command. The soldier never knows there's a camp.
-- **Soldier commands are concrete**, beside `MoveTo` and `Idle`:
-  `Dig(cells)`, `Place(cells, block)`, `Gather(resource, area, amount)`, `Craft(item, count)`,
-  `Hold(area)`. Within a command the soldier chooses the order of work and where to stand, skips a
-  cell it can't reach, and reports it. Each command has a WILCO, a CANTCO with its reason, and a
-  completion.
-- **Survival stays with the soldier:** fighting, eating, standing to, and never stepping off an
-  edge unless told to. "Unless told" already exists: a soldier that can't comply safely reports
-  CANTCO with the price, and only the squad leader grants the risk (docs/military-doctrine.md § 7).
-- **The fan-out is deterministic.** A squad leader's model call every 20 seconds can't issue 64
-  placements, so the engineer and the drills divide the work. The squad leader's judgement goes on
-  allocation and security.
-- **`SoldierRunner` keeps only the connections.** The squad loop - engineer, drills, command
-  assignment - is a pure function in `command`/`bot`, run by the squad simulation
-  (docs/architecture.md, squad simulation) as it is by the app.
-
-## Built so far
-- **The first concrete command and the first blueprint.** `Order.Place(cells)`, reported as
-  `Building(placed, cells)`, and the engineer's stair down from a ledge (`bot.engineer.Stairway`),
-  which the recovery drill hands to a squadmate (docs/echelons/soldier/orders.md).
-- **The ground work's commands.** `Dig(box, except)`, `Fill(box, except)` and
-  `Gather(resource, box, amount)` over a `command.Box`, reported as `Working(command, left)`; the
-  engineer's dig and fill boxes round a camp (`command.Groundwork`) and the squad's drill that
-  splits them into a strip a soldier and sends one short of blocks off base for dirt
-  (`command.Tasking`) - pure, and unit-tested in `command` (docs/military-doctrine.md § 15). Left:
-  the runner still routes each command to its routine through its own maps, and the wall, the
-  lights and the hut are still the routines' own layouts.
-- **The soldier's standing plan.** A role at a site and directives ahead of it, set by the
-  squad leader and kept on disk; each soldier's unit led to its own objective
-  (docs/military-doctrine.md § 18). Left of that: backlog/task-organisation.md.
-
-## Scenarios that must pass first
-Each runs in the squad simulation (`SquadSimulationTest`), against the code as it is, before
-anything is restructured. All pass: the mine shaft (open ground, beside a pond, with no pickaxe in
-the squad), the night shift, the wall on a slope, a fight while the hut goes up, and a replacement
-stranded on a platform 17 blocks up.
+| Platoon leader (model) | the mission, the site's character (foothold or main base, forest or ocean) | what to build where, in which style, in what order |
+| Engineer (deterministic) | the style guide: a blueprint per structure type and biome | the cells and blocks; inspects the standards against the world |
+| Squad leader | its soldiers and their state | who takes which work, security while working |
+| Soldier (deterministic) | its own survival, and its orders | how to carry out this order safely |
 
 ## Done when
-- The scenarios pass on the new layers, and the echelon docs describe the commands, the engineer
-  and the blueprints, not the runner's maps.
-- `FORTIFY`, `SECURE` and `PATROL_BASE` are blueprints and inspections, not soldier routines.
+- `FORTIFY`, `SECURE` and `PATROL_BASE` are blueprints and inspections, not soldier routines; a second style
+  of one of them is a data file and no code.
+- `Order.Craft` and `Order.Hold` exist, each with a squad-simulation scenario.
+- The squad-simulation scenarios that pass today pass unchanged on the new layers, and the echelon docs
+  describe the engineer and the blueprints.
 
 ## Notes
-- Each command kind is scored in the field (backlog/command-scorecard.md); a command changes when
-  a scenario can't pass without the change.
-- **The platoon leader answers per soldier, not per squad (field35x-369, 2026-11-17).** Four times
-  in a morning its reply held one objective per soldier - Alpha four times over, each from one
-  soldier's report ("dig the keep (7 cells left)", "InPosition", ...) - or left a squad out, and the
-  decision was dropped ("[PL] no decision - keeping the current objectives: two objectives for squad
-  Alpha"). Fails loud and costs a decision, not the force; but the prompt shows it each soldier's
-  report where it should see its squad's summary (docs/prompting.md: a model is shown computed state).
+- An order's kind changes when a scenario can't pass without the change (backlog/command-scorecard.md counts
+  what the orders couldn't say).

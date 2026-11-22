@@ -1,12 +1,13 @@
 ---
-status: proposed
+status: needs-decision
 priority: P3
 ---
 
 # Soldier physics approximations
 
 ## Why
-`DeterministicSoldier`'s movement approximates vanilla physics, and live runs haven't yet forced
+The soldier's movement (`bot.Gait`, `bot.Mover`, `bot.nav.Pathfinder`) and its senses approximate
+vanilla, and live runs haven't yet forced
 these gaps closed:
 - Partial blocks: slabs and stairs collide as full cubes, while fences and walls are modelled as
   1.5 blocks tall.
@@ -20,8 +21,15 @@ these gaps closed:
   isn't decoded - one lying on the ground that comes into view raises a shield for a moment.
 - Perception: a soldier knows every entity the server sends its connection - through walls, behind
   it, in the dark - where a player only sees what's on screen. Contact needs a line of sight
-  (docs/military-doctrine.md § 8), but the squad's drills and the general's picture don't.
+  (docs/military-doctrine.md § 8), but the squad's drills and the platoon leader's picture don't.
 
 ## Done when
 - Each gap is closed only when a live run or scenario shows it costing something. Split it into
   its own item at that point.
+
+## Notes
+- **The decision (operator):** this is a list of what's true of the code today, not work with an
+  end. Either move the list into docs/echelons/soldier/capabilities.md as "what's approximated"
+  and delete this file - a gap that starts to cost something then gets an item of its own, and
+  backlog/simulator-fidelity.md's pointer here moves to the docs - or keep it here as a watch list,
+  which never closes.

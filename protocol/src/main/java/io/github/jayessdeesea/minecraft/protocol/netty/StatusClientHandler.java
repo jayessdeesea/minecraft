@@ -41,7 +41,7 @@ public final class StatusClientHandler extends SimpleChannelInboundHandler<Packe
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
         ctx.writeAndFlush(new HandshakePacket(protocolVersion, host, port, HandshakePacket.NEXT_STATE_STATUS));
-        ctx.pipeline().get(SessionStateManager.class).transitionTo(ctx, ProtocolState.STATUS);
+        ctx.pipeline().get(SessionStateManager.class).beginHandshake(ctx, ProtocolState.STATUS);
         ctx.writeAndFlush(new StatusRequestPacket());
     }
 

@@ -752,7 +752,7 @@ class FoodSimulationTest {
     /**
      * A hungry squad keeps the farm on {@code ground}, trampling at most {@code trampledAtMost} of
      * its cells - a farm in a hollow, one: a soldier stepping up out of it off farmland that falls
-     * back lands on it from a jump's height (backlog/farm-trampling.md).
+     * back lands on it from a jump's height.
      */
     void hungrySquadFarms(SimServer.Terrain ground, int trampledAtMost) {
         SimClock clock = new SimClock();

@@ -1,161 +1,73 @@
 ---
-status: ready
+status: needs-decision
 priority: P1
-depends-on: []
+depends-on: [authority-and-missions]
 doctrine: ATP 3-21.8 (infantry platoon and squad: duties of the platoon leader, platoon sergeant and squad leader; sustainment; troop leading procedures); ADP 5-0 / FM 5-0 (commander's critical information requirements, decision points); ADP 6-0 (mission command)
 ---
 
-# Fleet command: a platoon that works, a model only at the top
+# Fleet command: what's left of a platoon with a model only at the top
 
 ## Why
-The operator's decision (2026-11-14): the goal is a fleet of bots that works, no longer the data
-on how to tier AI agents. The README's goal changes with it. What the tiering has taught stays:
-every bad decision traced so far came from a model doing arithmetic or working out state it should
-have been shown (docs/prompting.md), and the deterministic parts - the foreman's rectangles, the
-equipment ladder, the drills - do their jobs better than a model asked to. So:
-- **One model, at the top**, where judgement is needed and the cost of a call is low: turning the
-  operator's missions into objectives and intent, choosing among missions already costed, setting
-  priorities for scarce materials, and deciding what's escalated to it.
-- **Everything else deterministic**, organised as a real infantry platoon is, so doctrine for each
-  job comes from the manual for that job.
-- **The model wakes on events, not on a clock**, as a commander is told what he's asked to be told
-  and the rest runs on standing procedures.
+The goal is a fleet of bots that works (operator, 2026-11-14): one model, the platoon leader, and everything under it
+code organised as an infantry platoon is. The platoon leader, the platoon sergeant, the squad leaders' drills, the
+roster of sixteen and the platoon leader's wakes stand. What doesn't: the squad leader's model and prompt are still in
+the code, some of the things the platoon leader should be woken for can't wake it, a dead soldier's replacement is
+nobody's job, and the sixteen are four like squads where this item planned four elements by function.
 
-## The organisation
-Four squads of four (the roster, operator 2026-11-15), still four like squads, not yet the
-elements below:
-
-| Role | Today | Becomes | Thinks with | Doctrine |
-|---|---|---|---|---|
-| Company commander | the operator | the operator: issues missions, sets the timetable, decides the decided-by-operator lines | a person | the higher headquarters' order |
-| Platoon leader (PL) | the general | intent, missions chosen, priorities set, escalations decided | the model | "responsible for all the platoon does or fails to do" |
-| Platoon sergeant (PSG) | parts of `command`, `Armourer`, `CrossLevel` | sustainment: the supply gate, reorder points, producers tasked, kit by role, pre-combat checks, replacements after deaths | code | the platoon's primary sustainment operator |
-| Squad leader (SL) | a model every 20 s, then drills | task organisation within the squad: who has which role where, from the PL's objective and the PSG's detachments | code | owns the squad's plan |
-| Engineer / foreman | the keep's foreman, the engineer's siting | as now: sites workshops, shares out dig work level by level | code | general engineering |
-| Soldier | code | as now | code | |
-
-The staff work a battalion would do - the mission estimate, the survey, the timetable - is done
-for the PL by code, as tools of its troop-leading procedures, never by the model.
-
-**What the squad leader's model does today, and what replaces it.** Its allocation every 20
-seconds - who, where, how many (docs/echelons/squad-leader/decisions.md) - becomes a deterministic
-allocator over the squad's soldiers, the way the foreman shares out the keep: roles from the
-objective's task, soldiers from the nearest fit and fed, detachments from the PSG. Each decision it
-makes today becomes a rule or an escalation; nothing is dropped without one. Its measured misses
-are part of the case: `alldetached` passed 0 of 7, and its false CANTCOs moved squads on many
-times an hour (backlog/scenario-matrix.md).
+## What's left
+- **The squad leader's model removed** (operator, 2026-11-15): `command.ai.SpringAiSquadLeader`, its prompts and
+  `minecraft.squad-leader.decides-with: model` go once the data says they're not needed - a full live day with the
+  drills leading, no more soldier-stuck alerts, idle soldiers or standards held than under the model's days in the
+  scoreboard. With it go the two "the general"s in `squad-leader-system-prompt.md` (unedited till then: an unmeasured
+  prompt edit isn't safe, docs/prompting.md) and the tenet "Thinks in few round trips" (docs/echelons/tenets.md).
+- **Wakes.** The platoon leader's decision changing only on events is backlog/authority-and-missions.md step 5, which
+  continues what's built (`[PL] wakes: <cause>`). Wanted, and not in that step's list: a site entering PAUSE or
+  RECONSTITUTE (backlog/sites.md), a level behind its due day at dusk, deaths over a threshold in a day, the
+  information requirements the platoon leader sets itself, and a CANTCO carrying what the drills tried.
+- **Replacements after deaths** are the platoon sergeant's and aren't built; nor do the equipment ladder and the ore
+  pool sit with it yet (docs/echelons/platoon-sergeant/decisions.md, "Still elsewhere").
+- **The README's "What it is"** names the platoon sergeant, and each element below as it lands.
+- **Four elements by function** - to decide (Notes).
 
 ## At sixteen: four squads by function
-The roster grown to sixteen (operator, 2026-11-14), organised by what the work needs rather than
-as four like squads:
+To decide (Notes). As planned (operator, 2026-11-14), the sixteen organised by what the work needs:
 
 | Element | Soldiers | Owner | Does |
 |---|---|---|---|
-| 1st squad (rifle) | 4 | the PL's missions | recon, expeditions, escorts, security for work outside the walls |
-| 2nd squad (rifle) | 4 | the PL's missions | the same, alternating with 1st: one out, one at the camp |
-| 3rd squad (engineer) | 4 | the PL's missions; the foreman is its squad leader | the keep, walls, outposts: campaigns that last days |
-| Sustainment section | 4 | the PSG | production: wood, food, stone, ore |
+| 1st squad (rifle) | 4 | the platoon leader's missions | recon, expeditions, escorts, security for work outside the walls |
+| 2nd squad (rifle) | 4 | the platoon leader's missions | the same, alternating with 1st: one out, one at the camp |
+| 3rd squad (engineer) | 4 | the platoon leader's missions; the foreman is its squad leader | walls, outposts, flattens: work that lasts days |
+| Sustainment section | 4 | the platoon sergeant | production: wood, food, stone, ore |
 
-A real infantry platoon is three rifle squads of nine and a weapons squad, with its supply from the
-company. The engineer squad and the sustainment section are brought down from company and battalion
-level: right at this size, and said so here rather than claimed as a platoon's organisation.
-
-**The sustainment section is a pool, not four trades.** Its four soldiers are reassigned among the
-classes of supply by the PSG, each to the class projected furthest below its reorder point
-(sites.md): all four mining when only ore is short, as the camp matures and the keep's
-4,096 cobblestone and iron for the work loads lead; a forester taken off for a grove's harvest pass
-and back (renewables.md, the harvest cycle); a farmer between harvests on something else.
-- **When:** at the dawn decision point, and at once on a PAUSE.
-- **How much:** outside a PAUSE, at most one soldier moves a decision, and a soldier finishes the
-  trip or harvest pass it's on before it does.
-- **What a move costs:** the soldiers find their own routes and fight what comes at them
-  (docs/echelons/soldier/capabilities.md), so a move costs only the walk and the swap of work load
-  - pickaxes for axes - drawn at the new site's depot.
-
-**The rifle squads surge into production.** Since every soldier defends itself, a rifle squad held
-at a lit, walled camp is a reserve, not a guard: on a PAUSE, the PSG takes the squad at the camp
-first, never the engineers mid-campaign. Security as a task stays where self-defence isn't enough:
-- **Outside the walls and at night,** where contact is likely: a soldier that drops its work to
-  fight isn't producing, and one fighting at low health dies and drops its kit, which is the worst
-  drain on supply there is (backlog/sites.md: about 50 deaths in the first twelve hours, every
-  kit lost). There a rifle squad covers the work - two work, two watch - as doctrine keeps security
-  continuous rather than leaving it to each soldier's reflex.
-- **On an expedition or at an outpost** before its AIRHEAD.
-
-## The platoon leader, event-driven
-**Troop-leading procedures** (ATP 3-21.8) are the PL's process for a mission: receive the mission,
-issue a warning order, make a tentative plan, initiate movement, conduct reconnaissance, complete
-the plan, issue the order, supervise and refine. Here:
-- *Receive the mission:* an operator order, in the operator's words.
-- *Make a tentative plan:* the candidate missions' estimates (backlog/mission-estimate.md); the PL
-  picks one.
-- *Conduct reconnaissance:* an estimate that can't be completed for want of facts asks for a recon
-  mission (the survey's information requirements).
-- *Issue the order:* objectives and intent per squad, as `Objective` today.
-- *Supervise and refine:* the standing view, refreshed at each wake.
-
-**When it wakes.** The PL sets, and the operator may add to, its commander's critical information
-requirements - what it must be told - and the deterministic tier escalates only those:
-- An operator order.
-- The dawn decision point: the AAR, each site's level and supply state, the day's timetable
-  (the only time a site advances; sites.md).
-- A site entering PAUSE or RECONSTITUTE.
-- A mission found infeasible or out of reach, or finished.
-- A level behind its due day at dusk.
-- A CANTCO the squad leader's drills couldn't clear, with what they tried.
-- Deaths over a threshold in a day.
-Otherwise it sleeps, and the platoon runs on its standing orders.
-
-**What it's shown.** The standing view (`<sites>`, `<missions>`, priorities in force) and the
-escalation that woke it, computed as `<foothold>` is now. Each wake is a log line with its cause
-and its decision (`[PL]`), so every model decision is accounted for.
+A real infantry platoon is three rifle squads of nine and a weapons squad, supplied from the company: the engineer
+squad and the sustainment section are brought down from company and battalion level, and said so.
+- **The sustainment section is a pool, not four trades:** each soldier to the class of supply projected furthest below
+  its reorder point (backlog/sites.md). Reassigned at the dawn decision point, and at once on a PAUSE; outside a
+  PAUSE at most one soldier moves a decision, and a soldier finishes the trip or harvest pass it's on first. A move
+  costs the walk and the swap of work load at the new site's depot.
+- **A rifle squad surges into production on a PAUSE** - the squad at the camp first, never the engineers mid-work. A
+  rifle squad covers work only where self-defence isn't enough: outside the walls and at night (two work, two watch),
+  on an expedition, or at an outpost before its AIRHEAD.
 
 ## Done when
-- The README's "What it is" names the organisation above, as each part of it lands (its goal, a
-  fleet of bots that works, is stated: README, AGENTS.md).
-- The squad leader's prompt still says "the general" twice: left unedited, its model being replaced
-  (below), and an unmeasured prompt edit isn't safe (docs/prompting.md). The rest of the naming is
-  done: `PlatoonLeader`, `docs/echelons/platoon-leader`, `minecraft.platoon-leader.*`, `[PL]`, and a
-  `platoon-sergeant` echelon; `PlatoonLeaderScenarioIT` passed 120 of 135 before the rename and 122
-  after.
-- The PSG owns sustainment as one component: the supply gate and reorder points
-  (sites.md), producers detached within the PL's priorities, kit by role, cross-leveling,
-  replacements - pulled together from where they live now. Built: `command.PlatoonSergeant`
-  rates Class I and the keep's Class IV, cross-levels, and decides the keep's wood party The equipment
-  ladder and the ore pool read a soldier's inventory (`bot`), and move with kit by role
-  (sites.md); replacements after deaths aren't built. (docs/echelons/platoon-sergeant/decisions.md, which lists what's
-  still elsewhere).
-- **The squad leader's allocator is built** (`command.DrillSquadLeader`, the default; docs/echelons/
-  squad-leader/decisions.md): `DrillSquadLeaderTest` passes every situation of the eval but the two
-  detachments asked for in words. What's left:
-  - Decided (operator, 2026-11-15): the model's code and prompt are removed once the data says
-    they're no longer needed (with them the squad leader's prompt's two "the general"s). The data:
-    a full live day with the drills leading - no more soldier-stuck alerts, idle soldiers or
-    standards held than under the model's days in the scoreboard.
-  - Not now: detachments as data - the PL's `Objective` carrying "one MINER at a site" - since live
-    the model's role taskings were rare (78 in 40 runs, 4 in the last ten, three of them back to
-    rifleman), and the PSG's detachments and the objective's `Task` carry the work; a detachment in
-    words reaches nobody until a mission needs one. Nor the squad leader's decision every second:
-    the soldiers' own drills react every tick, and each decision is a FRAGO on the net.
-- **The PL's wakes are built** (docs/echelons/platoon-leader/decisions.md, "When it decides";
-  `SquadSimulationTest.aQuietDaysWorkWakesThePlatoonLeaderOnlyForWhatNeedsIt`): no clock, `[PL] wakes:
-  <cause>`. Still to come with the sites they need: a site entering PAUSE or RECONSTITUTE
-  (sites.md), a level behind its due day at dusk, deaths over a threshold in a day, the CCIR
-  the PL sets itself, and a CANTCO carrying what the drills tried.
-- **The roster is sixteen** (`minecraft.roster`: Alpha, Bravo, Charlie, Delta). What's left: the
-  four elements above, from four like squads; the sustainment section reassigned at dawn by
-  projected shortfall, no more than one move a decision outside a PAUSE, and a rifle squad surged
-  into production on a PAUSE.
-- Live: a full day with the keep under way, the PL woken only at dawn and on escalations, and the
-  platoon on schedule.
+- The squad leader's model, prompt and configuration key are gone, the data above in the scoreboard.
+- Each wake above has its cause in a `[PL] wakes:` line, in the squad simulation.
+- A dead soldier's replacement is kitted by the platoon sergeant's rule, in the squad simulation.
+- If the elements stand: the roster is the four elements; the sustainment section is reassigned at dawn by projected
+  shortfall, no more than one move a decision outside a PAUSE; a rifle squad is surged into production on a PAUSE.
+- Live: a full day, the platoon leader woken only at dawn and on escalations, the platoon on schedule.
 
 ## Notes
-- **Tenet changes** (docs/echelons/tenets.md, on landing): "The general balances it, as a
-  cross-squad matter" becomes the PSG's, within the PL's priorities. "Never names a soldier" holds:
-  the PSG and the squad leaders name soldiers; the model never does. The squad leader's
-  "thinks in few round trips" goes with its model.
-- **Sequencing:** the PSG first, since the supply gate needs an owner and is the fix for running
-  out; the squad leader's model next; the PL's event loop with them.
-- The operator is the company commander, not a role inside the fleet: the PL's intent is always
-  the operator's mission restated, never a mission the PL made up (mission-estimate.md, the
-  operator's list first).
+- **To decide (operator):** does "four squads by function" still stand? backlog/authority-and-missions.md steps 3 and
+  4 treat the squads as like units, each given a task with its own area of operations and a mine site of its own by
+  night, its squad leader splitting that area into sectors; nothing there keeps a standing sustainment section the
+  platoon sergeant re-tasks, or a rifle squad taken for production by a rule.
+  - **Stands:** the section above stays, and says how the platoon sergeant's moves are orders under the one authority
+    (the platoon leader's task to the section, the platoon sergeant its squad leader), not a standing rule rewriting
+    them.
+  - **Retired:** the "At sixteen" section and its Done-when bullet are deleted; production is tasks the platoon leader
+    gives like squads (steps 3 and 5), and this item is the model's removal, the wakes, replacements and the README.
+- **Not now** (operator, 2026-11-15): detachments as data on the platoon leader's objective, and a squad leader's
+  decision every second - the soldiers' drills react every tick, and each decision is a FRAGO on the net.
+- The operator is the company commander, not a role inside the fleet: the platoon leader's intent is always the
+  operator's mission restated, never one it made up (backlog/mission-estimate.md, the missions in order).

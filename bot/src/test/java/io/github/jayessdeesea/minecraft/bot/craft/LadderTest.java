@@ -74,7 +74,7 @@ class LadderTest {
     }
 
     /**
-     * The basis of issue (backlog/maturity-model.md): a camp at AIRHEAD makes the iron pickaxe, the
+     * The basis of issue (docs/military-doctrine.md § 11): a camp at AIRHEAD makes the iron pickaxe, the
      * enabler, but no iron armour or sword; at BUILDUP the shield and the armour too; diamond only once
      * ESTABLISHED; at SHELTER nothing that costs iron.
      */

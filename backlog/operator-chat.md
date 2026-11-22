@@ -14,3 +14,11 @@ operator) measures its capability and shows what it was shown (operator, 2026-11
   holds it, and the log has each turn.
 - The platoon leader gives its own reasoning for a decision on request ("why is Bravo on the farm?"): today it's shown
   its last decision's prompt, not why it chose.
+
+## Notes
+- **Reasons on request is best done after backlog/authority-and-missions.md step 1.** Its `task` and `mission` rows'
+  `why`, and its `order` rows, are the home for a decision's reason. The reason exists at decision time already -
+  `command.ai.PlatoonLeaderReply`'s `reason` (why a squad's task changes) and `intent` - and isn't kept: the chat's
+  `lastDecision` tool (`command.ai.PlatoonLeaderTools`) returns the prompt the platoon leader was shown, not its reply.
+- The transcript doesn't wait on that: `app.OperatorChat` takes the earlier turns from the page with each request
+  (`ChatRequest.turns`) and writes none of them down.

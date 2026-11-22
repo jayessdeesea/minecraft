@@ -8,7 +8,7 @@ import java.util.OptionalInt;
 
 /**
  * An echelon's register of what it has tasked and to whom, followed to completion
- * (backlog/task-register.md; ATP 3-21.8, "supervise and refine"). Each cycle it's told what each
+ * (docs/military-doctrine.md § 4; ATP 3-21.8, "supervise and refine"). Each cycle it's told what each
  * member is on, what the member reports, and what's left of the task as the world measures it.
  * It trusts the report and verifies it: a member that reports working while what's left hasn't
  * fallen in {@link #VERIFY_MILLIS} is a finding, the tasking STALLED - live, a soldier reported

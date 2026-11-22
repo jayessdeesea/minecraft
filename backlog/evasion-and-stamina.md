@@ -1,49 +1,38 @@
 ---
 status: proposed
 priority: P1
-doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
+doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment; the hasty fighting position)
 ---
 
-# Dodging, cover and breaking contact
+# Dodging, cover and breaking contact: what the exchange doesn't settle
 
 ## Why
-- **Nobody dodges.** A skeleton's arrows land on soldiers that stand still or walk straight at it,
-  unless they carry a shield to raise (docs/military-doctrine.md § 8).
+A soldier weighs the exchange with an archer, takes cover, withdraws, heals and comes back
+(docs/military-doctrine.md § 8, `bot.Engagement`). Four cases are left where it still dies or the numbers can't be
+trusted. Defending against hostiles is the one thing a soldier does unordered (backlog/authority-and-missions.md);
+when and whether to break contact is backlog/engagement-doctrine.md's.
+
+## What's left
+- **Digging in.** Pinned across water in the open with no cover to take (`CombatScenarioTest`'s moat), a stone-sworded
+  soldier dies 40 times in 40; a sprint away was measured and changed nothing. What would help is a hole two deep
+  under it, a hasty fighting position the archer can't see into. The combat simulator doesn't model digging: that
+  comes first.
+- **Bare hands against a pillager in the open, on hills and in a pond**: a third or less come through in
+  `CombatMatrixTest` - its follow range is 32, past the flight's 20 (`DeterministicSoldier.FLED_PAST`) - and the
+  soldier's order takes it back past the archer. Held off it, or routed round, till the archer's gone.
+- **Withdrawing toward the squad**, not only to cover or the heading that gains most (`Engagement.withdrawal`) - the
+  drill itself is backlog/engagement-doctrine.md's.
+- **The simulator's knockback is an estimate** (`Battle.KNOCKBACK`, 0.9 blocks a hit). With soldiers swinging at each
+  weapon's real recharge, a lone bare-handed soldier beats three zombies 99 times in 100 and the squad drills stop
+  separating. Measure vanilla's.
 
 ## Done when
-- **Cover is live for a bare-handed soldier, and flight at a sprint past an archer's range**
-  (docs/military-doctrine.md § 8; `DeterministicSoldier.FLED_PAST`). In the combat eval matrix
-  (`CombatMatrixTest`) bare hands against a skeleton now come through 11 times in 12 on hills and among trees, a
-  pillager among trees the same; in the open and in a pond it's still a third or less, as the soldier's order takes
-  it back past the archer. An armed soldier with no route to the archer takes cover the same way. What's left:
-  - An unarmed soldier's order past an archer: held off it, or routed round, till the archer's gone - the matrix's
-    bare-hands flat and pond cells.
-  - Breaking contact properly, back toward the squad, instead of only backing away. Pinned across
-    water in the open, with no cover to take, a stone-sworded soldier still dies 40 times in 40.
-    In `CombatScenarioTest`'s moat the water rings the soldier, so there is nowhere to run - a
-    sprint away was measured and changed nothing. What would help there is digging in: a hole two
-    deep under it, a hasty fighting position (ATP 3-21.8) the archer can't see into. The combat
-    simulator doesn't model digging yet; that comes first. A soldier with a bow shoots back
-    instead (docs/military-doctrine.md § 8).
-- **What doesn't help:** zigzagging in toward an archer, measured. It loses all 100 too: it slows
-  the approach while the arrows that kill land in melee. Dodging is worth another look only for a
-  soldier with a ranged weapon of its own, holding at range (backlog/ranged-combat.md).
-- **The simulator's knockback is an estimate.** It pushes a hostile 0.9 blocks per hit. Since
-  soldiers swing at each weapon's real recharge (a fist every 5 ticks), a lone bare-handed soldier
-  beats three zombies 99 times in 100, and the squad drills stop separating in that sweep.
-  Measuring vanilla's knockback would make the zombie numbers trustworthy again.
-
-- **Seen live (field67): a pillager patrol killed three of a squad in three minutes.** Two died at
-  the same cell, (-36.4, 63, 24.3), neither moving: one with a stone sword and a shield, its health
-  falling to 2 with nothing in its fight changing; the next, with a wooden sword and a shield,
-  raising its shield again and again as its health fell 8, 5, 2. Nothing in the fight looks at the
-  soldier's own health: an armed soldier always closes on an archer it can reach. A pillager's
-  crossbow is in the battle simulation now (`Battle.Archetype.PILLAGER`, the combat eval matrix); a soldier
-  hurt before the fight isn't - that first, then whether one at low health should take cover as a bare-handed
-  one does.
+- The combat simulator models a dug hole, and the moat cell's soldier survives in it.
+- The matrix's bare-hands pillager cells on the flat, on hills and in a pond meet the matrix's 90%.
+- A withdrawing soldier with its squad in reach ends nearer the squad, in the squad simulation.
+- `Battle.KNOCKBACK` is a measured figure, and the zombie drills separate again.
 
 ## Notes
-- Exhaustion from damage taken (0.1 per hit) and from jumping (0.05) is charged by the server
-  whatever the client does.
-- With soldiers eating and hunting (docs/military-doctrine.md § 4), sprinting becomes a real trade-off: speed now for food
-  later.
+- Measured, doesn't help: zigzagging in toward an archer loses all 100 too - it slows the approach while the arrows
+  that kill land in melee. Dodging is worth another look only for a soldier with a ranged weapon of its own, holding
+  at range (backlog/ranged-combat.md).

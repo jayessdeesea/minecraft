@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * reacts to its own three state-implying packet types, per its own javadoc), so feeding a bare
  * {@link PlayLoginPacket} straight in is enough to reach "Play reached" without replaying the full
  * Login/Configuration handshake first. {@link MarshallingDecoder} is only in the test pipeline
- * because {@code channelActive}'s {@code transitionTo(LOGIN)} call reaches for it - it never
+ * because {@code channelActive}'s {@code beginHandshake(LOGIN)} call reaches for it - it never
  * actually decodes anything here, since every packet in this test is already a decoded object.
  */
 class PlayClientHandlerTest {

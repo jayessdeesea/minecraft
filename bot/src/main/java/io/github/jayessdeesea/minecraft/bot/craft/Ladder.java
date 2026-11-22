@@ -154,7 +154,7 @@ public final class Ladder {
     }
 
     /**
-     * Whether a site at {@code level} authorises {@code recipe} (backlog/maturity-model.md, basis of
+     * Whether a site at {@code level} authorises {@code recipe} (docs/military-doctrine.md § 11, basis of
      * issue: each level a ceiling, nothing above it made yet). The iron pickaxe at any level: the
      * enabler, three iron, and what breaks the keep's emerald and opens diamonds (operator,
      * 2026-11-15) - live, the camp fell to SHELTER when eight soldiers joined unarmed, and twelve

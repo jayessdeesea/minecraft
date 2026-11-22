@@ -7,7 +7,7 @@ import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import java.util.Optional;
 
 /**
- * The tools a role's work wears out, carried as a load (backlog/maturity-model.md, kit by role:
+ * The tools a role's work wears out, carried as a load (docs/military-doctrine.md § 11, kit by role:
  * protection and work apart, decided by the operator 2026-11-14). The equipment ladder ranks by
  * survival gained per resource spent, which is right for protection and wrong for tools: there the
  * tool load came after iron armour and diamond, and a dig that wears out dozens of tools had a spare

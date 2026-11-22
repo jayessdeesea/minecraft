@@ -7,11 +7,11 @@ doctrine: FM 6-0 (staff estimates: one staff section per function, the commander
 # Model calls: triage first, then a prompt made for the case
 
 ## Why
-Each echelon makes one call with one general prompt: the general's system prompt explains every
+Each echelon makes one call with one catch-all prompt: the platoon leader's system prompt explains every
 task, the doctrine and the coordinates every time, and the squad leader's does the same. The
 models are small open-weight ones (docs/stack.md). A small model given one long prompt covering
 many cases does worse on each case than one given a short prompt for the case it's in, and live
-it has shown it: the general re-issued "light the camp" with task NONE, and kept tasks its squads
+it has shown it: the platoon leader re-issued "light the camp" with task NONE, and kept tasks its squads
 reported finished.
 
 ## The pattern
@@ -33,15 +33,18 @@ Here:
 
 ## Done when
 - Measured, not assumed: a scenario set (backlog/scenario-matrix.md) run against the one-prompt
-  general and the routed one, the routed one making fewer bad orders (task NONE with work prose,
+  platoon leader and the routed one, the routed one making fewer bad orders (task NONE with work prose,
   kept DONE tasks, `[Feedback]` warnings) at no more latency per decision.
 - The squad leader's orders are what a soldier runs: the concrete commands of
   backlog/echelon-contracts.md, as structured output with one schema per command - function
   calls, in effect. A vague order is one that maps to no command, and is counted.
 
 ## Notes
+- backlog/authority-and-missions.md step 5 comes first: the platoon leader deciding only on events
+  (a task verified done, a CANTCO, dusk and dawn, the operator's tweak) is the deterministic half of
+  the triage, and settles which kinds of decision are left for a prompt of their own.
 - Latency matters as much as quality: the request ledger (docs/military-doctrine.md § 4) times
-  each echelon's answers, so a routed general that answers later is seen.
+  each echelon's answers, so a routed platoon leader that answers later is seen.
 - To verify against the current guidance before building: the routing and prompt-chaining
   sections of Anthropic's "Building effective agents", and its prompt-engineering docs on long
   versus focused prompts.

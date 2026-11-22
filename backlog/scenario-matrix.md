@@ -6,53 +6,31 @@ priority: P1
 # A scenario matrix: the evals we run regularly
 
 ## Why
-The live runs that verify each feature are evals, but ad hoc: a hand-written mission, a console
-command or two, reading the log. Three offline suites exist:
-- `SoldierScenarioTest`: terrain families, seeded.
-- `CombatScenarioTest`: simulated zombie, skeleton, creeper, and a pack.
-- `SquadLeaderScenarioIT`: the real squad leader model against those scenarios, as a pass rate.
-- `PlatoonLeaderScenarioIT`: the real general model on fixed policy situations, as a pass rate.
+The offline suites and the live harness (`app`'s `ChainScenarioLiveIT`, seven scenarios) are listed with how to run
+them in DEVELOPMENT.md. What they don't cover: variation in biome, time of day, difficulty and force size; most
+mission kinds; the bow; and two live misses of the squad leader that no variant reproduces. A regression in any of
+those shows up only if someone happens to run the case by hand.
 
-Nothing covers variation in biome, time of day, difficulty, squad size or number of squads.
-
-A live miss to turn into a `SquadLeaderScenarioIT` variant (docs/prompting.md): **FAR** - the
-objective beyond the surveyed area, so `<objective_ground>` says "outside the surveyed area" and
-names the highest reachable spot. Live (2026-11-13) the squad leader sent its squad to that hill
-"to begin flattening" the keep 60 blocks off, and the squad stood there a day. The prompt was
-changed to order a far objective itself; the variant would measure it. Needs the synthetic world
-wide enough for an objective past the survey's radius, and the progress check scored toward it.
-
-A regression in one of those shows up only if someone happens to run that case by hand.
-
-Built offline for combat: `CombatMatrixTest` (hostile x kit x ground, docs/military-doctrine.md § 8), its
-cells short of correct listed known; and `CombatPairsMatrixTest`, two hostiles at once (correct: alive), its short
-cells known - on hills a creeper with a zombie, bare-handed or armed, and a zombie with a skeleton armed. A fight's
-world is open past its generated box (`SyntheticWorld.open`: the ground goes on at the edge's height), since a
-closed box's wall at 48 cornered flights that the open live world wouldn't. Left there: the bow (not in the battle
-simulation's fights), slopes and caves as grounds, and each known cell's fix - the creeper on hills and in a pond,
-where a sprint doesn't get clear (83% and 17%); a pillager on hills with a wooden sword or a sword and shield; and
-the creeper's drill that kills one (a bow, or a blow before it lights), as got clear of it's kited at 7.5 for as
-long as it follows, so the soldier neither works nor kills it. A squad's melee is in it now (`CombatSquadMatrixTest`: squads of two and three against packs, the battle simulation
-striking each swing as the server does - its sweep, knockback, a short hit - with no squadmate's sweep damage allowed
-in any cell); short there: two against a zombie and a skeleton on hills (83%).
-
-## Done when
-The live tier has a harness (`app`'s `ChainScenarioLiveIT`, DEVELOPMENT.md § 2) and seven
-scenarios: `patrol-base-before-dark`, `hold-base-through-the-night`, `rearm-to-iron`,
-`rearm-to-chestplate`, `shield-against-skeletons`, `climb-soil-terrace` and `climb-stone-terrace`. What's left is below;
-scenarios join the harness's list.
-
-A named list of scenarios, each a fixed setup plus seeded variation, runs in two tiers:
-- **Offline, every build:** simulated world, scripted or faked model. Cheap and deterministic.
-  This is the existing suites, extended.
-- **Live, on demand or nightly:** dev server plus the real models.
-  - Set up from the console: `difficulty`, `time set`, a biome found with `locate`, players
-    placed with `spreadplayers`, items with `give`.
-  - Judged from the log and server queries, as this session's checks were (blocks placed, items
-    held, deaths).
-  - Reported as pass rates per scenario, since the models are nondeterministic.
-
-Dimensions to vary:
+## What's left
+- **A FAR variant of `SquadLeaderScenarioIT`** (docs/prompting.md, a far objective is not an unreachable one): the
+  objective beyond the surveyed area, so `<objective_ground>` says "outside the surveyed area". Live (2026-11-13) the
+  squad leader sent its squad to the highest reachable hill and it stood there a day. Needs the synthetic world wide
+  enough for an objective past the survey's radius, and the progress check scored toward it.
+- **The squad leader's false CANTCO, as live** (field54-55: CANTCO many times an hour, often with "but the squad can
+  still proceed"). The `STUCK`, `STRANDED` and `STRUGGLING` variants pass, so they don't reproduce it. What live has
+  that they don't: two or three soldiers reporting "no route" at once - for the 20 reports before the recovery drill
+  has each - and tasks other than a move (FORTIFY, SECURE, a patrol base). When a CANTCO is right is
+  backlog/authority-and-missions.md's.
+- **The combat matrices' gaps** (`CombatMatrixTest`, `CombatPairsMatrixTest`, `CombatSquadMatrixTest`, each with its
+  `KNOWN` cells): the bow, which isn't in the battle simulation's fights; slopes and caves as grounds; and each known
+  cell's fix - the creeper on hills and in a pond, where a sprint doesn't get clear; a pillager on hills with a wooden
+  sword or a sword and shield; the drill that kills a creeper (a bow, or a blow before it lights) rather than kiting
+  it at 7.5 for as long as it follows; two soldiers against a zombie and a skeleton on hills.
+- **Live scenarios to join the harness's list**, each a mission with a measurable end state: move to an objective
+  across each terrain type; gather wood or stone until a stockpile target is met; escort a player across terrain
+  without the player taking damage; react to contact - one squad engaged, the other supports; survive with no rations
+  and food nearby.
+- **Dimensions to vary**, as seeded variation on each scenario:
 
 | Dimension | Values |
 |---|---|
@@ -60,33 +38,21 @@ Dimensions to vary:
 | Biome | plains, forest, desert (no trees), snow, swamp, jungle; Nether later |
 | Time | morning, an hour before dusk, night |
 | Difficulty | peaceful, easy, normal, hard (zombies break doors on hard) |
-| Force | squads: 1, 2, 3; soldiers per squad: 2 to 4 (the roster is 2 squads of 4) |
+| Force | squads: 1 to 4; soldiers per squad: 2 to 4 (the roster is four squads of four) |
 | Kit | bare-handed, wooden, iron; with or without rations, blocks, arrows |
 
-Scenarios, each a mission with a measurable end state:
-- Move to an objective across each terrain type.
-- Hold a position through a night.
-- Build a patrol base before dark: the hut complete with everyone inside at dusk.
-- Gather wood or stone until a stockpile target is met.
-- Escort a player across terrain without the player taking damage.
-- React to contact: one squad engaged, the other supports.
-- Resupply and rearm from a bare-handed start.
-- Survive: no rations, with food nearby.
-- **The squad leader's false CANTCO, as live.** Live (field54-55) the squad leaders reported their
-  task CANTCO many times an hour, often adding "but the squad can still proceed", and the general
-  moved the squads on for it. `SquadLeaderScenarioIT`'s `stuck`, `stranded` and `struggling`
-  variants (one stuck soldier; one recovering; one refusing work and one starving) all pass 14 of
-  14, so they don't reproduce it. What live has that they don't: two or three soldiers reporting
-  "no route" at once - for the 20 reports before the recovery drill has each - and objectives other
-  than a move (FORTIFY, SECURE, a patrol base).
+- **Pinned orders for a reflex scenario**: the chain of command reacts to the setup itself (making it night to stage
+  a skeleton fight had the platoon leader order a patrol base, and the soldier walked away). Either an operator order
+  that holds a squad in place, or a harness mode with the platoon leader and squad leaders stood down.
+
+## Done when
+- The FAR and false-CANTCO variants run in `SquadLeaderScenarioIT` with a pass rate each.
+- Each live scenario above is in `ChainScenarioLiveIT`'s list, set up from the console (`difficulty`, `time set`,
+  `locate`, `spreadplayers`, `give`), judged from the log and server queries, and reported as a pass rate.
+- The combat matrices have a bow column and slope and cave grounds, and no `KNOWN` cell left.
 
 ## Notes
-- **Decided:** the live tier runs targeted scenarios when a change touches them, and the full
-  matrix only before a pin bump or a model change. Nothing runs on a schedule: each live scenario
-  takes minutes and holds the GPU.
-- **A live scenario that tests a soldier's reflex has to pin the squad's orders.** The chain of
-  command reacts to the setup itself. Making it night to stage a skeleton fight had the general
-  order a patrol base, and the soldier walked away from the skeleton. Options: an operator order
-  that holds a squad in place, or a harness mode with the general and squad leaders stood down.
-- A scenario is a test fixture, so it lives in code (`bot`'s `scenario` package for offline, a
-  live harness in `app` for live) and this item becomes docs when it lands.
+- **Decided:** the live tier runs targeted scenarios when a change touches them, and the full matrix only before a
+  pin bump or a model change. Nothing runs on a schedule: each live scenario takes minutes and holds the GPU.
+- A scenario is a test fixture, so it lives in code (`bot`'s `scenario` package offline, `app`'s harness live), and
+  this item becomes docs when it lands.

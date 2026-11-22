@@ -1,29 +1,33 @@
 ---
-status: ready
+status: needs-decision
 priority: P1
 ---
 
 # Huts stacked on huts at the camp's night points
 
 ## Why
-The operator (2026-11-20): weird raised structures make the camp hard to get about. Live (field539) Olga and Pete
-stood stranded at y=72 in the camp (its ground y=64) with "no route" to points at y=77-78; console probes of the
-column at (23, 89) read solid at y=64-68, air 69-70, solid 71, air 72-75, solid 76, air 77, solid 78-79 - huts on
-huts, a night's patrol base sited on the last one's roof. The camp's ground itself is now read at y=69
-(`SoldierRunner.campGround`: the median surface round the camp, the roofs among it).
+The operator (2026-11-20): weird raised structures make the camp hard to get about. field539: Olga and Pete stood
+stranded at y=72 in the camp (its ground y=64), the column at (23, 89) solid at y=64-68, 71, 76 and 78-79 with air
+between - huts on huts, a night's patrol base sited on the last one's roof. The camp's ground work now digs a hut
+over the camp's level down with the ground, a ring at a time (`app.CampGround`), so old stacks go as it reaches them.
+What made them stack was never found - an intact old hut with its squad on the roof doesn't reproduce it in the squad
+simulation (the site search reuses the hut's floor) - so a squad that shelters at the camp can stack them again.
 
-A squad-simulation scenario of an intact old hut, its squad on the roof, didn't reproduce it: the site search
-reuses the hut's floor there. What makes it stack live - a doorway cut, a roof broken, two squads at one point - is
-what's left to find.
-
-## What
-Since (2026-11-20): the camp's ground is set at y=64 (`minecraft.camp`'s ground), not read off its roofs; at night the
-squads go down the mine, not into huts at the camp; and the camp's ground work goes out a ring at a time to 24 blocks
-once its box is level (`app.CampGround`), a hut no squad holds no exception to it - so the stacks within 24 are dug
-down as it goes. Left:
-1. Live, the rings reaching the stacks at (23, 89) and the camp's ground there at 64 again.
-2. The site search: a hut never on a hut, shown in a scenario first (`app.WorldRecords` keeps a stuck soldier's
-   ground and `StuckEvalsTest` replays it) - for the night a squad does shelter at the camp.
+## What's left
+- Live, the rings reaching the stacks at (23, 89), and the camp's ground there at 64 again.
+- If huts at the camp stay (Notes): the site search never puts a hut on a hut. There is no recording of a stack to
+  start from - one is kept first (`app.WorldRecords`), then replayed as a stuck soldier's ground is
+  (`StuckEvalsTest`). Candidates for the cause: a doorway cut, a roof broken, two squads at one point.
 
 ## Done when
-- A recorded camp point with a stack, replayed, gets its hut on the ground; live, a week of nights adds no storey.
+- A recorded camp point with a stack, replayed, gets its hut on the ground.
+- Live, a week of nights adds no storey.
+
+## Notes
+- **The decision (the operator's): does a squad still shelter in a hut at the camp by night?** Before the buildup it
+  does (`NightRules`: shelter in place in the camp); after it, the squads go down the mine. Under
+  backlog/authority-and-missions.md by night the squads go to their mine sites (step 5), and a night shelter may be
+  shared while building it is owned work (step 3).
+  - *No hut at the camp at any phase*: this item is the one live check above, then deleted.
+  - *Huts at the camp before the buildup stay*: the second bullet is the work, and the cause is still to find - small
+    once a stack is recorded, unbounded until then.

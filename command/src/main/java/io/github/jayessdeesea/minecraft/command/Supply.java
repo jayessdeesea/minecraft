@@ -8,7 +8,7 @@ import java.util.Locale;
 
 /**
  * A class of supply's levels at a site, the way the Army sets them (FM 4-0; FM 10-27;
- * backlog/maturity-model.md): stock counted in days of supply against levels set from its burn rate,
+ * docs/military-doctrine.md § 17): stock counted in days of supply against levels set from its burn rate,
  * not from fixed counts.
  * <ul>
  *   <li>The <b>safety level</b>: two days of upkeep - what the site needs to keep running through a
@@ -67,7 +67,7 @@ public record Supply(String name, int stock, double upkeep, double committed, do
     }
 
     /**
-     * A class's upkeep, measured (backlog/maturity-model.md: upkeep doesn't stop when the site pauses,
+     * A class's upkeep, measured (docs/military-doctrine.md § 17: upkeep doesn't stop when the site pauses,
      * so measuring it is safe): every fall in the stock between two looks is consumption - eaten, worn
      * out, lost - and every rise production, which isn't counted. A day's burn is the falls of the last
      * {@code DAYS} days over the time they span; with less than a day seen, the falls so far over that.

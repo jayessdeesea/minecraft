@@ -4,21 +4,27 @@ priority: P2
 doctrine: ATP 3-21.8 (consolidation and reorganization); FM 4-0 (cross-leveling)
 ---
 
-# Cross-leveling beyond logs
+# Cross-levelling arrows
 
 ## Why
-Soldiers hand logs to a squadmate who needs them for a tool, food to one that has none, and a
-spare weapon to one bare-handed (docs/military-doctrine.md § 13). Arrows aren't covered yet.
+Squadmates hand each other logs, rations, a spare weapon, tools and saplings (`command.CrossLevel`;
+docs/military-doctrine.md § 13). Arrows aren't covered: an archer with none stands beside a squadmate with a
+stack and no bow.
 
-The stockpile also can't be drawn on for materials: logs go into the supply point's chest but never
-come back out.
+The bow and arrows a soldier should carry are backlog/load-plans.md's; this is only moving them within the
+squad.
+
+## What's left
+- Arrows paired and handed across as the other items are: to a soldier with a bow and few, from the nearest
+  squadmate with more than its own load, or with no bow.
 
 ## Done when
-- Arrows are cross-levelled the same way.
-- A soldier short of logs, with no squadmate to cover it, draws them from the stockpile when the
-  squad is at the supply point. This reuses `SupplyRun`'s chest handling.
+- In `CrossLevelTest` and the squad simulation, an archer out of arrows is handed some by a squadmate with
+  spare, and nobody is handed arrows without a bow.
 
 ## Notes
-- **What a thrown stack holds isn't decoded.** The receiver walks onto any dropped item near it.
-  With more than one kind of thing being passed, decoding the item entity's metadata may be needed,
-  so a receiver doesn't chase a squadmate's unrelated drop.
+- **What a thrown stack holds isn't decoded.** The receiver walks onto any dropped item near it; with more
+  kinds being passed, the item entity's metadata may be needed so a receiver doesn't chase an unrelated drop
+  (backlog/salvage-and-pack.md wants the same decode).
+- A receiver with a full pack throws things away to take what it's handed
+  (backlog/authority-and-missions.md, "Left from the flatten work").

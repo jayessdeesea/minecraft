@@ -528,7 +528,8 @@ a soldier stood a quarter of an hour on a ledge with 8 logs, no squadmate carryi
 below - boxed in a pocket, with no stair down to lay, or more than 8 under the ground over it, where
 a stair down leads only further in (live, one in a cave at y=-51 had a one-block stair down laid out
 to its floor, carried no block, and stood) - gets the engineer's stair up instead, laid again from where it stands once it's more than 6 off every cell of it, and dug through any ore on its way whatever the pickaxe, the drop lost (live, an ore cell a stone pickaxe couldn't take was set aside, and the stair stood uncut) (live, one walked off 8 before it began, and stood under it with no cell in reach)
-(`Stairway.up`) - its hands the stair's alone till it's out, no load put in nor stack picked up, no walk to the supply point for food (live, a stranded soldier with no rations set off for one 115 blocks up whenever its hands came free, and its stair up was never cut), and never laid through the ground work's kept cells - the camp's walls and huts, its mine, a squad's stairs - and its cutting held only by a hostile within 4, not one in sight across the cave nor its own contact report (live, a spider 10 below held one on its stair all night; a skeleton across a cave held another till it shot him where he stood), nor given ground on the keep at all - its rectangle, the stockpile's cobblestone or a pit's dirt - nor anything to make, whose walk to a workshop would take it off the stair (live, an iron pickaxe walked one off its stair up every second),
+(`Stairway.up`; it cuts whatever a clear digs, `Clearing.diggable` - the force's own cobblestone included, so a pocket
+walled or roofed in it is dug out of) - its hands the stair's alone till it's out, no load put in nor stack picked up, no walk to the supply point for food (live, a stranded soldier with no rations set off for one 115 blocks up whenever its hands came free, and its stair up was never cut), and never laid through the ground work's kept cells - the camp's walls and huts, its mine, a squad's stairs - and its cutting held only by a hostile within 4, not one in sight across the cave nor its own contact report (live, a spider 10 below held one on its stair all night; a skeleton across a cave held another till it shot him where he stood), nor given ground on the keep at all - its rectangle, the stockpile's cobblestone or a pit's dirt - nor anything to make, whose walk to a workshop would take it off the stair (live, an iron pickaxe walked one off its stair up every second),
 past it, as on a stair down (live, two in a cave under the mine's stairs held theirs for both, with
 no route to either, and stood; and one on a ledge with its stair down laid out held its for a
 stockpile, its order the stair's, and stood) -: the cells to dig, one block up and one along a step to open ground, up to 136
@@ -548,7 +549,7 @@ another, with a pickaxe and 263 cobblestone, stood a day in a dead end 30 blocks
 a carrier from below, whose own route builds the steps it finds - never down to one in a pocket:
 live, two squadmates in turn walked down to one and were trapped beside it. Stranded means cut
 off: a soldier reporting no route that can walk no more than 128 cells from where it stands, by the
-planner's own moves (`SoldierRunner.cutOff`, WayOut's measure of a pocket) - or, sent more than 6
+planner's own moves (`SoldierRunner.cutOff`, WayOut's measure of a pocket; the flood kept ten seconds while the soldier stands anywhere in it, `SiteGeometry.Flood`) - or, sent more than 6
 blocks above itself, can walk to nothing within its order's height of that point, a cave of any
 size under it, by a flood that ran out of ground and not of budget (one on a mine's stairs whose
 flood filled the tunnels first was read as cut off): live, two soldiers stood a night shift in one of 866 cells at y=44, sent up to y=64,
@@ -971,7 +972,7 @@ a builder put one step every tick for four minutes, 700 times.
 
 With no tree in reach for its kit's logs, or its torches' with ground to light and none carried, it draws 8 from the nearest surface chest seen holding
 them, as metal is drawn, while the stores were last seen holding that many, or haven't been seen
-since a restart (`SoldierRunner.drawsLogs`): live, a miner at the mine's head couldn't make a
+since a restart (`SoldierErrands.drawsLogs`): live, a miner at the mine's head couldn't make a
 pickaxe with 71 logs in the keep's depot, his own stockpile the camp's chest. The logs it draws it keeps
 for its kit, up to a stack (`SoldierErrands.LOGS_KEPT_DRAWN`): only a soldier gathering wood stores its
 16 as a load. Live (field452-454), a draw for 8 took a whole stack of 28 - a shift-click moves the stack -
@@ -1645,13 +1646,14 @@ cell only, and taken back after two seconds unconfirmed: a placement the server 
 confirmed, and live one held in the model for hours as the top of a keep builder's strip, every
 strip beside it waiting on a block nobody could dig. The reverse case - a block the server has and
 the model doesn't (backlog/world-model-stale.md) - is read from the body: a soldier stuck short of
-the same cell three times (`DeterministicSoldier.SNAG_TRIES`; stalled at it, or put back by the
+the same cell three times (`Mover.SNAG_TRIES`; stalled at it, or put back by the
 server) has hit something, and the model takes that cell as stone until the server says otherwise -
 a dig timed for stone outwaits anything softer - and the soldier breaks it at once, since what
 stopped its body three times is in its way; live, marked and left to the planner, it stood on with
 "no route". Not when a squadmate stands in the cell - live, two soldiers held each other in a
 one-wide passage of the camp's mine for a quarter of an hour - and taken back if the server never
-breaks it, or the phantom would wall the soldier in for good. Live, one soldier down the camp's mine was stuck short of one cell 161 times in a
+breaks it, or the phantom would wall the soldier in for good - whichever breaker tried it, the doorway's or the step
+cutter's (`SoldierRunner.takeBackSnag`) - and the cell isn't marked again for two minutes (`SNAG_TAKEN_BACK_MILLIS`). Live, one soldier down the camp's mine was stuck short of one cell 161 times in a
 quarter of an hour. Progress reads "N cells under the
 camp's ground to fill". Live, a pit 13 deep under the east wall line left 42 wall cells nothing to
 stand on.
@@ -1983,7 +1985,7 @@ The camp is built up the way an airborne force builds a lodgment after the drop,
    last the camp's floor paved (FORTIFY): once the wall is closed and of
    stone, its repointer replaces the soil of the floor inside it with cobblestone, block by block,
    at the camp's measured height - until the base is flattened to one height above sea level
-   (backlog/cells.md).
+   (backlog/camp-to-sea-level.md).
 4. Armour: every soldier armoured (§11).
 
 **The camp's style** (operator, 2026-11-20): one simple design, at ground level, cheap and quick to walk -
@@ -2113,7 +2115,7 @@ reading level - the camp's ground a ring further, while it's short of its area o
 ground reads more than a block off the site's level, at that level, soil (`Flatten.next`,
 `ChainOfCommand.onFlattened`; operator, 2026-11-18: trend to sea level, even in the airhead - flat is
 efficient to walk and to grow): the lodgment works its way to one level, a site at a time, in every phase
-that flattens. Its crew is sized to its level (backlog/flatten-campaign.md):
+that flattens. Its crew is sized to its level:
 at each new level the foreman says the builders its blocks want, one to 24 blocks
 (`SoldierRunner.BLOCKS_A_BUILDER`) of the widest of it and the three levels under it
 (`SoldierRunner.CREW_LOOK_AHEAD`), never fewer than one squad's (`SoldierRunner.MIN_KEEP_BUILDERS`; operator,

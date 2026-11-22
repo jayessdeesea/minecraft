@@ -7,53 +7,35 @@ doctrine: FM 4-0 (supply discipline; Class IV and VII recovery); ATP 4-31 (recov
 # Salvage and the pack: what's worth picking up, keeping, and throwing away
 
 ## Why
-A soldier keeps what it digs, but nothing else: a torch popped off a block it cut, a sapling
-falling out of reach, planks, fences and huts on ground being rebuilt are left behind
-(docs/military-doctrine.md § 15). Flattening the base (backlog/cells.md) will pass under many of
-them, and wood is already the bottleneck. And nothing decides what a full pack throws away.
+A soldier keeps what it digs and empties a chest before digging it (docs/military-doctrine.md § 17), but
+nothing else placed on ground being reworked: torches, planks, tables, fences and huts are dug and left, and
+wood is the bottleneck. What a full pack throws away is a fixed list shed at a fill line (`bot.supply.Pack`,
+`Pack.FULL_AT`), not what's worth least now. The live cases are the throw-aways in
+backlog/authority-and-missions.md, "Left from the flatten work".
 
-## Direction (operator, 2026-11-12)
-- **Pick up what's near and might be useful, by default.** Taking down what's on ground being
-  reworked - torches, planks, crafting tables, fences, a hut - and keeping it is part of the
-  work, as recovery is.
-- **But priority is dynamic: set by the need of the hour, the scarcity of each resource.** A drop
-  the base already has plenty of isn't worth waiting for: no standing about for a sapling or a
-  stick when the stockpile and the grove are full. A scarce one is.
-- **The same value decides the pack.** A full pack tosses what's worth least now: rotten flesh
-  before a torch - unless it's wanted for something, such as trading with a villager - and a
-  torch before diamonds.
+## Decided (operator)
+- 2026-11-12: pick up what's near and might be useful, by default; taking down what's on ground being
+  reworked and keeping it is part of the work. Priority is dynamic, set by each resource's scarcity: no
+  standing about for a sapling when the stockpile and the grove are full. The same value decides the pack:
+  rotten flesh before a torch - unless it's wanted, such as for trading with a villager - and a torch before
+  diamonds.
+- 2026-11-15: a full pack is the norm. Shedding is on demand, not at a fill line: a routine about to break a
+  block whose drop has no room - no free slot, no part-stack of it - first sheds what's worth least;
+  otherwise the pack stays full.
 
-- **A full pack is the norm (operator, 2026-11-15):** "I keep my backpack full. If I can't pick
-  something up off the ground that I want, I shed something I don't care about." Shedding on
-  demand, not at a fill line: a routine about to break a block whose drop has no room - no free
-  slot, no part-stack of it - first sheds what's worth least (junk, dirt past two stacks, seeds,
-  cobblestone past five); otherwise the pack stays full. Today's pack sheds at two free slots
-  (`Pack.FULL_AT`), which this replaces. Seeing what's on the ground and wanting it needs a dropped
-  item's type, from its entity metadata, which isn't decoded yet.
-
-## Design sketch
-- **One value per item class, computed, not listed.** Its worth is how short the force is of it:
-  what's wanted (the basic load, the standards' needs - torches for dark cells, logs for fences,
-  stone for paving) against what's carried and stockpiled. Pure, in `command`, over the squad's
-  kit and the stockpile as last seen, so the dawn AAR can show it.
-- **Pickup:** a drop within reach is taken if it's worth more than the walk; waiting for one that
-  may not come (a sapling from leaves) only if it's scarce.
-- **Salvage of chests: built** (docs/military-doctrine.md § 17). Left: placed blocks other than chests
-  on ground being reworked - torches, planks, tables, fences, a hut - taken down and kept; and what a
-  chest holds of no depot kind (tools, armour), which spills when it's dug.
-- **The pack:** when full, the least valuable stack is dropped (or deposited, at the stockpile)
-  to make room for a more valuable one.
-
-## Built so far
-- Seeds beyond two stacks are thrown away (`bot.supply.Pack`) - live, packs full of seeds left a
-  harvest's wheat on the ground.
-- A pack down to 2 free slots throws away what no routine uses, an item of no class, smallest
-  stack first (`aFullPackShedsWhatNoRoutineUses`).
-- Both are fixed rules; the value by scarcity - a scarce item kept, a plentiful one dropped first,
-  rotten flesh kept if a villager will trade for it - is still to come.
+## What's left
+- **One value per item class, computed, not listed:** how short the force is of it - what's wanted (the basic
+  load, the standards' needs) against what's carried and stockpiled. Pure, in `command`, over the squad's kit
+  and the stockpile as last seen, so the dawn review can show it.
+- **Shed on demand**, by that value, replacing `Pack.FULL_AT` and the fixed keep lists.
+- **Pickup:** a drop within reach is taken if it's worth more than the walk; waiting for one that may not come
+  (a sapling from leaves) only if it's scarce. Needs a dropped item's type, from its entity metadata, which
+  the protocol doesn't decode yet.
+- **Salvage beyond chests:** torches, planks, tables, fences, a hut on ground being reworked, taken down and
+  kept; and what a chest holds of no depot kind (tools, armour), which spills when it's dug.
 
 ## Done when
 - A simulation: soldiers clearing ground under a torch and a crafting table come away with both.
-- A simulation: a soldier with a full pack facing a scarce drop throws away the least valuable
-  stack, rotten flesh before torches, and takes it; with the item plentiful, it doesn't wait.
+- A simulation: a soldier with a full pack facing a scarce drop throws away the least valuable stack, rotten
+  flesh before torches, and takes it; with the item plentiful, it doesn't wait.
 - Live: the camp's flattening loses no torches or planks it passes under.
