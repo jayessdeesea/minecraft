@@ -4,6 +4,21 @@ One instance, the slowest-thinking echelon. A model call (`command.ai.SpringAiPl
 AI `ChatModel`) gives each squad one objective. The operator's standing rules then apply on top,
 loudly ([operator-rules.md](operator-rules.md)).
 
+## Terms
+The force's words for what it's given and does, as the Army uses them (ADP 1-02, FM 6-0) - this is their one home; the
+chat's prompt and tools say them the same way.
+- **Mission:** a task with its purpose - what the operator gives the platoon ("a farm at chunk (1, 3)"). The platoon
+  also has a standing mission (`!mission`), which the platoon leader's own decisions carry out.
+- **Operation:** the whole carried out for one mission. Its stages are **phases**: a farm's flatten, floor and
+  template are phases 1-3.
+- **Task:** what the platoon leader assigns a squad (FM 6-0, the OPORD's paragraph 3, "tasks to subordinate units").
+  Each phase of an operation is a task, and so is each assignment of its own decisions; each row of the objective
+  register is a task. The code's `command.Objective` type, `ObjectiveRecord` and `objective` table hold a squad's task -
+  named before these terms were fixed.
+- **Objective:** a location an operation is oriented on - its chunk or point - never the assignment.
+
+The operator may say "objectives" loosely for tasks; the chat reads it so, and answers in these terms.
+
 ## What it's given
 In its user prompt (`command-ai/src/main/resources/prompts/platoon-leader-user-prompt.md`):
 - **The mission**, and anything the operator said since.
@@ -50,8 +65,9 @@ The platoon leader's books are kept by code, never asked of the model (operator,
   when it changes and said (`app.ChunkLedger`): `[Chunks] chunk (1, 3): WHEAT at y=63, SURVEYED`. A farm mission's
   chunk is written FLATTENED (stage `CUT`) and FLOORED (`PAVED`) at the level below the farm's as each of those
   steps is measured done, then WHEAT once the camp's farm holds its template (below).
-- **The objective register**: each objective a mission's step on a chunk - its task, the squad on it, how it stands
-  (planned, under way, done, CANTCO, relieved), when and why. Written when the platoon leader gives a squad an
+- **The objective register** - the task register, in the terms above: each task a mission's phase on a chunk, or one
+  of the platoon leader's own - what it is, the squad on it, how it stands (planned, under way, done, CANTCO, relieved,
+  superseded), when and why. Written when the platoon leader gives a squad an
   objective - its open one, if another, relieved - or holds one no row is open for (the first decision after a
   restart); and each squad's SITREP pushed into its row as it comes, every second (operator, 2026-11-21: the squad
   leaders push updates to the platoon leader): its squad leader's CANTCO with why, its task's progress as said, done
@@ -63,8 +79,8 @@ The platoon leader's books are kept by code, never asked of the model (operator,
   again when it's given again; it's DONE only when the mission measures it done.
 
 The garrison's file is `minecraft.registers` (`C:/mc-state/registers`), outside a cloud-sync folder since it's held
-open; a simulation's is its state directory's own. The operator's chat is shown them (below); the platoon leader's
-decision prompt isn't yet.
+open; a simulation's is its state directory's own. The operator's chat reads them through its tools (below); the
+platoon leader's decision prompt isn't shown them yet.
 
 ## What it decides: `command.Objective`, one per squad
 - **Where:** a location. Its height is the platoon leader's guess, and is put on the ground there
@@ -97,15 +113,14 @@ decision prompt isn't yet.
 
 ## The operator's farm mission
 "A farm at chunk (x, z)" - at any height, sea level (63) by default (operator, 2026-11-21) - is the operator's
-(`!farm`, DEVELOPMENT.md; or the chat's FARM, below) and the platoon leader carries it out by doctrine, computed,
-never the model's (`command.FarmMission`, `app.FarmMissions`): three steps, each an objective, each started when the
-one before is measured done. The level is the operator's alone: the chat's FARM keeps a level only if the operator's own words say it, else
-sea level (`OperatorChat.levelAsSaid`; live, field668, told "at sea level", the model gave y=67). Its argument is read for its whole
-numbers in order, however the model writes them - "x=24,z=56" as "24 56"; with none or too few, the operator's own
-words' - the place is the operator's (`OperatorChat.farmArgument`; field670, a FARM with no argument); two or three, or the
-turn fails loud. And the latest order
-for a chunk is the one worked: a farm given there at another level supersedes the open one, its steps SUPERSEDED with
-why. After a restart the missions are carried on from the register - none superseded - and once its chunk is in sight a
+(`!farm`, DEVELOPMENT.md; or the chat's `giveFarmMission`, below) and the platoon leader carries it out by doctrine,
+computed, never the model's (`command.FarmMission`, `app.FarmMissions`): an operation of three phases, each a task, each
+started when the one before is measured done. The level is the operator's alone: the chat's `giveFarmMission` keeps a
+level only if the operator's own words say it, else sea level (`PlatoonLeaderTools.levelAsSaid`; live, field668, told "at
+sea level", the model gave y=67). And the latest order for a chunk is the one worked: a farm given there at another level
+supersedes the open one, its phases SUPERSEDED with why. Cancelled (the chat's `cancelMission`, `FarmMissions.cancel`),
+its phases not done are SUPERSEDED with "cancelled by Operator: " and the operator's reason - no row is ever deleted -
+and the platoon leader woken to give its squad another task. After a restart the missions are carried on from the register - none superseded - and once its chunk is in sight a
 flatten behind the step under way is measured again, and gone back to if the world shows it uncut: the register's index
 is only what was kept (live, field672, the superseded mission came back first, and the other at its floor with its
 chunk 640 columns uncut).
@@ -152,22 +167,31 @@ The operator can also talk with it in a conversation (`app.OperatorChat`, opened
 turn is a model call through the same `ChatClient` (`command.ai.PlatoonLeaderChat`), timed in the models' queue
 (`[Model] Operator chat`) on the chat server's own threads, never a soldier's or the platoon leader's decision thread.
 - **What it's shown:** its own fixed chat system prompt
-  (`command-ai/src/main/resources/prompts/platoon-leader-chat-system-prompt.md`), the earlier turns as the
-  conversation, and in the turn's own prompt (`platoon-leader-chat-prompt.md`): `<now>` - the Minecraft time, day or
-  night, and the ticks and minutes to the next dusk and dawn, worked out from the overworld clock
-  (`command.TimeOfDay`), and the ground to flatten; `<registers>`, its books as they stand now - each squad's open
-  objective with how it stands, for how long and why, the farm missions' steps still planned, and every chunk kept
-  (`ObjectiveBook.describe`), so "what's
-  under way" is answered whenever it last decided (live, field661, asked after a restart it said nothing was in
-  flight) - and `<last_decision>`, the user prompt of its last decision
-  word for word (`SpringAiPlatoonLeader.lastShown`): the mission, each squad's standing order, task and progress,
-  the day's work and the camp's phases, as they stood then. Before its first decision it's told it has been shown
-  nothing about the squads.
-- **What it may do** (`command.ai.ChatReply`): answer in words, and take at most one action from a closed set -
-  `MISSION`, `ESCORT`, `FLATTEN` or `FARM`, each given through the operator's own order (`ChainOfCommand.onOperatorMission`,
-  `onOperatorEscort`, `onOperatorFlatten`, `onOperatorFarm`: the same WILCO and order trace as from game chat). `FARM`'s
-  argument is a point and a level, "x z [y]", the farm mission on the chunk the point is in, its steps added to the
-  reply as computed (above).
+  (`command-ai/src/main/resources/prompts/platoon-leader-chat-system-prompt.md`) with the [terms](#terms), the earlier
+  turns as the conversation, and in the turn's own prompt (`platoon-leader-chat-prompt.md`): `<now>` - the Minecraft
+  time, day or night, and the ticks and minutes to the next dusk and dawn, worked out from the overworld clock
+  (`command.TimeOfDay`), and the ground to flatten - and `<last_decision>`, the user prompt of its last decision word
+  for word (`SpringAiPlatoonLeader.lastShown`): the mission, each squad's standing order, task and progress, the day's
+  work and the camp's phases, as they stood then. Before its first decision it's told it has been shown nothing about
+  the squads.
+- **Its registers, read through tools** (`command.ai.PlatoonLeaderTools`, Spring AI `@Tool`s), each answering in plain
+  text computed by `command.RegistersSaid` - counts, ages, a chunk's blocks and a block's chunk worked out, never
+  left to the model - over `command.PlatoonRegisters` (`app.ChatRegisters`, the garrison's registers):
+  `missions` (each with its operation's phases under it; open or all), `tasks` (filtered by squad, state, mission),
+  `task` (one, by number), `chunk`, `chunkOfBlock` (the chunk a block's x and z are in) and `chunks` (by kind). Asked
+  about missions it reads `missions`; about tasks, or "objectives" meaning them, `tasks`. A chunk or task not kept,
+  or no mission open, is said so in the result, for the model to tell the operator. The registers aren't in the
+  prompt: the tools read them as they stand at the moment asked, at the level asked.
+- **What it may do: commands, as tools** (`command.OperatorCommands`, `app.ChatCommands`), each one of the operator's
+  own orders through the chain of command - the same WILCO on the net, order trace and checks as from game chat:
+  `giveFarmMission` (`ChainOfCommand.onOperatorFarm`), `cancelMission` (`onOperatorCancel`), `replacePlatoonMission`
+  (`onOperatorMission`), `escort` (`onOperatorEscort`) and `setFlattenGround` (`onOperatorFlatten`). None writes,
+  edits or deletes a register's row: the rows are the chain of command's to keep. The prompt and each command's
+  description say it's used only when the operator asks for it in this turn. What each command did is said as it
+  computed it - its result is the reply's `done`, shown on the page under the model's words.
 - **Every turn** is logged and on the net, `[Operator -> PL]` and `[PL -> Operator]`, with `[Chat] the platoon
-  leader is shown` logging the turn's prompt. An action it can't read (a flatten that isn't `x1 z1 x2 z2 y`) fails
-  that turn, loud: nothing is said or given, and the page shows why.
+  leader is shown` logging the turn's prompt, `[Chat] the platoon leader reads ...` each read with its result, and
+  `[Chat] the platoon leader, told "...", commands ...` each command with what it did. The tools run in the chat
+  client's own loop (`ToolCallingAdvisor`), the same for any provider, at most 12 calls a turn. A command it can't
+  carry out as given (a level outside the world) fails that turn, loud: logged, answered 500 with why, and the next
+  turn served.

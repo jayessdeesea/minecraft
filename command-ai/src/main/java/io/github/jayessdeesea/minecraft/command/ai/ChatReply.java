@@ -1,17 +1,19 @@
 package io.github.jayessdeesea.minecraft.command.ai;
 
-import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import java.util.List;
+import java.util.Objects;
 
 /**
- * The platoon leader's structured reply to one of the operator's turns: its answer in words, and at most one action
- * from a closed set - each one of the operator's chat orders.
+ * The platoon leader's reply to one of the operator's turns: its answer in words, and what the turn's commands did, each as
+ * the command said it ({@link PlatoonLeaderTools}) - computed, not in the model's words.
+ *
+ * @param reply its answer to the operator
+ * @param done  each command it gave this turn, as its result said it; empty for none
  */
-public record ChatReply(
-        @JsonPropertyDescription("Your answer to the operator, in plain words") String reply,
-        @JsonPropertyDescription("The one action the operator asked for in this turn, NONE if none: MISSION, ESCORT, FLATTEN or FARM")
-        Action action,
-        @JsonPropertyDescription("The action's argument as the system prompt gives its form; empty for NONE") String argument) {
+public record ChatReply(String reply, List<String> done) {
 
-    /** What the platoon leader may do from a conversation; NONE rather than null, so the schema always asks. */
-    public enum Action { NONE, MISSION, ESCORT, FLATTEN, FARM }
+    public ChatReply {
+        Objects.requireNonNull(reply, "reply");
+        done = List.copyOf(done);
+    }
 }

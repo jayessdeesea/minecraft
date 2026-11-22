@@ -2,7 +2,9 @@ package io.github.jayessdeesea.minecraft.app;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.jayessdeesea.minecraft.command.FarmMission;
 import io.github.jayessdeesea.minecraft.command.Flatten;
+import io.github.jayessdeesea.minecraft.command.ObjectiveRecord;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import io.github.jayessdeesea.minecraft.command.ai.OperatorChatPrompts;
 import io.github.jayessdeesea.minecraft.command.ai.PlatoonLeaderChat;
@@ -11,13 +13,17 @@ import io.github.jayessdeesea.minecraft.command.ai.SpringAiPlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
@@ -25,6 +31,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -45,21 +52,46 @@ class OperatorChatTest {
             new ClassPathResource("prompts/platoon-leader-system-prompt.md"), new ClassPathResource("prompts/platoon-leader-user-prompt.md"),
             new ClassPathResource("prompts/platoon-leader-squad-prompt.md"));
 
-    /** The platoon leader's model, scripted: each call answered with the next reply, every prompt kept. */
+    /** The platoon leader's model, scripted: each call answered with the next reply - words, or tool calls - every prompt kept. */
     private final List<Prompt> sent = new CopyOnWriteArrayList<>();
-    private final Deque<String> replies = new ArrayDeque<>();
-    private final ChatClient client = ChatClient.create((ChatModel) prompt -> {
-        sent.add(prompt);
-        synchronized (replies) {
-            return new ChatResponse(List.of(new Generation(new AssistantMessage(replies.removeFirst()))));
+    private final Deque<ChatResponse> replies = new ArrayDeque<>();
+    private final ChatClient client = ChatClient.create(new ChatModel() {
+        @Override
+        public ChatResponse call(Prompt prompt) {
+            sent.add(prompt);
+            synchronized (replies) {
+                return replies.removeFirst();
+            }
+        }
+
+        /** A provider's options carry tools; a bare model's would drop them. */
+        @Override
+        public ChatOptions getOptions() {
+            return ToolCallingChatOptions.builder().build();
         }
     });
+
+    private void reply(String words) {
+        synchronized (replies) {
+            replies.add(new ChatResponse(List.of(new Generation(new AssistantMessage(words)))));
+        }
+    }
+
+    /** The model calling the tool {@code name} with {@code arguments}, as JSON. */
+    private void call(String name, String arguments) {
+        synchronized (replies) {
+            replies.add(new ChatResponse(List.of(new Generation(AssistantMessage.builder().content("")
+                    .toolCalls(List.of(new AssistantMessage.ToolCall("call-" + replies.size(), "function", name, arguments))).build()))));
+        }
+    }
+
     private final SpringAiPlatoonLeader platoonLeader = new SpringAiPlatoonLeader(client, PLATOON_LEADER, "Make camp at x=0 z=0", "");
     private final ChainOfCommand chain = new ChainOfCommand(platoonLeader, ChatClient.create((ChatModel) prompt -> {
         throw new AssertionError("no squad leader's model call expected");
     }), new SquadLeaderPrompts("", ""), new Roster("Alpha:Alice"), true, "drills");
     private final List<String> radio = new CopyOnWriteArrayList<>();
-    private final OperatorChat endpoint = new OperatorChat(new PlatoonLeaderChat(client, PROMPTS, platoonLeader), chain, 0);
+    private final OperatorChat endpoint = new OperatorChat(new PlatoonLeaderChat(client, PROMPTS, platoonLeader, new ChatRegisters(chain),
+            new ChatCommands(chain)), chain, 0);
     private final HttpClient http = HttpClient.newHttpClient();
 
     @AfterEach
@@ -89,35 +121,36 @@ class OperatorChatTest {
     }
 
     /**
-     * Three turns through the endpoint, as the page sends them: the time asked, a farm asked for - given as the farm mission,
-     * its steps said - and a flatten ordered, given through the operator's own order, the mission's flatten first while
-     * it's under way. Each turn is on the net, and the last is sent with the two before it.
+     * Three turns through the endpoint, as the page sends them: the time asked, a farm asked for - given as the farm mission
+     * through the operator's own order, its phases said as computed - and a flatten ordered, the mission's flatten first
+     * while it's under way. Each turn is on the net, and the last is sent with the two before it.
      */
     @Test
     void aThreeTurnConversation() throws Exception {
         chain.setRadio(radio::add);
         chain.onTime(TimeOfDay.of(6000, true));
         List<Map<String, String>> turns = new ArrayList<>();
-        synchronized (replies) {
-            replies.add("{\"reply\": \"Midday: 12:00. Dusk in 5 min 58 s.\", \"action\": \"NONE\", \"argument\": \"\"}");
-            replies.add("{\"reply\": \"WILCO, a farm there.\", \"action\": \"FARM\", \"argument\": \"40 -20\"}");
-            replies.add("{\"reply\": \"WILCO, flattening it.\", \"action\": \"FLATTEN\", \"argument\": \"0 0 16 16 64\"}");
-        }
+        reply("Midday: 12:00. Dusk in 5 min 58 s.");
+        call("giveFarmMission", "{\"x\": 40, \"z\": -20}");
+        reply("WILCO, a farm at chunk (2, -2).");
+        call("setFlattenGround", "{\"x1\": 0, \"z1\": 0, \"x2\": 16, \"z2\": 16, \"y\": 64}");
+        reply("WILCO, flattening it.");
 
         JsonNode first = say(turns, "What time of day is it in Minecraft?");
         JsonNode second = say(turns, "Place a farm at x = 40, z = -20");
         JsonNode third = say(turns, "Then flatten 0 0 16 16 down to 64");
 
         assertEquals("Midday: 12:00. Dusk in 5 min 58 s.", first.get("reply").asText());
-        assertEquals("NONE", first.get("action").asText());
+        assertEquals(0, first.get("done").size(), "a question gives no command");
         assertTrue(sent.getFirst().getInstructions().getLast().getText().contains("Minecraft time 12:00 (tick 6000 of the day's 24000)"),
                 "the time from the overworld clock, worked out for it");
-        assertEquals("WILCO: a farm at chunk (2, -2) at y=63: flatten chunk (2, -2), x 32..47 z -32..-17 to y=62, then floor"
-                + " chunk (2, -2), x 32..47 z -32..-17 in cobblestone at y=62, then the farm template on chunk (2, -2), x 32..47 z -32..-17 at y=63.",
-                second.get("reply").asText());
+        assertEquals("WILCO: a farm at chunk (2, -2) at y=63, in 3 phases, each started when the one before is measured done: phase 1, flatten"
+                + " chunk (2, -2), x 32..47 z -32..-17 to y=62; phase 2, floor chunk (2, -2), x 32..47 z -32..-17 in cobblestone at y=62; phase 3, the"
+                + " farm template on chunk (2, -2), x 32..47 z -32..-17 at y=63.", second.get("done").get(0).asText());
         assertEquals(java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.FarmMission(2, -2, 63)),
                 chain.farmMissions.current().map(Map.Entry::getKey), "given through the operator's !farm");
-        assertEquals("FLATTEN", third.get("action").asText());
+        assertTrue(third.get("done").get(0).asText().startsWith("WILCO: the ground to flatten is "), third.toString());
+        assertTrue(third.get("done").get(0).asText().contains("is worked first while it's under way."), third.toString());
         assertEquals(new Flatten(32, -32, 47, -17, 62), chain.flatten(), "the mission's flatten first while it's under way");
 
         List<Message> last = sent.getLast().getInstructions();
@@ -127,7 +160,54 @@ class OperatorChatTest {
         assertTrue(radio.stream().anyMatch(l -> l.contains("[Operator -> PL] What time of day is it in Minecraft?")), radio.toString());
         assertTrue(radio.stream().anyMatch(l -> l.contains("[PL -> Operator] Midday: 12:00.")), radio.toString());
         assertTrue(radio.stream().anyMatch(l -> l.contains("[PL -> Operator] WILCO") && l.contains("flatten")), radio.toString());
-        assertTrue(radio.stream().anyMatch(l -> l.contains("[PL -> Operator] WILCO") && l.contains("a farm at chunk (2, -2) at y=63 - 3 steps")), radio.toString());
+        assertTrue(radio.stream().anyMatch(l -> l.contains("[PL -> Operator] WILCO") && l.contains("a farm at chunk (2, -2) at y=63 - 3 phases")), radio.toString());
+    }
+
+    /**
+     * "Cancel the farm at (1, 3)": its phases not done closed SUPERSEDED with the operator's reason, none deleted, said on the
+     * net - and the registers carried on after a restart don't open it again. A question after it reads the missions and
+     * gives nothing; cancelled again, there's none open to cancel.
+     */
+    @Test
+    void cancelTheFarmClosesItsTasksAndARestartKeepsItClosed(@TempDir Path state) throws Exception {
+        Registers registers = new Registers(state.resolve("registers"));
+        chain.keepObjectives(new ObjectiveBook(() -> registers));
+        chain.setRadio(radio::add);
+        List<Map<String, String>> turns = new ArrayList<>();
+        call("giveFarmMission", "{\"x\": 24, \"z\": 56}");
+        reply("WILCO.");
+        call("cancelMission", "{\"chunkX\": 1, \"chunkZ\": 3, \"reason\": \"bread enough\"}");
+        reply("WILCO, cancelled.");
+        call("missions", "{\"which\": \"ALL\"}");
+        reply("None open; the farm at chunk (1, 3) was cancelled.");
+        call("cancelMission", "{\"chunkX\": 1, \"chunkZ\": 3, \"reason\": \"again\"}");
+        reply("No farm is open there.");
+
+        say(turns, "A farm at x=24 z=56");
+        JsonNode cancelled = say(turns, "Cancel the farm at (1, 3), we have bread enough");
+        JsonNode asked = say(turns, "What missions have there been?");
+        JsonNode again = say(turns, "Cancel the farm at (1, 3)");
+
+        assertEquals("WILCO: a farm at chunk (1, 3) at y=63 cancelled - its phases not done closed SUPERSEDED, \"bread enough\" kept as why.",
+                cancelled.get("done").get(0).asText());
+        List<ObjectiveRecord> rows = registers.objectives();
+        assertEquals(3, rows.size(), "none deleted: " + rows);
+        assertTrue(rows.stream().allMatch(r -> r.state() == ObjectiveRecord.State.SUPERSEDED
+                && r.why().equals(java.util.Optional.of("cancelled by Operator: bread enough"))), rows.toString());
+        assertEquals(java.util.Optional.empty(), chain.farmMissions.current(), "no longer worked");
+        assertTrue(radio.stream().anyMatch(l -> l.contains("[PL -> Operator] WILCO") && l.contains("a farm at chunk (1, 3) at y=63 cancelled - bread enough")),
+                radio.toString());
+        assertEquals(0, asked.get("done").size(), "a question gives no command");
+        String missions = sent.get(sent.size() - 3).getInstructions().stream().filter(m -> m instanceof ToolResponseMessage)
+                .map(m -> ((ToolResponseMessage) m).getResponses().getLast().responseData()).reduce((x, y) -> y).orElseThrow();
+        assertTrue(missions.contains("- a farm at chunk (1, 3) at y=63 - CLOSED, SUPERSEDED: cancelled by Operator: bread enough."), missions);
+        assertEquals("CANTCO: no farm mission is open on chunk (1, 3), x 16..31 z 48..63 - nothing cancelled.", again.get("done").get(0).asText());
+
+        assertEquals(Map.of(), new ObjectiveBook(() -> registers).openMissions(), "after a restart, nothing to carry on");
+        FarmMissions restarted = new FarmMissions(cause -> { });
+        restarted.keptIn(new ObjectiveBook(() -> registers));
+        restarted.give(FarmMission.atSeaLevel(5, 5), 9_000);
+        assertEquals(FarmMission.atSeaLevel(5, 5), restarted.current().orElseThrow().getKey(), "the cancelled one isn't carried on ahead of a new one");
     }
 
     /** The clock as JSON for the page's strip: unknown until sent, then the time of day and the ticks to dawn and dusk. */
@@ -166,44 +246,23 @@ class OperatorChatTest {
         assertTrue(sent.isEmpty());
     }
 
-    /** A reply whose action can't be read fails its turn, loud, with nothing said or given; the next is served. */
+    /** A command that can't be carried out as given fails its turn, loud, with nothing given; the next is served. */
     @Test
-    void anUnreadableActionFailsItsTurnAlone() throws Exception {
+    void aCommandThatCantBeCarriedOutFailsItsTurnAlone() throws Exception {
         chain.setRadio(radio::add);
-        synchronized (replies) {
-            replies.add("{\"reply\": \"WILCO.\", \"action\": \"FLATTEN\", \"argument\": \"the hill\"}");
-            replies.add("{\"reply\": \"Still here.\", \"action\": \"NONE\", \"argument\": \"\"}");
-        }
+        call("setFlattenGround", "{\"x1\": 0, \"z1\": 0, \"x2\": 16, \"z2\": 16, \"y\": 900}");
+        reply("Still here.");
         Flatten was = chain.flatten();
 
-        HttpResponse<String> failed = post("application/json", "{\"turns\": [], \"message\": \"flatten the hill\"}");
+        HttpResponse<String> failed = post("application/json", "{\"turns\": [], \"message\": \"flatten it to 900\"}");
         HttpResponse<String> next = post("application/json", "{\"turns\": [], \"message\": \"there?\"}");
 
         assertEquals(500, failed.statusCode());
-        assertTrue(JSON.readTree(failed.body()).get("error").asText().contains("the hill"), failed.body());
+        assertTrue(failed.body().contains("900"), failed.body());
         assertEquals(was, chain.flatten());
-        assertFalse(radio.stream().anyMatch(l -> l.contains("[PL -> Operator] WILCO.")), radio.toString());
+        assertFalse(radio.stream().anyMatch(l -> l.contains("[PL -> Operator] WILCO")), radio.toString());
         assertEquals(200, next.statusCode());
-    }
-
-    /**
-     * A FARM's level kept only if the operator said it, else sea level: live (field668), told "at sea level", the model gave
-     * y=67 and the mission was to flatten a chunk to 66.
-     */
-    @Test
-    void aFarmsLevelIsTheOperatorsOrSeaLevel() {
-        assertEquals("24 56", OperatorChat.levelAsSaid("24 56 67", "Create a farm at chunk (1, 3): x=24 z=56, at sea level."));
-        assertEquals("24 56 70", OperatorChat.levelAsSaid("24 56 70", "a farm at x=24 z=56 at y=70"));
-        assertEquals("24 56", OperatorChat.levelAsSaid("24 56", "a farm at x=24 z=56"));
-        assertEquals("24 56", OperatorChat.levelAsSaid("24 56 6", "a farm at x=24 z=56"), "a digit inside a coordinate isn't a level said");
-        // Its numbers, however the model writes them (field669: "x=24,z=56", then "chunk (1, 3): x=24 z=56").
-        assertEquals("24 56", OperatorChat.numbersOf("x=24,z=56"));
-        assertEquals("1 3 24 56", OperatorChat.numbersOf("chunk (1, 3): x=24 z=56"), "four: read as none - the turn fails loud");
-        assertEquals("-40 12 70", OperatorChat.numbersOf("x = -40, z = 12, y = 70"));
-        // With none, the operator's own (field670: a FARM with no argument); its level only as said.
-        assertEquals("24 56", OperatorChat.farmArgument("", "Place a farm at x = 24, z = 56."));
-        assertEquals("24 56", OperatorChat.farmArgument("x=24,z=56,y=67", "Create a farm at chunk (1, 3): x=24 z=56, at sea level."));
-        assertEquals("24 56 70", OperatorChat.farmArgument("24 56 70", "a farm at x=24 z=56 at y=70"));
+        assertEquals("Still here.", JSON.readTree(next.body()).get("reply").asText());
     }
 
     @Test

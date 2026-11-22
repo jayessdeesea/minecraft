@@ -83,6 +83,23 @@ final class FarmMissions {
         wake.accept("the operator's farm");
     }
 
+    /**
+     * The mission open on chunk ({@code chunkX}, {@code chunkZ}) cancelled at {@code now}, {@code why} kept in its phases'
+     * rows: those not done SUPERSEDED - never deleted - so it isn't carried on after a restart; the platoon leader woken to
+     * give its squad another task. Empty, and nothing done, if none is open there.
+     */
+    synchronized Optional<FarmMission> cancel(int chunkX, int chunkZ, String why, long now) {
+        load();
+        Optional<FarmMission> open = missions.keySet().stream().filter(m -> m.chunkX() == chunkX && m.chunkZ() == chunkZ).findFirst();
+        open.ifPresent(m -> {
+            missions.remove(m);
+            book.ifPresent(b -> b.relieved(m, why, now));
+            LOG.info("[Mission] {} cancelled - {}", m.name(), why);
+            wake.accept("the operator's farm cancelled");
+        });
+        return open;
+    }
+
     /** The mission worked now and its step under way, if any is open: those before a restart once the first measure has read them. */
     synchronized Optional<Map.Entry<FarmMission, FarmMission.Step>> current() {
         return missions.entrySet().stream().findFirst().map(e -> Map.entry(e.getKey(), e.getKey().steps().get(e.getValue())));

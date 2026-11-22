@@ -22,6 +22,11 @@
     provider-specific request/response shapes must not leak out of this module.
   </description>
 
+  <properties>
+    <!-- Spring AI names a @Tool method's parameters in its schema from the class file: kept by javac only with -parameters -->
+    <maven.compiler.parameters>true</maven.compiler.parameters>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>io.github.jayessdeesea.minecraft</groupId>

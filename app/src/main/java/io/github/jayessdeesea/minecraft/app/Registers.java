@@ -112,12 +112,6 @@ final class Registers {
                 Registers::objective).stream().findFirst();
     }
 
-    /** Every objective still open - under way or CANTCO - by squad. */
-    List<ObjectiveRecord> openObjectives() {
-        return query("SELECT * FROM objective WHERE state IN ('UNDER_WAY', 'CANTCO') ORDER BY squad, id", s -> {
-        }, Registers::objective);
-    }
-
     /** The objectives on the chunk at {@code chunkX}, {@code chunkZ}, by mission then step. */
     List<ObjectiveRecord> objectivesOn(int chunkX, int chunkZ) {
         return query("SELECT * FROM objective WHERE chunk_x = ? AND chunk_z = ? ORDER BY mission, step", s -> {
