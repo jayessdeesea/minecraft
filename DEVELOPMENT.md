@@ -195,6 +195,14 @@ relays it up the chain, and the log says who did. A word starting with `!` that 
 orders (`!fortify the base`) is answered SAY AGAIN, with the orders there are - say
 `!mission fortify the base` instead.
 
+**Talking with the platoon leader.** While the app runs, open <http://127.0.0.1:8125/> on the same machine
+(`minecraft.operator-chat.port`; the log says `[Chat] the operator's chat with the platoon leader is at ...` on
+start). It's bound to the loopback address, so it isn't reachable from another machine. Type a message and press
+Enter: the platoon leader answers from what it was shown at its last decision and the clock now - "what time of day is
+it?", "what objectives are you tracking?" - and can give a mission, an escort or a flatten from plain words, said on the net
+as from game chat. The strip at the top is the Minecraft time and the time to the next dusk and dawn. The page holds the
+conversation: reloading it starts a new one. Its parts: [docs/echelons/platoon-leader/decisions.md](docs/echelons/platoon-leader/decisions.md#talking-with-the-operator).
+
 Each order is followed down the chain and reported back on the net as it goes, under an id from
 its WILCO (`OP-3`): the platoon leader's decision and what each squad was given, each squad leader's
 FRAGO, and each squad's soldiers seen at the task - a squad's WILCO is them doing it, not just

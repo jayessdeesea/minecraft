@@ -121,7 +121,8 @@ modules:
   `PlatoonLeader`/`SquadLeader`) and `bot` (a consumer of those interfaces, and the implementation of
   `Soldier`) depend on, so that neither has to know about the other.
 - **`command-ai`** — Spring AI-backed implementations of `PlatoonLeader`/`SquadLeader` from `command`
-  (`SpringAiGeneral`/`SpringAiSquadLeader`). Depends on `command`, not the other way around.
+  (`SpringAiPlatoonLeader`/`SpringAiSquadLeader`), and the platoon leader's
+  conversation with the operator (`PlatoonLeaderChat`). Depends on `command`, not the other way around.
 - **`bot`** — the deterministic per-tick soldier runtime. Depends on `protocol` (to actually
   connect and act) and `command` (interfaces only) — never on `command-ai`. A soldier must not
   know or care whether its orders came from an LLM or a hand-typed test order.

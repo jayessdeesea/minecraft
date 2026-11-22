@@ -55,6 +55,8 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
     /** The camp's progress through the lodgment's phases - a soldier's thread writes, the platoon leader's reads. */
     private volatile Foothold foothold;
     private volatile io.github.jayessdeesea.minecraft.command.DayWork dayWork; // the chain of command writes before it asks
+    /** The user prompt of its last decision - its thread writes, the operator's chat reads ({@link PlatoonLeaderChat}). */
+    private volatile String lastShown;
     /** Daylight left, in ticks, above which a squad still in its patrol base is told the night is over: two minutes. */
     static final long MORNING_AT_LEAST = 2400;
     /** How many of the operator's remarks the platoon leader keeps in view. */
@@ -139,7 +141,9 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
         if (squadStatuses.isEmpty()) {
             return List.of();
         }
-        PlatoonLeaderReply reply = callModel(context(squadStatuses));
+        PromptContext shown = context(squadStatuses);
+        lastShown = shown.prompt();
+        PlatoonLeaderReply reply = callModel(shown);
         // Every squad its one objective (operator, 2026-11-20: it's a defect if one hasn't): the squads left out or named
         // twice asked again, alone. Live (field533-545), nearly every decision missed one, and it got no new order.
         List<SquadStatus> unanswered = unanswered(reply, squadStatuses);
@@ -173,6 +177,11 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
         List<PlatoonLeaderReply.ObjectiveReply> named = reply == null || reply.objectives() == null ? List.of()
                 : reply.objectives().stream().filter(o -> squad.equals(o.squad())).toList();
         return named.size() == 1 ? Optional.of(named.getFirst()) : Optional.empty();
+    }
+
+    /** What it was shown at its last decision - the user prompt as the model read it - if it has decided yet. */
+    public Optional<String> lastShown() {
+        return Optional.ofNullable(lastShown);
     }
 
     /** The situation the next decision would be asked about: the user prompt, as the model sees it - for reading. */

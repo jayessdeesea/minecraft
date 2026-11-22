@@ -18,6 +18,9 @@ scope.
 - **Tests: JUnit 6 and ArchUnit; no property-testing library.** Variation testing uses our own
   seeded scenario generators (`bot`'s `scenario` test package, shared with `app` as a test jar).
   jqwik was rejected: its maintainer asks AI coding agents not to use it.
+- **No web framework.** The operator's chat page (`app.OperatorChat`) is the JDK's
+  `com.sun.net.httpserver.HttpServer`, JSON through Jackson, and one static HTML page with plain
+  JavaScript - no build step, nothing loaded from off the machine.
 - **Netty**, hand-rolled protocol implementation. No MCProtocolLib, no PacketEvents, no NBT/world
   libraries of any kind — VarInt/VarLong, packet framing, compression, encryption, and the full
   connection state machine (Handshake → Status/Login → Configuration → Play) are all written here.

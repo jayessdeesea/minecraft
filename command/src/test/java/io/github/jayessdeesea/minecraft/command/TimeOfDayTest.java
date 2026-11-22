@@ -2,6 +2,8 @@ package io.github.jayessdeesea.minecraft.command;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalTime;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -35,6 +37,20 @@ class TimeOfDayTest {
     void aStoppedClockNeverChanges() {
         assertEquals(Long.MAX_VALUE, TimeOfDay.of(6000, false).ticksUntilDark());
         assertEquals(Long.MAX_VALUE, TimeOfDay.of(18000, false).ticksUntilLight());
+    }
+
+    @Test
+    void theNextDawnAndDuskAndTheClock() {
+        TimeOfDay noon = TimeOfDay.of(6000, true);
+        assertEquals(18000, noon.ticksToDawn());
+        assertEquals(TimeOfDay.DUSK - 6000, noon.ticksToDusk());
+        assertEquals(LocalTime.of(12, 0), noon.clock());
+        TimeOfDay midnight = TimeOfDay.of(18000, true);
+        assertEquals(6000, midnight.ticksToDawn());
+        assertEquals(6000 + TimeOfDay.DUSK, midnight.ticksToDusk(), "tomorrow's, while it's dark");
+        assertEquals(LocalTime.of(0, 0), midnight.clock());
+        assertEquals(LocalTime.of(6, 0), TimeOfDay.of(0, true).clock());
+        assertEquals(LocalTime.of(5, 59), TimeOfDay.of(23999, true).clock());
     }
 
     @Test
