@@ -81,15 +81,23 @@ final class DutyBook {
     /**
      * {@code soldier}'s share sampled at {@code now}: what its duty has yielded, as {@code ledger} counted it, against what
      * it should in a spell (command.DutyYield) with {@code workable} in it to work - a baker's wheat stored and carried,
-     * a harvester's ripe cells, a woodcutter's or planter's ground left (more than none) - none while it's rightly
-     * elsewhere, in contact. The alarm when it falls behind (command.ShareWatch).
+     * a harvester's ripe cells, a woodcutter's or planter's ground left (more than none); {@code cantco} its soldier's
+     * failure at its duty now, if any. A miss is answered by its cause (command.MissAnswer): what goes up the chain is
+     * a warning, the rest the squad leader's word on the net.
      */
-    void sample(String squad, String soldier, ErrandLedger ledger, IntSupplier workable, long now) {
+    void sample(String squad, String soldier, ErrandLedger ledger, IntSupplier workable, Optional<String> cantco, long now) {
         DutyOrder order = orders.get(soldier);
         if (order != null) {
             Yield yield = YIELDS.get(order.duty());
             int made = yield.spent() ? ledger.spent(soldier, yield.routine(), yield.item()) : ledger.made(soldier, yield.routine(), yield.item());
-            watch.sample(squad, order, made, () -> DutyYield.expected(order, workable.getAsInt()), now).ifPresent(LOG::warn);
+            watch.sample(squad, order, new ShareWatch.Seen(made, cantco, () -> ledger.held(soldier), yield.routine()),
+                    () -> DutyYield.expected(order, workable.getAsInt()), now).forEach(l -> {
+                if (l.startsWith("[Alarm]") || l.contains("-> PL]")) {
+                    LOG.warn(l);
+                } else {
+                    LOG.info(l);
+                }
+            });
         }
     }
 
@@ -107,7 +115,12 @@ final class DutyBook {
                 LOG.info(l);
             }
         });
-        return behind == 0 ? Optional.empty() : Optional.of(behind + " of " + producers.size() + " producers behind their shares");
+        // And each one idle for a cause its squad leader says up - a baker with no wheat stored: what the platoon leader is shown.
+        List<String> said = new ArrayList<>(watch.idle(producers));
+        if (behind > 0) {
+            said.addFirst(behind + " of " + producers.size() + " producers behind their shares");
+        }
+        return said.isEmpty() ? Optional.empty() : Optional.of(String.join("; ", said));
     }
 
     /**
@@ -232,6 +245,17 @@ final class DutyBook {
      */
     Optional<Workshop> workshop(String soldier, Optional<Workshop> own, Workshop... known) {
         return table(soldier).map(t -> java.util.Arrays.stream(known).filter(w -> w != null && w.table().equals(t)).findFirst()).orElse(own);
+    }
+
+    /**
+     * The table a baker's order names, by its squad leader's rule: the first of {@code workshops} - the camp's, then the
+     * keep's - whose table stands, as the cell's centre; none with none standing, said in its order ("no table standing")
+     * and up the chain on its CANTCO (command.MissAnswer). The duty orders' eval: the camp's table dug, the order re-pointed.
+     */
+    static Optional<Position> standingTable(io.github.jayessdeesea.minecraft.bot.world.WorldView world, Workshop... workshops) {
+        return java.util.Arrays.stream(workshops).filter(w -> w != null && world.workstation(w.table().x(), w.table().y(), w.table().z())
+                        .equals(Optional.of(io.github.jayessdeesea.minecraft.bot.world.Workstation.CRAFTING_TABLE)))
+                .findFirst().map(w -> new Position(w.table().x() + 0.5, w.table().y(), w.table().z() + 0.5));
     }
 
     /** Whether {@code soldier}, carrying {@code wheat}, draws its order's: a baker short of its batch (command.BakerDuty). */

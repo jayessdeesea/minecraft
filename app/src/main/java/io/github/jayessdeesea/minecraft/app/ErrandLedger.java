@@ -84,7 +84,7 @@ final class ErrandLedger {
     private final Map<String, Integer> freeFood = new HashMap<>();
 
     /** Whose a soldier's hands are with no routine holding them. */
-    static final String FREE = "free";
+    static final String FREE = io.github.jayessdeesea.minecraft.command.MissAnswer.FREE;
     /** Each soldier's pack, whose its hands were, and when, at its last tick: what changed since is that routine's doing. */
     private final Map<String, Map<String, Integer>> lastCarried = new HashMap<>();
     private final Map<String, String> lastRoutine = new HashMap<>();
@@ -221,6 +221,34 @@ final class ErrandLedger {
     /** How many of {@code item} {@code soldier}'s {@code routine} has spent since the start. */
     synchronized int spent(String soldier, String routine, String item) {
         return spent.getOrDefault(soldier + " " + routine + " " + item, 0);
+    }
+
+    /** A hostile near: its routines paused, its hands the fight's - other work than its duty (command.MissAnswer). */
+    static final String CONTACT = "CONTACT";
+    /** Each soldier in contact at its last call, and since when. */
+    private final Map<String, Long> contactSince = new HashMap<>();
+
+    /** {@code soldier} in contact, or not, at {@code now}: the time it was counted as its hands' {@link #CONTACT}'s. This ledger back. */
+    synchronized ErrandLedger contact(String soldier, boolean in, long now) {
+        Long since = in ? contactSince.putIfAbsent(soldier, now) : contactSince.remove(soldier);
+        if (since != null) {
+            held.merge(soldier + " " + CONTACT, now - since, Long::sum);
+            if (in) {
+                contactSince.put(soldier, now);
+            }
+        }
+        return this;
+    }
+
+    /** How long, in ms, {@code soldier}'s hands have been each routine's - {@link #FREE}, {@link #CONTACT} - since the start, by routine. */
+    synchronized Map<String, Long> held(String soldier) {
+        Map<String, Long> of = new HashMap<>();
+        held.forEach((k, ms) -> {
+            if (k.startsWith(soldier + " ")) {
+                of.put(k.substring(soldier.length() + 1), ms);
+            }
+        });
+        return of;
     }
 
     /** How long, in ms, {@code soldier}'s hands have been {@code routine}'s - {@link #FREE}: none's - since the start. */

@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.Optional;
+
 /**
  * What each duty's share should yield in a spell ({@link ShareWatch#DUE_MILLIS}), by what there is in it to work
  * (backlog/duty-orders.md; operator, 2026-11-21: the squad leader tracks each soldier's subtask and its outcome): a
@@ -28,5 +30,13 @@ public final class DutyYield {
             case WOODCUTTER -> workable > 0 ? LOGS : 0;
             case PLANTER -> workable > 0 ? 1 : 0;
         };
+    }
+
+    /**
+     * Why {@code order}'s share, with nothing expected of it, is idle in a way its squad leader says up the chain: a baker
+     * with no wheat stored - the force's bread stops - but not a harvester's plot growing, which is the farm's rhythm.
+     */
+    public static Optional<String> idle(DutyOrder order) {
+        return order.duty() == DutyOrder.Duty.BAKER ? Optional.of("no wheat stored") : Optional.empty();
     }
 }

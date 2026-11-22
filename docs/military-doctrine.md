@@ -1221,7 +1221,8 @@ Each producer's duty reaches it as one value, its duty order (`command.DutyOrder
 its yield goes to - where the squad's yield is stockpiled (its workshop's chest), else the camp's dump
 (docs/echelons/platoon-leader/decisions.md); a chunk farm's tender's, the farm's chest. A baker's names its makings too
 (operator, 2026-11-21: the soldier is how; where, what and how much are the squad leader's): the chest it draws wheat from -
-the nearest the stores book knows holding some, re-pointed to the next when it runs dry - the camp's table it bakes at, and
+the nearest the stores book knows holding some, re-pointed to the next when it runs dry - the table it bakes at, the camp's
+workshop's while it stands, else the keep's ("no table standing" with neither), and
 its batch of 8 loaves (`DutyOrder.making`). The baker executes it and decides none of it (`command.BakerDuty`): it draws
 from that chest only, whenever it carries less than a batch's wheat (live, field657, drawing only below a loaf's, its baker
 sat on 15), up to the most whole batches a stack holds; it bakes once it carries a batch's; and it bakes at that table only -
@@ -1238,10 +1239,10 @@ cells stand ripe, a woodcutter 4 logs, a planter a sapling while its wood has gr
 the errand ledger's count (`ErrandLedger.made`): what the duty's routine - the armourer's bread, the farmer's wheat, the
 gatherer's logs, the forester's saplings planted - added to the pack tick by tick, and what it picks up within 3 s of
 letting go (a felled log reaches the pack after its dig); not a draw's or a deposit's, and not a product merely
-changing. A spell ended short is the share behind, alarmed once: `[Alarm] [Alpha] Carl behind its share: woodcutter over
-x 8..24, ..., made 0 of 4 expected in 180 s`; a spell that meets it after is `back at its share`. Nothing to work -
-a plot growing, no wheat stored, or the soldier in contact, doing what it should - is no spell, and a share behind
-is behind no longer.
+changing. A spell ended short is the share behind, alarmed once for each cause and answered by its rule - the
+table, the source, the ground, other work, or a gap report up (docs/echelons/squad-leader/decisions.md); a spell that
+meets it after is `back at its share`. Nothing to work - a plot growing, no wheat stored - is no spell, and a share
+behind is behind no longer. A fight isn't nothing to work: its time is the hands' `CONTACT`'s, the cause it's said as.
 A soldier of a squad on FARM, TREE_FARM or WOOD with no share for three minutes is alarmed as holding
 without one. The platoon leader's part is the squad's: with half or more of its producers behind,
 `[Alarm] [PL] Alpha's gathering wood is behind its order`, and the squad's progress - what the platoon

@@ -25,29 +25,28 @@ few minutes for fifteen runs, had no standing rule answering it.
 
 ## The plan
 The baker's order is built whole - its source, table, batch and dump, and its draw, bake and table read from it
-(docs/military-doctrine.md, `command.BakerDuty`) - and each duty's yield a spell is measured from the errand ledger's
-counts (`command.DutyYield`, `ShareWatch`). Left:
-1. **The squad leader's answer to a miss**, a standing rule per cause, each said on the net: the source empty -
-   the next source; the table or chest unreachable - the next, or a CANTCO up; the soldier taken by other work for
-   the spell - reported as the cause, not re-ordered; no cause found - a gap report to the platoon leader naming the
-   duty, the yield short and what was checked.
-2. Then the harvester's and the woodcutter's orders the same way: the harvester's plot and its seed chest, the
+(docs/military-doctrine.md, `command.BakerDuty`) - each duty's yield a spell is measured from the errand ledger's counts
+(`command.DutyYield`), and a miss is answered by a rule per cause (docs/echelons/squad-leader/decisions.md,
+`command.MissAnswer`). Left:
+1. The harvester's and the woodcutter's orders the same way: the harvester's plot and its seed chest, the
    woodcutter's sector, its planter and the tree chunk's chest.
 
 ## The eval (operator, 2026-11-21: an eval to make sure this will work)
 A squad simulation of a farm squad's bread chain end to end, and the misses injected, each held to what correct is:
 - **The chain**: harvesters, a baker, a table, a dump, wheat in a chest the stores book knows from before a
   restart: bread in the dump at the baker's expected yield within the spell (`FarmDutiesSimulationTest`'s
-  `aBakerShortOfABatchDrawsTheRestAndBakes` is its first cell).
+  `aBakerShortOfABatchDrawsTheRestAndBakes` and `aBakerBakesAtTheTableItsOrderNames` are its first cells).
 - **The source runs dry** (built, `aBakersSourceRunDryIsRepointedToTheNextChest`): the chest emptied mid-run, wheat in
   another - the order re-pointed, both drawn from.
-- **No wheat anywhere**: the baker idle, the squad leader's report up names it ("no wheat stored") - not "behind".
-- **The table gone**: dug - the baker's CANTCO, the squad leader's answer (another table, or up the chain).
+- **No wheat anywhere** (built, `aBakerWithNoWheatAnywhereIsReportedIdleNotBehind`).
+- **The table gone** (built, `aBakersTableDugIsItsCantcoAnsweredUpTheChain`): dug, no other standing, no logs to fit one.
 - **The baker pulled off**: a fight or a ration run - the yield short, the cause said, no re-order.
+  `aBakerPulledOffByAFightIsShortForThatCauseNotReordered` is a known failure: in the simulation the baker draws and
+  bakes through an unbroken fight, its yield met, so the miss is never reached; it wants an injection that does take
+  its hands for the spell.
 Each cell's yield and its time to detection logged, so a regression shows as a number, not a stall found live.
 
 ## Done when
 - The eval's cells pass, the misses each detected within one spell (`ShareWatch.DUE_MILLIS`) and answered by
   their rule.
 - Live: bread made each day the stores hold wheat; no "behind its share" alarm raised twice running for one cause.
-- docs/echelons/squad-leader/ says what a duty order carries and how a miss is answered.

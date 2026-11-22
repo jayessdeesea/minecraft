@@ -167,6 +167,87 @@ class FarmDutiesSimulationTest {
                 "every loaf at its order's table, " + SimServer.key(1, GROUND + 1, -2) + ", none at the one by the chest, " + SimServer.key(5, GROUND + 1, 1));
     }
 
+    /** The lines of {@code scenario}'s log holding {@code text}, for the eval's record: what was said, and when. */
+    private static List<String> said(String scenario, String text) throws java.io.IOException {
+        List<String> found = log(scenario).stream().filter(l -> l.contains(text)).toList();
+        found.stream().limit(3).forEach(l -> System.out.println("[Eval] duty-orders/" + scenario + ": " + l.substring(Math.max(0, l.indexOf('['))))); // its yield and time to detection, as a number
+        return found;
+    }
+
+    /**
+     * The duty orders' eval, no wheat anywhere: the baker idle, its squad leader's report up the chain names it - "no wheat
+     * stored" - and it isn't behind its share: nothing in its share to work.
+     */
+    @Test
+    void aBakerWithNoWheatAnywhereIsReportedIdleNotBehind() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FarmDutiesSimulationTest::campTable, 24_000);
+        farmSquad(clock, server, bakersKit(0));
+
+        clock.advance(4 * 60_000);
+
+        String scenario = "aBakerWithNoWheatAnywhereIsReportedIdleNotBehind";
+        assertTrue(!said(scenario, "[Alpha -> PL] Dana, baker, idle: no wheat stored").isEmpty(), "said up the chain: "
+                + log(scenario).stream().filter(l -> l.contains("Dana") && (l.contains("[Alarm]") || l.contains("-> PL]"))).toList());
+        assertEquals(List.of(), said(scenario, "Dana behind its share"), "idle, not behind");
+    }
+
+    /**
+     * The duty orders' eval, the table gone: the camp's table dug once its baker's order names it, with no other standing
+     * and no logs to fit one - the baker's CANTCO, and its squad leader's answer: its order says no table stands, and the CANTCO goes up
+     * the chain.
+     */
+    @Test
+    void aBakersTableDugIsItsCantcoAnsweredUpTheChain() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FarmDutiesSimulationTest::campTable, 24_000);
+        server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64);
+        java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0]]");
+        farmSquad(clock, server, List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
+                new int[]{38, SimServer.ITEM_BREAD, 64}, new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32},
+                new int[]{12, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 15}));
+
+        String scenario = "aBakersTableDugIsItsCantcoAnsweredUpTheChain";
+        for (int s = 0; s < 60 && log(scenario).stream().noneMatch(l -> l.contains("-> Dana] DUTY: baker") && l.contains("at the table at (1, 64, -2)")); s++) {
+            clock.advance(1_000); // till its order names the camp's table, or a minute: a camp's workshop sited before its table's chunk is seen names none
+        }
+        server.set(1, GROUND + 1, -2, SimServer.AIR);
+        clock.advance(8 * 60_000);
+
+        assertTrue(!said(scenario, "-> Dana] DUTY: baker").stream().filter(l -> l.contains("no table standing")).toList().isEmpty(), "its order: "
+                + log(scenario).stream().filter(l -> l.contains("-> Dana] DUTY")).toList());
+        assertTrue(!said(scenario, "[Alpha -> PL] Dana, baker, CANTCO").isEmpty(), "up the chain: "
+                + log(scenario).stream().filter(l -> l.contains("Dana") && (l.contains("[Alarm]") || l.contains("-> PL]") || l.contains("gives up"))).toList());
+    }
+
+    /**
+     * The duty orders' eval, the baker pulled off: a fight at its table from the first, the spell long - its yield short, the
+     * cause said, and its order the same: not re-ordered. A known failure (below).
+     */
+    @Test
+    void aBakerPulledOffByAFightIsShortForThatCauseNotReordered() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FarmDutiesSimulationTest::campTable, 24_000);
+        server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64);
+        java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0]]");
+        farmSquad(clock, server, bakersKit(15));
+
+        for (int i = 0; i < 240; i++) { // a zombie by its table every second, from the start, for four minutes: the fight unbroken
+            server.spawnZombie(2.5, GROUND + 1, -0.5);
+            clock.advance(1_000);
+        }
+        clock.advance(60_000);
+
+        String scenario = "aBakerPulledOffByAFightIsShortForThatCauseNotReordered";
+        boolean correct = said(scenario, "[Alpha] Dana short of its share").stream().anyMatch(l -> l.contains("its hands CONTACT's"));
+        System.out.println("[Eval] duty-orders/baker-pulled-off: " + (correct ? "PASS" : "FAIL (known)") + " - "
+                + log(scenario).stream().filter(l -> l.contains("Dana drew") || l.contains("Dana made bread") || l.contains("Dana short of")).count()
+                + " draws, bakes and misses; " + log(scenario).stream().filter(l -> l.contains("[Contact] Dana at")).count() + " contacts");
+        // Known failure: in the simulation a fight doesn't pull the baker off - it draws and bakes in contact, its yield met -
+        // so the miss and its cause (command.MissAnswer, its rule unit-tested) aren't reached here yet.
+        assertTrue(!correct, "baker-pulled-off passes now: take its known-failure mark off, so it holds the answer");
+    }
+
     /**
      * A baker with wheat for less than a batch, and more in a chest, draws the rest and bakes: live (field657), Pete
      * carried 15 wheat beside chests of 544 and baked nothing - it baked only a batch of 8 loaves' worth (24) and drew

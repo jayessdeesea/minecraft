@@ -5386,7 +5386,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Each producer's duty order (command.DutyOrder): its duty, its ground, and the dump its squad stockpiles at, else the camp's.
         dutyBook.assign(squadName, statuses.stream().map(SoldierStatus::name).toList(), DutyBook.given(statuses.stream().map(SoldierStatus::name).toList(),
                 woodDuties, farming, statuses.stream().findFirst().flatMap(s -> stockpileFor(s.name())).or(() -> chainOfCommand.foothold()
-                        .flatMap(Foothold::dump)), chainOfCommand.foothold().flatMap(f -> chestHolding(ItemClass.WHEAT, f.camp())), Optional.ofNullable(campWorkshop).map(w -> new Position(w.table().x() + 0.5, w.table().y(), w.table().z() + 0.5))), objectiveOf(squadName).map(Objective::task)
+                        .flatMap(Foothold::dump)), chainOfCommand.foothold().flatMap(f -> chestHolding(ItemClass.WHEAT, f.camp())), DutyBook.standingTable(world, campWorkshop, keepWorkshop)), objectiveOf(squadName).map(Objective::task)
                 .filter(PhaseGuardrails::production).map(OrderTrace::taskName), clockwork.millis());
         woodDuties.values().stream().filter(d -> d.order().equals(Optional.ofNullable(ground.get(d.soldier())))).forEach(d -> woodcutters.add(d.soldier()));
         // The fight first: a soldier in contact answers its squad leader until it's over, and takes its ground work up again then.
@@ -7102,8 +7102,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // A farmer's hoe, and its wheat baked into bread three at a time - by its baker, on a farm that has one.
             FarmPlan field = dutyBook.field(name, farming.get(name));
             boolean bakes = dutyBook.is(name, DutyOrder.Duty.BAKER);
-            dutyBook.sample(definition.squad(), name, afterActionReview.errands, () -> threatened ? 0 : bakes ? chainOfCommand.stores().map(st -> st.wheat()).orElse(0)
-                    + inventory.count(ItemClass.WHEAT) : field != null ? Farmer.ripe(world, field) : dutyBook.plantsNothing(name, planting.get(name), world) ? 0 : 1, clockwork.millis());
+            dutyBook.sample(definition.squad(), name, afterActionReview.errands, () -> bakes ? chainOfCommand.stores().map(st -> st.wheat()).orElse(0) + inventory.count(ItemClass.WHEAT)
+                    : field != null ? Farmer.ripe(world, field) : dutyBook.plantsNothing(name, planting.get(name), world) ? 0 : 1, bakes ? armourer.failure() : farmer.failure(), clockwork.millis());
             Optional.ofNullable(planting.get(name)).ifPresent(g -> tools.addAll(Forester.wants(world, g, inventory))); // its tree chunk's chest, torches
             if (field != null) { // its hoe, a bucket for its farm's water holes, its chunk farm's fixtures (Farmer.wants)
                 tools.addAll(Farmer.wants(world, field, inventory));
@@ -7707,7 +7707,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             item -> atADump(item) || thrownNear(item))));
             Optional<Hands.Routine> hands = Hands.tick(turns);
             placementAudit.routine(name, hands);
-            afterActionReview.errands.tick(name, hands, status.position(), ErrandLedger.carried(inventory), clockwork.millis())
+            afterActionReview.errands.contact(name, threatened, clockwork.millis()).tick(name, hands, status.position(), ErrandLedger.carried(inventory), clockwork.millis())
                     .forEach(line -> LOG.info(line.startsWith("errands") ? "[Errand] {}" : "[Productivity] {}", line)); // a trip's yield against its walk
             if (keepHands.contains(name)) {
                 keepSaplingsCarried.put(name, inventory.count(ItemClass.SAPLING));
