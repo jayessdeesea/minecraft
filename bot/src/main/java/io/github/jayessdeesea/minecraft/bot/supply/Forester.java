@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
+import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import io.github.jayessdeesea.minecraft.bot.farm.TreeFarm;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.script.Script;
@@ -18,6 +19,9 @@ import org.apache.logging.log4j.Logger;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.EnumMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -65,6 +69,12 @@ public final class Forester {
      */
     private final Setbacks<BlockPos> shared;
     private long ticks;
+    /** Puts up a tree chunk's fixtures once its trunks are in, as a farmer its chunk farm's: its torches, then its chest. */
+    private final Map<ItemClass, Builder> fitters = new EnumMap<>(ItemClass.class);
+    /** The kind of fixture it's putting up. */
+    private ItemClass fitting;
+    /** A tree chunk's fixtures, in the order they're put up: lit, then its chest for the spares (TreeChunk.Stage). */
+    static final List<ItemClass> FIXTURES = List.of(ItemClass.TORCH, ItemClass.CHEST);
 
     public Forester(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims) {
         this(name, session, inventory, claims, new Setbacks<>(Farmer.PASS_OVER_TICKS, 16L * Farmer.PASS_OVER_TICKS));
@@ -77,15 +87,16 @@ public final class Forester {
         this.inventory = inventory;
         this.claims = claims;
         this.shared = shared;
+        FIXTURES.forEach(item -> fitters.put(item, new Builder(name, session, inventory, List.of(item))));
     }
 
     public synchronized boolean active() {
-        return digger != null || planting != null;
+        return digger != null || planting != null || fitting != null;
     }
 
     /** Where the soldier should be standing for the job under way. */
     public synchronized Optional<Position> standAt() {
-        return digger != null ? Optional.of(digger.standAt()) : Optional.ofNullable(standAt);
+        return digger != null ? Optional.of(digger.standAt()) : fitting != null ? fitters.get(fitting).standAt() : Optional.ofNullable(standAt);
     }
 
     /** Why the last job failed, while the soldier waits before the next. */
@@ -127,16 +138,62 @@ public final class Forester {
             }
             return;
         }
+        if (fitting != null) {
+            fit(world, farm.get());
+            return;
+        }
         if (cooldown > 0) {
             return;
         }
         next(world, farm.get());
     }
 
+    /**
+     * The cells of {@code farm}'s fixtures still to put {@code item} in - its torches or its chest - open, less those
+     * {@code skipped}: none for any other item, or a grove with none.
+     */
+    static List<BlockPos> fixtures(WorldView world, TreeFarm farm, ItemClass item, Set<BlockPos> skipped) {
+        List<BlockPos> cells = item == ItemClass.TORCH ? farm.torches() : item == ItemClass.CHEST ? farm.chest().stream().toList() : List.of();
+        return cells.stream().filter(f -> Farmer.openFor(world, f) && !skipped.contains(f)).toList();
+    }
+
+    /** What a forester planting {@code farm} needs made for its fixtures: a chest; torches, from coal it carries. */
+    public static Set<Recipe> wants(WorldView world, TreeFarm farm, Inventory inventory) {
+        Set<Recipe> wants = new LinkedHashSet<>();
+        if (inventory.count(ItemClass.TORCH) == 0 && inventory.count(ItemClass.COAL) > 0 && !fixtures(world, farm, ItemClass.TORCH, Set.of()).isEmpty()) {
+            wants.add(Recipe.TORCHES);
+        }
+        if (inventory.count(ItemClass.CHEST) == 0 && !fixtures(world, farm, ItemClass.CHEST, Set.of()).isEmpty()) {
+            wants.add(Recipe.CHEST);
+        }
+        return wants;
+    }
+
+    /** A tick of putting up the fixtures of the kind under way: over when none is left, or none is carried. */
+    private void fit(WorldView world, TreeFarm farm) {
+        Builder builder = fitters.get(fitting);
+        List<BlockPos> left = fixtures(world, farm, fitting, builder.skipped());
+        if (left.isEmpty() || inventory.count(fitting) == 0) {
+            builder.stop();
+            fitting = null;
+            return;
+        }
+        if (builder.tick(soldier, world, left) instanceof Builder.Progress.Failed(String why)) {
+            LOG.info("{} leaves the tree chunk's {} for now - {}", name, fitting, why);
+            fitting = null;
+        }
+    }
+
     private void next(WorldView world, TreeFarm farm) {
         Optional<BlockPos> bare = farm.plot().stream().filter(c -> !claims.contains(c) && !TreeFarm.planted(world, c) && !shared.barred(c, ticks))
                 .min(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())));
         if (bare.isEmpty()) {
+            // Planted: its fixtures, with what it carries (operator, 2026-11-21: lit, then a chest for its saplings).
+            FIXTURES.stream().filter(item -> inventory.count(item) > 0 && !fixtures(world, farm, item, fitters.get(item).skipped()).isEmpty())
+                    .findFirst().ifPresent(item -> {
+                        fitting = item;
+                        fit(world, farm);
+                    });
             return;
         }
         Optional<Integer> sapling = saplingSlot();
@@ -252,5 +309,9 @@ public final class Forester {
     public synchronized void stop() {
         stopDigging();
         endPlanting();
+        if (fitting != null) {
+            fitters.get(fitting).stop();
+            fitting = null;
+        }
     }
 }

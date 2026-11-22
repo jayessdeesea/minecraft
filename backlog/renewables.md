@@ -49,7 +49,9 @@ Left: levelling production chunks; gates worked on a route (see More farmland be
 
 ## Tree chunks: the high-density grove (operator, 2026-11-21)
 Built: the template, `bot.farm.TreeChunk` - its 16 trunks, nine torches, chest and the chunk farms' grid; its stage from
-the world; its site within 64 blocks, beside a wheat chunk, sea level, near. Left: everything below that puts it to work.
+the world; its site within 64 blocks, beside a wheat chunk, sea level, near; a TREE_FARM squad plants it; its forester
+puts up the nine ground torches and the chest once its trunks are in (docs/military-doctrine.md). Left: what goes in the
+chest, the rotation, the fence, the bids.
 A tree farm a chunk, laid out like the wheat chunk and beside them, alternating wheat and trees on the camp's chunk
 grid, inside the area of influence (32 blocks out from the camp's edge):
 - **Ground** flat at sea level, dirt or grass.

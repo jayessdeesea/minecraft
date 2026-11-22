@@ -649,6 +649,39 @@ class SquadSimulationTest {
     }
 
     /**
+     * The camp's tree chunk planted, then lit and its chest put up by the squad growing it, with what it carries
+     * (operator, 2026-11-21: nine ground torches, a chest for its saplings): the stage PLANTED to LIT.
+     */
+    @Test
+    void theTreeChunkIsLitAndItsChestPutUpOncePlanted() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        ChainOfCommand chain = new ChainOfCommand(scripted(st -> new Objective("Grow trees", new Position(0.5, GROUND + 1, 60.5),
+                "Wood that grows back", new Objective.Task.TreeFarm())), DrillSquadLeader::new, roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_axe"), 1},
+                        new int[]{39, SimServer.itemNamedOrMinus("spruce_sapling"), 16},
+                        new int[]{40, SimServer.itemNamedOrMinus("torch"), 16},
+                        new int[]{41, SimServer.itemNamedOrMinus("chest"), 1})))
+                .run();
+
+        clock.advance(10 * 60_000);
+
+        List<String> log = Files.readAllLines(Path.of("target/sim/theTreeChunkIsLitAndItsChestPutUpOncePlanted.log"));
+        java.util.regex.Matcher sited = log.stream().map(l -> java.util.regex.Pattern.compile("tree chunk at chunk \\((-?\\d+), (-?\\d+)\\)").matcher(l))
+                .filter(java.util.regex.Matcher::find).findFirst().orElseThrow(() -> new AssertionError("no tree chunk sited"));
+        io.github.jayessdeesea.minecraft.bot.farm.TreeChunk chunk = new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(
+                Integer.parseInt(sited.group(1)), Integer.parseInt(sited.group(2)), GROUND);
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        long lit = chunk.torches().stream().filter(t -> server.block(t.x(), t.y(), t.z()) == SimServer.TORCH).count();
+        assertEquals(9, lit, "its nine ground torches; " + events);
+        assertEquals(SimServer.CHEST, server.block(chunk.chest().x(), chunk.chest().y(), chunk.chest().z()), "its chest; " + events);
+    }
+
+    /**
      * The platoon leader wakes on events, not on a clock (backlog/fleet-command.md): a squad digging a
      * big mound on the keep by day for eight minutes, nothing finished, nothing asked - it's woken once,
      * for the squad that had no objective, where every two minutes it was asked again.

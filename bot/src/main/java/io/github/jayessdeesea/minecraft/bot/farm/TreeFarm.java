@@ -16,10 +16,17 @@ import java.util.Optional;
  * {@link #HEADROOM} blocks of open air over it for the trunk. The cells are where the saplings go;
  * standing in one, a soldier plants on the ground under it.
  *
- * @param centre the ground the plot is laid round
- * @param plot   the cells to plant, nearest the centre first
+ * @param centre  the ground the plot is laid round
+ * @param plot    the cells to plant, nearest the centre first
+ * @param torches the cells its ground torches go in, once it's planted: a tree chunk's ({@link TreeChunk#torches})
+ * @param chest   the cell its chest goes in, if it has one: a tree chunk's ({@link TreeChunk#chest})
  */
-public record TreeFarm(BlockPos centre, List<BlockPos> plot) {
+public record TreeFarm(BlockPos centre, List<BlockPos> plot, List<BlockPos> torches, Optional<BlockPos> chest) {
+
+    /** A plot with no fixtures: a grove laid round a point, not a tree chunk. */
+    public TreeFarm(BlockPos centre, List<BlockPos> plot) {
+        this(centre, plot, List.of(), Optional.empty());
+    }
 
     /**
      * Blocks from sapling to sapling, both ways (operator, 2026-11-14: a spruce every four blocks):

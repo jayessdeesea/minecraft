@@ -57,7 +57,7 @@ final class CampTrees {
      */
     Optional<TreeFarm> farm() {
         TreeChunk c = chunk;
-        return c == null ? Optional.empty() : Optional.of(new TreeFarm(c.trunks().getFirst(), c.trunks()));
+        return c == null ? Optional.empty() : Optional.of(new TreeFarm(c.trunks().getFirst(), c.trunks(), c.torches(), Optional.of(c.chest())));
     }
 
     /** The chunk sited, if any. */

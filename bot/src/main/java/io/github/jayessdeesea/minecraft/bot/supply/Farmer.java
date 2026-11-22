@@ -293,8 +293,13 @@ public final class Farmer {
     static List<BlockPos> fixtures(WorldView world, FarmPlan farm, ItemClass item, Set<BlockPos> skipped) {
         return farm.chunks().stream().flatMap(c -> (item == ItemClass.FENCE ? c.fence() : item == ItemClass.FENCE_GATE ? c.gates()
                         : item == ItemClass.CHEST ? List.of(c.chest()) : item == ItemClass.TORCH ? c.torches() : List.<BlockPos>of()).stream())
-                .filter(f -> !world.solidHere(f.x(), f.y(), f.z()) && !world.isGate(f.x(), f.y(), f.z()) && !world.isWater(f.x(), f.y(), f.z())
-                        && !world.isTorch(f.x(), f.y(), f.z()) && world.isSolid(f.x(), f.y() - 1, f.z()) && !skipped.contains(f)).toList();
+                .filter(f -> openFor(world, f) && !skipped.contains(f)).toList();
+    }
+
+    /** Whether {@code f} is open for a fixture: nothing in it - no gate, water or torch - and ground under it. */
+    static boolean openFor(WorldView world, BlockPos f) {
+        return !world.solidHere(f.x(), f.y(), f.z()) && !world.isGate(f.x(), f.y(), f.z()) && !world.isWater(f.x(), f.y(), f.z())
+                && !world.isTorch(f.x(), f.y(), f.z()) && world.isSolid(f.x(), f.y() - 1, f.z());
     }
 
     /**
