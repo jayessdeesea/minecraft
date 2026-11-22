@@ -31,9 +31,26 @@ moved into it, and only then is the old hill dug down.
    takes the farm and grove boxes. Waits on the SEIZURE's end - the camp lit and every soldier
    armed, held a day - which holds every flatten off.
 
+## The base's layers (operator, 2026-11-21)
+The camp's ground is dug below sea level and built back in two known layers, so every template stands
+on one floor the force can count on: no cave under a farm, no water hole draining, no sand or gravel falling.
+- **Sea level (y=63) is cobblestone**, every cell of the base, natural stone included: built ground
+  reads as the force's at a glance.
+- **Sea level + 1 (y=64) by what the chunk is for:** dirt on a wheat chunk or a tree chunk, so it grows
+  (a wheat chunk's water holes sit on the cobblestone and hold); cobblestone on a supply point, built on;
+  cobblestone on paths and camp ground too, so the whole base is walked at y=65 with no step onto a chunk.
+- **Never a hole left open below sea level:** each cell is dug and its cobblestone put back in the one
+  step, as a miner backfills a vein - beside the river an open cell floods the flatten.
+- **Chunk by chunk:** the sea-level layer laid as the flatten passes; the +1 layer when the bid cycle gives
+  the chunk its template, since dirt or cobblestone follows from it. Some 6,400 cells a layer over the camp's
+  area of influence: the cobblestone from the mine, the dirt from the flatten's own spoil.
+- **Lit:** cobblestone in the dark spawns hostiles - the supply point's and the paths' torches.
+
 ## Done when
 - Live: the new camp lit at sea level; the old stockpile's contents in the new camp's chest;
   wheat in the stores; no "can't reach the stockpile" over a day.
 - Squad simulation: a camp moved - its old chest, on a 6-high mound, emptied into the new camp's chest (on
   flat ground: built, KeepSimulationTest).
 - The old hill down to y=62.
+- The camp's first ring in its layers: cobblestone at y=63 throughout, dirt at y=64 under the wheat and tree
+  chunks and cobblestone elsewhere; no cell left open below sea level as it's laid.
