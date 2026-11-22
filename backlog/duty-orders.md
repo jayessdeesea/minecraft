@@ -24,10 +24,9 @@ few minutes for fifteen runs, had no standing rule answering it.
   No thresholds of its own on what to fetch, from where or when.
 
 ## The plan
-1. **The baker's order whole**: `DutyOrder` carries its source chest (the nearest the stores book knows holding
-   wheat), its table (the camp's workshop), its batch (8 loaves, 24 wheat) and its destination (the dump). The
-   soldier's loop executes that order; the runner's wheat-draw and bake-trip thresholds for a baker go.
-   Re-pointed when the source runs dry (the next chest holding wheat), said down the chain as any order is.
+1. **The baker's order whole** - built: its source chest, table, batch and dump named, re-pointed when the source
+   runs dry (docs/military-doctrine.md). Left of it: the bake itself at the order's table (the soldier's crafting
+   still picks its workshop), and the draw and bake thresholds read from the order's batch, not the runner's.
 2. **Each duty's yield**: what a share should make in ten minutes - a baker its batches while wheat's stored, a
    harvester the ripe cells of its plot, a woodcutter its logs. Measured from the errand ledger's counts
    (`ErrandLedger`), not from a product merely changing (`ShareWatch` today).
@@ -43,7 +42,8 @@ A squad simulation of a farm squad's bread chain end to end, and the misses inje
 - **The chain**: harvesters, a baker, a table, a dump, wheat in a chest the stores book knows from before a
   restart: bread in the dump at the baker's expected yield within the spell (`FarmDutiesSimulationTest`'s
   `aBakerShortOfABatchDrawsTheRestAndBakes` is its first cell).
-- **The source runs dry**: the chest emptied mid-run, wheat in another - the order re-pointed, the yield kept.
+- **The source runs dry** (built, `aBakersSourceRunDryIsRepointedToTheNextChest`): the chest emptied mid-run, wheat in
+  another - the order re-pointed, both drawn from.
 - **No wheat anywhere**: the baker idle, the squad leader's report up names it ("no wheat stored") - not "behind".
 - **The table gone**: dug - the baker's CANTCO, the squad leader's answer (another table, or up the chain).
 - **The baker pulled off**: a fight or a ration run - the yield short, the cause said, no re-order.

@@ -1194,10 +1194,14 @@ the chest of, its ground not level yet and off every strip, is the nearest harve
 Each producer's duty reaches it as one value, its duty order (`command.DutyOrder`, `FarmDuties.orders`,
 `WoodDuties.orders`): the duty (harvester, baker, woodcutter, planter), the ground it works and the dump
 its yield goes to - where the squad's yield is stockpiled (its workshop's chest), else the camp's dump
-(docs/echelons/platoon-leader/decisions.md); a chunk farm's tender's, the farm's chest. A producer puts its
+(docs/echelons/platoon-leader/decisions.md); a chunk farm's tender's, the farm's chest. A baker's names its makings too
+(operator, 2026-11-21: the soldier is how; where, what and how much are the squad leader's): the chest it draws wheat from -
+the nearest the stores book knows holding some, re-pointed to the next when it runs dry - the camp's table it bakes at, and
+its batch of 8 loaves (`DutyOrder.making`); the baker draws from that chest only. A producer puts its
 load in at its order's dump while a chest stands there, else stockpiles as any soldier does (`DutyBook.dump`). The squad
 leader writes it each cycle, and says it when it changes: `[Alpha -> Alice] DUTY: harvester over x
-6..8, z -4..4, the dump at (3, 64, 2)` (`app.DutyBook`).
+6..8, z -4..4, the dump at (3, 64, 2)`; `[Alpha -> Dana] DUTY: baker, the dump at (3, 64, 1), drawing from
+(3, 64, 1), at the table at (1, 64, -2), 8 a batch` (`app.DutyBook`).
 
 **Timeliness** (operator, 2026-11-18; `command.ShareWatch`). The squad leader watches each share by
 what its duty makes or spends - a harvester's wheat and seed, a baker's wheat and bread, a woodcutter's

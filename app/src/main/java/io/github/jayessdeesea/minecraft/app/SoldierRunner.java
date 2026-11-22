@@ -5426,7 +5426,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Each producer's duty order (command.DutyOrder): its duty, its ground, and the dump its squad stockpiles at, else the camp's.
         dutyBook.assign(squadName, statuses.stream().map(SoldierStatus::name).toList(), DutyBook.given(statuses.stream().map(SoldierStatus::name).toList(),
                 woodDuties, farming, statuses.stream().findFirst().flatMap(s -> stockpileFor(s.name())).or(() -> chainOfCommand.foothold()
-                        .flatMap(Foothold::dump))), objectiveOf(squadName).map(Objective::task)
+                        .flatMap(Foothold::dump)), chainOfCommand.foothold().flatMap(f -> chestHolding(ItemClass.WHEAT, f.camp())), Optional.ofNullable(campWorkshop).map(w -> new Position(w.table().x() + 0.5, w.table().y(), w.table().z() + 0.5))), objectiveOf(squadName).map(Objective::task)
                 .filter(PhaseGuardrails::production).map(OrderTrace::taskName), clockwork.millis());
         woodDuties.values().stream().filter(d -> d.order().equals(Optional.ofNullable(ground.get(d.soldier())))).forEach(d -> woodcutters.add(d.soldier()));
         // The fight first: a soldier in contact answers its squad leader until it's over, and takes its ground work up again then.
@@ -7547,9 +7547,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));
                 } else if (depositor.drawing(ItemClass.WHEAT) || bakes && inventory.count(ItemClass.WHEAT) < BAKER_BATCH_WHEAT
-                        && chestHolding(ItemClass.WHEAT, status.position()).isPresent()) {
-                    // The baker's wheat, from the stockpile the harvesters fill (command.FarmDuties).
-                    depositor.tickDraw(status.position(), chestHolding(ItemClass.WHEAT, status.position()).or(depositor::chestAt), ItemClass.WHEAT,
+                        && dutyBook.of(name).flatMap(DutyOrder::source).isPresent()) {
+                    // The baker's wheat, from the chest its duty order names (command.DutyOrder: the squad leader's, not the soldier's).
+                    depositor.tickDraw(status.position(), dutyBook.of(name).flatMap(DutyOrder::source).or(depositor::chestAt), ItemClass.WHEAT,
                             BAKER_WHEAT, free && !threatened && fort == null && bakes && inventory.count(ItemClass.WHEAT) < BAKER_BATCH_WHEAT);
                 } else if (depositor.drawing(ItemClass.STRING) || bedString(inventory) > 0
                         && chestHolding(ItemClass.STRING, status.position()).isPresent()) {

@@ -110,6 +110,17 @@ final class DutyBook {
      */
     static Map<String, DutyOrder> given(List<String> soldiers, Map<String, WoodDuties.Duty> woodDuties, Map<String, FarmPlan> farming,
                                         Optional<Position> dump) {
+        return given(soldiers, woodDuties, farming, dump, Optional.empty(), Optional.empty());
+    }
+
+    /**
+     * As above, the baker's makings named (operator, 2026-11-21: the soldier is how): the chest it draws its wheat from,
+     * {@code wheat} - the nearest the stores book knows holding some - the table it bakes at, {@code table}, and a batch of
+     * {@link io.github.jayessdeesea.minecraft.command.Subsistence#BAKE_BATCH} loaves. Live (field640-657), told only "baker,
+     * the dump at", its draw was the soldier's own rule and it sat a run on 15 wheat beside chests of 544.
+     */
+    static Map<String, DutyOrder> given(List<String> soldiers, Map<String, WoodDuties.Duty> woodDuties, Map<String, FarmPlan> farming,
+                                        Optional<Position> dump, Optional<Position> wheat, Optional<Position> table) {
         Map<String, DutyOrder> given = new HashMap<>(WoodDuties.orders(woodDuties, dump));
         soldiers.stream().filter(farming::containsKey).findFirst().ifPresent(first -> {
             List<String> onTheFarm = onOneFarm(first, farming);
@@ -117,6 +128,8 @@ final class DutyBook {
                     .map(c -> new Position(c.x(), c.y(), c.z())).toList(), dump, onTheFarm.stream().flatMap(n -> farming.get(n).chunks().stream())
                     .distinct().map(c -> new FarmDuties.Tended(c.box(), c.chestAt())).toList()));
         });
+        given.replaceAll((soldier, order) -> order.duty() == DutyOrder.Duty.BAKER
+                ? order.making(wheat, table, io.github.jayessdeesea.minecraft.command.Subsistence.BAKE_BATCH) : order);
         return given;
     }
 
