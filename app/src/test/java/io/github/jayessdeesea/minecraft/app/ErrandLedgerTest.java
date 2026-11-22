@@ -75,4 +75,25 @@ class ErrandLedgerTest {
         ledger.tick("Ned", Optional.empty(), at, Map.of("food", 7), 200);
         assertEquals(3, ledger.consumed("food"), "one eaten free, one in the farmer's spell, one free after it");
     }
+
+    /**
+     * What a routine makes is counted as it comes, tick by tick - a duty's yield (command.ShareWatch) - put to the routine
+     * whose its hands were; a draw's or a deposit's isn't made, and the time its hands were each routine's is kept.
+     */
+    @Test
+    void whatARoutineMakesIsCountedAsItComesAndATransferIsNot() {
+        ErrandLedger ledger = new ErrandLedger();
+        Position at = new Position(0, 63, 0);
+        ledger.tick("Dana", Optional.of("DEPOSITOR"), at, Map.of("food", 64), 0);
+        ledger.tick("Dana", Optional.of("ARMOURER"), at, Map.of("food", 64, "wheat", 48), 50);
+        ledger.tick("Dana", Optional.of("ARMOURER"), at, Map.of("food", 72, "wheat", 24), 100);
+        assertEquals(0, ledger.made("Dana", "DEPOSITOR", "wheat"), "drawn, not made");
+        assertEquals(8, ledger.made("Dana", "ARMOURER", "food"), "counted mid-spell, not at its end");
+        assertEquals(24, ledger.spent("Dana", "ARMOURER", "wheat"));
+        ledger.tick("Dana", Optional.empty(), at, Map.of("food", 80), 150);
+        ledger.tick("Dana", Optional.empty(), at, Map.of("food", 90), 100 + ErrandLedger.PICKUP_MILLIS + 1);
+        assertEquals(16, ledger.made("Dana", "ARMOURER", "food"), "picked up just after its hands came free is the routine's; free a while, nobody's");
+        assertEquals(100, ledger.held("Dana", "ARMOURER"));
+        assertEquals(ErrandLedger.PICKUP_MILLIS + 1 - 50, ledger.held("Dana", ErrandLedger.FREE));
+    }
 }

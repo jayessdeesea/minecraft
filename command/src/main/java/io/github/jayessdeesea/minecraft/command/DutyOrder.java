@@ -56,7 +56,7 @@ public record DutyOrder(String soldier, Duty duty, Optional<Box> ground, Optiona
                 + ground.map(g -> String.format(Locale.ROOT, " over x %d..%d, z %d..%d", g.minX(), g.maxX(), g.minZ(), g.maxZ())).orElse("")
                 + dump.map(d -> ", the dump at " + at(d)).orElse(", no dump yet")
                 + source.map(s -> ", drawing from " + at(s)).orElse(duty == Duty.BAKER && batch > 0 ? ", no chest known holding its makings" : "")
-                + table.map(t -> ", at the table at " + at(t)).orElse("")
+                + table.map(t -> ", at the table at " + at(t)).orElse(duty == Duty.BAKER && batch > 0 ? ", no table standing" : "")
                 + (batch > 0 ? ", " + batch + " a batch" : "");
     }
 

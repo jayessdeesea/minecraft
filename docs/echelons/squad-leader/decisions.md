@@ -46,6 +46,27 @@ The work is its soldiers' roles': a rifleman's is the platoon leader's `Task`, a
 role's task at its site (docs/echelons/soldier/routines.md). It sees each soldier's plan at the end
 of his line.
 
+## Its producers' duty orders, and their yield
+Standing rules only, never the model (`command.FarmDuties`, `command.WoodDuties`, `app.DutyBook`). Each producer's order
+carries its duty, the ground it works and the dump its yield goes to, and a baker's its makings: the chest it draws from,
+the table it bakes at and its batch - the soldier executes it and picks none of them
+([military-doctrine.md](../../military-doctrine.md), "the farm by duty"). Each spell of three minutes it holds each share to
+the yield expected of what's in it to work (`command.DutyYield`), against what the errand ledger counted its duty's routine
+making, and a spell ended short is behind - `[Alarm] [Alpha] Dana behind its share: ..., made 0 of 8 expected in 180 s -
+CANTCO` - answered by a rule per cause, said once while the cause holds (`command.MissAnswer`):
+
+| Cause | Answer |
+|---|---|
+| The soldier's CANTCO at its duty - its table gone | The order re-pointed to the next standing table (the camp's, then the keep's), else up the chain: `[Alpha -> PL] Dana, baker, CANTCO: ... - no table standing to re-point it to` |
+| Its source ran dry | The next chest the stores book knows holding its makings, else up the chain: `idle: no wheat stored` |
+| Its ground worked out - a woodcutter's strip | The wood shared again without it |
+| Its hands other work's - a fight (`CONTACT`), a ration run - half the spell or more | Said as the cause; not re-ordered |
+| None found | `[Gap] [Alpha -> PL]`: the duty, the yield short, and what was checked |
+
+A share with nothing in it to work is no spell and isn't behind; a baker idle for want of wheat is said up the chain once
+(`[Alpha -> PL] Dana, baker, idle: no wheat stored`) and shown in the squad's progress, the platoon leader's view, till a
+spell with work in it has run.
+
 ## When it decides
 Every 20 seconds while the squad has an objective, at once on a new objective, and at once on a
 contact report. Never with no objective. Soldiers keep their last order between decisions.

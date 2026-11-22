@@ -1,10 +1,12 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
-import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.command.BakerDuty;
 import io.github.jayessdeesea.minecraft.command.Box;
 import io.github.jayessdeesea.minecraft.command.DutyOrder;
+import io.github.jayessdeesea.minecraft.command.DutyYield;
 import io.github.jayessdeesea.minecraft.command.FarmDuties;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -20,7 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.ToIntFunction;
+import java.util.function.IntSupplier;
 import java.util.function.ToLongFunction;
 
 /**
@@ -33,10 +35,14 @@ final class DutyBook {
 
     private static final Logger LOG = LogManager.getLogger(DutyBook.class);
 
-    /** What each duty makes or spends: any change in it is the share being worked. */
-    static final Map<DutyOrder.Duty, Set<ItemClass>> PRODUCTS = Map.of(
-            DutyOrder.Duty.HARVESTER, Set.of(ItemClass.WHEAT, ItemClass.SEEDS), DutyOrder.Duty.BAKER, Set.of(ItemClass.WHEAT, ItemClass.FOOD),
-            DutyOrder.Duty.WOODCUTTER, Set.of(ItemClass.LOG), DutyOrder.Duty.PLANTER, Set.of(ItemClass.SAPLING));
+    /** A duty's yield as the errand ledger counts it: the routine that works it, the item, and whether it's spent - planted - not made. */
+    record Yield(String routine, String item, boolean spent) {
+    }
+
+    /** What each duty yields: a harvester's wheat, a baker's bread, a woodcutter's logs, a planter's saplings planted. */
+    static final Map<DutyOrder.Duty, Yield> YIELDS = Map.of(
+            DutyOrder.Duty.HARVESTER, new Yield("FARMER", "wheat", false), DutyOrder.Duty.BAKER, new Yield("ARMOURER", "food", false),
+            DutyOrder.Duty.WOODCUTTER, new Yield("GATHERER", "log", false), DutyOrder.Duty.PLANTER, new Yield("FORESTER", "sapling", true));
 
     private final Map<String, DutyOrder> orders = new ConcurrentHashMap<>();
     private final ShareWatch watch = new ShareWatch();
@@ -73,15 +79,25 @@ final class DutyBook {
     }
 
     /**
-     * {@code soldier}'s share sampled at {@code now}: what its duty makes or spends, as {@code count} has it. One
-     * {@code paused} - in contact, doing what it should, or with nothing in its share to do (a plot growing, no wheat
-     * in the stores to bake) - isn't behind: its clock starts again. The alarm when it falls behind (command.ShareWatch).
+     * {@code soldier}'s share sampled at {@code now}: what its duty has yielded, as {@code ledger} counted it, against what
+     * it should in a spell (command.DutyYield) with {@code workable} in it to work - a baker's wheat stored and carried,
+     * a harvester's ripe cells, a woodcutter's or planter's ground left (more than none); {@code cantco} its soldier's
+     * failure at its duty now, if any. A miss is answered by its cause (command.MissAnswer): what goes up the chain is
+     * a warning, the rest the squad leader's word on the net.
      */
-    void sample(String squad, String soldier, ToIntFunction<ItemClass> count, boolean paused, long now) {
+    void sample(String squad, String soldier, ErrandLedger ledger, IntSupplier workable, Optional<String> cantco, long now) {
         DutyOrder order = orders.get(soldier);
         if (order != null) {
-            int product = PRODUCTS.get(order.duty()).stream().mapToInt(count).sum();
-            watch.sample(squad, order, paused ? Integer.MIN_VALUE : product, now).filter(l -> !paused).ifPresent(LOG::warn);
+            Yield yield = YIELDS.get(order.duty());
+            int made = yield.spent() ? ledger.spent(soldier, yield.routine(), yield.item()) : ledger.made(soldier, yield.routine(), yield.item());
+            watch.sample(squad, order, new ShareWatch.Seen(made, cantco, () -> ledger.held(soldier), yield.routine()),
+                    () -> DutyYield.expected(order, workable.getAsInt()), now).forEach(l -> {
+                if (l.startsWith("[Alarm]") || l.contains("-> PL]")) {
+                    LOG.warn(l);
+                } else {
+                    LOG.info(l);
+                }
+            });
         }
     }
 
@@ -99,7 +115,12 @@ final class DutyBook {
                 LOG.info(l);
             }
         });
-        return behind == 0 ? Optional.empty() : Optional.of(behind + " of " + producers.size() + " producers behind their shares");
+        // And each one idle for a cause its squad leader says up - a baker with no wheat stored: what the platoon leader is shown.
+        List<String> said = new ArrayList<>(watch.idle(producers));
+        if (behind > 0) {
+            said.addFirst(behind + " of " + producers.size() + " producers behind their shares");
+        }
+        return said.isEmpty() ? Optional.empty() : Optional.of(String.join("; ", said));
     }
 
     /**
@@ -211,6 +232,49 @@ final class DutyBook {
      */
     boolean plantsNothing(String soldier, io.github.jayessdeesea.minecraft.bot.farm.TreeFarm grove, io.github.jayessdeesea.minecraft.bot.world.WorldView world) {
         return is(soldier, DutyOrder.Duty.PLANTER) && (grove == null || io.github.jayessdeesea.minecraft.bot.supply.Forester.planted(world, grove));
+    }
+
+    /** The table {@code soldier}'s order names it to work at - a baker's - as the cell it stands in. */
+    Optional<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> table(String soldier) {
+        return of(soldier).flatMap(DutyOrder::table).map(t -> io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(t.x(), t.y(), t.z()));
+    }
+
+    /**
+     * The workshop {@code soldier} makes its kit at: if its order names a table, the one of {@code known} that table is
+     * - none if none is, and it bakes at the table or not at all - else its {@code own}.
+     */
+    Optional<Workshop> workshop(String soldier, Optional<Workshop> own, Workshop... known) {
+        return table(soldier).map(t -> java.util.Arrays.stream(known).filter(w -> w != null && w.table().equals(t)).findFirst()).orElse(own);
+    }
+
+    /**
+     * The table a baker's order names, by its squad leader's rule: the first of {@code workshops} - the camp's, then the
+     * keep's - whose table stands, as the cell's centre; none with none standing, said in its order ("no table standing")
+     * and up the chain on its CANTCO (command.MissAnswer). The duty orders' eval: the camp's table dug, the order re-pointed.
+     */
+    static Optional<Position> standingTable(io.github.jayessdeesea.minecraft.bot.world.WorldView world, Workshop... workshops) {
+        return java.util.Arrays.stream(workshops).filter(w -> w != null && world.workstation(w.table().x(), w.table().y(), w.table().z())
+                        .equals(Optional.of(io.github.jayessdeesea.minecraft.bot.world.Workstation.CRAFTING_TABLE)))
+                .findFirst().map(w -> new Position(w.table().x() + 0.5, w.table().y(), w.table().z() + 0.5));
+    }
+
+    /** Whether {@code soldier}, carrying {@code wheat}, draws its order's: a baker short of its batch (command.BakerDuty). */
+    boolean drawsWheat(String soldier, int wheat) {
+        return of(soldier).filter(o -> BakerDuty.draws(o, wheat)).isPresent();
+    }
+
+    /** What {@code soldier}'s draw of wheat is made up to: its order's (command.BakerDuty), none with no baker's order. */
+    int wheatDrawnTo(String soldier) {
+        return of(soldier).filter(o -> o.duty() == DutyOrder.Duty.BAKER && o.batch() > 0).map(BakerDuty::drawTo).orElse(0);
+    }
+
+    /**
+     * Whether {@code soldier}, carrying {@code wheat} and {@code rations}, goes and bakes: a baker by its order's batch
+     * (command.BakerDuty), anyone else by the standing batch (command.Subsistence).
+     */
+    boolean bakeTrip(String soldier, int wheat, int rations) {
+        return of(soldier).filter(o -> o.duty() == DutyOrder.Duty.BAKER).map(o -> BakerDuty.bakes(o, wheat, rations))
+                .orElseGet(() -> io.github.jayessdeesea.minecraft.command.Subsistence.bakeTrip(wheat, rations));
     }
 
     /** Whether {@code soldier}'s order is {@code duty}. */

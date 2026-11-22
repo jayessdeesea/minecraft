@@ -31,7 +31,7 @@ review). Most of the time nothing changes; the point is to look.
 - **Owns each producer's duty**: what it produces, its area and its chest (operator, 2026-11-18) -
   a woodcutter's sector of forest, the planter that follows it, a harvester's plots, a baker's
   furnace. Duties split a squad's work into shares that don't overlap, passed on through chests.
-- **Watches its shares' timeliness**: a producer behind its share, or one holding without a share, is
+- **Watches its shares' timeliness**: a producer short of its share's yield, or one holding without a share, is
   its alarm to raise and its gap to close (operator, 2026-11-18; `command.ShareWatch`).
 - **Thinks in few round trips.** The model decides allocation - who, where, how many - on its slow
   clock; the drills step every workflow every second, and the model sees each as a summary

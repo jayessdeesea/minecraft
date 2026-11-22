@@ -1207,9 +1207,8 @@ harvesters, each on a share of the plot of its own - a run of the plot's whole c
 cell is in two shares and its walk stays short; shared among everyone farming the plot or one
 overlapping it, whatever their squad or the water it's round, so two squads on one stretch of farm
 have one set of shares and one baker (`DutyBook.onOneFarm`) - which it harvests and replants in one pass, keeping its seed and taking its wheat to the stockpile.
-With three or more on the farm, the last on the roster is its baker: it draws the stockpile's wheat a
-stack at a time - whenever it carries less than a batch's, 8 loaves (`SoldierErrands.BAKER_BATCH_WHEAT`; live,
-field657, drawing only below a loaf's, its baker sat on 15) - and bakes it, keeping only its own basic load of the
+With three or more on the farm, the last on the roster is its baker: it draws wheat by its duty order (below) and
+bakes it, keeping only its own basic load of the
 bread, not the share any other soldier carries (`Depositor.keepsFood`; field664, its baker carried 162, the stores none), and the bread past its own load goes in. A harvester below its basic
 load still bakes for itself - that's its own upkeep. With two, both harvest and bake as they go.
 A chunk farm on the farm has one tender (operator, 2026-11-19: a single soldier at a time works a
@@ -1225,20 +1224,28 @@ Each producer's duty reaches it as one value, its duty order (`command.DutyOrder
 its yield goes to - where the squad's yield is stockpiled (its workshop's chest), else the camp's dump
 (docs/echelons/platoon-leader/decisions.md); a chunk farm's tender's, the farm's chest. A baker's names its makings too
 (operator, 2026-11-21: the soldier is how; where, what and how much are the squad leader's): the chest it draws wheat from -
-the nearest the stores book knows holding some, re-pointed to the next when it runs dry - the camp's table it bakes at, and
-its batch of 8 loaves (`DutyOrder.making`); the baker draws from that chest only. A producer puts its
+the nearest the stores book knows holding some, re-pointed to the next when it runs dry - the table it bakes at, the camp's
+workshop's while it stands, else the keep's ("no table standing" with neither), and
+its batch of 8 loaves (`DutyOrder.making`). The baker executes it and decides none of it (`command.BakerDuty`): it draws
+from that chest only, whenever it carries less than a batch's wheat (live, field657, drawing only below a loaf's, its baker
+sat on 15), up to the most whole batches a stack holds; it bakes once it carries a batch's; and it bakes at that table only -
+no other table is used, and one out of sight is walked to by its workshop's stand (`Crafter.workAt`). A producer puts its
 load in at its order's dump while a chest stands there, else stockpiles as any soldier does (`DutyBook.dump`). The squad
 leader writes it each cycle, and says it when it changes: `[Alpha -> Alice] DUTY: harvester over x
 6..8, z -4..4, the dump at (3, 64, 2)`; `[Alpha -> Dana] DUTY: baker, the dump at (3, 64, 1), drawing from
 (3, 64, 1), at the table at (1, 64, -2), 8 a batch` (`app.DutyBook`).
 
-**Timeliness** (operator, 2026-11-18; `command.ShareWatch`). The squad leader watches each share by
-what its duty makes or spends - a harvester's wheat and seed, a baker's wheat and bread, a woodcutter's
-logs, a planter's saplings. A share with no change in it for three minutes is behind, and alarmed once
-a spell: `[Alarm] [Alpha] Carl behind its share: woodcutter over x 8..24, ...`. It's said again when the
-share moves (`back at its share`). A soldier in contact is doing what it should, and a share with nothing
-in it to do isn't behind - a harvester's plot growing (`Farmer.hasWork`), a baker with no wheat in the
-stores: each one's clock starts again.
+**Timeliness** (operator, 2026-11-18; `command.ShareWatch`). The squad leader holds each share, spell by spell of three
+minutes, to what it should yield in the spell (`command.DutyYield`), by what's in it to work as the spell opens: a baker
+its batch while a batch's wheat is stored or carried (fewer for less), a harvester a sweep - 8 - once that many of its
+cells stand ripe, a woodcutter 4 logs, a planter a sapling while its wood has ground opened to plant. What it yielded is
+the errand ledger's count (`ErrandLedger.made`): what the duty's routine - the armourer's bread, the farmer's wheat, the
+gatherer's logs, the forester's saplings planted - added to the pack tick by tick, and what it picks up within 3 s of
+letting go (a felled log reaches the pack after its dig); not a draw's or a deposit's, and not a product merely
+changing. A spell ended short is the share behind, alarmed once for each cause and answered by its rule - the
+table, the source, the ground, other work, or a gap report up (docs/echelons/squad-leader/decisions.md); a spell that
+meets it after is `back at its share`. Nothing to work - a plot growing, no wheat stored - is no spell, and a share
+behind is behind no longer. A fight isn't nothing to work: its time is the hands' `CONTACT`'s, the cause it's said as.
 A soldier of a squad on FARM, TREE_FARM or WOOD with no share for three minutes is alarmed as holding
 without one. The platoon leader's part is the squad's: with half or more of its producers behind,
 `[Alarm] [PL] Alpha's gathering wood is behind its order`, and the squad's progress - what the platoon

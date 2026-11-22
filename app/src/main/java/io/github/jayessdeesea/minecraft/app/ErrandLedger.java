@@ -83,6 +83,30 @@ final class ErrandLedger {
      */
     private final Map<String, Integer> freeFood = new HashMap<>();
 
+    /** Whose a soldier's hands are with no routine holding them. */
+    static final String FREE = io.github.jayessdeesea.minecraft.command.MissAnswer.FREE;
+    /** Each soldier's pack, whose its hands were, and when, at its last tick: what changed since is that routine's doing. */
+    private final Map<String, Map<String, Integer>> lastCarried = new HashMap<>();
+    private final Map<String, String> lastRoutine = new HashMap<>();
+    private final Map<String, Long> lastAt = new HashMap<>();
+    /** The routine that last held each soldier's hands, and when: what it picks up just after is still that routine's. */
+    private final Map<String, String> lastWorked = new HashMap<>();
+    private final Map<String, Long> lastWorkedAt = new HashMap<>();
+    /**
+     * How long after a routine lets go what's picked up is still its yield: a felled log's item reaches the pack after its
+     * dig is done. Live in the squad simulation, woodcutters felling all spell were counted none, every log picked up free.
+     */
+    static final long PICKUP_MILLIS = 3_000;
+    /**
+     * What each soldier's routines made - more of an item, its hands theirs - by "soldier routine item", from the start,
+     * counted tick by tick: a duty's yield as it comes (command.ShareWatch), not at a spell's end. Not a transfer's.
+     */
+    private final Map<String, Integer> made = new HashMap<>();
+    /** ...and what they spent - fewer of it: a planter's saplings planted. */
+    private final Map<String, Integer> spent = new HashMap<>();
+    /** How long each soldier's hands were each routine's - {@link #FREE} with none - by "soldier routine", from the start. */
+    private final Map<String, Long> held = new HashMap<>();
+
     /**
      * {@code soldier} at {@code at} and {@code now}, its hands {@code routine}'s or free, carrying {@code carried} - item
      * name to count. Lines back: a spell that didn't pay, as it ends; the totals, when due.
@@ -90,6 +114,7 @@ final class ErrandLedger {
     synchronized List<String> tick(String soldier, Optional<?> routine, Position at, Map<String, Integer> carried, long now) {
         List<String> lines = new ArrayList<>();
         String now_ = routine.map(Object::toString).orElse(null);
+        account(soldier, now_ == null ? FREE : now_, carried, now);
         Spell spell = spells.get(soldier);
         if (spell != null) {
             spell.walked += Math.hypot(at.x() - spell.last.x(), at.z() - spell.last.z()) + Math.abs(at.y() - spell.last.y());
@@ -156,6 +181,79 @@ final class ErrandLedger {
             lines.add(line.toString());
         }
         return lines;
+    }
+
+    /** The change in {@code soldier}'s pack since its last tick, put to the routine whose its hands were then, and the time. */
+    private void account(String soldier, String routine, Map<String, Integer> carried, long now) {
+        String by = lastRoutine.put(soldier, routine);
+        Map<String, Integer> before = lastCarried.put(soldier, Map.copyOf(carried));
+        Long since = lastAt.put(soldier, now);
+        if (since != null) {
+            held.merge(soldier + " " + by, now - since, Long::sum);
+        }
+        if (by != null && !FREE.equals(by)) {
+            lastWorked.put(soldier, by);
+            lastWorkedAt.put(soldier, since);
+        }
+        // Picked up with its hands just come free: the routine's that let go.
+        String gainedBy = FREE.equals(by) && lastWorked.containsKey(soldier) && now - lastWorkedAt.get(soldier) <= PICKUP_MILLIS
+                ? lastWorked.get(soldier) : by;
+        if (before == null) {
+            return;
+        }
+        Map<String, Integer> all = new TreeMap<>(before);
+        carried.forEach((k, v) -> all.merge(k, 0, Integer::sum));
+        all.keySet().forEach(item -> {
+            int d = carried.getOrDefault(item, 0) - before.getOrDefault(item, 0);
+            if (d > 0 && !FREE.equals(gainedBy) && !TRANSFERS.contains(gainedBy)) {
+                made.merge(soldier + " " + gainedBy + " " + item, d, Integer::sum);
+            } else if (d < 0 && !FREE.equals(by) && !TRANSFERS.contains(by)) {
+                spent.merge(soldier + " " + by + " " + item, -d, Integer::sum);
+            }
+        });
+    }
+
+    /** How many of {@code item} {@code soldier}'s {@code routine} has made since the start. */
+    synchronized int made(String soldier, String routine, String item) {
+        return made.getOrDefault(soldier + " " + routine + " " + item, 0);
+    }
+
+    /** How many of {@code item} {@code soldier}'s {@code routine} has spent since the start. */
+    synchronized int spent(String soldier, String routine, String item) {
+        return spent.getOrDefault(soldier + " " + routine + " " + item, 0);
+    }
+
+    /** A hostile near: its routines paused, its hands the fight's - other work than its duty (command.MissAnswer). */
+    static final String CONTACT = "CONTACT";
+    /** Each soldier in contact at its last call, and since when. */
+    private final Map<String, Long> contactSince = new HashMap<>();
+
+    /** {@code soldier} in contact, or not, at {@code now}: the time it was counted as its hands' {@link #CONTACT}'s. This ledger back. */
+    synchronized ErrandLedger contact(String soldier, boolean in, long now) {
+        Long since = in ? contactSince.putIfAbsent(soldier, now) : contactSince.remove(soldier);
+        if (since != null) {
+            held.merge(soldier + " " + CONTACT, now - since, Long::sum);
+            if (in) {
+                contactSince.put(soldier, now);
+            }
+        }
+        return this;
+    }
+
+    /** How long, in ms, {@code soldier}'s hands have been each routine's - {@link #FREE}, {@link #CONTACT} - since the start, by routine. */
+    synchronized Map<String, Long> held(String soldier) {
+        Map<String, Long> of = new HashMap<>();
+        held.forEach((k, ms) -> {
+            if (k.startsWith(soldier + " ")) {
+                of.put(k.substring(soldier.length() + 1), ms);
+            }
+        });
+        return of;
+    }
+
+    /** How long, in ms, {@code soldier}'s hands have been {@code routine}'s - {@link #FREE}: none's - since the start. */
+    synchronized long held(String soldier, String routine) {
+        return held.getOrDefault(soldier + " " + routine, 0L);
     }
 
     /**

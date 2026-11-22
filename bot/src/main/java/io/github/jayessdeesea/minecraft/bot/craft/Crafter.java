@@ -122,6 +122,11 @@ public final class Crafter {
 
     /** Each furnace in use, and the soldier holding it - shared between soldiers. */
     private final Map<BlockPos, String> furnaces;
+    /**
+     * The one table its orders name it to work at - a baker's, its duty order's (command.DutyOrder) - else none, and any
+     * table near is used. Named, no other table is: where it's worked is its squad leader's, not the soldier's.
+     */
+    private Optional<BlockPos> table = Optional.empty();
 
     public Crafter(String name, PlaySession session, Inventory inventory, Map<BlockPos, String> furnaces) {
         this.name = name;
@@ -133,6 +138,11 @@ public final class Crafter {
 
     public synchronized boolean active() {
         return script != null;
+    }
+
+    /** Works at {@code table} only, from now - none, at any table near. */
+    public synchronized void workAt(Optional<BlockPos> table) {
+        this.table = table;
     }
 
     /** Why the last run failed, while the soldier waits out its cooldown. */
@@ -174,7 +184,7 @@ public final class Crafter {
                     BlockPos cell = feet.offset(dx, dy, dz);
                     double distance = dx * dx + dy * dy + dz * dz;
                     if (distance < bestDistance && world.workstation(cell.x(), cell.y(), cell.z()).equals(Optional.of(station))
-                            && furnaces.getOrDefault(cell, name).equals(name)) {
+                            && furnaces.getOrDefault(cell, name).equals(name) && (station == Workstation.FURNACE || table.isEmpty() || table.get().equals(cell))) {
                         best = cell;
                         bestDistance = distance;
                     }
@@ -189,10 +199,11 @@ public final class Crafter {
         return usable(world, soldier, station).isPresent();
     }
 
-    /** The nearest {@code station} in reach this soldier may use: any table, a furnace nobody else holds. */
+    /** The nearest {@code station} in reach this soldier may use: any table - the one named, if one is - a furnace nobody else holds. */
     private Optional<BlockPos> usable(WorldView world, Position soldier, Workstation station) {
         if (station != Workstation.FURNACE) {
-            return inReach(world, soldier, station);
+            return table.isEmpty() ? inReach(world, soldier, station)
+                    : table.filter(t -> withinReach(soldier, t) && world.workstation(t.x(), t.y(), t.z()).equals(Optional.of(station)));
         }
         Set<BlockPos> others = new HashSet<>();
         furnaces.forEach((at, holder) -> {

@@ -405,6 +405,11 @@ public final class Farmer {
                 || !groundToFill(world, farm).isEmpty();
     }
 
+    /** How many of {@code farm}'s plot cells stand ripe: a harvester's share's yield to come (command.DutyYield). */
+    public static int ripe(WorldView world, FarmPlan farm) {
+        return (int) farm.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).count();
+    }
+
     public synchronized boolean active() {
         return digger != null || fieldWork != null || unburier.active() || carrier.active() || placing != null || building != null;
     }
@@ -451,7 +456,7 @@ public final class Farmer {
      * ...one farther only with this many ripe to sweep, nearest first: ripe wheat keeps, and a farmer walking the field for
      * each one as it ripens walks a field a crop (operator, 2026-11-21: this is killing productivity).
      */
-    static final int HARVEST_BATCH = 8;
+    static final int HARVEST_BATCH = io.github.jayessdeesea.minecraft.command.DutyYield.SWEEP;
     private long ticks;
     /** How many times a harvest is started on one crop, never done, before it's passed over. */
     static final int RESTARTS_BEFORE_PASSING_OVER = 3;

@@ -203,6 +203,16 @@ public final class Armourer {
      * else (backlog/sites.md).
      */
     public synchronized void tick(Position soldier, WorldView world, Set<Recipe> wanted, boolean threatened, Optional<Workshop> workshop) {
+        tick(soldier, world, wanted, threatened, workshop, Optional.empty());
+    }
+
+    /**
+     * As above, at {@code table} only, if its orders name one - a baker's, its duty order's (command.DutyOrder): no other
+     * table is used, and one beyond the search's reach is walked to by its {@code workshop}'s stand.
+     */
+    public synchronized void tick(Position soldier, WorldView world, Set<Recipe> wanted, boolean threatened, Optional<Workshop> workshop,
+                                  Optional<BlockPos> table) {
+        crafter.workAt(table);
         ticks++;
         if (cooldown > 0) {
             cooldown--;

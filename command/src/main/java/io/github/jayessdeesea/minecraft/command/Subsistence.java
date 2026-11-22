@@ -126,7 +126,12 @@ public final class Subsistence {
      * when it's running out of rations (3 or fewer, CrossLevel's running out) and needs one now.
      */
     public static boolean bakeTrip(int wheat, int rations) {
-        return wheat >= BAKE_BATCH * BREAD_WHEAT || wheat >= BREAD_WHEAT && rations <= 3;
+        return bakeTrip(wheat, rations, BAKE_BATCH);
+    }
+
+    /** As {@link #bakeTrip(int, int)}, a batch of {@code batch} loaves - a baker's, its duty order's (BakerDuty). */
+    public static boolean bakeTrip(int wheat, int rations, int batch) {
+        return batch > 0 && wheat >= batch * BREAD_WHEAT || wheat >= BREAD_WHEAT && rations <= 3;
     }
 
     /** Whether a soldier carrying {@code rations} restocks when it's convenient: below {@link #RESUPPLY}. */

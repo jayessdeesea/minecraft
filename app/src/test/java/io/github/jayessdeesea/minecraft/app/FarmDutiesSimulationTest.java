@@ -117,6 +117,140 @@ class FarmDutiesSimulationTest {
         assertEquals(0, harvested.getOrDefault("Dana", 0), "the baker harvests none: " + harvested);
     }
 
+    /** The camp's table, at (1, 64, -2), on the pond's ground: the one a farm's baker's order names. */
+    static int campTable(int x, int y, int z) {
+        return x == 1 && z == -2 && y == GROUND + 1 ? SimServer.CRAFTING_TABLE : pond(x, y, z);
+    }
+
+    /** Alpha's four on the farm - Dana its baker - each with {@code kit}, run on {@code server}. */
+    private void farmSquad(SimClock clock, SimServer server, List<int[]> kit) {
+        List<String> squad = List.of("Alice", "Bob", "Carl", "Dana");
+        Roster roster = new Roster("Alpha:" + String.join(",", squad));
+        Position farm = new Position(10.5, GROUND + 1, 2.5);
+        Objective toFarm = new Objective("Farm", farm, "Bread for the depot", new Objective.Task.Farm());
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> toFarm), squadLeader(farm),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit)).run();
+    }
+
+    /** A baker's kit, as live: a full basic load - the batches past it are the stores' - and logs for its workshop's chest. */
+    private static List<int[]> bakersKit(int wheat) {
+        return List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
+                new int[]{38, SimServer.ITEM_BREAD, 64}, new int[]{39, SimServer.ITEM_OAK_LOG, 8},
+                new int[]{12, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), wheat}, new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32});
+    }
+
+    /** The scenario's log, as the runner wrote it. */
+    private static List<String> log(String scenario) throws java.io.IOException {
+        // Not there yet is nothing said yet: its appender makes the file at its first line, which under a full verify's
+        // parallel load can come after the first look (merge verify of duty-orders: NoSuchFileException 8 ms in).
+        Path file = Path.of("target", "sim", scenario + ".log");
+        return java.nio.file.Files.exists(file) ? java.nio.file.Files.readAllLines(file) : List.of();
+    }
+
+    /**
+     * The duty orders' eval (backlog/duty-orders.md): the baker bakes at the table its order names, not the one nearest it -
+     * a table beside the dump's chest it draws at. Where it's worked is its squad leader's.
+     */
+    @Test
+    void aBakerBakesAtTheTableItsOrderNames() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 5 && z == 1 && y == GROUND + 1 ? SimServer.CRAFTING_TABLE : campTable(x, y, z), 24_000);
+        server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64);
+        java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0]]");
+        farmSquad(clock, server, bakersKit(15));
+
+        clock.advance(10 * 60_000);
+
+        List<String> baked = List.copyOf(server.log).stream().filter(l -> l.startsWith("Dana crafted bread")).toList();
+        assertTrue(!baked.isEmpty(), "the baker baked: " + log("aBakerBakesAtTheTableItsOrderNames").stream().filter(l -> l.contains("Dana crafts")).toList());
+        assertEquals(List.of(), baked.stream().filter(l -> !l.endsWith(" at " + SimServer.key(1, GROUND + 1, -2))).toList(),
+                "every loaf at its order's table, " + SimServer.key(1, GROUND + 1, -2) + ", none at the one by the chest, " + SimServer.key(5, GROUND + 1, 1));
+    }
+
+    /** The lines of {@code scenario}'s log holding {@code text}, for the eval's record: what was said, and when. */
+    private static List<String> said(String scenario, String text) throws java.io.IOException {
+        List<String> found = log(scenario).stream().filter(l -> l.contains(text)).toList();
+        found.stream().limit(3).forEach(l -> System.out.println("[Eval] duty-orders/" + scenario + ": " + l.substring(Math.max(0, l.indexOf('['))))); // its yield and time to detection, as a number
+        return found;
+    }
+
+    /**
+     * The duty orders' eval, no wheat anywhere: the baker idle, its squad leader's report up the chain names it - "no wheat
+     * stored" - and it isn't behind its share: nothing in its share to work.
+     */
+    @Test
+    void aBakerWithNoWheatAnywhereIsReportedIdleNotBehind() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FarmDutiesSimulationTest::campTable, 24_000);
+        farmSquad(clock, server, bakersKit(0));
+
+        clock.advance(4 * 60_000);
+
+        String scenario = "aBakerWithNoWheatAnywhereIsReportedIdleNotBehind";
+        assertTrue(!said(scenario, "[Alpha -> PL] Dana, baker, idle: no wheat stored").isEmpty(), "said up the chain: "
+                + log(scenario).stream().filter(l -> l.contains("Dana") && (l.contains("[Alarm]") || l.contains("-> PL]"))).toList());
+        assertEquals(List.of(), said(scenario, "Dana behind its share"), "idle, not behind");
+    }
+
+    /**
+     * The duty orders' eval, the table gone: the camp's table dug once its baker's order names it, with no other standing
+     * and no logs to fit one - the baker's CANTCO, and its squad leader's answer: its order says no table stands, and the CANTCO goes up
+     * the chain.
+     */
+    @Test
+    void aBakersTableDugIsItsCantcoAnsweredUpTheChain() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FarmDutiesSimulationTest::campTable, 24_000);
+        server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64);
+        java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0]]");
+        farmSquad(clock, server, List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
+                new int[]{38, SimServer.ITEM_BREAD, 64}, new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32},
+                new int[]{12, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 15}));
+
+        String scenario = "aBakersTableDugIsItsCantcoAnsweredUpTheChain";
+        for (int s = 0; s < 60 && log(scenario).stream().noneMatch(l -> l.contains("-> Dana] DUTY: baker") && l.contains("at the table at (1, 64, -2)")); s++) {
+            clock.advance(1_000); // till its order names the camp's table, or a minute: a camp's workshop sited before its table's chunk is seen names none
+        }
+        server.set(1, GROUND + 1, -2, SimServer.AIR);
+        clock.advance(8 * 60_000);
+
+        assertTrue(!said(scenario, "-> Dana] DUTY: baker").stream().filter(l -> l.contains("no table standing")).toList().isEmpty(), "its order: "
+                + log(scenario).stream().filter(l -> l.contains("-> Dana] DUTY")).toList());
+        assertTrue(!said(scenario, "[Alpha -> PL] Dana, baker, CANTCO").isEmpty(), "up the chain: "
+                + log(scenario).stream().filter(l -> l.contains("Dana") && (l.contains("[Alarm]") || l.contains("-> PL]") || l.contains("gives up"))).toList());
+    }
+
+    /**
+     * The duty orders' eval, the baker pulled off: a fight at its table from the first, the spell long - its yield short, the
+     * cause said, and its order the same: not re-ordered. A known failure (below).
+     */
+    @Test
+    void aBakerPulledOffByAFightIsShortForThatCauseNotReordered() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FarmDutiesSimulationTest::campTable, 24_000);
+        server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64);
+        java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0]]");
+        farmSquad(clock, server, bakersKit(15));
+
+        for (int i = 0; i < 240; i++) { // a zombie by its table every second, from the start, for four minutes: the fight unbroken
+            server.spawnZombie(2.5, GROUND + 1, -0.5);
+            clock.advance(1_000);
+        }
+        clock.advance(60_000);
+
+        String scenario = "aBakerPulledOffByAFightIsShortForThatCauseNotReordered";
+        boolean correct = said(scenario, "[Alpha] Dana short of its share").stream().anyMatch(l -> l.contains("its hands CONTACT's"));
+        System.out.println("[Eval] duty-orders/baker-pulled-off: " + (correct ? "PASS" : "FAIL (known)") + " - "
+                + log(scenario).stream().filter(l -> l.contains("Dana drew") || l.contains("Dana made bread") || l.contains("Dana short of")).count()
+                + " draws, bakes and misses; " + log(scenario).stream().filter(l -> l.contains("[Contact] Dana at")).count() + " contacts");
+        // Known failure: in the simulation a fight doesn't pull the baker off - it draws and bakes in contact, its yield met -
+        // so the miss and its cause (command.MissAnswer, its rule unit-tested) aren't reached here yet.
+        assertTrue(!correct, "baker-pulled-off passes now: take its known-failure mark off, so it holds the answer");
+    }
+
     /**
      * A baker with wheat for less than a batch, and more in a chest, draws the rest and bakes: live (field657), Pete
      * carried 15 wheat beside chests of 544 and baked nothing - it baked only a batch of 8 loaves' worth (24) and drew
