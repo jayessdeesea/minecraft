@@ -237,6 +237,16 @@ surface: a camp heaped with spoil reads its ground on the heaps) has the platoon
 remember across a restart - each camp wall's layout - is kept under `minecraft.state-dir`
 (`garrison-state/`, git-ignored).
 
+**Keeping a garrison running while you change the code** (`tools/ops/`, POSIX `sh`, e.g. Git Bash; runs live in
+`GARRISON_RUNS`, default `C:/mc-state/garrison`, off OneDrive):
+- `commit.sh <message file>` commits the tracked changes behind a full verify (`verify.sh`), only on BUILD SUCCESS,
+  and pushes; `git add` new files first, and touch nothing in the tree while it runs.
+- `deploy.sh <run> <previous run>` builds what's committed, checks the fat jar, stops the previous run by the PID in
+  its log and starts the new one from a copy of the jar (`start-garrison.sh`), logging to `garrison-<run>.log`. Its
+  arguments - your name, the camp, the mission - are yours, one a line in `garrison.args` there, not in the repo.
+- `chatprobe.sh <garrison log>` asks the operator's chat a fixed set of questions - questions only - and records each
+  reply with the register reads it made; each should read and name what's true, with no command given.
+
 The log lines to read first: `[Casualty]`, each death with the soldier's last seconds (§ 6); `[Contact]`,
 each contact's hostiles, the soldier's kit and the rule that chose its response (§ 8);
 `[Alert]`, a soldier stuck in place for a minute other than while its squad hides or sleeps (§ 3); `[Idle]`, every ten
