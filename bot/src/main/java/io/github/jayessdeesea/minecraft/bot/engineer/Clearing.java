@@ -245,7 +245,9 @@ public final class Clearing {
      * the hole. Live, glass high over the keep was left standing, and every block under it with it.
      */
     public static boolean diggable(WorldView world, int x, int y, int z) {
-        if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent()) {
+        // A fence gate, shut or open - open, it reads passable - is dug as a gate (Digger.Target#GATE): it needs nothing under
+        // it, and live (operator, 2026-11-22) the old farm's gates hung over the flatten at chunk (1, 3).
+        if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent() || world.isGate(x, y, z)) {
             return true;
         }
         // Farmland is a farm's, never a clear's - but where it's given up, a farm mission's chunk to flatten: live (field681),

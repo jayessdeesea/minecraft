@@ -77,6 +77,8 @@ final class Digger {
          * walk to one was given up a tick in as "the OTHER is gone".
          */
         ROOFED_LOG(70, 5, null, 0, ItemClass.LOG),
+        /** A fence gate, shut or open, in a clear's way: wood, hardness 2, with the best axe carried or by hand, as a log. */
+        GATE(70, 1, null, 0, null, false),
         /** Plain stone, with a pickaxe - by hand it drops nothing. At feet or head height. */
         STONE(35, 1, ItemClass.PICKAXE, 0, ItemClass.COBBLESTONE),
         /** Cobblestone put down over the camp's floor, with a pickaxe: hardness 2, a third longer than stone. At feet or head height. */
@@ -163,6 +165,7 @@ final class Digger {
             return switch (this) {
                 case LOG -> world.isLog(block.x(), block.y(), block.z()) && underTheSky(world, block);
                 case ROOFED_LOG -> world.isLog(block.x(), block.y(), block.z());
+                case GATE -> world.isGate(block.x(), block.y(), block.z());
                 case STONE -> world.isStone(block.x(), block.y(), block.z());
                 case COBBLESTONE -> world.isCobblestone(block.x(), block.y(), block.z());
                 case IRON_ORE -> world.isIronOre(block.x(), block.y(), block.z());
@@ -222,14 +225,14 @@ final class Digger {
          */
         int speedTool(Inventory inventory) {
             return switch (this) {
-                case LOG, ROOFED_LOG -> bestAxe(inventory);
+                case LOG, ROOFED_LOG, GATE -> bestAxe(inventory);
                 case SOIL, GRAVEL -> fastest(inventory, ItemClassRegistry::shovelSpeed);
                 default -> -1;
             };
         }
 
         private double speedOf(int item) {
-            return (this == LOG || this == ROOFED_LOG ? ItemClassRegistry.axeSpeed(item) : ItemClassRegistry.shovelSpeed(item)).getAsDouble();
+            return (this == LOG || this == ROOFED_LOG || this == GATE ? ItemClassRegistry.axeSpeed(item) : ItemClassRegistry.shovelSpeed(item)).getAsDouble();
         }
 
         private static int fastest(Inventory inventory, java.util.function.IntFunction<java.util.OptionalDouble> speedOf) {

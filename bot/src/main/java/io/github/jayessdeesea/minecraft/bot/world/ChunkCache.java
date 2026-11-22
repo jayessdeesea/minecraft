@@ -416,7 +416,7 @@ public final class ChunkCache {
         }
         boolean open = true;
         for (int stateId : chunk.sectionBlockStates.get(i)) {
-            if (BlockClassRegistry.classOf(stateId) != BlockClassRegistry.BlockClass.PASSABLE) {
+            if (BlockClassRegistry.classOf(stateId) != BlockClassRegistry.BlockClass.PASSABLE || BlockClassRegistry.isGate(stateId)) { // an open gate stands alone: no open section (FlattenTopsSimulationTest)
                 open = false;
                 break;
             }

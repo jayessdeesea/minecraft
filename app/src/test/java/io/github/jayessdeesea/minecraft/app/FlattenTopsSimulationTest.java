@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
+import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.command.FarmMission;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -186,5 +188,50 @@ class FlattenTopsSimulationTest {
                 "said up the chain by name: " + log.stream().filter(l -> l.contains("[Request]")).limit(8).toList());
         assertTrue(log.stream().noneMatch(l -> l.contains("[Objectives] Alpha: " + FARM.said(FARM.steps().getFirst()) + " DONE")),
                 "the flatten not measured done round it" + mission(log));
+    }
+    /**
+     * Fence gates in the dig - one shut on the ground, one open and left in the air by ground dug from under it - cut with
+     * the rest: an open gate reads passable and a shut one has no break time the clear knew, and a gate needs nothing
+     * under it, so live (operator, 2026-11-22: "the crew is leaving the gates alone, there are some random gates in the
+     * air") the old y=67 farm's gates hung over the flatten at chunk (1, 3).
+     */
+    @Test
+    void fenceGatesInTheDigAreCutOpenOrShut() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, with((x, y, z) -> x == 40 && z == 8 && y == GROUND + 1 ? SimItems.GATE
+                : x == 42 && z == 8 && y == GROUND + 3 ? SimItems.GATE_OPEN : -1), 1000);
+        List<String> log = run(server, clock, FarmMissionSimulationTest.kit(), 40);
+        List<String> gates = new ArrayList<>();
+        for (int x = FARM.minX(); x <= FARM.minX() + 15; x++) {
+            for (int z = FARM.minZ(); z <= FARM.minZ() + 15; z++) {
+                for (int y = FLOOR + 1; y <= GROUND + 6; y++) {
+                    int b = server.block(x, y, z);
+                    if ((b == SimItems.GATE || b == SimItems.GATE_OPEN) && !(y == FarmMission.SEA_LEVEL + 1 && new ChunkFarm(
+                            FARM.chunkX(), FARM.chunkZ(), FarmMission.SEA_LEVEL).gates().contains(new BlockPos(x, y, z)))) {
+                        gates.add(x + "," + y + "," + z);
+                    }
+                }
+            }
+        }
+        assertEquals(List.of(), gates, "no gate left but the new template's own" + mission(log));
+    }
+
+    /**
+     * A block put down on ground already cut below it, partway through: seen at the next look over the whole area, and the
+     * level goes back up to it (operator, 2026-11-22: before each next level, find the highest anything in the area - it
+     * could have been added since the last look).
+     */
+    @Test
+    void aBlockAddedOverCutGroundIsSeenAndCut() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, with((x, y, z) -> x >= 37 && x <= 43 && z >= 5 && z <= 11 && y > GROUND && y <= GROUND + 2
+                ? SimServer.DIRT : -1), 1000);
+        run(server, clock, FarmMissionSimulationTest.kit(), 15);
+        server.set(34, GROUND + 2, 3, SimServer.DIRT); // put down where the ground's been cut from
+        clock.advance(25 * 60_000);
+        String scenario = String.valueOf(ThreadContext.get("scenario"));
+        server.dumpLog(scenario);
+        List<String> log = Files.readAllLines(Path.of("target", "sim", scenario + ".log"));
+        assertEquals(List.of(), over(server), "the block put down cut with the rest" + mission(log));
     }
 }
