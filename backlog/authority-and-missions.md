@@ -36,6 +36,21 @@ a squad; an objective is a place. The code's `Objective` type and `objective` ta
    reason. The short form (first 8 hex) in logs and chat. Java types renamed with the table.
    With the renames, the keep's task and log tag become the flatten's (`Objective.Task.Keep`, `[Keep]`): what it does is
    flatten ground (backlog/flatten-campaign.md).
+   **What the operator has ordered is the platoon leader's to keep, not the command line's** (operator, 2026-11-22):
+   today the mission, the camp, the ground to flatten and the standing rules are start arguments
+   (`minecraft.platoon-leader.mission`, `minecraft.camp`, `minecraft.flatten`, `shelter-at-night`, `keep-by-day`,
+   `minecraft.farm-squad`, `minecraft.supply.point`), and a mission given in the chat is held in memory
+   (`ChainOfCommand.onOperatorMission`): a restart goes back to the arguments. Each is an order of the operator's -
+   given in the chat, a row with who gave it, when and its words, in force until the operator replaces or rescinds
+   it, read back at start. The command line keeps only what the deployment is: the operator's name, the roster, the
+   models and prompts, the ports, where state is kept. Done when a garrison restarted with none of those arguments
+   carries on with the mission, camp and rules it had, and the chat says what's in force and who ordered it.
+   The platoon leader is the single-threaded leader (operator, 2026-11-22): priority and locations are its to decide
+   and to keep - where the camp is, where a farm or a supply dump goes, what comes first - from the operator's
+   mission and its end state. A location or a priority fixed on the command line is split brain, and static: it
+   can't change as the ground and the supply do. So `minecraft.camp` and `minecraft.flatten` don't become the
+   operator's orders kept as rows; they become the platoon leader's decisions, kept with why, which the operator
+   may override in the chat.
    Requests are tasks going up: `app.RequestLedger` folds into the task register - a squad's request (a task finished
    or stalled, Class I RED, Class IV) is a row with its issuer, recipient, given-at and state like any other, overdue
    by the same rule, so there is one register and one review of it, not two.

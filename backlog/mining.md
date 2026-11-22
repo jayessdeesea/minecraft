@@ -39,7 +39,7 @@ diamonds near y=-55, in veins a few blocks off any one shaft.
   the model doesn't show - the seeing worked that night (ore mined beside Delta's stairs), so spent faces are the
   likelier cause and the headings the fix.
 - **A gallery that breaks into a cave** (`stuck/cave-eli-field552`; field535-552, Eli at y=20): its next stand is over
-  the void with no floor, and the miner has no route to it for runs. Decided (backlog/questions-overnight.md): floored
+  the void with no floor, and the miner has no route to it for runs. Decided (operator, 2026-11-22): floored
   across at its level with the cobblestone it carries. First a squad simulation that holds a scenario's objective at
   its height underground - today the objective is put on the surface (`NightRules.grounded`), the camp's ground work
   and the recovery drill take the soldier up to it, and the cave is never crossed. Then the bridge level with the

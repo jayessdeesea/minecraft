@@ -62,6 +62,10 @@ interruptions). This item is the state those two leave behind, and the evals it 
 - Property tests over the pure transition, on generated observations, with no `SimServer`: one
   activity at a time; every claim has a live owner; every state is left by its end, a guard or a
   deadline.
+- The same way, over small sites once a level is shared out by sector (backlog/authority-and-missions.md step 4), the
+  properties the operator wanted checked, not shown by examples (2026-11-14): no builder digs below the site's
+  level; a block put down is cleared before the level falls past it; with reports getting through, the site reaches
+  its floor; a report lost delays the work and never deadlocks it.
 - A live soldier's observations are recorded at the tick's boundary and replayed through the
   transition to the same states: any misbehaviour becomes a case as a stuck soldier does
   (`StuckEvalsTest`).

@@ -26,7 +26,7 @@ proven wrong, so a gap is fixed before work that leans on it.
    mine), and the replay harness gives the soldier that order rather than a platoon leader's objective - replayed with
    an objective, `stuck/cave-eli-field552` was put on the cave's floor 17 below by the night rules, so it can't show
    the miner's failure. The order's shape is backlog/soldier-order.md's.
-5. **Known gaps**, each when it costs something (the physics ones are backlog/physics-fidelity.md's):
+5. **Known gaps**, each when it costs something (the physics ones are docs/echelons/soldier/capabilities.md's, "What it approximates"):
    - The hotbar: a task keeping the right tool ready - the hoe or an empty hand to harvest, the sword within reach -
      measured in the time it costs.
    - The bucket's ray (field562-563: a pour at the chunk farm at (1, 3) failed "expected water at (20, 67, 60)",

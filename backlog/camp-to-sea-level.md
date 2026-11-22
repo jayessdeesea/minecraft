@@ -1,6 +1,6 @@
 ---
-status: needs-decision
-priority: P1
+status: proposed
+priority: P3
 doctrine: JP 3-18 (the lodgment developed); ATP 3-34.40 (site preparation); FM 4-0 (supply-point distribution)
 ---
 
@@ -42,14 +42,9 @@ operator's farm mission. The old hill still stands, and no other chunk of the ba
   cobblestone elsewhere; no cell left open below sea level as it's laid.
 
 ## Notes
-- **The decision (the operator's): how is the old hill's flatten tasked?**
-  - *As the flatten's next site* - the plan of 2026-11-20: `Flatten.next` takes an old camp's ground (x -60..-36,
-    z 32..56) among its candidates once the farm-and-grove site is flat. Today `ChainOfCommand.onFlattened` offers it
-    only the camp's rings, then the squads' farm and tree-farm boxes. A small change, but the box isn't chunk-aligned,
-    so it's a worksite outside the areas of operations of backlog/authority-and-missions.md step 3, and it's the
-    standing flatten rule choosing work, not the platoon leader's task.
-  - *As a mission, chunk by chunk* - under authority-and-missions.md step 3: the hill's chunks (it spans chunks
-    x -4..-3, z 2..3) each a task with its AO, dug in waves, verified by step 6. Nothing new to build here once step 3
-    stands; this item's first bullet becomes "the operator or the platoon leader gives it", and it waits on that step.
+- **Decided (operator, 2026-11-22): the old hill is left for now.** Cutting it down gives nothing toward the reserves
+  (backlog/sites.md, the order of building). When it's wanted it's a mission, chunk by chunk, under
+  backlog/authority-and-missions.md step 3 - the hill spans chunks x -4..-3, z 2..3 - not the flatten's next site
+  chosen by rule.
 - The live camp is at x=24 z=88, ground y=64, chunk (1, 5) - deployment configuration (`minecraft.camp`; the
   repository's default is no camp); the old hill's stockpile chest stood at (-48, 75, 51).

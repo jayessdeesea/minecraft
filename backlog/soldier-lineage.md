@@ -1,7 +1,7 @@
 ---
-status: needs-decision
+status: proposed
 priority: P2
-depends-on: []
+depends-on: [authority-and-missions]
 doctrine: FM 6-0 (the unit journal and the after-action review)
 ---
 
@@ -32,11 +32,12 @@ causes (`app.Scoreboard`, `app.CommandScorecard`).
 - It replaces the hand-read of the log for the live check after a deploy.
 
 ## Notes
-- **The decision (operator): where it's kept.** As first written: JSON lines, one file a run and soldier under
-  the state directory. Or rows in the H2 registers beside the `order`, `task` and `fault` tables that
-  backlog/authority-and-missions.md step 1 creates. JSON lines can start now and need their own query tool;
-  rows wait on step 1, join to missions and tasks by key, and are queried in SQL - but a row a block dug is a
-  far bigger table than the registers hold today.
+- **Decided (operator, 2026-11-22): kept by the platoon leader** - rows in its registers, beside the `mission`,
+  `task`, `order` and `fault` tables of backlog/authority-and-missions.md step 1, joined to them by key and read
+  from the chat. What goes in a row is what was ordered, answered, reported and decided - an order's life, a task's
+  state, a fault, a change of task - which is small. What a soldier does each second - a block dug, a routine
+  taking its hands - stays the log's, a line each, kept its seven days (DEVELOPMENT.md, the log), with its counts
+  rolled up onto the task's row when the task ends.
 - Don't record what the world model holds each tick: too much, and its staleness is a separate study
   (backlog/world-model-stale.md). Recording a soldier's observations for replay is
   backlog/soldier-state-machine.md's.

@@ -135,3 +135,18 @@ armour, arrows, logs, cobblestone, dirt, rations, shield, pickaxe, bow, spare we
 - Open doors or gates on its route. A farmer opens a chunk farm's gates once they stand and leaves them open
   (docs/military-doctrine.md, the camp's farm); a route through a shut gate is no route.
 - Decide what to work on. That comes from its squad's task (see [routines.md](routines.md)).
+
+## What it approximates
+Its movement (`bot.Gait`, `bot.Mover`, `bot.nav.Pathfinder`) and its senses approximate the game's. A gap is closed when
+a live run or a scenario shows it costing something, as an item of its own then.
+- **Partial blocks.** Slabs and stairs collide as full cubes; fences and walls are taken as 1.5 blocks tall.
+- **Swimming is at the surface only:** no diving, no current pushing a swimmer, and seagrass, kelp and bubble columns
+  are hazards a swimmer goes round.
+- **No ladders or vines** for climbing (backlog/ladders.md).
+- **A drop into water** is limited as one onto ground is, though landing in water does no harm.
+- **Arrows.** One blocked is read from its health, not from the server's own block event, which isn't decoded; and an
+  arrow counts as in flight for a second after it comes into view, since its velocity isn't decoded - one lying on
+  the ground that comes into view raises a shield for a moment.
+- **It knows every entity the server sends its connection** - through walls, behind it, in the dark - where a player
+  sees only what's on screen. Contact needs a line of sight (docs/military-doctrine.md § 8); the squad's drills and
+  the platoon leader's picture don't.

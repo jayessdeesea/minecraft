@@ -181,9 +181,11 @@ choosing among costed missions (backlog/mission-estimate.md).
 ## Notes
 - **The order of building (operator, 2026-11-22):** build a step at a time, so as not to overextend - what that means
   is still being learned.
-  1. *Now, the reserves.* A temporary base by the water, where less ground has to be cut down, and the templated wheat
-     and tree farm chunks (backlog/renewables.md), which give a great deal of food and wood quickly. What the
-     temporary structure is isn't settled.
+  1. *Now, the bootstrap.* The aim is the permanent structure of step 2, and there is a lot to stand up before it: a
+     reliable source of food first - the templated wheat farm chunks - then wood from the templated tree farm chunks
+     (backlog/renewables.md), supply dumps to hold what they yield, and so on; from a temporary base by the water,
+     where less ground has to be cut down. What the temporary structure is isn't settled. Which comes first and where
+     each goes is the platoon leader's to decide (backlog/authority-and-missions.md step 1).
   2. *Once supply is mature:* a large permanent structure at x=0, z=0, at sea level.
   3. *As control of the ground grows:* smaller permanent structures - in the overworld to trade with the villagers, in
      the Nether to gather what's there, and so on.
