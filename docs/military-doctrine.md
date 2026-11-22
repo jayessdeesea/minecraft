@@ -726,7 +726,8 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
 - **Out of reach both ways.** A hostile that fights hand to hand or explodes, out of a sword's reach with no
   walk to striking distance of it - no steps put, no block dug, since it can do neither - - water, a drop, a wall between - has none to the soldier
   either: it isn't contact, and the soldier carries on with its order - its work too, not paused as for a threat
-  (`DeterministicSoldier.lettingBe`; live, field652, Eli's mine stood five minutes for a zombie 7.7 off); once it's within reach, it
+  (`DeterministicSoldier.lettingBe`; live, field652, Eli's mine stood five minutes for a zombie 7.7 off) - and work
+  pauses for no hostile past the soldier's own contact radius, 8, in sight or not (field654: 23 minutes for zombies 9 off); once it's within reach, it
   is (live, the farm squad stood a night's start "in contact" with one across from it, each
   stepping at it into what stopped it, none striking). It's looked for swimming too, not only on
   the ground: one in water stood "in contact" across two restarts, its drill held off; and three
