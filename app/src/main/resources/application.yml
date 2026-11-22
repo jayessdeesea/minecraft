@@ -71,6 +71,9 @@ minecraft:
   camp: ""
   # Where what the garrison builds is remembered across restarts - each camp wall's layout.
   state-dir: "garrison-state"
+  # The platoon leader's registers - the chunks and the objectives (app.Registers) - an H2 file held open, so outside
+  # OneDrive (H2 adds ".mv.db").
+  registers: "C:/mc-state/registers"
   supply:
     # The supply point: a chest the operator places and stocks, as "x,y,z" (the chest's block).
     # The platoon leader can send a squad there; soldiers short of a weapon or armour draw from it.

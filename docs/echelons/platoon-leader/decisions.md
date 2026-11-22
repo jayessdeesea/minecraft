@@ -41,6 +41,19 @@ In its user prompt (`command-ai/src/main/resources/prompts/platoon-leader-user-p
 
 It keeps nothing between calls but each squad's current objective (backlog/operations-map.md).
 
+## Its registers
+The platoon leader's books are kept by code, never asked of the model (operator, 2026-11-21): an embedded H2 database
+(`app.Registers`, docs/stack.md) of two tables.
+- **The chunk register**, keyed by the chunk's x and z: what the force has made of it (flattened, floored, wheat,
+  trees, the supply point), the level its ground is made to, and its stage as last measured - a wheat chunk's
+  `FarmSite` stage, a tree chunk's `TreeChunk` stage. Kept as the world shows it each foothold check, a row written
+  when it changes and said (`app.ChunkLedger`): `[Chunks] chunk (1, 3): WHEAT at y=63, SURVEYED`.
+- **The objective register**: each objective a mission's step on a chunk - its task, the squad on it, how it stands
+  (planned, under way, done, CANTCO), when and why.
+
+The garrison's file is `minecraft.registers` (`C:/mc-state/registers`), outside a cloud-sync folder since it's held
+open; a simulation's is its state directory's own. Not yet shown to the model: the chunk table goes into its prompt next.
+
 ## What it decides: `command.Objective`, one per squad
 - **Where:** a location. Its height is the platoon leader's guess, and is put on the ground there
   (`NightRules.grounded`), except for `MINE`, where it's the depth to reach.

@@ -775,6 +775,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + ", growing wheat")
                         + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM", farm.map(f -> new Position(f.water().x() + 0.5, f.water().y(), f.water().z() + 0.5))));
         Optional<TreeFarm> grove = campTrees.grove(world, at, campFarm, clockwork.millis()).or(() -> TreeFarm.site(world, at, CAMP_RADIUS)); // close (CampTrees); right after food (operator, 2026-11-14), with the keep's
+        chunkLedger.measure(world, campFarm, campTrees.chunk(), clockwork.millis()); // the platoon leader's chunk register, as the world shows it
         TreeFarm keepTrees = campTrees.chunk().isPresent() ? null : keepGrove; // not walked 200 blocks to while the camp has its own
         long trees = grove.map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).count()).orElse(0L)
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
@@ -920,6 +921,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private volatile FarmPlan campFarm;
     /** The camp's tree chunk, within 64 blocks: its grove (operator, 2026-11-21: the renewables close by). */
     private final CampTrees campTrees = new CampTrees();
+    /** The platoon leader's chunk register, measured each foothold check (ChunkLedger); its file the state directory's, the garrison's from config. */
+    private final ChunkLedger chunkLedger;
     /** The camp's farm, sited, grown and kept. */
     private final CampFarm campFarms;
     /** Whether a farmer keeping a farm carries a bucket: the camp's chunk farm is taken in then. */
@@ -1116,11 +1119,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** The nearest stockpile chest, not to be salvaged, last seen holding {@code kind} - to {@code from}. */
     private Optional<Position> chestHolding(ItemClass kind, Position from) {
-        return chestStock.entrySet().stream()
-                .filter(e -> chestsSeen.containsKey(e.getKey()) && !condemned.contains(e.getKey())
-                        && e.getValue().getOrDefault(kind, 0) > 0)
-                .map(e -> new Position(e.getKey().x() + 0.5, e.getKey().y(), e.getKey().z() + 0.5))
-                .min(java.util.Comparator.comparingDouble(p -> Math.hypot(p.x() - from.x(), p.z() - from.z())));
+        return SoldierErrands.holding(chestStock, chestsSeen.keySet(), condemned, kind, from);
     }
 
     /** The nearest surface chest last seen holding {@code metal} - raw ore or an ingot - to {@code from}. */
@@ -1323,7 +1322,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.mineStore = new WallStore(Path.of(stateDir), "stairs");
         this.chestStore = new WallStore(Path.of(stateDir), "chests");
         this.dangerAreas = new DangerAreaBook(chestStore);
-        this.storesBook = new StoresBook(chestStore);
+        this.storesBook = new StoresBook(chestStore); this.chunkLedger = new ChunkLedger(Path.of(stateDir).resolve("registers"));
         storesBook.chests().forEach((c, st) -> { chestsSeen.put(c, st); chestStock.put(c, StoresBook.kinds(st)); }); // every chest, and what it held, as last seen (StoresBook.kinds)
         storesBook.kept().ifPresent(chainOfCommand::onStores); // as last seen, till a chest is opened
         (this.phaseBook = new PhaseBook(chestStore)).restoreInto(chainOfCommand); (this.woodsBook = new WoodsBook(chestStore)).restoreInto(chainOfCommand);
@@ -4103,6 +4102,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
     }
 
+    /** The garrison's registers kept in {@code file} (minecraft.registers): outside a cloud-sync folder, held open (docs/stack.md). */
+    @org.springframework.beans.factory.annotation.Autowired void registersIn(@Value("${minecraft.registers}") String file) { chunkLedger.keptIn(Path.of(file)); }
     /** Each soldier's failed tries at fitting its workshop's chest: tried again later each time. */
     private final Setbacks<String> chestFits =
             new Setbacks<>(60_000, 20 * 60_000);

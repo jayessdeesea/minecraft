@@ -225,4 +225,15 @@ final class SoldierErrands {
                 .filter(e -> kind != ItemClass.SEEDS || (toFarm ? e.getKey().equals(at.get()) : !farmChests.contains(e.getKey())))
                 .mapToInt(e -> e.getValue().getOrDefault(kind, 0)).sum();
     }
+
+    /** The nearest to {@code from} of the chests {@code seen}, not {@code condemned}, last seen holding {@code kind} by {@code chestStock}. */
+    static Optional<io.github.jayessdeesea.minecraft.command.Position> holding(
+            java.util.Map<io.github.jayessdeesea.minecraft.bot.nav.BlockPos, java.util.Map<ItemClass, Integer>> chestStock,
+            java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> seen, java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> condemned,
+            ItemClass kind, io.github.jayessdeesea.minecraft.command.Position from) {
+        return chestStock.entrySet().stream()
+                .filter(e -> seen.contains(e.getKey()) && !condemned.contains(e.getKey()) && e.getValue().getOrDefault(kind, 0) > 0)
+                .map(e -> new io.github.jayessdeesea.minecraft.command.Position(e.getKey().x() + 0.5, e.getKey().y(), e.getKey().z() + 0.5))
+                .min(java.util.Comparator.comparingDouble(p -> Math.hypot(p.x() - from.x(), p.z() - from.z())));
+    }
 }
