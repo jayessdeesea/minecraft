@@ -7575,7 +7575,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     boolean surplusTrip = plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
                     // The depot's kinds past what the pack keeps go in with it while the depot's under its
                     // most (StockLevels) - not into a mine's stash - and a reserve run short is a trip of its own.
-                    Map<ItemClass, Integer> packKept = keepHands.contains(name) ? KEEP_PACK : cutting.containsKey(name) ? MINE_CARRIED
+                    Map<ItemClass, Integer> packKept = planting.containsKey(name) ? SoldierErrands.PLANTER_CARRIED : keepHands.contains(name) ? KEEP_PACK
+                            : cutting.containsKey(name) ? MINE_CARRIED
                             : dutyBook.is(name, DutyOrder.Duty.HARVESTER) ? HARVESTER_CARRIED : CARRIED;
                     boolean toDepot = deposit.flatMap(this::mineOfChest).isEmpty();
                     boolean stockTrip = toDepot && StockLevels.reserveShort(inventory, packKept, k -> stockedAt(k, deposit));

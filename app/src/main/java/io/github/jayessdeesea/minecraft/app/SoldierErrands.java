@@ -117,7 +117,7 @@ final class SoldierErrands {
         kept.put(ItemClassRegistry.ItemClass.DIRT, 64);
         kept.put(ItemClassRegistry.ItemClass.SEEDS, 64);
         kept.put(ItemClassRegistry.ItemClass.FENCE, 0);
-        kept.put(ItemClassRegistry.ItemClass.SAPLING, 16);
+        kept.put(ItemClassRegistry.ItemClass.SAPLING, 0); // a planter's to carry, no one else's (PLANTER_CARRIED)
         kept.put(ItemClassRegistry.ItemClass.STRING, 12); // a bed's three wool
         kept.put(ItemClassRegistry.ItemClass.FLINT, 16);
         kept.put(ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1);
@@ -130,9 +130,22 @@ final class SoldierErrands {
     /** What any other soldier keeps in its pack of the depot's kinds before it stores the rest. */
     static final Map<ItemClassRegistry.ItemClass, Integer> CARRIED = Map.of(
             ItemClassRegistry.ItemClass.DIRT, Pack.DIRT_KEPT, ItemClassRegistry.ItemClass.SEEDS, Pack.SEEDS_KEPT,
-            ItemClassRegistry.ItemClass.SAPLING, 64, ItemClassRegistry.ItemClass.STRING, 64, ItemClassRegistry.ItemClass.FLINT, 64,
+            ItemClassRegistry.ItemClass.SAPLING, 0, ItemClassRegistry.ItemClass.STRING, 64, ItemClassRegistry.ItemClass.FLINT, 64,
             ItemClassRegistry.ItemClass.FENCE, 0, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1, ItemClassRegistry.ItemClass.WHEAT, 64,
             ItemClassRegistry.ItemClass.PLANKS, 16, ItemClassRegistry.ItemClass.STICK, 16);
+
+    /**
+     * What a planter keeps: its saplings, a stack - anyone else's go into the stockpile with its next load (operator,
+     * 2026-11-21: soldiers don't carry saplings round unless they're replanting; live, field630, squadmates off the grove
+     * carried 6 and 11 while the foresters had none).
+     */
+    static final Map<ItemClassRegistry.ItemClass, Integer> PLANTER_CARRIED = planterCarried();
+
+    private static Map<ItemClassRegistry.ItemClass, Integer> planterCarried() {
+        Map<ItemClassRegistry.ItemClass, Integer> kept = new java.util.HashMap<>(CARRIED);
+        kept.put(ItemClassRegistry.ItemClass.SAPLING, 64);
+        return java.util.Collections.unmodifiableMap(kept);
+    }
 
     /** What a harvester keeps: no wheat - it goes to the stockpile, for the baker (command.FarmDuties) - and its seed. */
     static final Map<ItemClassRegistry.ItemClass, Integer> HARVESTER_CARRIED = harvesterCarried();

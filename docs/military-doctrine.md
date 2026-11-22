@@ -1265,7 +1265,8 @@ a chest, the chunk farms' fence - its trunks the wood standard's and a TREE_FARM
 the count while the camp has it (operator, 2026-11-21: the renewables close by; live, field630, foresters walked 200 to
 330 blocks to the keep's grove at (-34, 68, -113)). A planter with no saplings is handed 4 by the nearest squadmate carrying any -
 cross-levelling's, as logs and tools are (`CrossLevel.Item.SAPLINGS`; live, field630, foresters failed for want of a
-sapling 117 times in a run while squadmates off the grove carried 6 and 11).
+sapling 117 times in a run while squadmates off the grove carried 6 and 11). And only a planter carries saplings - a stack; anyone
+else's go into the stockpile with its next load (`SoldierErrands.PLANTER_CARRIED`; operator, 2026-11-21).
 Planting is an expect script like the farm's. The trees that grow are logs like any others, for a
 squad sent for WOOD there. A squad that sees no trees is told, on its resources line, that its
 wood has to be grown. The soldier at it reports `Planting`.
