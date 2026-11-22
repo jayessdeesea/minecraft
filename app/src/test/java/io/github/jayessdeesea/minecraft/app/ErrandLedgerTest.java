@@ -49,4 +49,17 @@ class ErrandLedgerTest {
         assertEquals(List.of(), lines, "64 put away for 50 blocks");
         assertEquals(64, ErrandLedger.moved(Map.of("cobblestone", 64), Map.of()));
     }
+
+    /** What a crafting spell uses up is consumed; what a deposit carries off isn't (field641: deposits read as burn). */
+    @Test
+    void whatACraftUsesIsConsumedAndADepositIsNot() {
+        ErrandLedger ledger = new ErrandLedger();
+        Position at = new Position(0, 63, 0);
+        ledger.tick("Ned", Optional.of("ARMOURER"), at, Map.of("log", 5), 0);
+        ledger.tick("Ned", Optional.empty(), at, Map.of("log", 2, "planks", 12), 50);
+        ledger.tick("Ned", Optional.of("DEPOSITOR"), at, Map.of("log", 2, "planks", 12), 100);
+        ledger.tick("Ned", Optional.empty(), at, Map.of(), 150);
+        assertEquals(3, ledger.consumed("log"), "three logs crafted into planks; the rest put away, not burnt");
+        assertEquals(0, ledger.consumed("planks"));
+    }
 }

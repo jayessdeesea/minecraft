@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -58,6 +59,15 @@ final class ErrandLedger {
     }
 
     private final Map<String, Spell> spells = new HashMap<>();
+    /**
+     * What's used up since the start, by item: what each spell of a routine that works its items - crafting, building,
+     * eating - had fewer of at its end. Not a routine that only moves them - a deposit, a hand-over, a draw: live
+     * (field641), the burn read from the force's stock falling counted every load put in a chest it didn't count, and
+     * every soldier gone to rejoin, as burnt - wood 181 logs a day.
+     */
+    private final Map<String, Integer> consumed = new java.util.TreeMap<>();
+    /** The routines that move items between holders, not use them. */
+    static final Set<String> TRANSFERS = Set.of("DEPOSITOR", "HANDOVER", "SUPPLY_RUN", "SCAVENGER");
     private final Map<String, Totals> totals = new TreeMap<>();
     /** The day's totals by routine, for dawn's review. */
     private final Map<String, Totals> day = new TreeMap<>();
@@ -84,6 +94,14 @@ final class ErrandLedger {
         if (spell != null && !spell.routine.equals(now_)) {
             spells.remove(soldier);
             int moved = moved(spell.carried, carried);
+            if (!TRANSFERS.contains(spell.routine)) {
+                spell.carried.forEach((item, before) -> {
+                    int fewer = before - carried.getOrDefault(item, 0);
+                    if (fewer > 0) {
+                        consumed.merge(item, fewer, Integer::sum);
+                    }
+                });
+            }
             Totals t = totals.computeIfAbsent(spell.routine, r -> new Totals());
             Totals d = day.computeIfAbsent(spell.routine, r -> new Totals());
             for (Totals x : List.of(t, d)) {
@@ -133,6 +151,19 @@ final class ErrandLedger {
         dayUnpaid.clear();
         dayWhere.clear();
         return lines;
+    }
+
+    /**
+     * A count that falls by each {@code item} used up - what the supply's burn, which counts a count's falls, is fed
+     * (Supply.Burn): its rate the rate things are used, not the force's stock falling.
+     */
+    synchronized int unconsumed(String item) {
+        return (1 << 30) - consumed(item);
+    }
+
+    /** How many of {@code item} have been used up since the start - the supply's burn is its rate (Supply.Burn). */
+    synchronized int consumed(String item) {
+        return consumed.getOrDefault(item, 0);
     }
 
     /**

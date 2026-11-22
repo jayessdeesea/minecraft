@@ -582,8 +582,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         long now = clockwork.millis();
         int rations = kits.stream().mapToInt(Kit::rations).sum() + pile.map(Stockpile::rations).orElse(0);
         int logs = kits.stream().mapToInt(Kit::logs).sum() + pile.map(Stockpile::logs).orElse(0);
-        rationsBurn.stock(rations, now);
-        logsBurn.stock(logs, now);
+        rationsBurn.stock(afterActionReview.errands.unconsumed("food"), now); // the burn what's used up, not the stock's falls
+        logsBurn.stock(afterActionReview.errands.unconsumed("log"), now);
         burns.save();
         // The keep's estimate (command.MissionEstimate): its work at the rate measured from that work's
         // falls, its rations at the force's measured burn a soldier, its logs against the stock above
@@ -8192,8 +8192,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * {@code connect}'s {@code exceptionally}, backing off from {@link #REJOIN_FIRST_MILLIS} to
      * {@link #REJOIN_MAX_MILLIS}, logged each time, for as long as it takes.
      */
-    private void onDisconnected(SoldierDefinition definition,
-                                 AtomicReference<ScheduledExecutorService> activeScheduler, Throwable cause) {
+    private void onDisconnected(SoldierDefinition definition, AtomicReference<ScheduledExecutorService> activeScheduler, Throwable cause) {
         String name = definition.name();
         activeSoldiers.remove(name);
         ScheduledExecutorService scheduler = activeScheduler.get();
