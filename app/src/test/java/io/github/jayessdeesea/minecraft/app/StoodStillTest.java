@@ -24,4 +24,21 @@ class StoodStillTest {
         assertEquals(java.util.List.of("over 10 min, 591 under orders - the soldiers' (Ann 591); 590 without work - the chain of command's (Bravo 590)"), lines);
         assertTrue(tally.review().getFirst().contains("Ann 591"), "and the day's at dawn");
     }
+
+    /**
+     * Asked many times a second - the tick loop catching up after a stall - a soldier is still counted a second a second:
+     * live (field664), soldiers were charged 1086 s stood still in ten minutes.
+     */
+    @Test
+    void aSecondIsCountedOnceHoweverOftenItsAsked() {
+        StoodStill tally = new StoodStill();
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        long now = 0;
+        for (int second = 0; second <= StoodStill.SUMMARY_MILLIS / 1000; second++, now += 1000) {
+            for (int burst = 0; burst < 3; burst++) {
+                tally.second("Ann", "Alpha", 60_000, 0, now + burst * 100).ifPresent(lines::add);
+            }
+        }
+        assertEquals(java.util.List.of("over 10 min, 601 under orders - the soldiers' (Ann 601); 0 without work - the chain of command's"), lines);
+    }
 }

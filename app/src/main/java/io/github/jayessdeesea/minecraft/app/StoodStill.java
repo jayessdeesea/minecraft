@@ -30,13 +30,25 @@ final class StoodStill {
     private final Map<String, Integer> dawnSoldiers = new TreeMap<>();
     private final Map<String, Integer> dawnSquads = new TreeMap<>();
     private long saidAt = Long.MIN_VALUE;
+    /**
+     * When each soldier's last second was counted: one a clock second, however often it's asked - live (field664), the
+     * tick loop's catch-up after a stall asked many times a second, and soldiers were charged 1086 s in ten minutes.
+     */
+    private final Map<String, Long> countedAt = new java.util.HashMap<>();
 
     /**
      * One second of {@code soldier} of {@code squad} at {@code now}: stood still {@code underOrders} - its spell's length,
      * 0 for none - or {@code withoutWork}, its squad with work it wasn't given. A line when the tally is due.
      */
     synchronized Optional<String> second(String soldier, String squad, long underOrders, long withoutWork, long now) {
-        if (underOrders >= GRACE_MILLIS) {
+        Long last = countedAt.get(soldier);
+        boolean counts = last == null || now - last >= 1000;
+        if (counts) {
+            countedAt.put(soldier, now);
+        }
+        if (!counts) {
+            // Asked again within the second: nothing counted.
+        } else if (underOrders >= GRACE_MILLIS) {
             soldiers.merge(soldier, 1, Integer::sum);
             dawnSoldiers.merge(soldier, 1, Integer::sum);
         } else if (withoutWork >= GRACE_MILLIS) {
