@@ -44,7 +44,7 @@ the limit - after `SoldierRunner`:
    never walks itself.
 2. `bot.Survival` - wet and afloat, the fall, stuck in a block, a bed, what it does about each before its order.
 
-**`app.SoldierRunner` (8254 lines)** - what's left is two methods.
+**`app.SoldierRunner` (8070 lines)** - what's left is two methods; the keep's state is out, a holder (`app.KeepState`), and each soldier's own state has its home (`app.SoldierState`; backlog/soldier-state-machine.md).
 - `onJoined` (1193 lines, each soldier's tick): the routines and their hands (`Hands.Routine`) into a class per
   soldier, `SoldierTick`, built once a connection. What it decides each tick - its tools wanted, its deposit's chest,
   its draws, its food (lines 7060-7280) - into one pure function, `TickPlan.of(status, inventory, views)`, a value the

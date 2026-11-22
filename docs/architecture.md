@@ -80,6 +80,14 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   a routine that should give way mid-run says so in its own guard. The routine holding the hands
   also says where the soldier stands, whatever its squad's order - a dig's included; another's
   stand counts only when none is held.
+- **A soldier's activity is one value, and each change of it a log line.** `bot.SoldierActivity` is a sealed
+  type - fighting, recovering, on a task, unassigned - so two at once can't be written down. It's the task, not its
+  step: the report and the routine with the hands change many times within one task, and are kept beside it. Each
+  soldier's tick reads its activity off its report and the task the squad's register has it on, and
+  `bot.ActivityTrack` logs each change as `[State]` and counts the changes and the returns - back within ten seconds to
+  the activity just left - live and in a squad simulation alike. The activity names what was decided; it doesn't
+  decide yet (backlog/soldier-state-machine.md). A soldier's state between ticks is `app.SoldierState`, built with its
+  connection, so a reconnect starts it empty.
 - **Borrowed from the actor model's discipline, not its runtime.** An actor's single-threaded
   mailbox processing is *one* way to guarantee a unit of state is never touched by two threads at
   once; a per-tick loop that's the sole writer of its own Soldier's state is another. We get the

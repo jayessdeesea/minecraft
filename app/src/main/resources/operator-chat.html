@@ -26,6 +26,19 @@
   textarea { flex: 1; resize: vertical; min-height: 44px; font: inherit; padding: 8px; background: var(--pl); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; }
   button { font: inherit; padding: 0 18px; border-radius: 6px; border: 1px solid var(--line); background: var(--op); color: var(--fg); cursor: pointer; }
   button:disabled { opacity: .5; cursor: default; }
+  #main { flex: 1; display: flex; min-height: 0; }
+  #talk { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #status { flex: 1.4; overflow: auto; padding: 12px 16px; border-left: 1px solid var(--line); font-size: 13px; font-variant-numeric: tabular-nums; }
+  #status h2 { font-size: 15px; margin: 14px 0 2px; }
+  #status h2:first-child { margin-top: 0; }
+  #status .objective { color: var(--muted); margin: 0 0 6px; }
+  #status table { border-collapse: collapse; width: 100%; }
+  #status th { text-align: left; color: var(--muted); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
+  #status th, #status td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  #status td.activity { font-weight: 600; white-space: nowrap; }
+  #status td.muted, #status .stale { color: var(--muted); }
+  #status .warn { color: var(--err); }
+  @media (max-width: 900px) { #main { flex-direction: column; } #status { border-left: 0; border-top: 1px solid var(--line); } }
 </style>
 </head>
 <body>
@@ -34,11 +47,16 @@
   <div><span>Next dusk in</span><b id="dusk">-</b></div>
   <div><span>Next dawn in</span><b id="dawn">-</b></div>
 </div>
-<div id="log"></div>
-<form id="form">
-  <textarea id="message" placeholder="Talk to the platoon leader (Enter sends, Shift+Enter a new line)" autofocus></textarea>
-  <button id="send" type="submit">Send</button>
-</form>
+<div id="main">
+  <div id="talk">
+    <div id="log"></div>
+    <form id="form">
+      <textarea id="message" placeholder="Talk to the platoon leader (Enter sends, Shift+Enter a new line)" autofocus></textarea>
+      <button id="send" type="submit">Send</button>
+    </form>
+  </div>
+  <div id="status"><p class="stale">The garrison's status hasn't been fetched yet.</p></div>
+</div>
 <script>
 "use strict";
 // The overworld clock as the server last sent it (GET /clock), ticked forward here between fetches:
@@ -133,7 +151,82 @@ box.addEventListener("keydown", (event) => {
   }
 });
 
+// The garrison's status (GET /status), fetched every second and drawn afresh: a squad a table, a soldier a row -
+// what it's doing (a fight, a recovery, its task or none) and for how long, the routine that has its hands, its order, its report, its health and food,
+// and how often its activity has changed (those that were returns to the one just left, in brackets).
+const STATUS_EVERY_MS = 1000;
+const statusBox = document.getElementById("status");
+
+function cell(row, text, cls) {
+  const td = document.createElement("td");
+  td.textContent = text === null || text === undefined ? "-" : text;
+  if (cls) td.className = cls;
+  row.appendChild(td);
+  return td;
+}
+
+function held(seconds) {
+  if (seconds === null) return "";
+  return seconds < 60 ? seconds + " s" : Math.floor(seconds / 60) + " min " + String(seconds % 60).padStart(2, "0") + " s";
+}
+
+function showStatus(status) {
+  statusBox.replaceChildren();
+  if (!status.squads.some(s => s.soldiers.length)) {
+    const p = document.createElement("p");
+    p.className = "stale";
+    p.textContent = "No soldier has joined yet.";
+    statusBox.appendChild(p);
+    return;
+  }
+  for (const squad of status.squads) {
+    const h = document.createElement("h2");
+    h.textContent = squad.name;
+    statusBox.appendChild(h);
+    const objective = document.createElement("p");
+    objective.className = "objective";
+    objective.textContent = squad.objective === null ? "No objective." : squad.objective + (squad.intent ? " - " + squad.intent : "");
+    statusBox.appendChild(objective);
+    const table = document.createElement("table"), head = table.insertRow();
+    for (const title of ["Soldier", "Doing", "For", "Hands", "Order", "Report", "Health", "Food", "Changes"]) {
+      const th = document.createElement("th");
+      th.textContent = title;
+      head.appendChild(th);
+    }
+    for (const s of squad.soldiers) {
+      const row = table.insertRow();
+      cell(row, s.unit === squad.name ? s.name : s.name + " (" + s.unit + ")");
+      const stuck = s.taskState === "STALLED" || s.taskState === "CANTCO";
+      cell(row, s.activity === null ? null : s.activity + (stuck ? " [" + s.taskState + "]" : ""), "activity" + (stuck ? " warn" : ""));
+      cell(row, held(s.seconds));
+      cell(row, s.hands === null ? "free" : s.hands, s.hands === null ? "muted" : "");
+      cell(row, s.order);
+      cell(row, s.report + " at (" + s.x + ", " + s.y + ", " + s.z + ")");
+      cell(row, s.health === null ? null : Math.round(s.health), s.health !== null && s.health <= 8 ? "warn" : "");
+      cell(row, s.food, s.food !== null && s.food <= 6 ? "warn" : "");
+      cell(row, s.changes === null ? null : s.changes + " (" + s.returns + ")", "muted");
+    }
+    statusBox.appendChild(table);
+  }
+}
+
+async function fetchStatus() {
+  try {
+    const r = await fetch("/status", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    showStatus(await r.json());
+  } catch (e) {
+    statusBox.classList.add("stale");
+    statusBox.title = "Not fetched: " + e + " - what's shown is the last answer.";
+    return;
+  }
+  statusBox.classList.remove("stale");
+  statusBox.title = "";
+}
+
 fetchClock();
+fetchStatus();
+setInterval(fetchStatus, STATUS_EVERY_MS);
 setInterval(fetchClock, FETCH_EVERY_MS);
 setInterval(showClock, 1000);
 </script>

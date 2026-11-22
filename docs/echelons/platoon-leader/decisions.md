@@ -196,3 +196,7 @@ turn is a model call through the same `ChatClient` (`command.ai.PlatoonLeaderCha
   client's own loop (`ToolCallingAdvisor`), the same for any provider, at most 12 calls a turn. A command it can't
   carry out as given (a level outside the world) fails that turn, loud: logged, answered 500 with why, and the next
   turn served.
+- **The status beside the conversation is not the model's.** The page draws it from `GET /status` every second
+  (`app.StatusBoard`, a `GarrisonStatus` read from the runner and the chain of command at each asking): each squad's
+  objective and each soldier's activity (`bot.SoldierActivity`), hands, order, report and condition. The platoon
+  leader's chat isn't shown it and has no tool for it; asked what a soldier is doing, it has only its registers.

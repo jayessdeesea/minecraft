@@ -28,7 +28,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The operator's conversation with the platoon leader, over HTTP on the loopback address only
- * ({@code minecraft.operator-chat.port}): a chat page at {@code /}, the overworld clock as JSON at {@code GET /clock},
+ * ({@code minecraft.operator-chat.port}): a chat page at {@code /}, the overworld clock as JSON at {@code GET /clock}, the garrison's status - each squad's
+ * objective and what each soldier is doing - at {@code GET /status} ({@link StatusBoard}),
  * and {@code POST /chat}, which takes the operator's message with the conversation's earlier turns and answers with
  * the platoon leader's reply ({@link PlatoonLeaderChat}). The page holds the conversation; nothing here does.
  *
@@ -73,13 +74,15 @@ public class OperatorChat implements DisposableBean {
 
     private final PlatoonLeaderChat chat;
     private final ChainOfCommand chain;
+    private final StatusBoard board;
     private final HttpServer server;
     private final ExecutorService threads;
     private final byte[] page;
 
-    public OperatorChat(PlatoonLeaderChat chat, ChainOfCommand chain, @Value("${minecraft.operator-chat.port}") int port) {
+    public OperatorChat(PlatoonLeaderChat chat, ChainOfCommand chain, StatusBoard board, @Value("${minecraft.operator-chat.port}") int port) {
         this.chat = chat;
         this.chain = chain;
+        this.board = board;
         this.page = page();
         try {
             server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
@@ -120,6 +123,8 @@ public class OperatorChat implements DisposableBean {
                 send(exchange, 200, "text/html; charset=utf-8", page);
             } else if (method.equals("GET") && path.equals("/clock")) {
                 send(exchange, 200, "application/json", JSON.writeValueAsBytes(Clock.of(chain.time())));
+            } else if (method.equals("GET") && path.equals("/status")) {
+                send(exchange, 200, "application/json", JSON.writeValueAsBytes(board.now()));
             } else if (method.equals("POST") && path.equals("/chat")) {
                 String type = exchange.getRequestHeaders().getFirst("Content-Type");
                 if (type == null || !type.startsWith("application/json")) {

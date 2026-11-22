@@ -57,7 +57,8 @@ PY
 PREV="$S/garrison-$2.log"
 if [ -f "$PREV" ]; then
   PID=$(grep -o "with PID [0-9]*" "$PREV" | head -1 | grep -o "[0-9]*")
-  [ -n "$PID" ] && taskkill //PID "$PID" //F > /dev/null 2>&1 || true
+  # Only while that PID is still a java process: a run long dead may have left its number to something else.
+  if [ -n "$PID" ] && tasklist //FI "PID eq $PID" //FO CSV //NH 2>/dev/null | grep -qi '^"java'; then taskkill //PID "$PID" //F > /dev/null 2>&1 || true; fi
   sleep 3
 fi
 cp app/target/app.jar "$S/garrison-app.jar"

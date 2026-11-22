@@ -33,6 +33,10 @@ grep "\[Objectives\]" "$L" | msg | tail -10
 section "[Register] taken off: $(grep -c "\[Register\].*taken off" "$L"), by soldier and task"
 grep "\[Register\].*taken off" "$L" | msg | sed -E 's/^\[Register\] ([A-Za-z]+) taken off (.*), after.*/\1: \2/' | sort | uniq -c | sort -rn | head -12
 
+section "[State] changes of activity: $(grep -c "\[State\]" "$L"), returns $(grep -c "\[State\].*(back again)" "$L"); by soldier, then the commonest"
+grep "\[State\]" "$L" | msg | sed -E 's/^\[State\] ([A-Za-z]+): .*/\1/' | sort | uniq -c | sort -rn | head -8
+grep "\[State\]" "$L" | msg | sed -E 's/^\[State\] [A-Za-z]+: (.*) after [0-9]+ s( \(back again\))?.*/\1\2/' | sort | uniq -c | sort -rn | head -10
+
 section "throws away: $(grep -c "throws away" "$L"), by soldier and item"
 grep "throws away" "$L" | msg | sed -E 's/^([A-Za-z]+) throws away [0-9]+ of (item [0-9]+).*/\1 \2/' | sort | uniq -c | sort -rn | head -10
 

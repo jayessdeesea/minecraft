@@ -2,9 +2,20 @@ package io.github.jayessdeesea.minecraft.app;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.jayessdeesea.minecraft.bot.ActivityTrack;
+import io.github.jayessdeesea.minecraft.bot.Hands;
+import io.github.jayessdeesea.minecraft.bot.SoldierActivity;
+import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.FarmMission;
 import io.github.jayessdeesea.minecraft.command.Flatten;
+import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.ObjectiveRecord;
+import io.github.jayessdeesea.minecraft.command.Order;
+import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.Risk;
+import io.github.jayessdeesea.minecraft.command.SoldierStatus;
+import io.github.jayessdeesea.minecraft.command.TaskRegister;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import io.github.jayessdeesea.minecraft.command.ai.OperatorChatPrompts;
 import io.github.jayessdeesea.minecraft.command.ai.PlatoonLeaderChat;
@@ -37,6 +48,8 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -91,7 +104,7 @@ class OperatorChatTest {
     }), new SquadLeaderPrompts("", ""), new Roster("Alpha:Alice"), true, "drills");
     private final List<String> radio = new CopyOnWriteArrayList<>();
     private final OperatorChat endpoint = new OperatorChat(new PlatoonLeaderChat(client, PROMPTS, platoonLeader, new ChatRegisters(chain),
-            new ChatCommands(chain)), chain, 0);
+            new ChatCommands(chain)), chain, new StatusBoard(() -> STATUS), 0);
     private final HttpClient http = HttpClient.newHttpClient();
 
     @AfterEach
@@ -228,6 +241,51 @@ class OperatorChatTest {
         assertEquals("00:00", clock.get("clock").asText());
         assertEquals(6000, clock.get("ticksToDawn").asLong());
         assertEquals(6000 + TimeOfDay.DUSK, clock.get("ticksToDusk").asLong());
+    }
+
+    /** Alice mining for the last 42 seconds on Alpha's objective; Bob just joined, with nothing known of him yet. */
+    private static final GarrisonStatus STATUS = new GarrisonStatus(100_000, List.of(GarrisonStatus.Squad.of("Alpha",
+            Optional.of(new Objective("Cut the camp's mine", new Position(0, 64, 0), "stone for the wall")),
+            List.of(GarrisonStatus.Soldier.of(new SoldierStatus("Alice", new Position(10.5, 61.0, -3.2), new Order.MoveTo(12.5, 60, -3.5, 0.3, 0.5, Risk.LOW, false),
+                            new Report.Mining(3, 20), Optional.of(new Condition(18.5, 14, 2, Optional.empty()))), "Alpha",
+                            Optional.of(new ActivityTrack.Now(SoldierActivity.of(new Report.Mining(3, 20), Optional.of("cut the mine")), Optional.of(Hands.Routine.SUPPLY_RUN), 58_000, 7, 2)),
+                            Optional.of(new TaskRegister.Tasking("Alice", "cut the mine", 50_000, TaskRegister.State.STALLED, new Report.Mining(3, 20), OptionalInt.empty(), 0)),
+                            100_000),
+                    GarrisonStatus.Soldier.of(new SoldierStatus("Bob", new Position(0, 64, 0), new Order.Idle(), new Report.Idle(), Optional.empty()),
+                            "Alpha/wood", Optional.empty(), Optional.empty(), 100_000)))));
+
+    /** The garrison's status as JSON for the page's panel: a squad's objective, and a soldier's activity, task, order, report and condition. */
+    @Test
+    void theGarrisonsStatusAsJson() throws Exception {
+        HttpResponse<String> response = get("/status");
+
+        assertEquals(200, response.statusCode(), response.body());
+        assertEquals("application/json", response.headers().firstValue("Content-Type").orElseThrow());
+        JsonNode squad = JSON.readTree(response.body()).get("squads").get(0);
+        assertEquals("Alpha", squad.get("name").asText());
+        assertEquals("Cut the camp's mine", squad.get("objective").asText());
+        assertEquals("stone for the wall", squad.get("intent").asText());
+        JsonNode alice = squad.get("soldiers").get(0);
+        assertEquals("cut the mine", alice.get("activity").asText());
+        assertEquals("supply run", alice.get("hands").asText());
+        assertEquals(42, alice.get("seconds").asLong());
+        assertEquals(7, alice.get("changes").asInt());
+        assertEquals(2, alice.get("returns").asInt());
+        assertEquals("cut the mine", alice.get("task").asText());
+        assertEquals("STALLED", alice.get("taskState").asText());
+        assertEquals("MoveTo (13, 60, -4)", alice.get("order").asText());
+        assertEquals("Mining[step=3, steps=20]", alice.get("report").asText());
+        assertEquals(10, alice.get("x").asLong());
+        assertEquals(-4, alice.get("z").asLong());
+        assertEquals(18.5, alice.get("health").asDouble());
+        assertEquals(14, alice.get("food").asInt());
+        JsonNode bob = squad.get("soldiers").get(1);
+        assertEquals("Alpha/wood", bob.get("unit").asText());
+        assertTrue(bob.get("activity").isNull(), "no tick of his yet");
+        assertTrue(bob.get("hands").isNull());
+        assertTrue(bob.get("task").isNull());
+        assertTrue(bob.get("health").isNull(), "the server hasn't reported his condition");
+        assertEquals("Idle", bob.get("order").asText());
     }
 
     @Test

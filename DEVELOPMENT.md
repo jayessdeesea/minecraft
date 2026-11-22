@@ -207,7 +207,12 @@ start). It's bound to the loopback address, so it isn't reachable from another m
 Enter: the platoon leader answers from its registers, what it was shown at its last decision and the clock now - "what
 time of day is it?", "list the missions", "what tasks are open for Charlie?", "what chunk is x=20 z=50 in?" - and from
 plain words can give or cancel a farm mission, replace the platoon's mission, escort or set the ground to flatten, said on
-the net as from game chat; what each command did is shown under its reply. The strip at the top is the Minecraft time and the time to the next dusk and dawn. The page holds the
+the net as from game chat; what each command did is shown under its reply. The strip at the top is the Minecraft time and the time to the next dusk and dawn.
+Beside the conversation is the garrison's status, fetched every second (`GET /status`, `app.StatusBoard`): each squad's
+objective, and a row a soldier present - what it's doing (a fight, a recovery, its task on the squad's register or
+none) and for how long, the routine that has its hands, its order, its report and where it stands, its health and food,
+and how often its activity has changed since it joined, with those that were returns to the one just left in
+brackets. The page holds the
 conversation: reloading it starts a new one. Its parts: [docs/echelons/platoon-leader/decisions.md](docs/echelons/platoon-leader/decisions.md#talking-with-the-operator).
 
 Each order is followed down the chain and reported back on the net as it goes, under an id from
@@ -257,6 +262,9 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
 
 The log lines to read first: `[Casualty]`, each death with the soldier's last seconds (§ 6); `[Contact]`,
 each contact's hostiles, the soldier's kit and the rule that chose its response (§ 8);
+`[State]`, each change of a soldier's activity - what it left, after how long, for what, and `(back again)` where
+it's a return within ten seconds to the one it had just left (`bot.ActivityTrack`), the same line in a squad
+simulation's log;
 `[Alert]`, a soldier stuck in place for a minute other than while its squad hides or sleeps (§ 3); `[Idle]`, every ten
 minutes the soldier-seconds stood doing nothing past a 10 s pause - under orders, the soldiers' (named), and without
 work while the squad has a task, the chain of command's (by squad; `app.StoodStill`); `[Productivity]`, an errand -
