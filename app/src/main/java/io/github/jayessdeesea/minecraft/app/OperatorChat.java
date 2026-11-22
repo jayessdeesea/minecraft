@@ -180,8 +180,9 @@ public class OperatorChat implements DisposableBean {
             argument = farmArgument(argument, message);
         }
         Runnable order = order(reply.action(), argument);
-        String said = reply.reply().strip() + (reply.action() == ChatReply.Action.FARM ? " " + farm(argument).name() + ": " + String.join(", then ",
-                farm(argument).steps().stream().map(FarmMission.Step::task).toList()) + "." : "");
+        // A FARM said as computed, not in the model's words: live (field671) its reply said "at y=67" over a mission at 63.
+        String said = reply.action() == ChatReply.Action.FARM ? "WILCO: " + farm(argument).name() + ": " + String.join(", then ",
+                farm(argument).steps().stream().map(FarmMission.Step::task).toList()) + "." : reply.reply().strip();
         LOG.info("[PL -> {}] {}{}", OPERATOR, said, reply.action() == ChatReply.Action.NONE ? "" : " (" + reply.action() + " " + argument + ")");
         chain.radio("[PL -> " + OPERATOR + "] " + said);
         order.run();

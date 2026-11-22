@@ -112,7 +112,7 @@ class OperatorChatTest {
         assertEquals("NONE", first.get("action").asText());
         assertTrue(sent.getFirst().getInstructions().getLast().getText().contains("Minecraft time 12:00 (tick 6000 of the day's 24000)"),
                 "the time from the overworld clock, worked out for it");
-        assertEquals("WILCO, a farm there. a farm at chunk (2, -2) at y=63: flatten chunk (2, -2), x 32..47 z -32..-17 to y=62, then floor"
+        assertEquals("WILCO: a farm at chunk (2, -2) at y=63: flatten chunk (2, -2), x 32..47 z -32..-17 to y=62, then floor"
                 + " chunk (2, -2), x 32..47 z -32..-17 in cobblestone at y=62, then the farm template on chunk (2, -2), x 32..47 z -32..-17 at y=63.",
                 second.get("reply").asText());
         assertEquals(java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.FarmMission(2, -2, 63)),
