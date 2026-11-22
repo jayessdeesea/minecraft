@@ -1263,7 +1263,8 @@ drops a sapling (`bot.supply.Forester`). A cell one forester couldn't plant - no
 is passed over by every forester for a while, as a farm's cells are (live, field618: one walked at 22 times in turn).
 The camp's grove is a tree chunk (`bot.farm.TreeChunk`, `app.CampTrees`): one chunk within 64 blocks of the camp,
 beside a wheat chunk, flat, then sea level, then near - 16 birch at local 2, 6, 10 and 14 both ways, nine ground torches,
-a chest, the chunk farms' fence - its trunks the wood standard's and a TREE_FARM squad's wherever its order points (live, field645, a squad sent
+a chest, the chunk farms' fence - its trunks the wood standard's and a TREE_FARM squad's wherever its order points - and the order itself moved
+to the bare grove when it points more than 24 blocks off (`DayGuardrails.GROVE_NEAR`; field647, squads led away from their foresters) (live, field645, a squad sent
 onto the camp's hill planted the ground being flattened); once its trunks are in, its forester puts up the torches
 then the chest with what it carries, and has them made when it has none - a chest, torches from coal (`Forester.wants`); and the keep's grove left out of
 the count while the camp has it (operator, 2026-11-21: the renewables close by; live, field630, foresters walked 200 to

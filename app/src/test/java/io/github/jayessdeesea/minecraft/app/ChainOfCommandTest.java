@@ -208,6 +208,38 @@ class ChainOfCommandTest {
                 "at the grove still bare, not the camp's centre - live, dug, \"no open dirt or grass\" there");
     }
 
+    /**
+     * A squad the platoon leader puts on TREE_FARM 40 blocks off the bare grove is sent to the grove: live (field647),
+     * squads moved to its point while their foresters walked to the tree chunk, and timed out. Near it, left be.
+     */
+    @Test
+    void aTreeFarmFarFromTheBareGroveIsSentToIt() {
+        ChainOfCommand two = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+        two.setKeepByDay(true);
+        two.restorePhase(Phase.CONSOLIDATION, 0);
+        two.setGround((x, z, nearY) -> OptionalInt.of(64));
+        two.onTime(TimeOfDay.of(1000, true));
+        Position bareGrove = new Position(82.5, 64, 82.5);
+        two.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(3, "wood that grows back", false,
+                "3 of 16 saplings or trees planted", "TREE_FARM", Optional.of(bareGrove)))));
+        Objective far = new Objective("Grow trees", new Position(40, 69, 72), "Wood", new Objective.Task.TreeFarm());
+        Objective near = new Objective("Grow trees", new Position(90, 64, 90), "Wood", new Objective.Task.TreeFarm());
+        java.util.function.Function<String, SquadStatus> planting = name -> new SquadStatus(name, new Report.Idle(),
+                squad(name, name.substring(0, 1) + "x").soldiers(), List.of(), Optional.empty(), false);
+
+        Objective flatten = new Objective("Flatten", new Position(24, 64, 89), "Flat", new Objective.Task.Keep());
+        List<Objective> guarded = two.guarded(List.of(far, near, flatten), List.of(planting.apply("Alpha"), planting.apply("Bravo"),
+                planting.apply("Charlie")), List.of(), List.of());
+
+        assertEquals(bareGrove, guarded.get(0).location(), "to the bare grove: " + guarded);
+        assertEquals(near.location(), guarded.get(1).location(), "near it: left be");
+    }
+
     /** The platoon leader's FORAGE for squads standing on FARM stands: food work, not put back on the farm. */
     @Test
     void aForageOrderForASquadOnTheFarmStands() {

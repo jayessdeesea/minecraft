@@ -241,8 +241,17 @@ final class DayGuardrails {
                     out.set(k, new Objective("Plant the groves", f.standards().stream().filter(s -> !s.met() && "TREE_FARM".equals(s.task()))
                             .flatMap(s -> s.at().stream()).findFirst().orElse(f.camp()), "Wood that grows back", new Objective.Task.TreeFarm()));
                 }));
+        // A TREE_FARM goes where the groves are bare - the camp's tree chunk - wherever the platoon leader put it: live
+        // (field647), squads were moved to its point 40 blocks off while their foresters walked to the chunk, and timed out.
+        d.foothold().flatMap(f -> f.standards().stream().filter(s -> "TREE_FARM".equals(s.task())).flatMap(s -> s.at().stream()).findFirst())
+                .ifPresent(bare -> out.replaceAll(o -> o.task() instanceof Objective.Task.TreeFarm
+                        && Math.hypot(o.location().x() - bare.x(), o.location().z() - bare.z()) > GROVE_NEAR
+                        ? new Objective(o.mission(), bare, o.intent(), o.task()) : o));
         return out;
     }
+
+    /** How near a TREE_FARM's point is left where it is: a tree chunk's breadth, so a squad isn't re-sent each cell planted. */
+    static final int GROVE_NEAR = 24;
 
     /** The work that makes good {@code shortfall} for a squad released from the flatten, if there's somewhere to do it. */
     static Optional<Objective> toShortfall(Day d, PlatoonSergeant.Shortfall shortfall, SquadStatus squad, List<ResourceSite> woods, int wanted) {
