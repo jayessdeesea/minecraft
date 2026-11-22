@@ -200,6 +200,10 @@ class OperatorChatTest {
         assertEquals("24 56", OperatorChat.numbersOf("x=24,z=56"));
         assertEquals("1 3 24 56", OperatorChat.numbersOf("chunk (1, 3): x=24 z=56"), "four: read as none - the turn fails loud");
         assertEquals("-40 12 70", OperatorChat.numbersOf("x = -40, z = 12, y = 70"));
+        // With none, the operator's own (field670: a FARM with no argument); its level only as said.
+        assertEquals("24 56", OperatorChat.farmArgument("", "Place a farm at x = 24, z = 56."));
+        assertEquals("24 56", OperatorChat.farmArgument("x=24,z=56,y=67", "Create a farm at chunk (1, 3): x=24 z=56, at sea level."));
+        assertEquals("24 56 70", OperatorChat.farmArgument("24 56 70", "a farm at x=24 z=56 at y=70"));
     }
 
     @Test

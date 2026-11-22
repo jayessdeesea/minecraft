@@ -175,12 +175,9 @@ public class OperatorChat implements DisposableBean {
             ticket.finished();
         }
         String argument = reply.argument() == null ? "" : reply.argument().strip();
-        if (reply.action() == ChatReply.Action.FARM) {
-            argument = numbersOf(argument); // the model writes "x=24,z=56" one turn, "24 56" the next: its numbers, in order
-        }
-        if (reply.action() == ChatReply.Action.FARM && !levelAsSaid(argument, message).equals(argument)) {
-            LOG.warn("[Chat] the platoon leader's FARM \"{}\" gave a level the operator didn't: at sea level instead", argument);
-            argument = levelAsSaid(argument, message);
+        if (reply.action() == ChatReply.Action.FARM && !farmArgument(argument, message).equals(argument)) {
+            LOG.warn("[Chat] the platoon leader's FARM \"{}\" read as \"{}\": the place and the level the operator's", argument, farmArgument(argument, message));
+            argument = farmArgument(argument, message);
         }
         Runnable order = order(reply.action(), argument);
         String said = reply.reply().strip() + (reply.action() == ChatReply.Action.FARM ? " " + farm(argument).name() + ": " + String.join(", then ",
@@ -220,6 +217,19 @@ public class OperatorChat implements DisposableBean {
      * level is the operator's to give, and sea level unless given. Live (field668), told "at sea level", the model gave y=67,
      * and the mission was to flatten a chunk to 66.
      */
+    /**
+     * The model's FARM {@code argument} as given: its numbers in order, however it writes them ("x=24,z=56" one turn, "24 56"
+     * the next); with none or too few, the operator's own {@code message}'s (field670: a FARM with no argument) - the place
+     * is the operator's to give; and its level kept only if the operator said it (levelAsSaid).
+     */
+    static String farmArgument(String argument, String message) {
+        String numbers = numbersOf(argument);
+        if (numbers.split(" ").length < 2 && numbersOf(message).split(" ").length >= 2) {
+            numbers = numbersOf(message);
+        }
+        return levelAsSaid(numbers, message);
+    }
+
     static String numbersOf(String argument) {
         java.util.regex.Matcher m = java.util.regex.Pattern.compile("-?\\d+").matcher(argument);
         List<String> numbers = new java.util.ArrayList<>();
