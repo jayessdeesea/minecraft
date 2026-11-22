@@ -56,6 +56,7 @@ class CombatMatrixTest {
             "creeper/stone sword/pond",
             "creeper/sword, shield/pond",
             "creeper/sword, iron/pond",
+            "pillager/wooden sword/hills",
             "pillager/sword, shield/hills");
 
     static boolean correct(Battle.Archetype hostile, KitCase kit, CombatScenarioTest.Fight fight) {

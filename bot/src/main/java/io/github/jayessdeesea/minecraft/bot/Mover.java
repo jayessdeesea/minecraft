@@ -743,4 +743,65 @@ abstract class Mover {
     void stepToward(WorldView world, double targetX, double targetZ, double pace) {
         gait.step(world, targetX, targetZ, (shieldRaised() ? pace * SHIELD_SLOWDOWN : pace));
     }
+
+    /**
+     * The deepest drop a step in a fight may leave the soldier over: one the server charges no
+     * health for. Live, a soldier at 1 health fighting a phantom on a hut roof backed off its edge.
+     */
+    static final int FIGHT_DROP = Pathfinder.MAX_DROP;
+
+    /** As {@link #stepToward(WorldView, double, double, double)}, not taken if it would leave the soldier over a deeper drop than {@link #FIGHT_DROP}. */
+    void stepGuarded(WorldView world, double targetX, double targetZ) {
+        stepGuarded(world, targetX, targetZ, STEP);
+    }
+
+    void stepGuarded(WorldView world, double targetX, double targetZ, double pace) {
+        Gait.Snapshot start = gait.snapshot();
+        stepToward(world, targetX, targetZ, pace);
+        if (!gait.position.equals(start.position()) && overDrop(world, gait.position)) {
+            gait.restore(start);
+        }
+    }
+
+
+    /** Headings tried to get away from a threat, in degrees off straight away from it: nearest first. */
+    private static final int[] EVASION_HEADINGS = {0, 45, -45, 90, -90, 135, -135};
+
+    /**
+     * A step away from {@code threat}: of the headings round straight away, the one that gains the
+     * most distance from it - a wall at the back turns it sideways - and never one that loses any.
+     * Whether the soldier moved, or started a jump to.
+     */
+    boolean evade(WorldView world, Position threat) {
+        double away = Math.atan2(gait.position.z() - threat.z(), gait.position.x() - threat.x());
+        Gait.Snapshot snapshot = gait.snapshot();
+        Position start = snapshot.position();
+        boolean startGround = snapshot.onGround();
+        double from = Math.hypot(start.x() - threat.x(), start.z() - threat.z());
+        // At a sprint where it can: a creeper walks faster than a soldier backs off at a walk. In the combat eval matrix
+        // every one closed from 7 to 3 on a soldier backing away, lit, and blew.
+        sprinting = canSprint();
+        double pace = sprinting ? SPRINT_STEP : STEP;
+        double bestGain = 1e-6;
+        int best = Integer.MIN_VALUE;
+        for (int heading : EVASION_HEADINGS) {
+            double angle = away + Math.toRadians(heading);
+            stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2, pace);
+            boolean dropsOff = !gait.position.equals(start) && overDrop(world, gait.position);
+            // A jump started counts as a little ground gained: it lands farther on next tick.
+            double gain = Math.hypot(gait.position.x() - threat.x(), gait.position.z() - threat.z()) - from
+                    + (gait.onGround != startGround && heading == 0 ? 0.05 : 0);
+            if (gain > bestGain && !dropsOff) {
+                bestGain = gain;
+                best = heading;
+            }
+            gait.restore(snapshot);
+        }
+        if (best == Integer.MIN_VALUE) {
+            return false;
+        }
+        double angle = away + Math.toRadians(best);
+        stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2, pace);
+        return true;
+    }
 }

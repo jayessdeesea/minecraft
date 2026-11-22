@@ -40,7 +40,37 @@ final class Body {
     private Body() {
     }
 
-/** Whether no solid block lies on the straight line from {@code from} to {@code to}. */
+    /**
+     * The nearest standing cell within {@link DeterministicSoldier#COVER_RADIUS} of {@code at} that {@code shooter} can't see - nothing
+     * solid between its eyes and the soldier's - if there's one.
+     */
+    static Optional<Position> coverFrom(WorldView world, Position at, Position shooter) {
+        Position shooterEye = new Position(shooter.x(), shooter.y() + EYE_HEIGHT, shooter.z());
+        BlockPos here = BlockPos.containing(at.x(), at.y() + EPSILON, at.z());
+        Position best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (int dx = -COVER_RADIUS; dx <= COVER_RADIUS; dx++) {
+            for (int dz = -COVER_RADIUS; dz <= COVER_RADIUS; dz++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    BlockPos cell = here.offset(dx, dy, dz);
+                    if (!Pathfinder.standable(world, cell)) {
+                        continue;
+                    }
+                    Position spot = new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
+                    double distance = Math.hypot(spot.x() - at.x(), spot.z() - at.z());
+                    if (distance < bestDistance
+                            && !lineOfSight(world, shooterEye, new Position(spot.x(), spot.y() + EYE_HEIGHT, spot.z()))
+                            && !lineOfSight(world, shooterEye, new Position(spot.x(), spot.y() + 0.5, spot.z()))) {
+                        best = spot;
+                        bestDistance = distance;
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /** Whether no solid block lies on the straight line from {@code from} to {@code to}. */
     static boolean lineOfSight(WorldView world, Position from, Position to) {
         double dx = to.x() - from.x();
         double dy = to.y() - from.y();

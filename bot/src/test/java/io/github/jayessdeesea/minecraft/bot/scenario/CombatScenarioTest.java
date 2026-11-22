@@ -160,10 +160,10 @@ class CombatScenarioTest {
             for (int k = 0; k < alive.size(); k++) {
                 int i = alive.get(k);
                 double taken = bodies[i].hit(damage[k]);
-                boolean healed = bodies[i].tick();
+                boolean healed = bodies[i].tick(Body.free(squad.get(i), battle));
                 health[i] = bodies[i].health();
                 if (taken > 0 || healed) {
-                    squad.get(i).reportHealth(Math.max(0, health[i]), 20);
+                    squad.get(i).reportHealth(Math.max(0, health[i]), bodies[i].food());
                     if (health[i] <= 0) {
                         deaths++;
                     }
@@ -284,7 +284,7 @@ class CombatScenarioTest {
         double health = 20;
         Body body = new Body(armour); // the server's food, regeneration and armour wear
         soldier.reportHealth(health, 20);
-        soldier.reportKit(new Kit(weapon, 0, armour.pieces, 0, 0, 0, 0, shield));
+        soldier.reportKit(new Kit(weapon, 0, armour.pieces, 0, 0, 0, Body.RATIONS, shield));
         int shieldUp = 0;
         double blow = WeaponStats.melee(weapon).damage();
         BlockPos objective = scenario.objective();
@@ -310,10 +310,10 @@ class CombatScenarioTest {
             shieldUp = soldier.shieldRaised() ? shieldUp + 1 : 0;
             double damage = body.hit(battle.step(now, shieldUp > Battle.SHIELD_DELAY_TICKS
                     ? OptionalDouble.of(soldier.yaw()) : OptionalDouble.empty()));
-            boolean healed = body.tick();
+            boolean healed = body.tick(Body.free(soldier, battle));
             health = body.health();
             if (damage > 0 || healed) {
-                soldier.reportHealth(Math.max(0, health), 20);
+                soldier.reportHealth(Math.max(0, health), body.food());
             }
             if (health <= 0) {
                 return new Fight(archetype, seed, Ending.DIED, 0);

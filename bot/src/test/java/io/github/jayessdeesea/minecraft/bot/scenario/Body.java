@@ -9,10 +9,11 @@ import java.util.List;
  * exhaustion; regeneration at full food with saturation of up to a point every 10 ticks (min(saturation, 6) / 6, and as
  * much exhaustion), else at 18 food or more a point every 80 ticks (6 exhaustion); every 4 exhaustion a point of
  * saturation, or of food when none is left; a blow cut by the armour worn, and each piece worn down max(1, blow / 4) by
- * it, gone at none left. It eats as the runner has a soldier eat: below 18 food, a loaf from its rations - 5 food, 6
- * saturation, after the server's 1.6 s (32 ticks) of eating, no swing made meanwhile - an item in use is the hand's. In
- * place of a flat point every 80 ticks: the exchange a soldier withdraws and heals by is the server's
- * (backlog/engagement-doctrine.md).
+ * it, gone at none left. It eats as the runner has a soldier eat ({@code SoldierRunner}'s rations): below 18 food, and
+ * only {@link #free} - out of contact, no hostile in sight within the contact radius - a loaf from its rations, 5 food and
+ * 6 saturation, after the server's 1.6 s (32 ticks) of eating; one begun is put down when the soldier is no longer free,
+ * as the runner's meal is. In place of a flat point every 80 ticks: the exchange a soldier withdraws and heals by is the
+ * server's (backlog/engagement-doctrine.md).
  */
 final class Body {
 
@@ -37,7 +38,9 @@ final class Body {
     private float exhaustion;
     private int tickTimer;
     /** Loaves carried, and the ticks left of the one being eaten. */
-    private int rations = 16;
+    private int rations = RATIONS;
+    /** Loaves a soldier carries into a fight, as its kit says. */
+    static final int RATIONS = 16;
     private int eating;
     static final int EAT_TICKS = 32;
     static final int BREAD_FOOD = 5;
@@ -71,6 +74,27 @@ final class Body {
         return health;
     }
 
+    int food() {
+        return food;
+    }
+
+    /**
+     * Whether {@code soldier} is free to eat in {@code world}, as the runner has it: not in contact, and - unless it lets
+     * them be - no hostile it can see within its contact radius.
+     */
+    static boolean free(io.github.jayessdeesea.minecraft.bot.DeterministicSoldier soldier,
+                        io.github.jayessdeesea.minecraft.bot.world.WorldView world) {
+        if (soldier.status().report() instanceof io.github.jayessdeesea.minecraft.command.Report.InContact) {
+            return false;
+        }
+        io.github.jayessdeesea.minecraft.command.Position at = soldier.status().position();
+        io.github.jayessdeesea.minecraft.command.Position eyes = new io.github.jayessdeesea.minecraft.command.Position(at.x(),
+                at.y() + io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.EYE_HEIGHT, at.z());
+        return soldier.lettingBe() || world.nearbyHostiles(at, io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.CONTACT_RADIUS)
+                .stream().noneMatch(h -> io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.lineOfSight(world, eyes,
+                        new io.github.jayessdeesea.minecraft.command.Position(h.position().x(), h.position().y() + 1, h.position().z())));
+    }
+
     /** Whether it's eating: its hand is the loaf's, and it strikes nothing. */
     boolean eating() {
         return eating > 0;
@@ -102,12 +126,15 @@ final class Body {
         exhaustion += ATTACK_EXHAUSTION;
     }
 
-    /** A tick of the server's food: whether it healed. */
-    boolean tick() {
-        if (eating > 0 && --eating == 0) {
+    /** A tick of the server's food, the soldier {@code free} to eat or not: whether it healed. */
+    boolean tick(boolean free) {
+        if (eating > 0 && !free) {
+            eating = 0; // put down: the runner's meal ends when the soldier's no longer free, the loaf kept
+            rations++;
+        } else if (eating > 0 && --eating == 0) {
             food = Math.min(20, food + BREAD_FOOD);
             saturation = Math.min(food, saturation + BREAD_SATURATION);
-        } else if (eating == 0 && food < 18 && rations > 0) {
+        } else if (free && eating == 0 && food < 18 && rations > 0) {
             rations--;
             eating = EAT_TICKS;
         }

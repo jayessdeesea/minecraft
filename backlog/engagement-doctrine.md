@@ -70,9 +70,13 @@ priced as a few blocks clear, true on open ground and not with pursuers on rough
 escape's own cost, from the terrain and what follows, before hand to hand is on it.
 Then built: the escape priced by pace and pursuit (`Engagement.escape`), and hand to hand on the exchange with it -
 fought unless lost outright and got away from at a sprint; the matrices hold.
-Left: the other branches on the exchange (creepers, several hostiles at once, the bow); withdraw's
-eat-and-heal and re-engage (the body eats as the runner does, below 18, and swings at nothing meanwhile); the matrix grown by starting health,
-armour and terrain. (Every combat simulation's soldiers have the body now, the squads' too.)
+Then built: withdraw, eat, heal and re-engage (docs/military-doctrine.md § 8) - the body eating only out of contact, as
+the runner does, the escape priced at the soldier's pace against an archer that follows, a stalled close reckoned as
+striking nothing.
+Left: the other branches on the exchange (creepers, several hostiles at once, the bow); a pillager its own archer -
+6 off, following at a walk, a crossbow's 8 - and the hills cells it costs (pillager, wooden sword or sword and shield,
+hills: 75%, a soldier stalled closing on one or in cover its crossbow still reaches; a pillager reckoned as a skeleton
+in the exchange cost a third cell); the matrix grown by starting health, armour and terrain.
 
 **Deaths as a check on the model, not a case each.** Each death is read for what the evals lack - is that dimension
 (the armour's wear, water, a shaft, eating time, regeneration) in the battle simulation at all? - and the missing

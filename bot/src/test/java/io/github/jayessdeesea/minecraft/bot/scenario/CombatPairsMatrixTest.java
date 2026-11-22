@@ -44,8 +44,7 @@ class CombatPairsMatrixTest {
 
     /** Cells that don't pass yet, as "pair/kit/ground". */
     static final Set<String> KNOWN = Set.of(
-            "creeper+zombie/bare hands/hills",
-            "zombie+skeleton/stone sword/hills");
+            "creeper+zombie/bare hands/hills");
 
     /** Whether the soldier came through alive, against {@code pair} with {@code kit} on {@code ground}. */
     static boolean survives(List<Battle.Archetype> pair, long seed, CombatMatrixTest.KitCase kit, Terrain ground) {
@@ -66,7 +65,7 @@ class CombatPairsMatrixTest {
         double health = 20;
         Body body = new Body(kit.armour()); // the server's food, regeneration and armour wear
         soldier.reportHealth(health, 20);
-        soldier.reportKit(new Kit(kit.weapon(), 0, kit.armour().pieces, 0, 0, 0, 0, kit.shield()));
+        soldier.reportKit(new Kit(kit.weapon(), 0, kit.armour().pieces, 0, 0, 0, Body.RATIONS, kit.shield()));
         double blow = WeaponStats.melee(kit.weapon()).damage();
         BlockPos objective = scenario.objective();
         soldier.receiveOrder(new Order.MoveTo(objective.x() + 0.5, objective.y(), objective.z() + 0.5, 1.5, 1, Risk.LOW));
@@ -81,10 +80,10 @@ class CombatPairsMatrixTest {
             shieldUp = soldier.shieldRaised() ? shieldUp + 1 : 0;
             double damage = body.hit(battle.step(now, shieldUp > Battle.SHIELD_DELAY_TICKS
                     ? OptionalDouble.of(soldier.yaw()) : OptionalDouble.empty()));
-            boolean healed = body.tick();
+            boolean healed = body.tick(Body.free(soldier, battle));
             health = body.health();
             if (damage > 0 || healed) {
-                soldier.reportHealth(Math.max(0, health), 20);
+                soldier.reportHealth(Math.max(0, health), body.food());
             }
             if (health <= 0) {
                 return false;
