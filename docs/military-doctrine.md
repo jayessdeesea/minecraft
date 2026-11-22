@@ -1201,7 +1201,8 @@ overlapping it, whatever their squad or the water it's round, so two squads on o
 have one set of shares and one baker (`DutyBook.onOneFarm`) - which it harvests and replants in one pass, keeping its seed and taking its wheat to the stockpile.
 With three or more on the farm, the last on the roster is its baker: it draws the stockpile's wheat a
 stack at a time - whenever it carries less than a batch's, 8 loaves (`SoldierErrands.BAKER_BATCH_WHEAT`; live,
-field657, drawing only below a loaf's, its baker sat on 15) - and bakes it, and the bread past its own load goes in. A harvester below its basic
+field657, drawing only below a loaf's, its baker sat on 15) - and bakes it, keeping only its own basic load of the
+bread, not the share any other soldier carries (`Depositor.keepsFood`; field664, its baker carried 162, the stores none), and the bread past its own load goes in. A harvester below its basic
 load still bakes for itself - that's its own upkeep. With two, both harvest and bake as they go.
 The camp's farm takes in a chunk farm with its bucket, and the next as soon as every one it has is past SURVEYED,
 its ground done, up to four (`CampFarm.MOST_CHUNK_FARMS`; operator, 2026-11-20: the next chunk farm once one is

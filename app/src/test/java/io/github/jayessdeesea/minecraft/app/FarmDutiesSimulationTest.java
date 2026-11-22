@@ -139,7 +139,8 @@ class FarmDutiesSimulationTest {
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{38, SimServer.ITEM_BREAD, 64}, // a full basic load, as live: the batches past it are the stores'
+                        new int[]{39, SimServer.ITEM_OAK_LOG, 8}, // the workshop's chest, the stockpile - as live
                         new int[]{12, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 15},
                         new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32})))
                 .run();
@@ -150,6 +151,9 @@ class FarmDutiesSimulationTest {
         assertTrue(log.stream().anyMatch(l -> l.contains("Dana drew WHEAT")), "the baker drew wheat to a batch: "
                 + log.stream().filter(l -> l.contains("[Baker]") || l.contains("Dana drew")).reduce((a, b) -> b).orElse("no baker line"));
         assertTrue(log.stream().anyMatch(l -> l.contains("Dana crafts") && l.contains(" bread")), "and baked it");
+        // And took what's past its own load to the stores: live (field664), its baker carried 162, the stores at none.
+        assertTrue(log.stream().anyMatch(l -> l.contains("Dana stockpiled its load") && !l.contains(", 0 rations")), "its bread in the stores: "
+                + log.stream().filter(l -> l.contains("Dana stockpiled")).toList());
         assertTrue(log.stream().anyMatch(l -> l.contains("[Alpha -> Dana] DUTY: baker") && l.contains("drawing from (3, 64, 1)")
                 && l.contains("at the table at (1, 64, -2)") && l.contains("8 a batch")), "its order names its makings: "
                 + log.stream().filter(l -> l.contains("-> Dana] DUTY")).toList());

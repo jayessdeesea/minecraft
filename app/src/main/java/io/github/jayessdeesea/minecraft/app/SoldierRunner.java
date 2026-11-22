@@ -7139,8 +7139,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 tools.addAll(Farmer.wants(world, field, inventory));
                 bucketOnFarm |= inventory.count(ItemClass.BUCKET) + inventory.count(ItemClass.WATER_BUCKET) > 0;
             }
-            // A shovel for ground work - a dig of the camp's or the keep's ground, or dirt for a wall, not a step taken
-            // back: stone if it carries the cobblestone, wooden if not.
+            // A shovel for ground work - a dig of the camp's or the keep's ground, or dirt for a wall, not a step taken back: stone if it carries the cobblestone, wooden if not.
             boolean groundDigging = clearing.containsKey(name) && !policeCall.on(name) || groundGather.containsKey(name) || diggingForWall.contains(name);
             if (groundDigging && inventory.count(ItemClass.SHOVEL) == 0) {
                 tools.add(inventory.count(ItemClass.COBBLESTONE) > 0 ? Recipe.STONE_SHOVEL : Recipe.WOODEN_SHOVEL);
@@ -7591,11 +7590,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     Integer nightFloor = nightBelow.get(unitOf(name, definition.squad()));
                     boolean downForTheNight = nightFloor != null && status.position().y() < nightFloor - MINE_BELOW && !stashOre;
                     boolean breadWanted = toDepot && !StockLevels.atMost(ItemClass.FOOD, k -> stockedAt(k, Optional.empty()));
-                    depositor.storesFood(breadWanted);
+                    depositor.storesFood(breadWanted); depositor.keepsFood(bakes ? Subsistence.BASIC_LOAD : Subsistence.CARRY_MOST); // a baker's bread the stores' past its own load (field664: 162 carried, none stored)
                     // Not while the recovery drill has it: its way out is its work, as for the supply run. Live
                     // (field424), Eli on his stair up from y=-43 set off for the depot 49 times in ten minutes, each
                     // trip taking his hands from the stair and dropped as no longer wanted.
-                    depositor.tick(status.position(), deposit, free && (fullLoad || breadWanted && Depositor.surplusFood(inventory) || poolOre || stashOre
+                    depositor.tick(status.position(), deposit, free && (fullLoad || breadWanted && depositor.surplusFood() || poolOre || stashOre
                                     || surplusTrip || stockTrip || depositor.pastHalfway()) && !threatened && fort == null && !downForTheNight && !recovering.contains(name), pooled,
                             inv -> {
                                 List<Integer> slots = new ArrayList<>(plan.map(p -> p.surplus(inv)).orElse(List.of()));

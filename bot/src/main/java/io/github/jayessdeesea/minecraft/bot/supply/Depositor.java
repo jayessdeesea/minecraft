@@ -473,6 +473,23 @@ public final class Depositor {
         this.storesFood = stores;
     }
 
+    /**
+     * The bread it keeps before the rest goes in: what a soldier carries to share with its squad
+     * ({@link Subsistence#CARRY_MOST}), a baker only its own load - what it bakes is the stores' (live, field664, a
+     * baker carried 162 loaves and the stores had none).
+     */
+    private int foodKept = Subsistence.CARRY_MOST;
+
+    /** Keeps {@code rations} of its bread, the rest put in. */
+    public synchronized void keepsFood(int rations) {
+        this.foodKept = rations;
+    }
+
+    /** Whether it carries a stack of bread it can put in and still keep what it keeps (keepsFood). */
+    public synchronized boolean surplusFood() {
+        return surplusFood(inventory, foodKept);
+    }
+
     /** Raw ore put in on this trip: the force's, every bit of it carried. */
     private Set<ItemClass> pooled = Set.of();
     /** What it carries past its load, put in on this trip too. */
@@ -520,7 +537,7 @@ public final class Depositor {
                 }
             } else if (itemClass.isPresent() && load.contains(itemClass.get())) {
                 chest.quickMove(chest.windowSlotOf(slot));
-            } else if (storesFood && itemClass.equals(Optional.of(ItemClass.FOOD)) && foodLeft - inventory.countAt(slot) >= Subsistence.CARRY_MOST) {
+            } else if (storesFood && itemClass.equals(Optional.of(ItemClass.FOOD)) && foodLeft - inventory.countAt(slot) >= foodKept) {
                 foodLeft -= inventory.countAt(slot);
                 chest.quickMove(chest.windowSlotOf(slot));
             }
@@ -532,10 +549,15 @@ public final class Depositor {
      * its basic load: bread beyond it is the squad's, drawn by whoever's short.
      */
     public static boolean surplusFood(Inventory inventory) {
+        return surplusFood(inventory, Subsistence.CARRY_MOST);
+    }
+
+    /** As {@link #surplusFood(Inventory)}, keeping {@code kept}. */
+    static boolean surplusFood(Inventory inventory, int kept) {
         int food = inventory.count(ItemClass.FOOD);
         for (int slot = 0; slot <= Inventory.HOTBAR_LAST; slot++) {
             if (ItemClassRegistry.classOf(inventory.itemAt(slot)).equals(Optional.of(ItemClass.FOOD))
-                    && food - inventory.countAt(slot) >= Subsistence.CARRY_MOST) {
+                    && food - inventory.countAt(slot) >= kept) {
                 return true;
             }
         }
