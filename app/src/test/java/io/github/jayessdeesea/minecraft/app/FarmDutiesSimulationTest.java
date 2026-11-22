@@ -116,4 +116,39 @@ class FarmDutiesSimulationTest {
         assertEquals(List.of(), behind.stream().filter(l -> l.contains("harvester")).toList());
         assertEquals(0, harvested.getOrDefault("Dana", 0), "the baker harvests none: " + harvested);
     }
+
+    /**
+     * A baker with wheat for less than a batch, and more in a chest, draws the rest and bakes: live (field657), Pete
+     * carried 15 wheat beside chests of 544 and baked nothing - it baked only a batch of 8 loaves' worth (24) and drew
+     * only below one loaf's (3), so between the two it waited for good, the stores at no bread.
+     */
+    @Test
+    void aBakerShortOfABatchDrawsTheRestAndBakes() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 1 && z == -2 && y == GROUND + 1 ? SimServer.CRAFTING_TABLE : pond(x, y, z), 24_000); // the camp's table
+        server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64); // the dump's chest, wheat in it
+        java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0]]"); // known from before a restart, as live
+        List<String> squad = List.of("Alice", "Bob", "Carl", "Dana");
+        Roster roster = new Roster("Alpha:" + String.join(",", squad));
+        Position farm = new Position(10.5, GROUND + 1, 2.5);
+        Objective toFarm = new Objective("Farm", farm, "Bread for the depot", new Objective.Task.Farm());
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> toFarm), squadLeader(farm),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{12, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 15},
+                        new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32})))
+                .run();
+
+        clock.advance(10 * 60_000);
+
+        List<String> log = java.nio.file.Files.readAllLines(Path.of("target", "sim", "aBakerShortOfABatchDrawsTheRestAndBakes.log"));
+        assertTrue(log.stream().anyMatch(l -> l.contains("Dana drew WHEAT")), "the baker drew wheat to a batch: "
+                + log.stream().filter(l -> l.contains("[Baker]") || l.contains("Dana drew")).reduce((a, b) -> b).orElse("no baker line"));
+        assertTrue(log.stream().anyMatch(l -> l.contains("Dana crafts") && l.contains(" bread")), "and baked it");
+    }
 }

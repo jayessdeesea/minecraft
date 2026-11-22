@@ -7546,11 +7546,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));
-                } else if (depositor.drawing(ItemClass.WHEAT) || bakes && inventory.count(ItemClass.WHEAT) < BREAD_WHEAT
+                } else if (depositor.drawing(ItemClass.WHEAT) || bakes && inventory.count(ItemClass.WHEAT) < BAKER_BATCH_WHEAT
                         && chestHolding(ItemClass.WHEAT, status.position()).isPresent()) {
                     // The baker's wheat, from the stockpile the harvesters fill (command.FarmDuties).
                     depositor.tickDraw(status.position(), chestHolding(ItemClass.WHEAT, status.position()).or(depositor::chestAt), ItemClass.WHEAT,
-                            BAKER_WHEAT, free && !threatened && fort == null && bakes && inventory.count(ItemClass.WHEAT) < BREAD_WHEAT);
+                            BAKER_WHEAT, free && !threatened && fort == null && bakes && inventory.count(ItemClass.WHEAT) < BAKER_BATCH_WHEAT);
                 } else if (depositor.drawing(ItemClass.STRING) || bedString(inventory) > 0
                         && chestHolding(ItemClass.STRING, status.position()).isPresent()) {
                     // A bed's string from the depot, for a soldier without one (operator, 2026-11-18: beds, for a

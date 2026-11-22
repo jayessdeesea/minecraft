@@ -167,6 +167,11 @@ final class SoldierErrands {
     static final int BREAD_WHEAT = 3;
     /** Wheat the baker draws at a time: a stack. */
     static final int BAKER_WHEAT = 64;
+    /**
+     * A baker draws wheat while it carries less than a batch's (Subsistence.bakeTrip): live (field657), drawing only below
+     * one loaf's, Pete carried 15 - more than a loaf, less than a batch - beside chests of 544 and baked nothing.
+     */
+    static final int BAKER_BATCH_WHEAT = io.github.jayessdeesea.minecraft.command.Subsistence.BAKE_BATCH * BREAD_WHEAT;
 
     /** What a mine's cutter keeps: its backfill's dirt, and ore before the rest (the rules of a mine). */
     static final Map<ItemClassRegistry.ItemClass, Integer> MINE_CARRIED = Map.of(
