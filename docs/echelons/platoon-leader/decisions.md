@@ -1,6 +1,6 @@
 # Platoon leader: what it decides
 
-One instance, the slowest-thinking echelon. A model call (`command.ai.SpringAiGeneral`, any Spring
+One instance, the slowest-thinking echelon. A model call (`command.ai.SpringAiPlatoonLeader`, any Spring
 AI `ChatModel`) gives each squad one objective. The operator's standing rules then apply on top,
 loudly ([operator-rules.md](operator-rules.md)).
 
@@ -87,3 +87,24 @@ defect if not), a squad not listed dropped; one still without one fails alone, k
 others' objectives stand (`SpringAiPlatoonLeader.toObjectives`) - put through the same
 rules as a decision's (the night rule, the guardrails), so a reply refused at dusk still sends them down the
 mines.
+
+## Talking with the operator
+The operator can also talk with it in a conversation (`app.OperatorChat`, opened as DEVELOPMENT.md § 3 says). Each
+turn is a model call through the same `ChatClient` (`command.ai.PlatoonLeaderChat`), timed in the models' queue
+(`[Model] Operator chat`) on the chat server's own threads, never a soldier's or the platoon leader's decision thread.
+- **What it's shown:** its own fixed chat system prompt
+  (`command-ai/src/main/resources/prompts/platoon-leader-chat-system-prompt.md`), the earlier turns as the
+  conversation, and in the turn's own prompt (`platoon-leader-chat-prompt.md`): `<now>` - the Minecraft time, day or
+  night, and the ticks and minutes to the next dusk and dawn, worked out from the overworld clock
+  (`command.TimeOfDay`), and the ground to flatten - and `<last_decision>`, the user prompt of its last decision
+  word for word (`SpringAiPlatoonLeader.lastShown`): the mission, each squad's standing order, task and progress,
+  the day's work and the camp's phases, as they stood then. Before its first decision it's told it has been shown
+  nothing about the squads.
+- **What it may do** (`command.ai.ChatReply`): answer in words, and take at most one action from a closed set -
+  `MISSION`, `ESCORT` or `FLATTEN`, each given through the operator's own order (`ChainOfCommand.onOperatorMission`,
+  `onOperatorEscort`, `onOperatorFlatten`: the same WILCO and order trace as from game chat), or `FARM`, answered with
+  the chunk farm it would be - the chunk the point is in, its lines, at sea level (63) unless a level is given
+  (`bot.farm.ChunkFarm`) - and CANTCO: no site can be placed through the bids yet (backlog/renewables.md).
+- **Every turn** is logged and on the net, `[Operator -> PL]` and `[PL -> Operator]`, with `[Chat] the platoon
+  leader is shown` logging the turn's prompt. An action it can't read (a flatten that isn't `x1 z1 x2 z2 y`) fails
+  that turn, loud: nothing is said or given, and the page shows why.

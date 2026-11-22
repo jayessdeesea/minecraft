@@ -1,5 +1,8 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+
 /**
  * Where the overworld's day stands - the deadline for whatever a squad must finish before monsters
  * come out. A day is {@link #DAY_TICKS} ticks, 20 minutes, starting at sunrise.
@@ -54,5 +57,20 @@ public record TimeOfDay(long ticks, boolean running) {
             return 0;
         }
         return running ? DAWN - ticks : Long.MAX_VALUE;
+    }
+
+    /** Ticks until the next sunrise, counted on whether or not the clock runs. */
+    public long ticksToDawn() {
+        return DAWN - ticks;
+    }
+
+    /** Ticks until the next dusk, counted on whether or not the clock runs: while it's dark, tomorrow's. */
+    public long ticksToDusk() {
+        return ticks < DUSK ? DUSK - ticks : DAY_TICKS - ticks + DUSK;
+    }
+
+    /** The time on the game's 24-hour clock, to the minute: sunrise is 06:00, and a tick is 3.6 of its seconds. */
+    public LocalTime clock() {
+        return LocalTime.of(6, 0).plusSeconds(ticks * 36 / 10).truncatedTo(ChronoUnit.MINUTES);
     }
 }

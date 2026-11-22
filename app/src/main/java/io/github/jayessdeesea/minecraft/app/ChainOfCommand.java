@@ -885,9 +885,6 @@ public class ChainOfCommand implements DisposableBean {
         }
     }
 
-
-
-
     private void askPlatoonLeader(List<Sitrep> sitreps, long now) {
         if (!platoonLeaderBusy.compareAndSet(false, true)) {
             return;
@@ -983,12 +980,17 @@ public class ChainOfCommand implements DisposableBean {
         });
     }
 
+    /** The queue every model call is timed through - the operator's chat's too. */
+    ModelCalls modelCalls() { return modelCalls; }
+
+    /** {@code line} keyed out on the radio net, as every order and report is. */
+    void radio(String line) { transmit(line); }
+
     private void transmit(String line) {
         Consumer<String> current = radio;
         if (current != null) {
             current.accept(chatLine(line));
         }
     }
-
 
 }

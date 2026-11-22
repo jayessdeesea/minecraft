@@ -53,6 +53,12 @@ public class CommandAiConfiguration {
         return PlatoonLeaderPrompts.read(system, user, squad);
     }
 
+    @Bean
+    OperatorChatPrompts operatorChatPrompts(@Value("${minecraft.platoon-leader.chat-system-prompt}") Resource system,
+                                            @Value("${minecraft.platoon-leader.chat-prompt}") Resource user) {
+        return OperatorChatPrompts.read(system, user);
+    }
+
     /**
      * The model {@code echelon} thinks with: the {@code <provider>ChatModel} bean.
      *
