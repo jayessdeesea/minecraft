@@ -681,7 +681,14 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   by the walk to it - round a drop, down a ramp - once a step at it gains none (live, field597, Alice stood 46 s on a
   ledge 4 over a skeleton, stepping at the drop, and was shot dead); with no walk to it at all - a route only by
   building or digging - it's pinned, and taken cover from. Two at once (`CombatPairsMatrixTest`, correct: alive):
-  short now, on hills, a creeper with a zombie, bare-handed (83%); every other pair comes through. A squad's melee (`CombatSquadMatrixTest`): two or three against a
+  short now, on hills, a creeper with a zombie, bare-handed (83%); every other pair comes through. By the soldier's
+  condition (`CombatConditionMatrixTest`): a stone sword against each hostile, met whole, at 12 and at 6, in no iron, a
+  chestplate or the whole set, on the flat, hills, trees, a pond, either side of a ravine and under a cliff - correct as
+  above, and against a zombie met hurt, got away from counts, as does one let be across a ravine with neither touched. A
+  zombie's blow reaches only a body level with its own (`Battle`, vanilla's attack box): one in a trench under the
+  soldier's feet doesn't hit it. Short now: the creeper on every ground but the flat and the trees, whatever the
+  condition; met at 6 unarmoured or nearly, a skeleton in a pond (33%, the swimmer can't get clear and fights) and a
+  pillager on hills, among trees or afloat (50-83%). A squad's melee (`CombatSquadMatrixTest`): two or three against a
   pack, every hostile killed, none of the squad, and no squadmate hit by a sweep in any cell - the swing struck as the
   server strikes it (`Battle.swing`); its sweeps took 22-92 hostiles a cell where they hit none of ours.
 - **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the

@@ -41,7 +41,11 @@ class CombatScenarioTest {
 
     enum Ending { DIED, KILLED_IT, SURVIVED_BLAST, BROKE_CONTACT, STILL_ENGAGED }
 
-    record Fight(Battle.Archetype archetype, long seed, Ending ending, double healthLeft) {
+    /** How a fight ended, the health left, and what the last tick's blows took - a creeper's blast, if it blew. */
+    record Fight(Battle.Archetype archetype, long seed, Ending ending, double healthLeft, double lastTaken) {
+        Fight(Battle.Archetype archetype, long seed, Ending ending, double healthLeft) {
+            this(archetype, seed, ending, healthLeft, 0);
+        }
     }
 
     @Test
@@ -257,6 +261,12 @@ class CombatScenarioTest {
 
     static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon, Terrain terrain, Armour armour, boolean shield,
                        boolean moat) {
+        return fight(archetype, seed, weapon, terrain, armour, shield, moat, 20);
+    }
+
+    /** As above, the soldier meeting the hostile at {@code startHealth}, fed (CombatConditionMatrixTest). */
+    static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon, Terrain terrain, Armour armour, boolean shield,
+                       boolean moat, double startHealth) {
         Scenario scenario = Scenario.generate(terrain, seed);
         scenario.world().open(OPEN); // no wall at 48 to corner a flight
         Battle battle = new Battle(scenario.world(), seed);
@@ -281,8 +291,8 @@ class CombatScenarioTest {
                 start.z() + 0.5 + Math.sin(angle) * range);
 
         DeterministicSoldier soldier = new DeterministicSoldier("Alice", new Position(start.x() + 0.5, start.y(), start.z() + 0.5));
-        double health = 20;
-        Body body = new Body(armour); // the server's food, regeneration and armour wear
+        double health = startHealth;
+        Body body = new Body(startHealth, 20, 5, armour); // the server's food, regeneration and armour wear
         soldier.reportHealth(health, 20);
         soldier.reportKit(new Kit(weapon, 0, armour.pieces, 0, 0, 0, Body.RATIONS, shield));
         int shieldUp = 0;
@@ -298,8 +308,9 @@ class CombatScenarioTest {
                     .anyMatch(h -> DeterministicSoldier.lineOfSight(scenario.world(), eye, new Position(h.position().x(),
                             h.position().y() + DeterministicSoldier.TARGET_HEIGHT, h.position().z())));
             OptionalInt attack = soldier.tick(battle);
-            if (threatened && !(soldier.status().report() instanceof Report.InContact)) {
-                fail(archetype + " seed=" + seed + " tick " + tick + ": hostile within contact radius but reported "
+            // One it lets be - no way between them on foot, across a ravine - it carries on past (DeterministicSoldier.lettingBe).
+            if (threatened && !soldier.lettingBe() && !(soldier.status().report() instanceof Report.InContact)) {
+                fail(archetype + " " + terrain + " " + armour + " at " + startHealth + " seed=" + seed + " tick " + tick + ": hostile within contact radius but reported "
                         + soldier.status().report());
             }
             Position now = soldier.status().position();
@@ -319,7 +330,7 @@ class CombatScenarioTest {
                 return new Fight(archetype, seed, Ending.DIED, 0);
             }
             if (!hostile.alive()) {
-                return new Fight(archetype, seed, hostile.exploded ? Ending.SURVIVED_BLAST : Ending.KILLED_IT, health);
+                return new Fight(archetype, seed, hostile.exploded ? Ending.SURVIVED_BLAST : Ending.KILLED_IT, health, damage);
             }
         }
         Position end = soldier.status().position();
