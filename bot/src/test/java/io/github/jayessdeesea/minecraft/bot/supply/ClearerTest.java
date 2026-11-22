@@ -254,6 +254,39 @@ class ClearerTest {
     }
 
     /**
+     * A log with a block over it is no gatherer's LOG ({@link Digger.Target#underTheSky}) but is still in the clear's way:
+     * dug as any block. Live (field674-675), Carol and Gus were sent at the logs at (17, 65, 91) and (27, 66, 88), each
+     * walk given up a tick in as "the LOG is gone", and the same logs taken again after each wait - nine tries in a row.
+     */
+    @Test
+    void aLogUnderABlockIsClearedAsAnyBlock() {
+        BlockPos log = new BlockPos(0, GROUND + 1, 0);
+        WorldView roofed = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= GROUND + 1 && (y <= GROUND || log.equals(new BlockPos(x, y, z))) || x == 0 && z == 0 && y == GROUND + 3;
+            }
+
+            @Override
+            public boolean isLog(int x, int y, int z) {
+                return log.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertFalse(Digger.Target.LOG.at(roofed, log), "no gatherer's log under a block");
+        assertEquals(Digger.Target.OTHER, Clearer.targetFor(roofed, log, true));
+    }
+
+    /**
      * Stone with no pickaxe is dug by hand (operator, 2026-11-14: the best tool available, and sometimes
      * that's fists): a clear is for the ground gone, not the cobblestone, and fists break anything
      * but bedrock. Live, a soldier with no pickaxe stood in a pocket of stone waiting on one.
