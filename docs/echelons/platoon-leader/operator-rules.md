@@ -17,8 +17,9 @@ before dark, to plan the night:
 - **From the buildup, every squad is on the night shift** (operator, 2026-11-13): whatever the platoon leader
   orders, a patrol base included, it's sent down the mine, every squad by the one stairway. Under the keep
   rule it's the keep's own mine, off its north-west corner (`ChainOfCommand.KEEP_MINE`): from the
-  camp's, the climb out and the walk were two-fifths of the day. Otherwise the camp's: 4 blocks
-  east and 4 north of its centre, inside the wall. Cut to the iron at y=16
+  camp's, the climb out and the walk were two-fifths of the day. Otherwise the camp's, as it stands:
+  first 4 blocks east and 4 north of its centre, inside the wall, then each next site it moves to
+  once spent ([military-doctrine.md § 16](../../military-doctrine.md#16-mining-down)). Cut to the iron at y=16
   (`NightRules.nightShift`); a mine off the camp is kept on disk by where it was ordered, and
   cut on down after a restart. The shift ends 30 seconds before sunrise
   (`ChainOfCommand.SURFACE_LEAD_TICKS`): the climb out and the walk to the day's work, so the

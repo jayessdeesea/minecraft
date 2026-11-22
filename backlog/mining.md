@@ -30,8 +30,8 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   void, and a bridge allowed level with the goal (`Pathfinder.stepBuild`'s ground-beyond rule relaxed) went
   unproven so.
 - **Levels.** Built: a squad to a level at y%4==0, two cutters to a level, a second level for a
-  squad of four, levels cut on down while ore is wanted, and a dried-up mine moved to a fresh site
-  (docs/military-doctrine.md § 16). What's left: the rest of the mine base (backlog/sites.md); and
+  squad of four, levels cut on down while ore is wanted, and a spent mine - the keep's or the camp's - moved to a
+  fresh site (docs/military-doctrine.md § 16). What's left: the rest of the mine base (backlog/sites.md); and
   the squad quarrying the stone round the landing - the keep's 4,096 cobblestone - with an
   `Order.Gather(STONE)` round it for each soldier but the cutters. Tried; its squad simulation
   can't tell it from the miner's own tunnels, which keep every soldier busy there in a fresh mine,
@@ -45,7 +45,8 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   cuts it regardless. A mine head in its own cell (backlog/cells.md) would put it in that picture.
 - **The night shift, live.** Every squad now mines the camp's shaft at night
   (docs/military-doctrine.md § 16). Still to measure over a garrison night: whether hostiles
-  follow the squad down from the surface, and whether the stairs need torches and a door at the top.
+  follow the squad down from the surface, whether the stairs need torches and a door at the top, and
+  whether the camp's mine at its next site - a well past the wall, cut fresh - yields the night's 16 ore.
 
 - **The shaft's bottom reads as a pocket.** Live (field172), a soldier at the keep mine's bottom
   (-24, 19, -23) was taken for cut off - no more than 128 cells to walk by the planner's moves - and
