@@ -608,6 +608,47 @@ class SquadSimulationTest {
     }
 
     /**
+     * Sent to grow trees on ground of the platoon leader's choosing, a squad plants the camp's tree chunk when it has one
+     * (operator, 2026-11-21: one small flat base, the renewables close by): live (field645), Charlie was sent onto the
+     * camp's hill at y=69, inside the ground being flattened, its 7 cells shared among four and Kate stood 3 minutes
+     * without a share, while the camp's tree chunk stood sited and bare.
+     */
+    @Test
+    void aSquadGrowingTreesPlantsTheCampsTreeChunk() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position elsewhere = new Position(0.5, GROUND + 1, 60.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(st -> new Objective("Grow trees", elsewhere, "Wood that grows back",
+                new Objective.Task.TreeFarm())), DrillSquadLeader::new, roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_axe"), 1},
+                        new int[]{39, SimServer.itemNamedOrMinus("spruce_sapling"), 32})))
+                .run();
+
+        clock.advance(6 * 60_000);
+
+        List<String> log = Files.readAllLines(Path.of("target/sim/aSquadGrowingTreesPlantsTheCampsTreeChunk.log"));
+        java.util.regex.Matcher sited = log.stream().map(l -> java.util.regex.Pattern.compile("tree chunk at chunk \\((-?\\d+), (-?\\d+)\\)").matcher(l))
+                .filter(java.util.regex.Matcher::find).findFirst().orElseThrow(() -> new AssertionError("no tree chunk sited"));
+        int cx = Integer.parseInt(sited.group(1)) * 16, cz = Integer.parseInt(sited.group(2)) * 16;
+        int inChunk = 0, there = 0;
+        for (int x = -80; x <= 80; x++) {
+            for (int z = -80; z <= 80; z++) {
+                if (server.block(x, GROUND + 1, z) == SimServer.SPRUCE_SAPLING) {
+                    inChunk += x >= cx && x < cx + 16 && z >= cz && z < cz + 16 ? 1 : 0;
+                    there += Math.hypot(x - elsewhere.x(), z - elsewhere.z()) <= 8 ? 1 : 0;
+                }
+            }
+        }
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        assertTrue(inChunk >= 4, inChunk + " saplings in the tree chunk at (" + cx + ", " + cz + "); " + events);
+        assertEquals(0, there, "none on the ground the order pointed at");
+    }
+
+    /**
      * The platoon leader wakes on events, not on a clock (backlog/fleet-command.md): a squad digging a
      * big mound on the keep by day for eight minutes, nothing finished, nothing asked - it's woken once,
      * for the squad that had no objective, where every two minutes it was asked again.

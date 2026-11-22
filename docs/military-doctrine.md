@@ -1263,7 +1263,8 @@ drops a sapling (`bot.supply.Forester`). A cell one forester couldn't plant - no
 is passed over by every forester for a while, as a farm's cells are (live, field618: one walked at 22 times in turn).
 The camp's grove is a tree chunk (`bot.farm.TreeChunk`, `app.CampTrees`): one chunk within 64 blocks of the camp,
 beside a wheat chunk, flat, then sea level, then near - 16 birch at local 2, 6, 10 and 14 both ways, nine ground torches,
-a chest, the chunk farms' fence - its trunks the wood standard's and a TREE_FARM squad's, and the keep's grove left out of
+a chest, the chunk farms' fence - its trunks the wood standard's and a TREE_FARM squad's wherever its order points (live, field645, a squad sent
+onto the camp's hill planted the ground being flattened), and the keep's grove left out of
 the count while the camp has it (operator, 2026-11-21: the renewables close by; live, field630, foresters walked 200 to
 330 blocks to the keep's grove at (-34, 68, -113)). A planter with no saplings is handed 4 by the nearest squadmate carrying any -
 cross-levelling's, as logs and tools are (`CrossLevel.Item.SAPLINGS`; live, field630, foresters failed for want of a

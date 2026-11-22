@@ -5278,18 +5278,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return sited;
         }).orElse(null);
         state.farm = farm;
-        // The tree farm: laid out round the objective's ground once, and kept while the objective
-        // stays put - what grows in it is the farm working, not a reason to lay it out again.
+        // The tree farm: laid out once, kept while the objective stays put - what grows in it is the farm working.
         TreeFarm trees = taskOf(squadName, Objective.Task.TreeFarm.class).map(o -> {
             BlockPos at = TerrainSurveyor.groundAt(world, BlockPos.containing(o.location().x(), o.location().y(), o.location().z()));
-            if (state.trees != null && state.trees.centre().x() == at.x() && state.trees.centre().z() == at.z()) {
+            Optional<TreeFarm> camps = campTrees.farm(); // the camp's tree chunk, wherever the order points (CampTrees.farm)
+            if (state.trees != null && camps.map(c -> c.centre().equals(state.trees.centre())).orElse(state.trees.centre().x() == at.x() && state.trees.centre().z() == at.z())) {
                 return state.trees;
             }
-            TreeFarm sited = TreeFarm.site(world, at, TREE_FARM_RADIUS).orElse(null);
+            TreeFarm sited = camps.or(() -> TreeFarm.site(world, at, TREE_FARM_RADIUS)).orElse(null);
             if (sited == null) {
                 LOG.warn("[{}] TREE_FARM: no open dirt or grass to plant round {}", squadName, o.location());
             } else {
-                LOG.info("[{}] TREE_FARM round {}: {} cells to plant", squadName, at, sited.plot().size());
+                LOG.info("[{}] TREE_FARM round {}: {} cells to plant", squadName, sited.centre(), sited.plot().size());
             }
             return sited;
         }).orElse(null);

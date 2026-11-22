@@ -48,6 +48,14 @@ final class CampTrees {
                                 chunk.chunkZ() * 16 + 8 - camp.z())), chunk.stage(world));
             }
         }
+        return farm();
+    }
+
+    /**
+     * The tree chunk sited, as the grove a squad growing trees plants - wherever its order points: live (field645), Charlie
+     * was sent onto the camp's hill, the ground being flattened, while the camp's tree chunk stood bare.
+     */
+    Optional<TreeFarm> farm() {
         TreeChunk c = chunk;
         return c == null ? Optional.empty() : Optional.of(new TreeFarm(c.trunks().getFirst(), c.trunks()));
     }
