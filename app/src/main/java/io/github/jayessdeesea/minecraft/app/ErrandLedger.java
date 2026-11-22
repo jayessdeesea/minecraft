@@ -77,6 +77,11 @@ final class ErrandLedger {
     private final Map<String, Integer> dayUnpaid = new TreeMap<>();
     private final Map<String, String> dayWhere = new HashMap<>();
     private long saidAt = Long.MIN_VALUE;
+    /**
+     * Each soldier's rations as last seen with its hands free: a soldier eats between routines, so its rations falling
+     * then is food used up - live (field644-645), counting only routines' spells, the burn read 2 rations a day.
+     */
+    private final Map<String, Integer> freeFood = new HashMap<>();
 
     /**
      * {@code soldier} at {@code at} and {@code now}, its hands {@code routine}'s or free, carrying {@code carried} - item
@@ -122,6 +127,16 @@ final class ErrandLedger {
                         soldier, spell.routine, spell.walked, (now - spell.since) / 1000.0, moved, changes(spell.carried, carried),
                         at(spell.from), at(spell.farthest), distance(spell.farthest, spell.from)));
             }
+        }
+        if (now_ == null) {
+            int food = carried.getOrDefault("food", 0);
+            Integer was = freeFood.put(soldier, food);
+            if (was != null && was > food) {
+                consumed.merge("food", was - food, Integer::sum);
+                usedBy.merge("EATING food", was - food, Integer::sum);
+            }
+        } else {
+            freeFood.remove(soldier);
         }
         if (now_ != null && !spells.containsKey(soldier)) {
             spells.put(soldier, new Spell(now_, at, now, Map.copyOf(carried)));

@@ -1942,10 +1942,12 @@ them.
 
 The force's supply is counted the Army's way, in days (`command.Supply`; FM 4-0, FM 10-27): each
 class's stock - Class I the rations every soldier carries and the stockpile holds, Class IV the
-logs - over its day's burn. Upkeep is measured, not guessed: every fall in a class's stock between
-two foothold checks is consumption (eaten, worn out, lost) and every rise production, which isn't
-counted; a day's upkeep is the falls of the last three in-game days over the time they span, at
-least one. Its levels follow: the safety level two days of upkeep; the reorder point that and what
+logs - over its day's burn. Upkeep is measured, not guessed: what's used up, not the stock's falls (a
+load put in a chest the count misses isn't burnt). The errand ledger (`app.ErrandLedger`) counts what a
+working routine's spell ends with fewer of - crafted, built, planted; a deposit, hand-over or draw only
+moves it - and rations eaten with hands free; its 10-minute `[Errand]` line says what was used up, by
+routine and item. A day's upkeep is what was used up in the last three in-game days over the time they
+span, at least one; it's kept across restarts (`burn.json` in the state directory). Its levels follow: the safety level two days of upkeep; the reorder point that and what
 burns while more is made (a day, first figures, for wheat and for wood); the stockage objective that
 and a day of the work committed - for Class IV, the logs the keep's estimate draws a day (below). At the
 objective a class is ADVANCE, below the safety level PAUSE, HOLD between; the log says each change

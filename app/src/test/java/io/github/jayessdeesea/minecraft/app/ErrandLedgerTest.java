@@ -62,4 +62,17 @@ class ErrandLedgerTest {
         assertEquals(3, ledger.consumed("log"), "three logs crafted into planks; the rest put away, not burnt");
         assertEquals(0, ledger.consumed("planks"));
     }
+
+    /** Rations eaten with hands free are used up too; a routine's spell isn't counted twice (field644: burn 2 a day). */
+    @Test
+    void rationsEatenBetweenRoutinesAreUsedUp() {
+        ErrandLedger ledger = new ErrandLedger();
+        Position at = new Position(0, 63, 0);
+        ledger.tick("Ned", Optional.empty(), at, Map.of("food", 10), 0);
+        ledger.tick("Ned", Optional.empty(), at, Map.of("food", 9), 50);
+        ledger.tick("Ned", Optional.of("FARMER"), at, Map.of("food", 9), 100);
+        ledger.tick("Ned", Optional.empty(), at, Map.of("food", 8), 150);
+        ledger.tick("Ned", Optional.empty(), at, Map.of("food", 7), 200);
+        assertEquals(3, ledger.consumed("food"), "one eaten free, one in the farmer's spell, one free after it");
+    }
 }
