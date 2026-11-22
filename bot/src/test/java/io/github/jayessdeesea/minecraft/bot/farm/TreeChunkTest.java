@@ -22,12 +22,14 @@ class TreeChunkTest {
     private final Set<BlockPos> saplings = new HashSet<>();
     private final Set<BlockPos> torches = new HashSet<>();
     private final Set<BlockPos> chests = new HashSet<>();
+    /** Columns of ground standing over the grass, six high. */
+    private final Set<BlockPos> mounds = new HashSet<>();
 
     /** Grass at sea level everywhere, with what's been put on it. */
     private final WorldView world = new WorldView() {
         @Override
         public boolean isSolid(int x, int y, int z) {
-            return y <= GROUND || chests.contains(new BlockPos(x, y, z));
+            return y <= GROUND || chests.contains(new BlockPos(x, y, z)) || y <= GROUND + 6 && mounds.contains(new BlockPos(x, 0, z));
         }
 
         @Override
@@ -97,5 +99,18 @@ class TreeChunkTest {
         assertTrue(Math.abs(grove.chunkX() - 3) + Math.abs(grove.chunkZ()) == 1, "beside the wheat chunk at (3, 0): " + grove);
         TreeChunk alone = TreeChunk.site(world, camp, 4, c -> true, Set.of(), Set.of()).orElseThrow();
         assertEquals(1, Math.abs(alone.chunkX()) + Math.abs(alone.chunkZ()), "no wheat yet: the nearest, beside the camp's: " + alone);
+    }
+
+    /**
+     * A chunk flat enough for wheat but with ground over one of its trunk cells isn't a tree chunk: live (field647-648),
+     * chunk (5, 5)'s west trunks lay under a rise, every walk to them timed out, and only its east cells were planted.
+     */
+    @Test
+    void aChunkWithATrunkCellUnderGroundIsPassedOver() {
+        BlockPos camp = new BlockPos(5, GROUND + 1, 5);
+        assertEquals(-1, TreeChunk.site(world, camp, 4, c -> true, Set.of(), Set.of()).orElseThrow().chunkX(), "the first of the nearest: (-1, 0)");
+        mounds.add(new BlockPos(-16 + 6, 0, 10)); // one trunk cell of chunk (-1, 0) under a mound
+        TreeChunk sited = TreeChunk.site(world, camp, 4, c -> true, Set.of(), Set.of()).orElseThrow();
+        assertTrue(sited.chunkX() != -1 || sited.chunkZ() != 0, "not the chunk with a trunk cell under ground: " + sited);
     }
 }

@@ -108,7 +108,9 @@ public record TreeChunk(int chunkX, int chunkZ, int level) {
                 }
                 Optional<ChunkFarm> level = ChunkFarm.levelled(world, x, z, camp.y(), walkable)
                         .filter(f -> f.plan(world, walkable).plot().size() >= ChunkFarm.MIN_CELLS);
-                if (level.isEmpty()) {
+                // Every trunk cell able to take its sapling: flat enough for wheat is half the chunk - live (field647-648),
+                // chunk (5, 5)'s west trunks lay under a rise and only its east cells were ever planted.
+                if (level.isEmpty() || !new TreeChunk(x, z, level.get().level()).trunks().stream().allMatch(t -> TreeFarm.plantable(world, t))) {
                     continue;
                 }
                 boolean beside = farmed.contains(ChunkFarm.key(x + 1, z)) || farmed.contains(ChunkFarm.key(x - 1, z))

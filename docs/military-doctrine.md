@@ -1262,7 +1262,7 @@ with no sapling breaks leaves for one, birch leaves first, then spruce; one leaf
 drops a sapling (`bot.supply.Forester`). A cell one forester couldn't plant - not stood in, its sapling refused -
 is passed over by every forester for a while, as a farm's cells are (live, field618: one walked at 22 times in turn).
 The camp's grove is a tree chunk (`bot.farm.TreeChunk`, `app.CampTrees`): one chunk within 64 blocks of the camp,
-beside a wheat chunk, flat, then sea level, then near - 16 birch at local 2, 6, 10 and 14 both ways, nine ground torches,
+beside a wheat chunk, flat with every trunk cell able to take its sapling, then sea level, then near - 16 birch at local 2, 6, 10 and 14 both ways, nine ground torches,
 a chest, the chunk farms' fence - its trunks the wood standard's and a TREE_FARM squad's wherever its order points - and the order itself moved
 to the bare grove when it points more than 24 blocks off (`DayGuardrails.GROVE_NEAR`; field647, squads led away from their foresters) (live, field645, a squad sent
 onto the camp's hill planted the ground being flattened); once its trunks are in, its forester puts up the torches
