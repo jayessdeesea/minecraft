@@ -99,6 +99,40 @@ static void assertMinedToTheIron(SimServer server) {
         return x >= 3 && x <= 5 && z >= -5 && z <= -3 && y > GROUND - 6 && y <= GROUND ? SimServer.AIR : flat(x, y, z);
     }
 
+    /**
+     * A mining squad's soldier sealed in a pocket away from the mine digs the drill's stair up out of it: the mine's orders
+     * stand over the drill's for its miners in their galleries, not for one cut off elsewhere. Live (field671-676), Eli in
+     * a pocket at y=33, 60 blocks from Bravo's mine, had a stair up of 94 blocks laid out at every restart and never cut
+     * a block of it - each turn given the mine's walk instead, at LOW, "no route" - three hours where he stood.
+     */
+    @Test
+    void aMinerSealedInAPocketAwayFromTheMineDigsItsStairUp() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= 40 && x <= 45 && z == 40 && y >= GROUND - 25 && y <= GROUND - 24
+                ? SimServer.AIR : flat(x, y, z), 1000);
+        Position head = new Position(4, 16, 4);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", head,
+                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(
+                        n -> n.equals("Dana") ? new PlayerPosition(40.5, GROUND - 25, 40.5) : new PlayerPosition(0.5, GROUND + 1, 0.5),
+                        n -> List.of(new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                                new int[]{38, SimServer.ITEM_BREAD, 16})))
+                .run();
+
+        clock.advance(15 * 60_000);
+
+        List<String> log = Files.readAllLines(Path.of("target", "sim", "aMinerSealedInAPocketAwayFromTheMineDigsItsStairUp.log"));
+        // Out, then down the mine with its squad: where it ends is the mine's, so the drill's own word for it.
+        assertTrue(log.stream().anyMatch(l -> l.contains("RECOVERY: the stair up for Dana is dug")), "Dana's stair up dug: "
+                + server.log.stream().filter(e -> e.contains("Dana")).limit(12).toList() + "; at " + server.position("Dana"));
+        assertTrue(server.log.stream().anyMatch(e -> e.startsWith("Dana dug") && e.endsWith(",40") && e.matches(".* at -?\\d+,6[0-3],40")),
+                "its top cut at the surface: " + server.log.stream().filter(e -> e.startsWith("Dana dug")).reduce((x, y) -> y).orElse("none"));
+    }
+
     @Test
     void aSquadWithPickaxesCutsTheMineDownToTheIron() {
         assertMinedToTheIron(mine(SquadSimulationTest::flat));

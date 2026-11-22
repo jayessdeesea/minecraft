@@ -5991,11 +5991,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // one at the landing reported CANTCO for half an hour on lights handed it while it had torches, never taken back.
                 lighting.remove(soldierName);
             }
-            if (stairs != null) {
-                mining.add(soldierName);
-            } else {
-                mining.remove(soldierName);
-            }
+            if (stairs != null) mining.add(soldierName); else mining.remove(soldierName);
             // The mine's orders stand over the recovery drill's for a mining squad: the drill reads miners in
             // their tunnels as stranded, and live (field408), with its order outranking the mine's, Hal was
             // given a stair up 26 times in a night, three crews stood empty and the night took no ore
@@ -6006,7 +6002,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 cutting.remove(soldierName);
                 stairsProgress.remove(soldierName);
             }
-            if (stairs != null && !squadInContact) {
+            // Not over the drill's stair up, though: the cut-off rule leaves miners in their galleries be, so one it has is sealed in
+            // away from them (field671-676: Eli, 60 blocks off, his 94-block stair laid out at each restart and not a block cut).
+            if (stairs != null && !squadInContact && !(eased.get(i) instanceof Order.Dig d && d.tunnel())) {
                 // No hut on a mining squad's hands: the branch below never reaches where a patrol base's
                 // plan is let go, and live, a squad sent from its night's base to the mine went on
                 // building the base's doorway at the stairs' head, reporting Fortifying.

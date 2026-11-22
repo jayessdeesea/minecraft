@@ -562,7 +562,10 @@ walk - its order's goal out of reach, a squadmate in a pocket, a plot across wat
 stranded, and nothing is cross-levelled to or from one the drill has: live, the keep's foreman
 spent a day on the stairs with rations for one in a dead end, "stranded" every minute on its way.
 The drill's order - its own stair or cut, or a squadmate's - outranks ground work: live, a builder
-in a dead end kept its keep strip's dig, 50 blocks off and up, over the stair out. Without a pickaxe
+in a dead end kept its keep strip's dig, 50 blocks off and up, over the stair out. A stair up outranks a
+mining squad's walk to its mine too, since the rule above has already left its miners in the galleries be
+(live, field671-676, Eli sealed in 60 blocks from Bravo's mine had his stair laid out at every restart, and
+not a block of it cut). Without a pickaxe
 and with nobody carrying one to come, the stranded soldier digs the cut by hand. With nobody to
 fetch it and nothing to build with, the stranded soldier
 goes down to its nearest squadmate itself at MEDIUM risk, over its own routine's stand: a fall
