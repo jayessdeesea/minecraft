@@ -599,42 +599,8 @@ public class ChainOfCommand implements DisposableBean {
     private final RequestLedger requests = new RequestLedger();
     /** The objective register, kept as objectives are given and squads report (app.ObjectiveBook) - read by the operator's chat; none until handed one. */ volatile Optional<ObjectiveBook> objectiveBook = Optional.empty();
     /** Keeps the objectives in {@code book}: the garrison's registers. */ void keepObjectives(ObjectiveBook book) { objectiveBook = Optional.of(book); }
-    /** Each soldier's CANTCO to its squad leader. */
-    private final SoldierRequests soldierRequests = new SoldierRequests();
-
-    /**
-     * Requests raised and settled from this cycle's SITREPs: each soldier's CANTCO to its squad
-     * leader, each squad's finished or stalled task and its Class I RED to the platoon leader. Overdue ones alarm.
-     */
-    private void trackRequests(List<Sitrep> sitreps, long now) {
-        for (Sitrep sitrep : sitreps) {
-            soldierRequests.track(sitrep, requests, now);
-            String task = sitrep.squad() + ":task";
-            Optional<Progress> finished = sitrep.progress()
-                    .filter(p -> p.state() != Progress.State.UNDER_WAY);
-            if (finished.isPresent()) {
-                requests.raise(task, RequestLedger.Echelon.PLATOON_LEADER, sitrep.squad(), "task " + finished.get().state() + ": " + finished.get().detail(), now)
-                        .ifPresent(line -> {
-                            LOG.info(line);
-                            wake(sitrep.squad() + "'s task " + finished.get().state(), false);
-                        });
-            } else {
-                requests.settle(task);
-            }
-            String food = sitrep.squad() + ":food";
-            Optional<Subsistence.Status> red = sitrep.classOne()
-                    .filter(c -> c.rating() == Subsistence.Rating.RED);
-            if (red.isPresent()) {
-                requests.raise(food, RequestLedger.Echelon.PLATOON_LEADER, sitrep.squad(), red.get().line(), now).ifPresent(line -> {
-                    LOG.info(line);
-                    wake(sitrep.squad() + "'s Class I RED", false);
-                });
-            } else {
-                requests.settle(food);
-            }
-        }
-        requests.alarms(now).forEach(LOG::warn);
-    }
+    /** Requests raised and settled from each cycle's SITREPs (app.RequestTracking): the soldiers' to their squad leaders, the squads' to the platoon leader. */
+    private final RequestTracking requestTracking = new RequestTracking();
 
     /** How far a soldier's ordered place has to move to be a new order: a formation's places shift a block or two every cycle. */
     static final double ANSWER_MOVE = 4;
@@ -850,7 +816,7 @@ public class ChainOfCommand implements DisposableBean {
         }
         sitreps.forEach(sitrep -> readinessLog.log(sitrep.squad(), Readiness.of(new SquadStatus(sitrep.squad(), squads.get(sitrep.squad()).report(),
                 sitrep.soldiers(), List.of(), Optional.empty(), sitrep.holdingBase()), Optional.ofNullable(foothold))));
-        trackRequests(sitreps, clockwork.millis());
+        requestTracking.track(sitreps, requests, this::wake, clockwork.millis());
         objectiveBook.ifPresent(b -> sitreps.forEach(s -> b.sitrep(s.squad(), squads.get(s.squad()).report(), s.progress(), clockwork.millis()))); // pushed up as it comes
         long traceNow = clockwork.millis();
         for (OrderTrace trace : traces) {
