@@ -130,8 +130,10 @@ final class NightRules {
         // 65 blocks off and 48 down, the climb out and the walk to the keep were two-fifths of the
         // day (field151; operator, 2026-11-13: cutting a second mine is fine).
         if (n.keepByDay()) {
+            // Its intent what the mine yields: the keep's slab isn't built up from stone (Keep.FILL; operator, 2026-11-15),
+            // and "stone for the keep's slab" went to the platoon leader and the radio long after (operator, 2026-11-21: stale).
             return Optional.of(new Objective("Cut the keep's mine down to the iron through the night", n.keepMine(),
-                    "Stone for the keep's slab, and the night spent working underground beside it", new Objective.Task.Mine()));
+                    "Stone and iron for the stores, and the night spent working underground beside the keep", new Objective.Task.Mine()));
         }
         Position c = camp.camp();
         return Optional.of(new Objective("Cut the camp's mine down to the iron through the night",
