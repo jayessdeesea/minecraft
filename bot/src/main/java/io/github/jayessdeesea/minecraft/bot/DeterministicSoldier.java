@@ -61,6 +61,9 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         return sprinting;
     }
 
+    /** Whether it let be the hostiles it saw this tick - "carries on" - so its work goes on: field652, Eli's mine held 5 minutes. */ public boolean lettingBe() { return lettingBe; }
+    private volatile boolean lettingBe;
+
     /** Whether the hit this tick returned is a knockback hit: its sprint told the server first; the server stops it (Strike). */
     public boolean takeKnockbackHit() {
         boolean was = knockbackHit;
@@ -402,6 +405,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     private static final double SELF_SEEN_WITHIN = 0.5;
 
     public OptionalInt tick(WorldView world) {
+        lettingBe = false;
         if (ticksUntilAttack > 0) {
             ticksUntilAttack--;
         }
@@ -695,6 +699,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             }
         } else if (response != null) {
             contactLog.tick(world, gait.position, lastReportedHealth, kit, seen, response); // seen, and let be
+            lettingBe = true;
             navigate(world);
         } else if (drawing && stopDrawing()) {
             // The fight is over: the bow comes down this tick.

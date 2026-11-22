@@ -6998,11 +6998,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             foodLedger.sample(name, status.condition(), status.position(), soldier.sprinting(), soldier.onGround(), status.order().getClass().getSimpleName() + "/" + status.report().getClass().getSimpleName());
             boolean bareHanded = status.condition().flatMap(c -> c.kit()).map(k -> k.weapon().isEmpty()).orElse(false);
             boolean inContact = status.report() instanceof Report.InContact;
-            // Under threat, routines pause - they pick up where they left off once it's gone.
+            // Under threat, routines pause - they pick up where they left off once it's gone; not for one the soldier lets be (field652).
             // A hostile it can see: live, two zombies in the dark of the camp's mine shaft, 8 blocks off
             // and out of sight below, held every mason's hands a whole day.
             Position eyes = new Position(status.position().x(), status.position().y() + 1.62, status.position().z());
-            boolean threatened = inContact || world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).stream()
+            boolean threatened = inContact || !soldier.lettingBe() && world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).stream()
                     .anyMatch(h -> DeterministicSoldier.lineOfSight(world, eyes,
                             new Position(h.position().x(), h.position().y() + 1, h.position().z())));
             // Afloat and getting nowhere: stuck in the water.

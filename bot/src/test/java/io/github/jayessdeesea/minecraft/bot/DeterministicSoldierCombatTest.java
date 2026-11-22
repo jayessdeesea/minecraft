@@ -506,6 +506,21 @@ class DeterministicSoldierCombatTest {
         assertEquals(new Report.Idle(), alice.status().report());
     }
 
+    /**
+     * A zombie on a pillar out of reach, no way to it on foot: let be, and said so - its work goes on. Live (field652),
+     * Eli's mine stood five minutes "threatened" by a zombie 7.7 off with no way between them, carrying on to no end.
+     */
+    @Test
+    void aHostileWithNoWayToItIsLetBeAndItsWorkGoesOn() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        WorldView pillar = withHostileAt(new Position(4.5, GROUND + 4, 0.5), (x, y, z) -> y < GROUND || x == 4 && z == 0 && y < GROUND + 4);
+
+        alice.tick(pillar);
+
+        assertTrue(alice.lettingBe(), "let be: " + alice.status().report());
+        assertFalse(alice.status().report() instanceof Report.InContact, alice.status().report().toString());
+    }
+
     /** A creeper on its route is gone round, not walked past at arm's length (the engagement doctrine). */
     @Test
     void aRouteGoesRoundACreeperOnIt() {
