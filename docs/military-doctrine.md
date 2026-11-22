@@ -2192,8 +2192,9 @@ who fight. Where a rule of a clearing below meets the standard, it says which pa
    row d out dug down to d over the floor - Table B-1's 1:1 slope for Type B soil, a walkable
    staircase - its ground the level's like the site's, highest first, and in the squads' shares;
    past the ring the ground stands. A fence or wall is dug like any block: the cell over it reads
-   solid to a body, not to the dig's open top (`WorldView.solidHere`; live, a fence on the hilltop and
-   the ground under it stood while the site round it was flattened). Twelve (operator, 2026-11-17: slope the hills round the edge so
+   solid to a body, not to the dig's open top (`WorldView.solidHere`, in the scan and in the cut's choice
+   alike; live, a fence on the hilltop and the ground under it stood while the site round it was flattened, and in
+   the squad simulation a fence post set the level and was handed from builder to builder, never cut). Twelve (operator, 2026-11-17: slope the hills round the edge so
    soldiers can climb up), the depots sixteen off the west edge past it and the borrow pits past it
    too, so neither stands on nor holes the slope. Live, at three, soldiers put steps up the wall the
    big site was cut against, each one a level of its own, and builders on the hill had no walk down.

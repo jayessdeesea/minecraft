@@ -126,7 +126,9 @@ public final class Clearing {
                         y = bottom + 1;
                         continue;
                     }
-                    if (world.isSolid(x, y, z) && world.hardness(x, y, z).isEmpty() && !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty()
+                    // The block itself solid, not the cell over a fence a body can't stand in: live (field679), the air and
+                    // torches over the farm's fence posts were alerted as unknown, 36 of them.
+                    if (world.solidHere(x, y, z) && world.hardness(x, y, z).isEmpty() && !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty()
                             && !except.contains(new Cell(x, y, z))) {
                         cells.add(new BlockPos(x, y, z));
                     }
@@ -316,7 +318,7 @@ public final class Clearing {
         // not the nearest next (operator, 2026-11-13: clear one level before the next, no random walks).
         List<BlockPos> ground = cover.stream()
                 .filter(c -> !excluded.contains(c) && !world.isLog(c.x(), c.y(), c.z()) && world.leaves(c.x(), c.y(), c.z()).isEmpty()
-                        && !world.isSolid(c.x(), c.y() + 1, c.z()) && diggable(world, c.x(), c.y(), c.z()))
+                        && !world.solidHere(c.x(), c.y() + 1, c.z()) && diggable(world, c.x(), c.y(), c.z()))
                 .toList();
         // The force's own steps don't set the level while ground is left: a step put up to reach the
         // top is no top to reach. Live (field313), a builder's step a block over the hilltop's ground
@@ -344,7 +346,7 @@ public final class Clearing {
             if (stepOver && !(canStandHere && block.equals(here.offset(0, -1, 0)))) {
                 continue;
             }
-            if (isGround && !stepOver && (world.isSolid(block.x(), block.y() + 1, block.z()) || block.y() != topLevel)) {
+            if (isGround && !stepOver && (world.solidHere(block.x(), block.y() + 1, block.z()) || block.y() != topLevel)) {
                 continue;
             }
             // In digging order: past the best score, nothing later can beat it.
@@ -408,7 +410,7 @@ public final class Clearing {
         int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
         for (BlockPos block : cover) {
             if (block.y() != top || excluded.contains(block) || steps.test(block) || !diggable(world, block.x(), block.y(), block.z())
-                    || world.isSolid(block.x(), block.y() + 1, block.z())) {
+                    || world.solidHere(block.x(), block.y() + 1, block.z())) {
                 continue;
             }
             for (int[] side : sides) {

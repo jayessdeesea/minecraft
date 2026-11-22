@@ -173,8 +173,13 @@ class FlattenTopsSimulationTest {
     @Test
     void anUnknownBlockInTheDigIsAlertedAndSaidUp() throws IOException {
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, with((x, y, z) -> x == 40 && z == 8 && y == GROUND + 1 ? UNKNOWN_STATE : -1), 1000);
+        // And a fence post beside it: the cell over a fence reads solid to a body, and live (field679) the air and torches over
+        // the farm's posts were alerted as unknown, 36 of them.
+        SimServer server = new SimServer(clock, with((x, y, z) -> x == 40 && z == 8 && y == GROUND + 1 ? UNKNOWN_STATE
+                : x == 42 && z == 8 && y == GROUND + 1 ? SimItems.FENCE : -1), 1000);
         List<String> log = run(server, clock, FarmMissionSimulationTest.kit(), 40);
+        assertEquals(List.of(), log.stream().filter(l -> l.contains("[Alert] unknown block") && l.contains("PASSABLE")).limit(4).toList(),
+                "nothing alerted that a body walks through");
         assertTrue(log.stream().anyMatch(l -> l.contains("[Alert] unknown block state " + UNKNOWN_STATE)), "the unknown block alerted, by its state: "
                 + log.stream().filter(l -> l.contains("[Alert] unknown")).limit(4).toList());
         assertTrue(log.stream().anyMatch(l -> l.contains("[Request]") && l.contains("state " + UNKNOWN_STATE) && l.contains("no break time known")),
