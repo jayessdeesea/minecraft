@@ -82,6 +82,14 @@ closing on one or in cover its crossbow still reaches; met at 6, on hills, among
 skeleton in the exchange cost a third cell); a soldier met at 6 in a pond by a skeleton (33%) - it can't swim clear, and
 the fight forced on it is lost.
 
+**Several hostiles at once, by condition** (`CombatPairsConditionMatrixTest`): a zombie and a skeleton together, met at
+20 or 8 health, bare hands, a stone sword or full iron, on flat, hills and a ravine - every cell 92-100% but bare hands
+in the ravine (83%, known). It doesn't reproduce field663's death: Eli at y=6 in a cave, unarmoured at 8 health, shot
+dead in one cell, his answer flipping every two seconds between the zombie ("fights hand to hand") and the skeleton
+("takes cover"). On open ground the withdrawal works; the dimension missing is the confined one - a cave or tunnel
+ground with no line of retreat. Left: that ground in the battle simulation (`Terrain`), the pair on it, and the flip
+between two hostiles' rules taken out once it fails there.
+
 **Deaths as a check on the model, not a case each.** Each death is read for what the evals lack - is that dimension
 (the armour's wear, water, a shaft, eating time, regeneration) in the battle simulation at all? - and the missing
 dimension is what's added, the matrix grown by it, not a scenario to pass. Not every battle is won: the measure is the

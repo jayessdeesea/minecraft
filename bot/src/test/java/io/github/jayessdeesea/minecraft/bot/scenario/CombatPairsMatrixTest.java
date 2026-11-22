@@ -48,6 +48,11 @@ class CombatPairsMatrixTest {
 
     /** Whether the soldier came through alive, against {@code pair} with {@code kit} on {@code ground}. */
     static boolean survives(List<Battle.Archetype> pair, long seed, CombatMatrixTest.KitCase kit, Terrain ground) {
+        return survives(pair, seed, kit, ground, 20);
+    }
+
+    /** As above, the soldier met at {@code startHealth} - the matrix grown by condition (CombatPairsConditionMatrixTest). */
+    static boolean survives(List<Battle.Archetype> pair, long seed, CombatMatrixTest.KitCase kit, Terrain ground, double startHealth) {
         Scenario scenario = Scenario.generate(ground, seed);
         scenario.world().open(CombatScenarioTest.OPEN); // no wall at 48 to corner a flight
         Battle battle = new Battle(scenario.world(), seed);
@@ -62,8 +67,8 @@ class CombatPairsMatrixTest {
             hostiles.add(battle.spawn(pair.get(i), start.x() + 0.5 + Math.cos(a) * range, start.z() + 0.5 + Math.sin(a) * range));
         }
         DeterministicSoldier soldier = new DeterministicSoldier("Alice", new Position(start.x() + 0.5, start.y(), start.z() + 0.5));
-        double health = 20;
-        Body body = new Body(kit.armour()); // the server's food, regeneration and armour wear
+        double health = startHealth;
+        Body body = startHealth >= 20 ? new Body(kit.armour()) : new Body(startHealth, 20, 5, kit.armour()); // the server's food, regeneration and armour wear
         soldier.reportHealth(health, 20);
         soldier.reportKit(new Kit(kit.weapon(), 0, kit.armour().pieces, 0, 0, 0, Body.RATIONS, kit.shield()));
         double blow = WeaponStats.melee(kit.weapon()).damage();

@@ -682,7 +682,9 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   ledge 4 over a skeleton, stepping at the drop, and was shot dead); with no walk to it at all - a route only by
   building or digging - it's pinned, and taken cover from. Two at once (`CombatPairsMatrixTest`, correct: alive):
   short now, on hills, a creeper with a zombie, bare-handed (83%); every other pair comes through. By the soldier's
-  condition (`CombatConditionMatrixTest`): a stone sword against each hostile, met whole, at 12 and at 6, in no iron, a
+  condition (`CombatConditionMatrixTest`), and a zombie and a skeleton together by it too (`CombatPairsConditionMatrixTest`:
+  met at 20 or 8, bare hands, a stone sword or full iron, on the flat, hills and a ravine; short, bare hands in the ravine):
+  a stone sword against each hostile, met whole, at 12 and at 6, in no iron, a
   chestplate or the whole set, on the flat, hills, trees, a pond, either side of a ravine and under a cliff - correct as
   above, and against a zombie met hurt, got away from counts, as does one let be across a ravine with neither touched. A
   zombie's blow reaches only a body level with its own (`Battle`, vanilla's attack box): one in a trench under the
