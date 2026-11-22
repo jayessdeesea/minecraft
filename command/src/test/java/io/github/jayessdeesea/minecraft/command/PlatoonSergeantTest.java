@@ -258,4 +258,16 @@ class PlatoonSergeantTest {
         assertEquals(Set.of("Carol"), party.cutters());
         assertTrue(party.planter().isEmpty(), "the one place goes to cutting");
     }
+
+    /** A short soldier beside a squadmate with rations to spare isn't helpless: no Class I RED (field641-643). */
+    @Test
+    void aSquadWithRationsToSpareIsNotRed() {
+        java.util.function.BiFunction<String, Integer, SoldierStatus> carrying = (name, rations) -> new SoldierStatus(name,
+                new Position(0, 64, 0), new Order.Idle(), new Report.Idle(), java.util.Optional.of(new Condition(20, 20, 0,
+                java.util.Optional.of(new Kit(java.util.Optional.of("stone_sword"), 0, 0, 0, 0, 0, rations)))));
+        assertEquals(Subsistence.Rating.AMBER, PlatoonSergeant.classOne(List.of(carrying.apply("Carol", 5), carrying.apply("Fran", 51)),
+                java.util.Set.of("Carol"), java.util.Set.of(), false).rating(), "Fran's 51 feed Carol as she runs out");
+        assertEquals(Subsistence.Rating.RED, PlatoonSergeant.classOne(List.of(carrying.apply("Carol", 5), carrying.apply("Gus", 6)),
+                java.util.Set.of("Carol"), java.util.Set.of(), false).rating(), "nobody with any to spare");
+    }
 }

@@ -137,10 +137,18 @@ public final class PlatoonSergeant {
      * with FORAGE.
      */
     public static Subsistence.Status classOne(List<SoldierStatus> statuses, Set<String> foodless, Set<String> sharedTo, boolean farmGrowing) {
-        Set<String> noMeans = farmGrowing ? Set.of() : statuses.stream().map(SoldierStatus::name)
+        // Not helpless with a squadmate carrying rations to spare: its hand-over comes as the soldier runs out
+        // (CrossLevel.RUNNING_OUT) - live (field641-643), squads read Class I RED 6 to 14 times a run, a soldier at 4 to 9
+        // beside squadmates with 40 and 50, and the platoon leader's every order "doesn't answer" it.
+        boolean spare = statuses.stream().anyMatch(s -> s.condition().flatMap(Condition::kit)
+                .filter(k -> k.rations() >= SPARE_RATIONS).isPresent());
+        Set<String> noMeans = farmGrowing || spare ? Set.of() : statuses.stream().map(SoldierStatus::name)
                 .filter(n -> foodless.contains(n) && !sharedTo.contains(n)).collect(Collectors.toSet());
         return Subsistence.of(statuses, noMeans);
     }
+
+    /** A squadmate carrying this many rations has some to spare for one running out: twice a soldier's short. */
+    static final int SPARE_RATIONS = 2 * Subsistence.FOOD_FIRST;
 
     /**
      * Cross-leveling within a squad (docs/military-doctrine.md § 13), the hand-overs it makes from
