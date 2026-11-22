@@ -1809,7 +1809,17 @@ a site where no well can go down at or round it, every chunk seen, is done with 
 keep untried on a 32-block grid round its first mine, up to 192 out every way, its head 8 clear of
 the flatten site and its bench (`ChainOfCommand.onMineDriedUp`, "[PL] the keep's mine at ... is dried
 up - the night shift's mine moves to ..."; the site and those tried kept on disk, so a restart keeps
-it where it went - live, stepping only west put it 160 blocks off past a lake, a blocked well and a hill). A mine off the camp is headed on the ground there, read from the
+it where it went - live, stepping only west put it 160 blocks off past a lake, a blocked well and a hill). The camp's mine
+has sites of its own and moves on as the keep's does (`app.CampMineSites`): its first head 4 east and 4 north of the
+camp's centre (`ChainOfCommand.MINE_HEAD_DX`, `MINE_HEAD_DZ`), then - each spent, its Mine task DONE with no ore wanted
+to run it on for, or dried up - the nearest the camp's centre of the chunk centres on its ground (32 past its wall line,
+`CampGround.INFLUENCE`) untried, each chunk wholly past the wall line, its head 8 clear of the flatten site and its
+bench, and none a chunk the chunk register holds a template in - wheat, trees, flattened or floored ground, a supply
+point - nor is any mine's well sited in one ("[PL] the camp's mine at ... is spent - the night shift's mine moves to
+..."). Its old well is kept dead and let go; the night shift's objective, the shafts kept out of the camp's ground
+work and floor, and which mines count as the camp's - within 24 of its centre or of the site - follow the site, and
+the site and those tried are kept on disk. Without it (field663), every squad was sent down the cut-out camp's mine
+each minute all night, DONE within a second each time. A mine off the camp is headed on the ground there, read from the
 sky down at the nearest column within 8 of its site that reads - a lake's or lava's column reads
 none, never the cave under its bed (live, a site's lake read through to a cave at y=24) - and its
 workshop, before the stairs are cut, on that ground, not at the order's depth; with none read, nothing is sited

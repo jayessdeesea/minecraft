@@ -440,6 +440,75 @@ static void assertMinedToTheIron(SimServer server) {
         assertNotEquals(List.of(new BlockPos(-26, 16, -24)), chests.load("keepmine").orElseThrow(), "and kept on disk moved");
     }
 
+    /**
+     * By night, the camp's mine cut out and no ore wanted - the iron pickaxe carried, every soldier in a full set of
+     * armour - its MINE reads DONE and the camp's mine moves to its next site, and the night's objective with it. Live
+     * (field663), with nowhere for it to go, every squad was given the same order for the cut-out mine each minute all
+     * night, DONE within a second each time, and the night's mining yielded nothing.
+     */
+    @Test
+    void byNightTheCampsMineCutOutMovesToItsNextSite() {
+        KeptStairs.keptInTheBuildup(state);
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, KeptStairs::keptStairsAllCut, 14_000); // an hour after dusk
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, true, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.itemNamedOrMinus("iron_pickaxe"), 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{5, SimServer.itemNamedOrMinus("iron_helmet"), 1},
+                        new int[]{6, SimServer.itemNamedOrMinus("iron_chestplate"), 1},
+                        new int[]{7, SimServer.itemNamedOrMinus("iron_leggings"), 1},
+                        new int[]{8, SimServer.itemNamedOrMinus("iron_boots"), 1})));
+        runner.run();
+        Position first = new Position(ChainOfCommand.MINE_HEAD_DX, ChainOfCommand.MINE_DEPTH, ChainOfCommand.MINE_HEAD_DZ);
+
+        clock.advance(6 * 60_000);
+
+        String mission = "Cut the camp's mine down to the iron through the night";
+        List<io.github.jayessdeesea.minecraft.command.ObjectiveRecord> given = chain.objectiveBook.orElseThrow().registers().objectives().stream()
+                .filter(r -> r.mission().equals(mission)).toList();
+        long atFirst = given.stream().filter(r -> r.chunkX() == Math.floorDiv(ChainOfCommand.MINE_HEAD_DX, 16)
+                && r.chunkZ() == Math.floorDiv(ChainOfCommand.MINE_HEAD_DZ, 16)).count();
+        assertTrue(atFirst <= 1, "the night's mining given for the cut-out mine " + atFirst + " times: " + given);
+        Position next = chain.campMines.site(camp);
+        assertNotEquals(first, next, "the camp's mine moved on");
+        assertTrue(given.stream().anyMatch(r -> r.chunkX() == Math.floorDiv((int) next.x(), 16) && r.chunkZ() == Math.floorDiv((int) next.z(), 16)),
+                "the squad given the next site, " + next + ": " + given);
+        assertEquals(List.of(new BlockPos((int) next.x(), (int) next.y(), (int) next.z())), new WallStore(state, "chests").load("campmine").orElseThrow(),
+                "the camp's mine as it stands kept on disk");
+        // Its well sited there and kept as the camp's - in its chunk, the cut-out one let go.
+        BlockPos head = new WallStore(state, "stairs").load("well 0,0").map(List::getFirst).orElseThrow();
+        assertEquals(List.of(Math.floorDiv((int) next.x(), 16), Math.floorDiv((int) next.z(), 16)),
+                List.of(Math.floorDiv(head.x(), 16), Math.floorDiv(head.z(), 16)), "the camp's well at " + head);
+        assertEquals(Optional.of(List.of()), new WallStore(state, "stairs").load("0,0"), "the cut-out staircase let go");
+    }
+
+    /** The camp's mine as it stands, and the sites it has left, are read back at start-up: not sent back to the first. */
+    @Test
+    void theCampsMineMovedOnIsKeptAcrossARestart() {
+        WallStore chests = new WallStore(state, "chests");
+        chests.save("campmine", List.of(new BlockPos(-40, 16, -8)));
+        chests.save("campminestried", List.of(new BlockPos(4, 16, -4)));
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, true, new SimClock());
+
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
+
+        assertEquals(new Position(-40, 16, -8), chain.campMines.site(camp));
+        assertEquals(java.util.Set.of(new Position(4, 16, -4)), chain.campMines.tried());
+    }
+
     /** With nothing on disk - no squad on MINE since a restart - the mine head's shaft is still nobody's fill. */
     @Test
     void theShaftAtTheCampsMineHeadIsLeftOpenWithNothingOnDisk() {

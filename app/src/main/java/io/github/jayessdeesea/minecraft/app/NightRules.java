@@ -30,11 +30,11 @@ final class NightRules {
 
     /**
      * The night as the chain of command has it: whether the shelter rule is on, the time, the camp, the phase, whether
-     * the keep is built by day, the keep's mine, whether there are no squads, each squad's standing patrol base, how
-     * the ground is read, and each squad's own point round a shared one.
+     * the keep is built by day, the keep's mine, the camp's mine as it stands (CampMineSites), whether there are no
+     * squads, each squad's standing patrol base, how the ground is read, and each squad's own point round a shared one.
      */
     record Night(boolean shelterAtNight, TimeOfDay time, Optional<Foothold> foothold, Phase phase, boolean keepByDay, Position keepMine,
-                 boolean noSquads, Function<String, Optional<Objective>> standingBase, Ground ground,
+                 Optional<Position> campMine, boolean noSquads, Function<String, Optional<Objective>> standingBase, Ground ground,
                  java.util.function.BiFunction<Position, String, Position> spread) {
     }
 
@@ -139,9 +139,8 @@ final class NightRules {
             return Optional.of(new Objective("Cut the keep's mine down to the iron through the night", n.keepMine(),
                     "Stone and iron for the stores, and the night spent working underground beside the keep", new Objective.Task.Mine()));
         }
-        Position c = camp.camp();
-        return Optional.of(new Objective("Cut the camp's mine down to the iron through the night",
-                new Position(Math.floor(c.x()) + MINE_HEAD_DX, MINE_DEPTH, Math.floor(c.z()) + MINE_HEAD_DZ),
+        // At the camp's mine as it stands: its first head, or the site it moved to once that was spent.
+        return Optional.of(new Objective("Cut the camp's mine down to the iron through the night", n.campMine().orElseThrow(),
                 "Stone and iron for the camp, and the night spent working underground", new Objective.Task.Mine()));
     }
 

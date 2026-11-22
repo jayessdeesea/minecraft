@@ -1294,20 +1294,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
         chestStore.load(SALVAGED).ifPresent(salvaged::addAll);
         chestStore.load(DEAD_WELLS).ifPresent(deadWells::addAll);
-        chestStore.load(MINES_TRIED).ifPresent(tried -> chainOfCommand.setMinesTried(tried.stream()
-                .map(c -> new Position(c.x(), c.y(), c.z())).toList()));
-        chestStore.load(MINE_SITE).filter(l -> l.size() == 1).map(List::getFirst)
-                .ifPresent(c -> chainOfCommand.setKeepMine(new Position(c.x(), c.y(), c.z())));
-        // A kept mine whose well is dead - found dried up or blocked before a restart - moves on at once:
-        // live (field382), the night shift was sent back down the mine field381 had found dried up.
-        // (The constructor's own chainOfCommand: the field isn't set yet.)
-        Position kept = chainOfCommand.keepMine();
-        if (deadWells.stream().anyMatch(w -> w.x() == (int) Math.floor(kept.x()) && w.z() == (int) Math.floor(kept.z()))) {
-            chainOfCommand.onMineDriedUp((int) Math.floor(kept.x()), (int) Math.floor(kept.z())).ifPresent(site -> {
-                chestStore.save(MINE_SITE, List.of(BlockPos.containing(site.x(), site.y(), site.z())));
-                chestStore.save(MINES_TRIED, chainOfCommand.minesTried().stream().map(p -> BlockPos.containing(p.x(), p.y(), p.z())).toList());
-            });
-        }
+        (this.mineSiteBook = new MineSiteBook(chestStore)).restoreInto(chainOfCommand, deadWells); // the constructor's own chainOfCommand: the field isn't set yet
         this.planBook = new PlanBook(Path.of(stateDir));
         this.scoreboard = new Scoreboard(Path.of(stateDir));
         this.camp = camp.isBlank() ? null : Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
@@ -2166,10 +2153,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // The camp's mine's shaft - the 3x3 columns round its head, where the night shift cuts it - is
         // never ground work, by day or night, whoever's on it: live, a day's fill with no squad on MINE would have poured dirt down it.
         if (camp != null) {
-            List<int[]> heads = new ArrayList<>();
-            heads.add(new int[]{camp[0] + ChainOfCommand.MINE_HEAD_DX, camp[1] + ChainOfCommand.MINE_HEAD_DZ});
-            campStairs().ifPresent(s -> heads.add(new int[]{s.head().x(), s.head().z()}));
-            for (int[] h : heads) {
+            for (int[] h : chainOfCommand.campMines.heads(new Position(camp[0], 0, camp[1]), campStairs().map(Staircase::head))) {
                 for (int x = h[0] - 1; x <= h[0] + 1; x++) {
                     for (int z = h[1] - 1; z <= h[1] + 1; z++) {
                         for (int y = fill.minY(); y <= dig.maxY(); y++) {
@@ -4130,7 +4114,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Whether ({@code x}, {@code z}) is near enough the camp for a mine there to be the camp's. */
     private boolean nearCamp(int x, int z) {
-        return camp != null && Math.hypot(x - camp[0], z - camp[1]) <= CAMP_MINE_RANGE;
+        return camp != null && (Math.hypot(x - camp[0], z - camp[1]) <= CAMP_MINE_RANGE || campMineSite().filter(s -> Math.hypot(x - s.x(), z - s.z()) <= CAMP_MINE_RANGE).isPresent());
     }
 
     /** The camp's mine, as kept on disk: empty for no camp, or no mine sited. */
@@ -4191,25 +4175,36 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * as the whole - live (field310), "0 ore block(s) taken" for the last minutes of one.
      */
     private volatile boolean wasDark = true;
-    /**
-     * The keep's mine moved on, to disk: lost at a restart, the night shift went back to the old
-     * site, dried up, and had to work it out again before it moved.
-     */
-    private void keepMineSite(Position site) {
-        synchronized (chestStore) {
-            chestStore.save(MINE_SITE, List.of(BlockPos.containing(site.x(), site.y(), site.z())));
-            chestStore.save(MINES_TRIED, chainOfCommand.minesTried().stream().map(p -> BlockPos.containing(p.x(), p.y(), p.z())).toList());
+    /** The mine at ({@code x}, {@code z}) - its head, or the site ordered with no well there - dried up: the keep's moves on if it's that one, the camp's if the camp's. */
+    private void mineDriedUp(int x, int z) {
+        chainOfCommand.onMineDriedUp(x, z).ifPresent(site -> mineSiteBook.keepKeepMine(chainOfCommand));
+        if (campStairs().filter(s -> s.head().x() == x && s.head().z() == z).isPresent()
+                || campMineSite().filter(s -> (int) Math.floor(s.x()) == x && (int) Math.floor(s.z()) == z).isPresent()) {
+            campMineSpent();
         }
     }
 
-    /** The key the sites the keep's mine has left are kept under. */
-    private static final String MINES_TRIED = "minestried";
+    /** The camp's mine spent - its MINE done, or dried up: moved on to its next site (CampMineSites), its well dead and let go, both kept on disk. */
+    private void campMineSpent() {
+        Position centre = new Position(camp[0], 0, camp[1]);
+        if (chainOfCommand.onCampMineSpent(centre).isPresent()) {
+            mineSiteBook.keepCampMine(chainOfCommand, centre);
+            campStairs().ifPresent(s -> deadWell(s.head()));
+            campStairs = Optional.empty();
+            List.of(camp[0] + "," + camp[1], mineKey(camp[0] + "," + camp[1], true)).forEach(k -> mineStore.save(k, List.of()));
+        }
+    }
+
+    /** The camp's mine as it stands (CampMineSites): empty with no camp. */
+    private Optional<Position> campMineSite() {
+        return camp == null ? Optional.empty() : Optional.of(chainOfCommand.campMines.site(new Position(camp[0], 0, camp[1])));
+    }
 
     /** Each level's tunnels given up, its crew's one set (Miner.tick), by stairs head and bottom - ticks write and read. */
     private final Map<String, Set<Integer>> levelsBlocked = new ConcurrentHashMap<>();
     /** Where soldiers were killed lately (command.DangerAreas) - death handlers write, squad loops read, under its lock. */
     private final DangerAreaBook dangerAreas;
-    private final StoresBook storesBook; private final PhaseBook phaseBook; private final WoodsBook woodsBook; // the stores, the phase, the woods cut out
+    private final StoresBook storesBook; private final PhaseBook phaseBook; private final WoodsBook woodsBook; private final MineSiteBook mineSiteBook; // the stores, the phase, the woods cut out, the mines' sites
     /** Mine heads worked out or blocked, never sited again - kept on disk. Squad loop, read at siting. */
     private final Set<BlockPos> deadWells = ConcurrentHashMap.newKeySet();
     /** The key the dead wells are kept under. */
@@ -4223,9 +4218,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
     }
-
-    /** The key the keep's mine as it stands is kept under. */
-    private static final String MINE_SITE = "keepmine";
 
     /** The mines said dried up, by head: said once. */
     private final Set<BlockPos> driedUp = ConcurrentHashMap.newKeySet();
@@ -4326,7 +4318,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (level != null && driedUp.add(level.head().offset(0, level.bottom(), 0))) {
                     LOG.warn("[Outcome] [{}] the mine at {} is dried up for its second level: every level cut down to y={} - SHORT",
                             squad, first.head(), level.bottom());
-                    chainOfCommand.onMineDriedUp(state.stairs.head().x(), state.stairs.head().z()).ifPresent(this::keepMineSite); // by its head, not the finder's order (field381)
+                    mineDriedUp(state.stairs.head().x(), state.stairs.head().z()); // by its head, not the finder's order (field381)
                 }
                 return level;
             }
@@ -4695,6 +4687,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .filter(n -> statuses.stream().anyMatch(s -> s.name().equals(n))).toList();
                 if (!crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done)) {
                     done = Optional.of("the stairs are cut down to y=" + state.stairs.bottom() + ", and the ore beside them taken");
+                    // The camp's, with no ore wanted to run it on for, is spent: it moves on (live, field663: sent down it again each minute all night).
+                    if (!oreWanted() && campStairs().filter(c -> c.head().equals(state.stairs.head())).isPresent() && driedUp.add(state.stairs.head())) campMineSpent();
                 } else if (state.stairs != null) {
                     left = Optional.of("the stairs " + state.stairs.stepsCut(world) + " of " + state.stairs.steps() + " steps down");
                 }
@@ -5455,7 +5449,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     deadWell(state.stairs.head());
                     String why = blockedBy.get();
                     LOG.warn("[Outcome] the mine at {} is blocked at y={}: {} - SHORT", state.stairs.head(), state.stairs.bottom(), why);
-                    chainOfCommand.onMineDriedUp(state.stairs.head().x(), state.stairs.head().z()).ifPresent(this::keepMineSite); // by its head, not the finder's order (field381)
+                    mineDriedUp(state.stairs.head().x(), state.stairs.head().z()); // by its head, not the finder's order (field381)
                 }
                 // Settled by mine, not by squad: live, four squads on one mine each took the others' stale
                 // DONE for their own, and it ran on from 24 blocks to 96 in seconds with nothing cut.
@@ -5472,7 +5466,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         deadWell(state.stairs.head());
                         LOG.warn("[Outcome] the mine at {} is dried up: every level cut down to y={}, and ore still wanted - SHORT",
                                 state.stairs.head(), state.stairs.bottom());
-                        chainOfCommand.onMineDriedUp(state.stairs.head().x(), state.stairs.head().z()).ifPresent(this::keepMineSite); // by its head, not the finder's order (field381)
+                        mineDriedUp(state.stairs.head().x(), state.stairs.head().z()); // by its head, not the finder's order (field381)
                     }
                     if (longer.isPresent()) {
                         mineExtendedAt.put(state.stairs.head(), now);
@@ -5573,7 +5567,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             int nearY = surfaceY.getAsInt();
             // To the standard: a 4x4 well centred in the chunk (Staircase.well; operator, 2026-11-15).
-            Optional<Staircase> sited = Staircase.siteWell(world, x, z, nearY, depth, deadWells::contains);
+            Optional<Staircase> sited = Staircase.siteWell(world, x, z, nearY, depth, h -> deadWells.contains(h) || chainOfCommand.templated(Math.floorDiv(h.x(), 16), Math.floorDiv(h.z(), 16)));
             if (sited.isEmpty()) {
                 if (!failedHere) {
                     LOG.warn("[{}] MINE: no chunk at or round x={} z={} a well can be cut down clear of water and lava - there itself, {}",
@@ -5589,7 +5583,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                     if (seen) {
                         LOG.warn("[Outcome] no well can be sited at or round x={} z={} - SHORT", x, z);
-                        chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite); // no well, no head: the site ordered
+                        mineDriedUp(x, z); // no well, no head: the site ordered
                     }
                 }
                 state.stairsFor = new int[]{x, z};
@@ -5620,7 +5614,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (stairs == null) {
             nightBelow.remove(squadName);
         }
-        if (stairs != null && camp != null && nearCamp(stairs.head().x(), stairs.head().z()) && !campStairs().equals(Optional.of(stairs))) {
+        if (stairs != null && camp != null && nearCamp(stairs.head().x(), stairs.head().z()) && !deadWells.contains(stairs.head()) && !campStairs().equals(Optional.of(stairs))) {
             mineStore.save(mineKey(camp[0] + "," + camp[1], stairs.well()), toKeep(stairs));
             campStairs = Optional.of(stairs);
         }
@@ -8000,12 +7994,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return List.of();
         }
         Set<Cell> except = groundExcept();
-        int headX = camp[0] + ChainOfCommand.MINE_HEAD_DX, headZ = camp[1] + ChainOfCommand.MINE_HEAD_DZ;
+        List<int[]> heads = chainOfCommand.campMines.heads(new Position(camp[0], 0, camp[1]), campStairs().map(Staircase::head));
         List<BlockPos> floor = new ArrayList<>();
         for (int x = ground.x() - (WALL_RADIUS - 1); x <= ground.x() + WALL_RADIUS - 1; x++) {
             for (int z = ground.z() - (WALL_RADIUS - 1); z <= ground.z() + WALL_RADIUS - 1; z++) {
                 int y = ground.y() - 1; // the camp's ground is where its feet are: the floor is under them
-                boolean head = Math.abs(x - headX) <= 1 && Math.abs(z - headZ) <= 1;
+                boolean head = false;
+                for (int[] h : heads) head |= Math.abs(x - h[0]) <= 1 && Math.abs(z - h[1]) <= 1;
                 if (!head && world.isSoil(x, y, z) && !world.isFarmland(x, y, z) && !world.isSolid(x, y + 1, z)
                         && !except.contains(new Cell(x, y, z))) {
                     floor.add(new BlockPos(x, y, z));

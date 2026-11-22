@@ -309,12 +309,12 @@ public class ChainOfCommand implements DisposableBean {
      */
     static final long SURFACE_LEAD_TICKS = 600;
 
-    /** Where the camp's mine is cut, from the camp's centre: inside its wall, clear of the huts. */
+    /** Where the camp's mine's first head is cut, from the camp's centre: inside its wall, clear of the huts (CampMineSites). */
     static final int MINE_HEAD_DX = 4;
     static final int MINE_HEAD_DZ = -4;
     /**
-     * The keep's mine as it stands: {@link MineSites#KEEP_MINE} until it's dried up, then a fresh site
-     * {@link MineSites#MINE_SITE_STEP} further west each time, clear of the flatten site and its bench
+     * The keep's mine as it stands: {@link MineSites#KEEP_MINE} until it's dried up, then the nearest untried site on a
+     * grid {@link MineSites#MINE_SITE_STEP} apart round it, clear of the flatten site and its bench
      * (operator, 2026-11-16: move to other sites or go deeper). Kept on disk by the soldier runner,
      * and set back from it at start-up ({@link #setKeepMine}).
      */
@@ -343,6 +343,19 @@ public class ChainOfCommand implements DisposableBean {
     /** The mine at ({@code x}, {@code z}) dried up: the keep's mine moved on if it's that one (MineSites#onDriedUp). */
     Optional<Position> onMineDriedUp(int x, int z) {
         return mines.onDriedUp(x, z, flatten);
+    }
+
+    /** The camp's mine and the sites it has left (CampMineSites): the night shift's at the camp. */
+    final CampMineSites campMines = new CampMineSites();
+
+    /** The camp's mine centred at {@code camp} spent: moved on to its next site, clear of the flatten and the chunk register's templates. */
+    Optional<Position> onCampMineSpent(Position camp) {
+        return campMines.spent(camp, flatten(), this::templated);
+    }
+
+    /** Whether the chunk register holds a template in chunk ({@code chunkX}, {@code chunkZ}): wheat, trees, flattened or floored ground, a supply point. */
+    boolean templated(int chunkX, int chunkZ) {
+        return objectiveBook.map(b -> b.registers().chunk(chunkX, chunkZ).isPresent()).orElse(false);
     }
 
     /** Where the keep's mine goes when it's spent (MineSites#next). */
@@ -380,7 +393,8 @@ public class ChainOfCommand implements DisposableBean {
 
     /** The night as its rules read it, now. */
     private NightRules.Night night() {
-        return new NightRules.Night(shelterAtNight, time, Optional.ofNullable(foothold), phaseNow, keepByDay, mines.keepMine(), squads.isEmpty(),
+        return new NightRules.Night(shelterAtNight, time, Optional.ofNullable(foothold), phaseNow, keepByDay, mines.keepMine(),
+                Optional.ofNullable(foothold).map(f -> campMines.site(f.camp())), squads.isEmpty(),
                 name -> squads.get(name).objective().filter(Objective::patrolBase), ground, this::spread);
     }
 
