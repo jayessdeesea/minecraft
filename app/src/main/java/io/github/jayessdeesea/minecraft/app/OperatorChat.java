@@ -175,6 +175,9 @@ public class OperatorChat implements DisposableBean {
             ticket.finished();
         }
         String argument = reply.argument() == null ? "" : reply.argument().strip();
+        if (reply.action() == ChatReply.Action.FARM) {
+            argument = numbersOf(argument); // the model writes "x=24,z=56" one turn, "24 56" the next: its numbers, in order
+        }
         if (reply.action() == ChatReply.Action.FARM && !levelAsSaid(argument, message).equals(argument)) {
             LOG.warn("[Chat] the platoon leader's FARM \"{}\" gave a level the operator didn't: at sea level instead", argument);
             argument = levelAsSaid(argument, message);
@@ -217,6 +220,15 @@ public class OperatorChat implements DisposableBean {
      * level is the operator's to give, and sea level unless given. Live (field668), told "at sea level", the model gave y=67,
      * and the mission was to flatten a chunk to 66.
      */
+    static String numbersOf(String argument) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("-?\\d+").matcher(argument);
+        List<String> numbers = new java.util.ArrayList<>();
+        while (m.find()) {
+            numbers.add(m.group());
+        }
+        return String.join(" ", numbers);
+    }
+
     static String levelAsSaid(String argument, String message) {
         String[] parts = argument.strip().split("\\s+");
         boolean said = parts.length != 3 || java.util.regex.Pattern.compile("(?<![0-9-])" + java.util.regex.Pattern.quote(parts[2]) + "(?![0-9])")

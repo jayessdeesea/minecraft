@@ -196,6 +196,10 @@ class OperatorChatTest {
         assertEquals("24 56 70", OperatorChat.levelAsSaid("24 56 70", "a farm at x=24 z=56 at y=70"));
         assertEquals("24 56", OperatorChat.levelAsSaid("24 56", "a farm at x=24 z=56"));
         assertEquals("24 56", OperatorChat.levelAsSaid("24 56 6", "a farm at x=24 z=56"), "a digit inside a coordinate isn't a level said");
+        // Its numbers, however the model writes them (field669: "x=24,z=56", then "chunk (1, 3): x=24 z=56").
+        assertEquals("24 56", OperatorChat.numbersOf("x=24,z=56"));
+        assertEquals("1 3 24 56", OperatorChat.numbersOf("chunk (1, 3): x=24 z=56"), "four: read as none - the turn fails loud");
+        assertEquals("-40 12 70", OperatorChat.numbersOf("x = -40, z = 12, y = 70"));
     }
 
     @Test
