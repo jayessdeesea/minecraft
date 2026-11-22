@@ -170,7 +170,7 @@ public class OperatorChat implements DisposableBean {
         ModelCalls.Ticket ticket = chain.modelCalls().queued("Operator chat");
         ticket.started();
         try {
-            reply = chat.answer(earlier, message, chain.time(), chain.flatten());
+            reply = chat.answer(earlier, message, chain.time(), chain.flatten(), chain.objectiveBook.map(b -> b.describe(chain.clockwork.millis())));
         } finally {
             ticket.finished();
         }

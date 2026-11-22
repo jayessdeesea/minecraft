@@ -45,12 +45,15 @@ public final class PlatoonLeaderChat {
         this.platoonLeader = platoonLeader;
     }
 
-    /** The platoon leader's reply to {@code message}, after {@code earlier}, with the clock and the ground as they stand. */
-    public ChatReply answer(List<Turn> earlier, String message, Optional<TimeOfDay> time, Flatten flatten) {
+    /**
+     * The platoon leader's reply to {@code message}, after {@code earlier}, with the clock and the ground as they stand, and
+     * its {@code registers} - the objectives open and the chunks kept, as computed - if it keeps them.
+     */
+    public ChatReply answer(List<Turn> earlier, String message, Optional<TimeOfDay> time, Flatten flatten, Optional<String> registers) {
         if (message == null || message.isBlank()) {
             throw new IllegalArgumentException("an empty message");
         }
-        PromptContext context = buildContext(prompts, message, time, flatten, platoonLeader.lastShown());
+        PromptContext context = buildContext(prompts, message, time, flatten, registers, platoonLeader.lastShown());
         LOG.info("[Chat] the platoon leader is shown, after {} earlier turn(s):\n{}", earlier.size(), context.prompt());
         ChatReply reply = chatClient.prompt()
                 .templateRenderer(PromptTemplate.RENDERER)
@@ -77,10 +80,11 @@ public final class PlatoonLeaderChat {
 
     /** The operator's turn as the user template's parameters: now, the last decision's situation, and what was said. */
     static PromptContext buildContext(OperatorChatPrompts prompts, String message, Optional<TimeOfDay> time, Flatten flatten,
-                                      Optional<String> lastShown) {
+                                      Optional<String> registers, Optional<String> lastShown) {
         Map<String, Object> params = new HashMap<>();
         params.put("clock", time.map(PlatoonLeaderChat::describe).orElse("The time of day: not known - the server hasn't sent it yet."));
         params.put("flatten", flatten.describe());
+        params.put("registers", registers.<Object>map(s -> s).orElse(false));
         params.put("lastDecision", lastShown.<Object>map(s -> s).orElse(false));
         params.put("message", message.strip());
         return new PromptContext(prompts.user(), params);

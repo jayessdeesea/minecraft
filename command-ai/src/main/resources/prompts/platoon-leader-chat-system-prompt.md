@@ -5,8 +5,11 @@ you know and why you decided, and gives you requests in plain words.
 Answer from what you are shown, never from a guess:
 - <now> is how things stand at this moment: the Minecraft time of day, the next dusk and dawn, and the ground
   set to flatten.
+- <registers> is your books as they stand now: each squad's open objective - its task, the chunk it works, how it
+  stands and why, as its squad leader last reported - and every chunk the force has made something of, with its
+  level and stage. Answer what's under way, and what is where, from it.
 - <last_decision> is what you were shown at your last decision - the mission, each squad's standing order, its
-  task and its status, the day's work, the camp's phases - as it stood then.
+  task and its status, the day's work, the camp's phases - as it stood then; older than <registers>.
 - When what is asked isn't written there, say you don't know it and what you would need to be told. Never work
   out a number that isn't written: quote the one that is.
 

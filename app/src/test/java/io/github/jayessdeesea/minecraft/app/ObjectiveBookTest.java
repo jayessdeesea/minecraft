@@ -63,6 +63,23 @@ class ObjectiveBookTest {
         assertEquals(new Row(ObjectiveRecord.State.UNDER_WAY, Optional.of("100 blocks to dig")), row(registers, "Charlie"));
     }
 
+    /** The register as the platoon leader reads it: each squad's open objective, how it stands and why, and the chunks kept. */
+    @Test
+    void theRegisterIsDescribedForTheModelToQuote() {
+        Registers registers = new Registers(state.resolve("registers"));
+        ObjectiveBook book = new ObjectiveBook(() -> registers);
+        assertEquals("Objectives open, as each squad last reported:\n- none\nChunks kept, what the force has made of each:\n- none", book.describe(0));
+
+        book.given("Charlie", FLATTEN, 1_000);
+        book.sitrep("Charlie", new Report.Cantco("no route to (30, 72, 90)"), Optional.empty(), 2_000);
+        registers.put(new io.github.jayessdeesea.minecraft.command.ChunkRecord(1, 3, io.github.jayessdeesea.minecraft.command.ChunkRecord.Kind.WHEAT, 63,
+                Optional.of("SURVEYED"), 2_000));
+
+        String said = book.describe(12_000);
+        assertEquals(true, said.contains("- Charlie: Flatten x=8..40 z=72..104 to y=63 (KEEP) in chunk (1, 5) - CANTCO for 10 s: no route to (30, 72, 90)"), said);
+        assertEquals(true, said.contains("- chunk (1, 3), x 16..31 z 48..63: WHEAT at y=63, SURVEYED"), said);
+    }
+
     private record Row(ObjectiveRecord.State state, Optional<String> why) {
     }
 

@@ -64,7 +64,7 @@ class PlatoonLeaderChatTest {
         platoonLeader.decide(List.of(ALPHA));
 
         ChatReply reply = chat.answer(List.of(new PlatoonLeaderChat.Turn("Who's out?", "Alpha.")), "What objectives are you tracking?",
-                Optional.of(TimeOfDay.of(6000, true)), Flatten.KEEP);
+                Optional.of(TimeOfDay.of(6000, true)), Flatten.KEEP, Optional.of("Objectives open, as each squad last reported:\n- Alpha: scout north (NONE) in chunk (0, -4) - UNDER_WAY for 5 s"));
 
         assertEquals(new ChatReply("Alpha is moving, no standing order yet.", ChatReply.Action.NONE, ""), reply);
         List<Message> messages = sent.get(1).getInstructions();
@@ -78,11 +78,12 @@ class PlatoonLeaderChatTest {
         assertTrue(user.contains("Minecraft time 12:00 (tick 6000 of the day's 24000)."), user);
         assertTrue(user.contains("Next dusk in 7178 ticks (5 min 58 s); next dawn in 18000 ticks (15 min 00 s)."), user);
         assertTrue(user.contains("<operator>\nWhat objectives are you tracking?\n</operator>"), user);
+        assertTrue(user.contains("- Alpha: scout north (NONE) in chunk (0, -4) - UNDER_WAY for 5 s"), "its registers, as they stand: " + user);
     }
 
     @Test
     void beforeAnyDecisionItSaysNothingHasBeenShown() {
-        String user = PlatoonLeaderChat.buildContext(PROMPTS, "status?", Optional.empty(), Flatten.KEEP, Optional.empty()).prompt();
+        String user = PlatoonLeaderChat.buildContext(PROMPTS, "status?", Optional.empty(), Flatten.KEEP, Optional.empty(), Optional.empty()).prompt();
 
         assertTrue(user.contains("You haven't decided yet"), user);
         assertTrue(user.contains("The time of day: not known"), user);

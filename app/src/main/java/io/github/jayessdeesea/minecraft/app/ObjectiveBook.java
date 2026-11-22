@@ -79,6 +79,32 @@ final class ObjectiveBook {
         }
     }
 
+    /**
+     * The register as the platoon leader reads it at {@code now}: each squad's open objective - how it stands, since when,
+     * and why - and every chunk kept, what it is, its level and its stage. Computed, for the model to quote.
+     */
+    synchronized String describe(long now) {
+        StringBuilder text = new StringBuilder("Objectives open, as each squad last reported:\n");
+        java.util.List<ObjectiveRecord> open = registers.get().openObjectives();
+        if (open.isEmpty()) {
+            text.append("- none\n");
+        }
+        for (ObjectiveRecord o : open) {
+            text.append(String.format(java.util.Locale.ROOT, "- %s: %s (%s) in chunk (%d, %d) - %s for %d s%s%n", o.squad().orElse("no squad"),
+                    o.mission(), o.task(), o.chunkX(), o.chunkZ(), o.state(), Math.max(0, now - o.changedAt()) / 1000, o.why().map(w -> ": " + w).orElse("")));
+        }
+        text.append("Chunks kept, what the force has made of each:\n");
+        java.util.List<io.github.jayessdeesea.minecraft.command.ChunkRecord> chunks = registers.get().chunks();
+        if (chunks.isEmpty()) {
+            text.append("- none\n");
+        }
+        for (io.github.jayessdeesea.minecraft.command.ChunkRecord c : chunks) {
+            text.append(String.format(java.util.Locale.ROOT, "- chunk (%d, %d), x %d..%d z %d..%d: %s at y=%d, %s%n", c.chunkX(), c.chunkZ(),
+                    c.chunkX() * 16, c.chunkX() * 16 + 15, c.chunkZ() * 16, c.chunkZ() * 16 + 15, c.kind(), c.level(), c.stage().orElse("not measured")));
+        }
+        return text.toString().strip();
+    }
+
     private Optional<ObjectiveRecord> open(String squad) {
         ObjectiveRecord row = open.get(squad);
         if (row == null) {

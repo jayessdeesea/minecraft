@@ -56,7 +56,8 @@ The platoon leader's books are kept by code, never asked of the model (operator,
   with what was measured (`app.ObjectiveBook`; `[Objectives] Charlie: Flatten ... CANTCO - no route to ...`).
 
 The garrison's file is `minecraft.registers` (`C:/mc-state/registers`), outside a cloud-sync folder since it's held
-open; a simulation's is its state directory's own. Not yet shown to the model or the operator's chat: next.
+open; a simulation's is its state directory's own. The operator's chat is shown them (below); the platoon leader's
+decision prompt isn't yet.
 
 ## What it decides: `command.Objective`, one per squad
 - **Where:** a location. Its height is the platoon leader's guess, and is put on the ground there
@@ -113,7 +114,10 @@ turn is a model call through the same `ChatClient` (`command.ai.PlatoonLeaderCha
   (`command-ai/src/main/resources/prompts/platoon-leader-chat-system-prompt.md`), the earlier turns as the
   conversation, and in the turn's own prompt (`platoon-leader-chat-prompt.md`): `<now>` - the Minecraft time, day or
   night, and the ticks and minutes to the next dusk and dawn, worked out from the overworld clock
-  (`command.TimeOfDay`), and the ground to flatten - and `<last_decision>`, the user prompt of its last decision
+  (`command.TimeOfDay`), and the ground to flatten; `<registers>`, its books as they stand now - each squad's open
+  objective with how it stands, for how long and why, and every chunk kept (`ObjectiveBook.describe`), so "what's
+  under way" is answered whenever it last decided (live, field661, asked after a restart it said nothing was in
+  flight) - and `<last_decision>`, the user prompt of its last decision
   word for word (`SpringAiPlatoonLeader.lastShown`): the mission, each squad's standing order, task and progress,
   the day's work and the camp's phases, as they stood then. Before its first decision it's told it has been shown
   nothing about the squads.

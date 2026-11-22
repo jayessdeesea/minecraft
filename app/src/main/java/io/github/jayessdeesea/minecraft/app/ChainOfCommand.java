@@ -138,7 +138,7 @@ public class ChainOfCommand implements DisposableBean {
             new ConcurrentHashMap<>();
     private final ExecutorService platoonLeaderThread;
     /** The clock and threads everything here runs on: the real ones, or a simulation's. */
-    private final Clockwork clockwork;
+    final Clockwork clockwork; // read by the operator's chat for the registers' "for how long"
     private final AtomicBoolean platoonLeaderBusy = new AtomicBoolean();
     /** Bumped on each operator order, so a platoon leader's decision already in flight is known to be stale. */
     private final AtomicInteger missionVersion = new AtomicInteger();
@@ -597,7 +597,7 @@ public class ChainOfCommand implements DisposableBean {
 
     /** Every request going up the chain, timed from raised to answered (docs/military-doctrine.md § 4). */
     private final RequestLedger requests = new RequestLedger();
-    /** The objective register, kept as objectives are given and squads report (app.ObjectiveBook); none until it's handed one. */ private volatile Optional<ObjectiveBook> objectiveBook = Optional.empty();
+    /** The objective register, kept as objectives are given and squads report (app.ObjectiveBook) - read by the operator's chat; none until handed one. */ volatile Optional<ObjectiveBook> objectiveBook = Optional.empty();
     /** Keeps the objectives in {@code book}: the garrison's registers. */ void keepObjectives(ObjectiveBook book) { objectiveBook = Optional.of(book); }
     /** Each soldier's CANTCO to its squad leader. */
     private final SoldierRequests soldierRequests = new SoldierRequests();
