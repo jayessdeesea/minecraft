@@ -83,13 +83,14 @@ skeleton in the exchange cost a third cell); a soldier met at 6 in a pond by a s
 the fight forced on it is lost.
 
 **Several hostiles at once, by condition** (`CombatPairsConditionMatrixTest`): a zombie and a skeleton together, met at
-20 or 8 health, bare hands, a stone sword or full iron, on flat, hills, a ravine and a cave (`Terrain.CAVE`: a roof
-three up, pillars floor to roof) - every cell 92-100% but bare hands in the ravine and the cave (75-83%, known). None
-reproduces field663's and field666's deaths: Eli mining in caves, unarmoured, a stone sword, at 8 health shot dead in
-one cell, his answer flipping every two seconds between the zombie ("fights hand to hand") and the skeleton ("takes
-cover"). Open ground and a cave hall both let the soldier get clear; the dimension left is a miner's branch - a
-tunnel a block wide and two high, no stepping aside, a zombie in it and a skeleton down it. Left: that ground in the
-battle simulation, the pair in it, and the flip between two hostiles' rules taken out once it fails there.
+20 or 8 health, bare hands, a stone sword or full iron, on flat, hills, a ravine, a cave (`Terrain.CAVE`: a roof three
+up, pillars floor to roof) and in a miner's branch (a tunnel a block wide and two high through rock, the zombie in it
+ahead, the skeleton further down) - every cell 92-100% but bare hands in the ravine, the cave and, met hurt, the
+branch (75-83%, known). None reproduces field663's and field666's deaths: Eli mining in caves, unarmoured, a stone
+sword, at 8 health shot dead in one cell, his answer flipping every two seconds between the zombie ("fights hand to
+hand") and the skeleton ("takes cover"). Built grounds don't find it; left: his kept ground and the hostiles as
+logged replayed (`app.RecordedContactTest`, as Mia's field604 is), and the flip between two hostiles' rules taken out
+once that fails.
 
 **Deaths as a check on the model, not a case each.** Each death is read for what the evals lack - is that dimension
 (the armour's wear, water, a shaft, eating time, regeneration) in the battle simulation at all? - and the missing

@@ -26,26 +26,28 @@ class CombatPairsConditionMatrixTest {
 
     /** Cells that don't pass yet, as "health/kit/ground". */
     static final Set<String> KNOWN = Set.of(
-            "20/bare hands/ravine", "8/bare hands/ravine", "20/bare hands/cave", "8/bare hands/cave");
+            "20/bare hands/ravine", "8/bare hands/ravine", "20/bare hands/cave", "8/bare hands/cave", "8/bare hands/branch");
 
     @Test
     void aZombieAndASkeletonMetHealthyOrHurt() {
         StringBuilder table = new StringBuilder(String.format(Locale.ROOT, "%nZombie and skeleton by condition, %d seeds a cell - the share alive:%n  %-7s %-13s",
                 SEEDS, "health", "kit"));
         GROUNDS.forEach(g -> table.append(String.format(Locale.ROOT, " %7s", g.name().toLowerCase(Locale.ROOT))));
-        table.append('\n');
+        table.append(String.format(Locale.ROOT, " %7s", "branch")).append('\n');
         List<String> failing = new ArrayList<>();
         List<String> fixed = new ArrayList<>();
         for (double health : HEALTHS) {
             for (CombatMatrixTest.KitCase kit : CombatPairsMatrixTest.KITS) {
                 table.append(String.format(Locale.ROOT, "  %-7.0f %-13s", health, kit.name()));
-                for (Terrain ground : GROUNDS) {
+                for (int g = 0; g <= GROUNDS.size(); g++) {
+                    boolean branch = g == GROUNDS.size(); // last, a miner's branch cut through rock on the flat
+                    Terrain ground = branch ? Terrain.FLAT : GROUNDS.get(g);
                     int right = 0;
                     for (long seed = 1; seed <= SEEDS; seed++) {
-                        right += CombatPairsMatrixTest.survives(PAIR, seed, kit, ground, health) ? 1 : 0;
+                        right += CombatPairsMatrixTest.survives(PAIR, seed, kit, ground, health, branch) ? 1 : 0;
                     }
                     double share = (double) right / SEEDS;
-                    String cell = Math.round(health) + "/" + kit.name() + "/" + ground.name().toLowerCase(Locale.ROOT);
+                    String cell = Math.round(health) + "/" + kit.name() + "/" + (branch ? "branch" : ground.name().toLowerCase(Locale.ROOT));
                     boolean known = KNOWN.contains(cell);
                     table.append(String.format(Locale.ROOT, " %6.0f%%%s", 100 * share, share >= CombatMatrixTest.PASS ? " " : known ? "k" : "!"));
                     if (share < CombatMatrixTest.PASS && !known) {

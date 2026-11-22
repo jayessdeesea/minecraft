@@ -53,6 +53,17 @@ class CombatPairsMatrixTest {
 
     /** As above, the soldier met at {@code startHealth} - the matrix grown by condition (CombatPairsConditionMatrixTest). */
     static boolean survives(List<Battle.Archetype> pair, long seed, CombatMatrixTest.KitCase kit, Terrain ground, double startHealth) {
+        return survives(pair, seed, kit, ground, startHealth, false);
+    }
+
+    /** How far a miner's branch runs each way from the soldier's cell: a strip mine's (CombatPairsConditionMatrixTest). */
+    static final int BRANCH_REACH = 18;
+
+    /**
+     * As above, {@code inBranch}: rock all round the soldier but a miner's branch - a tunnel a block wide and two high
+     * along z through its cell, a roof over it - the pair coming down it, the first in it ahead and the next further on.
+     */
+    static boolean survives(List<Battle.Archetype> pair, long seed, CombatMatrixTest.KitCase kit, Terrain ground, double startHealth, boolean inBranch) {
         Scenario scenario = Scenario.generate(ground, seed);
         scenario.world().open(CombatScenarioTest.OPEN); // no wall at 48 to corner a flight
         Battle battle = new Battle(scenario.world(), seed);
@@ -61,7 +72,22 @@ class CombatPairsMatrixTest {
         Random random = new Random(seed);
         double angle = random.nextDouble() * Math.PI * 2;
         List<Battle.Hostile> hostiles = new ArrayList<>();
-        for (int i = 0; i < pair.size(); i++) {
+        if (inBranch) {
+            int g = scenario.world().ground(0, 0);
+            for (int x = -BRANCH_REACH - 2; x <= BRANCH_REACH + 2; x++) {
+                for (int z = -BRANCH_REACH - 2; z <= BRANCH_REACH + 2; z++) {
+                    for (int y = scenario.world().ground(x, z) + 1; y <= g + 3; y++) {
+                        if (!(x == 0 && Math.abs(z) <= BRANCH_REACH && y <= g + 2)) {
+                            scenario.world().solid(x, y, z);
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < pair.size(); i++) {
+                hostiles.add(battle.spawn(pair.get(i), start.x() + 0.5, start.z() + 0.5 + 6 + 6 * i + random.nextInt(3)));
+            }
+        }
+        for (int i = 0; i < (inBranch ? 0 : pair.size()); i++) {
             // Together, a few blocks apart round one bearing: as a pair comes on.
             double a = angle + (i - 0.5) * 0.35, range = 10 + random.nextDouble() * 4;
             hostiles.add(battle.spawn(pair.get(i), start.x() + 0.5 + Math.cos(a) * range, start.z() + 0.5 + Math.sin(a) * range));
