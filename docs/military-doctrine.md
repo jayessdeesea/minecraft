@@ -1921,7 +1921,8 @@ The camp is built up the way an airborne force builds a lodgment after the drop,
    wood is grown first.
 3. The buildup, in this order: food while the force eats; wood that grows back (§12, TREE_FARM) - every cell
    of the camp's and the keep's groves planted, 16 at the least and 96 at the most (operator, 2026-11-20: grow
-   more trees; 48 was met by field593), right after it (operator, 2026-11-14: a camp goes through a lot of wood); stone and iron from a mine (§16, MINE); and
+   more trees; 48 was met by field593) - or every cell they hold planted, fewer than 16 (live, field652, a tree chunk's 10
+   planted, a squad stood at the camp with nothing to plant), right after it (operator, 2026-11-14: a camp goes through a lot of wood); stone and iron from a mine (§16, MINE); and
    last the camp's floor paved (FORTIFY): once the wall is closed and of
    stone, its repointer replaces the soil of the floor inside it with cobblestone, block by block,
    at the camp's measured height - until the base is flattened to one height above sea level

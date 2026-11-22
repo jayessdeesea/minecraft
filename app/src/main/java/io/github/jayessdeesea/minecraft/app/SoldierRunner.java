@@ -774,15 +774,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + " cells of the camp's farm ground, by the water at x=" + farm.get().water().x() + " z=" + farm.get().water().z()
                         + ", growing wheat")
                         + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM", farm.map(f -> new Position(f.water().x() + 0.5, f.water().y(), f.water().z() + 0.5))));
-        Optional<TreeFarm> grove = campTrees.grove(world, at, campFarm, clockwork.millis()).or(() -> TreeFarm.site(world, at, CAMP_RADIUS)); // close (CampTrees)
-        // Right after food (operator, 2026-11-14: tree farms just after the wheat farms - a camp goes through a lot of wood): the camp's grove and the keep's together.
+        Optional<TreeFarm> grove = campTrees.grove(world, at, campFarm, clockwork.millis()).or(() -> TreeFarm.site(world, at, CAMP_RADIUS)); // close (CampTrees); right after food (operator, 2026-11-14), with the keep's
         TreeFarm keepTrees = campTrees.chunk().isPresent() ? null : keepGrove; // not walked 200 blocks to while the camp has its own
         long trees = grove.map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).count()).orElse(0L)
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
         // Every cell the groves hold, 16 at the least and 96 at the most (operator, 2026-11-20: grow more trees; 48 met in field593): a squad on TREE_FARM till they're full.
         long wanted = Math.min(TREES_MOST, Math.max(TREES_GROWING, grove.map(g -> g.plot().size()).orElse(0) + (keepTrees == null ? 0 : keepTrees.plot().size())));
         Optional<BlockPos> bare = Stream.concat(grove.stream(), Stream.ofNullable(keepTrees)).flatMap(g -> g.plot().stream()).filter(c -> !TreeFarm.planted(world, c)).findFirst(); // a cell, not the centre - the camp's grove is the camp's
-        standards.add(new Foothold.Standard(3, "wood that grows back", trees >= wanted, trees + " of " + wanted + " saplings or trees planted by the camp and the keep's grove",
+        // Met too with every cell the groves hold planted: live (field652), the tree chunk's 10 plantable cells all planted, 16 wanted, a squad stood at the camp with nothing to plant.
+        standards.add(new Foothold.Standard(3, "wood that grows back", trees >= wanted || grove.isPresent() && bare.isEmpty(), trees + " of " + wanted + " saplings or trees planted by the camp and the keep's grove",
                 "TREE_FARM", bare.map(c -> new Position(c.x() + 0.5, c.y(), c.z() + 0.5)))); // where: live (field570), sent to the camp's dug centre, "no open dirt or grass"
         // The camp's mine as the world shows it, as well as a cutter at work this run: live, after a restart with no MINE order, a mine cut to the bottom read "no mine yet".
         Optional<Staircase> campMine = campStairs();
