@@ -1324,7 +1324,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.chestStore = new WallStore(Path.of(stateDir), "chests");
         this.dangerAreas = new DangerAreaBook(chestStore);
         this.storesBook = new StoresBook(chestStore);
-        chestsSeen.putAll(storesBook.chests()); // every chest as last seen, not only those opened since
+        storesBook.chests().forEach((c, st) -> { chestsSeen.put(c, st); chestStock.put(c, StoresBook.kinds(st)); }); // every chest, and what it held, as last seen (StoresBook.kinds)
         storesBook.kept().ifPresent(chainOfCommand::onStores); // as last seen, till a chest is opened
         (this.phaseBook = new PhaseBook(chestStore)).restoreInto(chainOfCommand); (this.woodsBook = new WoodsBook(chestStore)).restoreInto(chainOfCommand);
         this.stepStore = new WallStore(Path.of(stateDir), "steps");

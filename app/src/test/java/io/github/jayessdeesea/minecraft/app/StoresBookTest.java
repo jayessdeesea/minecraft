@@ -40,4 +40,14 @@ class StoresBookTest {
         assertEquals(chests, after.chests());
         assertEquals(Optional.of(all), after.kept());
     }
+
+    /** A kept chest's counts come back by kind, as an opened chest says them: what a baker's draw looks for (field640-654). */
+    @Test
+    void aKeptChestsCountsComeBackByKind() {
+        java.util.Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, Integer> kinds =
+                StoresBook.kinds(new Stockpile(3, 0, 5, 0, 0, 0, 0, 0, 115, 7, 2));
+        assertEquals(115, kinds.get(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.WHEAT));
+        assertEquals(5, kinds.get(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FOOD));
+        assertEquals(2, kinds.get(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.SAPLING));
+    }
 }

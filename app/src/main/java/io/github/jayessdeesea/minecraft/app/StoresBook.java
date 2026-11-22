@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.command.Stockpile;
 
 import java.util.HashMap;
@@ -34,6 +35,27 @@ final class StoresBook {
                 new Stockpile((int) r[3], (int) r[4], (int) r[5], (int) r[6], (int) r[7], (int) r[8], (int) r[9], (int) r[10], (int) r[11],
                         (int) r[12], (int) r[13])));
         return chests;
+    }
+
+    /**
+     * {@code chest}'s counts by kind, as a chest opened says them (Depositor.stockSeen): what a soldier's draw looks
+     * for in the chests known - restored with them, not only once one's opened again: live (field640-654), 550 wheat
+     * kept in chests by the dump and no baker drew any after a restart.
+     */
+    static Map<ItemClass, Integer> kinds(Stockpile chest) {
+        Map<ItemClass, Integer> kinds = new java.util.EnumMap<>(ItemClass.class);
+        kinds.put(ItemClass.LOG, chest.logs());
+        kinds.put(ItemClass.COBBLESTONE, chest.stone());
+        kinds.put(ItemClass.FOOD, chest.rations());
+        kinds.put(ItemClass.RAW_IRON, chest.rawIron());
+        kinds.put(ItemClass.RAW_COPPER, chest.rawCopper());
+        kinds.put(ItemClass.DIRT, chest.dirt());
+        kinds.put(ItemClass.IRON_INGOT, chest.ironIngots());
+        kinds.put(ItemClass.COPPER_INGOT, chest.copperIngots());
+        kinds.put(ItemClass.WHEAT, chest.wheat());
+        kinds.put(ItemClass.SEEDS, chest.seeds());
+        kinds.put(ItemClass.SAPLING, chest.saplings());
+        return kinds;
     }
 
     /** Keeps what each of {@code chests} held, and hands on the stores: all of them, summed. */
