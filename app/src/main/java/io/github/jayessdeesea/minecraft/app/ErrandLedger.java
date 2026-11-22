@@ -66,6 +66,8 @@ final class ErrandLedger {
      * every soldier gone to rejoin, as burnt - wood 181 logs a day.
      */
     private final Map<String, Integer> consumed = new java.util.TreeMap<>();
+    /** What was used up since the last summary, by "routine item": where the burn goes (field642: 152 logs a day, whose?). */
+    private final Map<String, Integer> usedBy = new java.util.TreeMap<>();
     /** The routines that move items between holders, not use them. */
     static final Set<String> TRANSFERS = Set.of("DEPOSITOR", "HANDOVER", "SUPPLY_RUN", "SCAVENGER");
     private final Map<String, Totals> totals = new TreeMap<>();
@@ -99,6 +101,7 @@ final class ErrandLedger {
                     int fewer = before - carried.getOrDefault(item, 0);
                     if (fewer > 0) {
                         consumed.merge(item, fewer, Integer::sum);
+                        usedBy.merge(spell.routine + " " + item, fewer, Integer::sum);
                     }
                 });
             }
@@ -131,6 +134,10 @@ final class ErrandLedger {
             totals.forEach((r, t) -> line.append(String.format(Locale.ROOT, " %s %d spells, %.0f blocks and %.1f items a spell, %d unpaid;",
                     r, t.spells, t.walked / t.spells, (double) t.moved / t.spells, t.unpaid)));
             totals.clear();
+            if (!usedBy.isEmpty()) {
+                line.append(" used up: ").append(usedBy);
+                usedBy.clear();
+            }
             lines.add(line.toString());
         }
         return lines;
