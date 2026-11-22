@@ -255,7 +255,7 @@ class ClearerTest {
 
     /**
      * A log with a block over it is no gatherer's LOG ({@link Digger.Target#underTheSky}) but is still in the clear's way:
-     * dug as any block. Live (field674-675), Carol and Gus were sent at the logs at (17, 65, 91) and (27, 66, 88), each
+     * dug as a log, its sky not asked. Live (field674-675), Carol and Gus were sent at the logs at (17, 65, 91) and (27, 66, 88), each
      * walk given up a tick in as "the LOG is gone", and the same logs taken again after each wait - nine tries in a row.
      */
     @Test
@@ -283,7 +283,9 @@ class ClearerTest {
             }
         };
         assertFalse(Digger.Target.LOG.at(roofed, log), "no gatherer's log under a block");
-        assertEquals(Digger.Target.OTHER, Clearer.targetFor(roofed, log, true));
+        assertEquals(Digger.Target.ROOFED_LOG, Clearer.targetFor(roofed, log, true));
+        // And its dig sees it there: dug as OTHER (live, field677), each walk was given up a tick in as "the OTHER is gone".
+        assertTrue(Digger.Target.ROOFED_LOG.at(roofed, log), "the roofed log still there to its dig");
     }
 
     /**

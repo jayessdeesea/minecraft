@@ -295,10 +295,10 @@ public final class Clearer {
      */
     static Digger.Target targetFor(WorldView world, BlockPos b, boolean log) {
         // A log with a block over it is no gatherer's LOG (Digger.Target#underTheSky) - its dig would read it as gone
-        // a tick in - but it's in the clear's way all the same: dug as any block. Live (field674-675), the camp's
-        // clearers took the same roofed logs nine times in a row, each walk given up as "the LOG is gone".
+        // a tick in - but it's in the clear's way all the same. Live (field674-675), the camp's clearers took the same
+        // roofed logs nine times in a row, each walk given up as "the LOG is gone".
         return log && Digger.Target.LOG.at(world, b) ? Digger.Target.LOG
-                : log ? Digger.Target.OTHER
+                : log ? Digger.Target.ROOFED_LOG
                 : world.leaves(b.x(), b.y(), b.z()).isPresent() ? Digger.Target.LEAVES
                 : world.isIronOre(b.x(), b.y(), b.z()) ? Digger.Target.IRON_ORE
                 : Digger.Target.COPPER_ORE.at(world, b) ? Digger.Target.COPPER_ORE

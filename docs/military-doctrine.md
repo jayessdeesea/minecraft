@@ -1591,8 +1591,8 @@ mason for the hands) fells a tree from the bottom and takes the ground from the 
 stands on the ground, never on the tree or the block, and reaches a block whose nearest face is
 within 5 blocks of its eyes: from the ground, six up. Leaves out of reach go by themselves once
 their tree's logs do, since cut-off leaves decay. A log with a block over it - no gatherer's
-wood (`Digger.Target.underTheSky`) - is dug as any block, since it's in the way all the same
-(`Clearer.targetFor`). One already up in a canopy cuts what it reaches
+wood (`Digger.Target.underTheSky`) - is dug as a log all the same, its sky
+not asked (`Digger.Target.ROOFED_LOG`, `Clearer.targetFor`). One already up in a canopy cuts what it reaches
 from where it stands, never the block under its feet, and so works its way down: sent to stands
 on the ground, a soldier in a canopy over the camp had no way to them. One on the force's own
 steps does the same, the step under its feet too - straight down onto known ground - and so

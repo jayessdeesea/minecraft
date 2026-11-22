@@ -71,6 +71,12 @@ final class Digger {
          * Reached up to 3 blocks above the feet.
          */
         LOG(70, 5, null, 0, ItemClass.LOG), // a body's reach up a trunk: 4.5 from the eyes
+        /**
+         * A log with a block over it, in a clear's way: dug as {@link #LOG} is, but no gatherer's wood ({@link #underTheSky}).
+         * Not {@link #OTHER}, whose break time is the hardness table's, which holds none for a log: live (field677), each
+         * walk to one was given up a tick in as "the OTHER is gone".
+         */
+        ROOFED_LOG(70, 5, null, 0, ItemClass.LOG),
         /** Plain stone, with a pickaxe - by hand it drops nothing. At feet or head height. */
         STONE(35, 1, ItemClass.PICKAXE, 0, ItemClass.COBBLESTONE),
         /** Cobblestone put down over the camp's floor, with a pickaxe: hardness 2, a third longer than stone. At feet or head height. */
@@ -156,6 +162,7 @@ final class Digger {
         boolean at(WorldView world, BlockPos block) {
             return switch (this) {
                 case LOG -> world.isLog(block.x(), block.y(), block.z()) && underTheSky(world, block);
+                case ROOFED_LOG -> world.isLog(block.x(), block.y(), block.z());
                 case STONE -> world.isStone(block.x(), block.y(), block.z());
                 case COBBLESTONE -> world.isCobblestone(block.x(), block.y(), block.z());
                 case IRON_ORE -> world.isIronOre(block.x(), block.y(), block.z());
@@ -214,14 +221,14 @@ final class Digger {
          */
         int speedTool(Inventory inventory) {
             return switch (this) {
-                case LOG -> bestAxe(inventory);
+                case LOG, ROOFED_LOG -> bestAxe(inventory);
                 case SOIL, GRAVEL -> fastest(inventory, ItemClassRegistry::shovelSpeed);
                 default -> -1;
             };
         }
 
         private double speedOf(int item) {
-            return (this == LOG ? ItemClassRegistry.axeSpeed(item) : ItemClassRegistry.shovelSpeed(item)).getAsDouble();
+            return (this == LOG || this == ROOFED_LOG ? ItemClassRegistry.axeSpeed(item) : ItemClassRegistry.shovelSpeed(item)).getAsDouble();
         }
 
         private static int fastest(Inventory inventory, java.util.function.IntFunction<java.util.OptionalDouble> speedOf) {
