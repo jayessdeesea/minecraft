@@ -204,12 +204,10 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    ponds (`FarmPlan.bestTrench`): a block wide, cut at the farmland's level, up to 7 long (as far as
    water flows on the flat), with ground under and beside each cell and ending against ground so the
    water stays in, the trench adding the most ground first and one adding under 12 cells not cut;
-   the ground within 4 of its water is the plot's (operator, 2026-11-19). From the first, it takes in a chunk
-   farm, its farmer making the bucket for its holes as any tool (operator, 2026-11-20: the high-density farms
-   as soon as can be) (`bot.farm.ChunkFarm`): the
-   chunk within four of the camp's, 64 blocks - never the camp's own - flat enough, at least 128 of its 220 at one level
-   that makes farmland (over half: the rest flattened to it in time), and of those the one nearest sea level, then the
-   nearest (operator, 2026-11-21: flat the requirement, sea level the preference, close by); laid out on the chunk's lines - a fence on x%16==0 and z%16==0, a
+   the ground within 4 of its water is the plot's (operator, 2026-11-19). It takes in the chunk farm each of the
+   operator's farm missions gives it, once the mission's chunk is flattened and floored (§ 17, docs/echelons/platoon-leader/decisions.md;
+   `CampFarm.take`), and sites none of its own - its farmer making the bucket for its holes as any tool (`bot.farm.ChunkFarm`):
+   laid out on the chunk's lines - a fence on x%16==0 and z%16==0, a
    post at each corner and a gate each side of it - eight a chunk, one grid for wheat and trees, so a post still on a
    gate's cell from before is the farm's earthwork, dug for the gate (operator, 2026-11-21) - four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) in the
    farmland's own layer, a chest at local (13, 13), and four torches in the field at local (5, 5), (5, 11),
@@ -1164,8 +1162,10 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    camp stood with "no route" to the keep - and never builds a step on it, so a farm in a hollow
    was reached only where the ground happened to be level, and steps built out of it buried a
    third of the camp's farm. A chunk farm's ground is levelled to its template the same way: what stands over it,
-   three high, dug top first, and its open or flooded cells - but its trenches - filled with that dirt (`Farmer.groundToFill`;
-   FarmSite's SURVEYED stage) - cobbled deepslate as cobblestone, the item a soldier places as it - and what roofs a
+   three high, dug top first, and its open or flooded cells - but its trenches - filled with dirt alone, farmland's
+   ground: its ground, and what its fence, gates, torches and chest stand on (`ChunkFarm.footings`), so a chunk floored
+   a block below has its whole level laid (`Farmer.groundToFill`, walked to; FarmSite's SURVEYED stage) before any of it
+   is tilled, then planted (`FarmPlan.withChunkGround`: a footing left among farmland had no stand a route would take) - cobbled deepslate as cobblestone, the item a soldier places as it - and what roofs a
    water hole, a step included: the pour aims down past the block over the hole, and a roofed hole isn't poured, it
    waits on that earthwork (field581-583, a step over a hole and deepslate over the ground kept the camp's chunk farm
    SURVEYED for days). Then its chunk farms' fence, gates, chest and torches - four in the field a
@@ -1204,9 +1204,6 @@ stack at a time - whenever it carries less than a batch's, 8 loaves (`SoldierErr
 field657, drawing only below a loaf's, its baker sat on 15) - and bakes it, keeping only its own basic load of the
 bread, not the share any other soldier carries (`Depositor.keepsFood`; field664, its baker carried 162, the stores none), and the bread past its own load goes in. A harvester below its basic
 load still bakes for itself - that's its own upkeep. With two, both harvest and bake as they go.
-The camp's farm takes in a chunk farm with its bucket, and the next as soon as every one it has is past SURVEYED,
-its ground done, up to four (`CampFarm.MOST_CHUNK_FARMS`; operator, 2026-11-20: the next chunk farm once one is
-tended, as soon as can be - farms are what there is to forage).
 A chunk farm on the farm has one tender (operator, 2026-11-19: a single soldier at a time works a
 specific farm; `FarmDuties.Tended`): the last harvesters on the roster each tend one - its chunk and
 fence lines its ground, its chest its dump - while one harvester is left for the rest of the plot,
@@ -2156,6 +2153,23 @@ who fight. Where a rule of a clearing below meets the standard, it says which pa
    soldiers can climb up), the depots sixteen off the west edge past it and the borrow pits past it
    too, so neither stands on nor holes the slope. Live, at three, soldiers put steps up the wall the
    big site was cut against, each one a level of its own, and builders on the hill had no walk down.
+
+**A farm mission's chunk** (operator, 2026-11-21; `command.FarmMission`, docs/echelons/platoon-leader/decisions.md) is
+brought to the base's layers one step at a time, each started when the one before is measured done:
+- **Flattened a block below the farm's level** as any site is, its ground the chunk, but its edge the slope of
+  `command.FlattenPlan` in place of the bench: each column of the chunk and of a ring twelve out cut to the level,
+  the ring's row d out to d over it - the bench's 1:1 - on each side sloped (`command.Slopes`), a side beside a
+  chunk the force has made a template of left unsloped, nothing past its edge touched and a step of more than a block to
+  it said, and no column of a template's ground - its box, its fence line on the chunk's own edge included - dug.
+  Done when nothing stands over the level in the chunk or its slopes (`FlattenPlan.cut`); a hollow under the level
+  is the floor's to cover inside, and the ground's own outside.
+- **Floored in cobblestone** at that level, every cell, natural stone included, but a template's (`Objective.Task.Floor`,
+  `Mason.pave`): each paver its strip of the layer, the nearest cell first, stood for from the cell beside it a block
+  up; a cell solid and not cobblestone dug out by hand's break time and its cobblestone put back in the one job, so
+  no hole stands open below sea level; an open one built; a paver out of cobblestone draws a load from the stockpile
+  while it holds some. Done when every cell is cobblestone.
+- **The template** at the farm's level on the floor: its dirt laid on the cobblestone, its water holes' floor the
+  cobblestone under them, its crop a block over (§ 12, the camp's farm).
 
 Level by level, in lock step, planned by the keep's foreman (`command.LevelPlan`, operator
 2026-11-14): one soldier the squad leader appoints - the first builder of the first squad on the

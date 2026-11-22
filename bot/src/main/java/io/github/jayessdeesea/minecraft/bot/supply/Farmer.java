@@ -79,6 +79,8 @@ public final class Farmer {
     private final Builder holeFloor;
     /** Fills a chunk farm's ground where it's missing (FarmSite, the SURVEYED stage). */
     private final Builder groundFill;
+    /** The builder its job this tick is - a hole's floor or the ground's fill - whose stand it walks to; none for any other job. */
+    private Builder building;
     /** The kind of fixture it's putting up. */
     private ItemClass placing;
     /** Does the farm's {@link #earthwork}: a {@link Clearer} over it. */
@@ -118,7 +120,7 @@ public final class Farmer {
         this.carrier = new WaterCarrier(name, session, inventory);
         FIXTURES.forEach(item -> builders.put(item, new Builder(name, session, inventory, List.of(item))));
         this.holeFloor = new Builder(name, session, inventory, List.of(ItemClass.COBBLESTONE, ItemClass.DIRT));
-        this.groundFill = new Builder(name, session, inventory, List.of(ItemClass.DIRT, ItemClass.COBBLESTONE));
+        this.groundFill = new Builder(name, session, inventory, List.of(ItemClass.DIRT)); // farmland is tilled from dirt, never cobblestone
         // Cut from off the farmland: in the squad simulation, stands on the plot in its hollow had the
         // farmers walking in and out over it, trampling it, to dig the ground round it. But from it when no stand off it
         // reaches (onFarmland): live (field576), a pillar two high on a plot cell, farmland all round, was never cut.
@@ -257,11 +259,15 @@ public final class Farmer {
         return List.copyOf(dig);
     }
 
-    /** The cells of {@code farm}'s chunk farms' ground missing - open, or water - for its tender to fill with the dirt it carries. */
+    /**
+     * The cells of {@code farm}'s chunk farms' ground missing - open, or water - for its tender to fill with the dirt it
+     * carries: its ground, and what its fence, torches and chest stand on (ChunkFarm#footings).
+     */
     static List<BlockPos> groundToFill(WorldView world, FarmPlan farm) {
         // Not a trench: its water is the farm's own (in the squad simulation, the tender filled the camp farm's trench in).
         Set<BlockPos> trenches = Set.copyOf(farm.trenches());
-        return farm.chunks().stream().flatMap(c -> c.ground().stream()).filter(g -> !trenches.contains(g))
+        return farm.chunks().stream().flatMap(c -> java.util.stream.Stream.concat(c.ground().stream(), c.footings().stream())).distinct()
+                .filter(g -> !trenches.contains(g))
                 .filter(g -> !world.isSolid(g.x(), g.y(), g.z()) || world.isWater(g.x(), g.y(), g.z())).toList();
     }
 
@@ -400,7 +406,7 @@ public final class Farmer {
     }
 
     public synchronized boolean active() {
-        return digger != null || fieldWork != null || unburier.active() || carrier.active() || placing != null;
+        return digger != null || fieldWork != null || unburier.active() || carrier.active() || placing != null || building != null;
     }
 
     /** Where the soldier should be standing for the job under way. */
@@ -411,7 +417,8 @@ public final class Farmer {
 
     public synchronized Optional<Position> standAt() {
         return digger != null ? Optional.of(digger.standAt()) : unburier.active() ? unburier.standAt()
-                : carrier.active() ? carrier.standAt() : placing != null ? builders.get(placing).standAt() : Optional.ofNullable(standAt);
+                : carrier.active() ? carrier.standAt() : placing != null ? builders.get(placing).standAt()
+                : Optional.ofNullable(building).flatMap(Builder::standAt).or(() -> Optional.ofNullable(standAt)); // a fill's stand, walked to
     }
 
     /** Whether its sowing waits on seeds it hasn't got and no grass near gives: set so, till it carries some. */
@@ -657,6 +664,7 @@ public final class Farmer {
 
     /** The most pressing job left on {@code farm}, started. */
     private void next(WorldView world, FarmPlan farm) {
+        building = null;
         // A harvest claims the crop over its cell, not the cell: live, four farmers harvested one
         // ripe wheat in turn, each checking the ground cell a squadmate's harvest hadn't claimed.
         // And not a cell with no room for the head over it: live, a hut's wall stood over the farm's
@@ -699,6 +707,7 @@ public final class Farmer {
                 } else if (inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT) > 0) {
                     // Its floor first: water poured over an open cell runs down into it - the operator (2026-11-20): something
                     // under the farm's water. A block of what it carries put under the hole, from the ground beside it.
+                    building = holeFloor;
                     if (holeFloor.tick(soldier, world, List.of(h.offset(0, -1, 0))) instanceof Builder.Progress.Failed(String why)) {
                         passedOver.failed(h, ticks, "no floor put under the farm's water hole at " + h + ": " + why);
                     }
@@ -767,7 +776,8 @@ public final class Farmer {
         }
         // Then its chunk farms' ground filled, with what the earthwork gave it - not a cell passed over lately.
         List<BlockPos> fill = groundToFill(world, farm).stream().filter(c -> !passedOver.barred(c, ticks)).toList();
-        if (!fill.isEmpty() && inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.COBBLESTONE) > 0) {
+        if (!fill.isEmpty() && inventory.count(ItemClass.DIRT) > 0) {
+            building = groundFill;
             if (groundFill.tick(soldier, world, fill) instanceof Builder.Progress.Failed(String why)) {
                 fill.forEach(c -> passedOver.failed(c, ticks, "the chunk farm's ground at " + c + " not filled: " + why));
             }
@@ -962,5 +972,9 @@ public final class Farmer {
             placing = null;
         }
         endFieldWork();
+        if (building != null) {
+            building.stop();
+            building = null;
+        }
     }
 }

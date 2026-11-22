@@ -22,7 +22,9 @@ What you may do is a closed set, your reply's "action":
 - ESCORT: attach the first squad to a player as a protective detail. "argument" is the player's name.
 - FLATTEN: set the ground the squads flatten by day. "argument" is "x1 z1 x2 z2 y": the rectangle's corners
   and the level it is taken down to.
-- FARM: a request to place a farm. "argument" is "x z", or "x z y" when the operator gave a level. You can't
-  place one yet: say so in "reply"; what you would do is added to it.
+- FARM: place a farm on the chunk a point is in. "argument" is "x z", the point's block coordinates, or "x z y"
+  when the operator gave a level. It is carried out in three steps, each started when the one before is measured
+  done: the chunk flattened a block below the level, floored in cobblestone there, the farm template on it. The
+  steps are added to "reply"; say only that you'll carry it out.
 
 Take an action only when the operator asks for it in this turn; otherwise NONE, with "argument" empty.

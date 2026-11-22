@@ -24,6 +24,8 @@ public final class Footing {
     private final PlaySession session;
     private final Inventory inventory;
     private int previousHotbar = -1;
+    /** What it last put in hand to place: put back only while that's still in hand. */
+    private ItemClass inHand;
     private int idleTicks;
 
     public Footing(PlaySession session, Inventory inventory) {
@@ -73,6 +75,7 @@ public final class Footing {
     /** As {@link #place(BlockPos, ItemClass)}, against the block on {@code support}'s side of {@code cell}. */
     public synchronized boolean place(BlockPos cell, ItemClass item, BlockFace support) {
         idleTicks = 0;
+        inHand = item;
         int held = Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot();
         if (!ItemClassRegistry.classOf(inventory.itemAt(held)).equals(Optional.of(item))) {
             int slot = inventory.slotOf(item);
@@ -117,11 +120,16 @@ public final class Footing {
         session.finishDigging(cell.x(), cell.y(), cell.z());
     }
 
-    /** Each tick: the weapon back in hand once the climbing has stopped. */
+    /**
+     * Each tick: the weapon back in hand once the climbing has stopped - unless another routine has put something else
+     * in hand since: in the squad simulation a paver's rearm took the seeds from its farming's hand, and the dirt from its fill's.
+     */
     public synchronized void tick() {
         if (previousHotbar >= 0 && ++idleTicks >= REARM_TICKS) {
-            session.selectHotbarSlot(previousHotbar);
-            inventory.selectHotbar(previousHotbar);
+            if (ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot())).equals(Optional.ofNullable(inHand))) {
+                session.selectHotbarSlot(previousHotbar);
+                inventory.selectHotbar(previousHotbar);
+            }
             previousHotbar = -1;
         }
     }

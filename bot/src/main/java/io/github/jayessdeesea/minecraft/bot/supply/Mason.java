@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.script.Script;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
+import io.github.jayessdeesea.minecraft.bot.world.Hardness;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
@@ -264,6 +265,100 @@ public final class Mason {
         LOG.info("{} replaces the dirt at {} with cobblestone", name, cell);
     }
 
+    /** The longest a floor's cell is given to break by hand: slower than deepslate, it's passed over. */
+    static final int PAVE_DIG_MOST = 400;
+
+    /**
+     * Each tick: paves its share of a floor's layer ({@code Objective.Task.Floor}) in cobblestone, one cell at a time while
+     * {@code free} and carrying some, the nearest first - a cell solid and not cobblestone, natural stone included, dug
+     * out and its cobblestone put back in the one job, so no hole is left open; an open one built. Each stood for from a
+     * cell beside it a block up: the floor is paved from the floor.
+     */
+    public synchronized void pave(Position soldier, WorldView world, List<BlockPos> cells, boolean free) {
+        this.soldier = soldier;
+        ticks++;
+        if (cooldown > 0) {
+            cooldown--;
+        }
+        List<BlockPos> left = cells.stream().filter(c -> !world.isCobblestone(c.x(), c.y(), c.z())).toList();
+        if (left.isEmpty()) {
+            passedOver.noWork();
+        }
+        if (left.isEmpty() && job == null || !free && !paused()) {
+            stop();
+            return;
+        }
+        if (!free) {
+            return;
+        }
+        pausedTicks = 0;
+        if (job != null) {
+            switch (job.tick()) {
+                case Script.Status.Running _ -> {
+                }
+                case Script.Status.Done _ -> {
+                    passedOver.worked(claimed);
+                    end();
+                }
+                case Script.Status.Interrupted _ -> end();
+                case Script.Status.Failed(String step, String reason) -> fail(step + ": " + reason);
+            }
+            return;
+        }
+        if (cooldown > 0 || inventory.count(ItemClass.COBBLESTONE) == 0) {
+            return;
+        }
+        left.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && paveable(world, c))
+                .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
+                .limit(PAVE_LOOKS)
+                .flatMap(cell -> beside(world, cell, soldier, reached(world)).filter(stand -> !claims.contains(stand))
+                        .map(stand -> Map.entry(cell, stand)).stream())
+                .findFirst().ifPresent(next -> startPave(world, next.getKey(), next.getValue()));
+    }
+
+    /** How many of the nearest cells a look between jobs tries for a stand: each a route searched. */
+    static final int PAVE_LOOKS = 8;
+
+    /** Whether a floor's {@code c} is one to pave now: solid, breaking by hand in time; or open, with a block to go against. */
+    private static boolean paveable(WorldView world, BlockPos c) {
+        return world.isSolid(c.x(), c.y(), c.z()) ? digTicks(world, c) < Integer.MAX_VALUE : Builder.support(world, c).isPresent();
+    }
+
+    /** The ticks {@code c} takes to break by hand - a pickaxe in hand is no slower - and the margin the server's timing wants. */
+    private static int digTicks(WorldView world, BlockPos c) {
+        return world.hardness(c.x(), c.y(), c.z()).map(h -> h.ticks(Hardness.HAND)).filter(t -> t <= PAVE_DIG_MOST)
+                .map(t -> t + Breacher.MARGIN_TICKS).orElse(Integer.MAX_VALUE);
+    }
+
+    private void startPave(WorldView world, BlockPos cell, BlockPos stand) {
+        repointJob = true;
+        claimed = cell;
+        claims.add(cell);
+        claimedStand = stand;
+        claims.add(stand);
+        standAt = new Position(stand.x() + 0.5, stand.y(), stand.z() + 0.5);
+        boolean solid = world.isSolid(cell.x(), cell.y(), cell.z());
+        int breakTicks = solid ? digTicks(world, cell) : 0;
+        long[] digStarted = {0};
+        java.util.function.BooleanSupplier open = () -> !world.isSolid(cell.x(), cell.y(), cell.z());
+        job = new Script(name, List.of(
+                new Step("walk to " + stand, () -> {
+                }, new Expect("standing in " + stand, () -> on(stand, PAVE_ON)), WALK_TICKS),
+                new Step("dig the floor at " + cell, open, () -> {
+                    digStarted[0] = ticks;
+                    footing.startDigging(cell);
+                }, new Expect("the break time to pass", () -> ticks - digStarted[0] >= breakTicks), breakTicks + 2),
+                new Step("break the floor at " + cell, open, () -> footing.finishDigging(cell),
+                        new Expect("the block at " + cell + " gone", open), ANSWER_TICKS),
+                new Step("cobblestone at " + cell, () -> {
+                    if (!footing.placeClearing(cell, ItemClass.COBBLESTONE, Builder.support(world, cell).orElseThrow(
+                            () -> new IllegalStateException("nothing beside " + cell + " to put a block against")))) {
+                        throw new IllegalStateException("no COBBLESTONE carried - " + inventory.summary());
+                    }
+                }, new Expect("cobblestone at " + cell, () -> world.isCobblestone(cell.x(), cell.y(), cell.z())), ANSWER_TICKS)));
+        LOG.info("{} paves {} in cobblestone{}", name, cell, solid ? ", its block dug out first" : "");
+    }
+
     /**
      * Where to stand to build {@code cell}: the column nearest it just inside the wall {@code radius}
      * out - beside a wall cell, two in from the lip, never on the wall's top - at a standing height
@@ -377,7 +472,17 @@ public final class Mason {
     static final double ON_PLACE = 0.2;
 
     private boolean on(BlockPos cell) {
-        return Math.hypot(soldier.x() - (cell.x() + 0.5), soldier.z() - (cell.z() + 0.5)) < ON_PLACE && Math.abs(soldier.y() - cell.y()) < 0.6;
+        return on(cell, ON_PLACE);
+    }
+
+    /**
+     * Within this of a floor stand's centre: the cell paved is a block down, under no body, and the runner brings a routine's
+     * soldier within 0.3 - live in the squad simulation, pavers stood 0.22 off and were never on their place.
+     */
+    static final double PAVE_ON = 0.35;
+
+    private boolean on(BlockPos cell, double within) {
+        return Math.hypot(soldier.x() - (cell.x() + 0.5), soldier.z() - (cell.z() + 0.5)) < within && Math.abs(soldier.y() - cell.y()) < 0.6;
     }
 
     private void fail(String why) {

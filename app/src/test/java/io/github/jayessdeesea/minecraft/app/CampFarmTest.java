@@ -13,10 +13,11 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The camp's farm takes in the next chunk farm once every one it has is past SURVEYED (operator, 2026-11-20: the next
- * chunk farm once one is tended, as soon as can be - farms are what there is to forage; and grow more farms).
+ * The camp's farm sites no chunk farm of its own: it takes in the one a farm mission gives it (operator, 2026-11-21: a farm at
+ * a chunk is the operator's to order and the platoon leader's to carry out), and plants its ground as it's laid.
  */
 class CampFarmTest {
 
@@ -39,19 +40,26 @@ class CampFarmTest {
     }
 
     @Test
-    void theNextChunkFarmIsSitedOnceTheFirstsGroundIsDone() {
+    void aChunkFarmIsTakenInOnlyWhenAMissionGivesIt() {
         CampFarm farms = new CampFarm(new WallStore(dir, "farm"), 20_000);
-        FarmPlan first = farms.kept(ground(Set.of()), CAMP, "8,8", 4, true);
+        FarmPlan first = farms.kept(ground(Set.of()), CAMP, "8,8", 4);
         assertNotNull(first, "a farm by the pond");
-        assertEquals(1, first.chunks().size(), "its first chunk farm: " + first.chunks());
+        assertEquals(0, first.chunks().size(), "no chunk farm sited by itself: " + first.chunks());
 
-        // Its holes still to dig - SURVEYED: no second yet.
-        assertEquals(1, farms.kept(ground(Set.of()), CAMP, "8,8", 4, true).chunks().size(), "the first still SURVEYED");
+        ChunkFarm mission = new ChunkFarm(2, 0, 63);
+        farms.take(mission);
+        FarmPlan taken = farms.kept(ground(Set.of()), CAMP, "8,8", 4);
+        assertEquals(java.util.List.of(mission), taken.chunks(), "the mission's taken in");
+        assertEquals(1, taken.chunks().stream().map(c -> ChunkFarm.key(c.chunkX(), c.chunkZ())).collect(Collectors.toSet()).size());
+        assertTrue(taken.plot().containsAll(mission.ground().stream().filter(g -> !g.equals(mission.ground().getFirst())).limit(10).toList()),
+                "its ground, grass at its level, in the plot");
 
-        // Its holes dug over their floors - GROUND: the next is taken in.
-        Set<BlockPos> holes = Set.copyOf(first.chunks().getFirst().holes());
-        FarmPlan next = farms.kept(ground(holes), CAMP, "8,8", 4, true);
-        assertEquals(2, next.chunks().size(), "the next chunk farm: " + next.chunks());
-        assertEquals(2, next.chunks().stream().map(c -> ChunkFarm.key(c.chunkX(), c.chunkZ())).collect(Collectors.toSet()).size(), "two chunks");
+        // Its ground dug out - floored a block below - is out of the plot as it stands, and back in once laid.
+        Set<BlockPos> open = Set.copyOf(mission.ground());
+        CampFarm afresh = new CampFarm(new WallStore(dir, "afresh"), 20_000);
+        afresh.take(mission);
+        FarmPlan floored = afresh.kept(ground(open), CAMP, "8,8", 4);
+        assertTrue(floored.plot().stream().noneMatch(open::contains), "nothing to plant on its floor yet");
+        assertTrue(afresh.kept(ground(Set.of()), CAMP, "8,8", 4).plot().containsAll(mission.ground()), "its dirt laid, planted");
     }
 }

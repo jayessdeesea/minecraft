@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
 /**
  * The platoon leader's structured reply to one of the operator's turns: its answer in words, and at most one action
- * from a closed set - each one the operator's chat orders already have, or the farm the bid cycle will.
+ * from a closed set - each one of the operator's chat orders.
  */
 public record ChatReply(
         @JsonPropertyDescription("Your answer to the operator, in plain words") String reply,

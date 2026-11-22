@@ -307,8 +307,6 @@ final class SimServer {
         return total;
     }
 
-
-
     /** Wears the pickaxes {@code name} carries down to {@code left} uses each. */
     /** {@code name} killed outright, by {@code cause}: it respawns at spawn, as any death. */
     void kill(String name, String cause) {
@@ -711,7 +709,9 @@ final class SimServer {
                     .filter(c -> c == ItemClass.CRAFTING_TABLE || c == ItemClass.FURNACE || c == ItemClass.CHEST);
             Optional<Integer> block = station.<Integer>map(c -> c == ItemClass.FURNACE ? FURNACE : c == ItemClass.CHEST ? CHEST : CRAFTING_TABLE)
                     .or(() -> held.flatMap(SimItems::placesAs));
-            if (block.isEmpty()) {
+            if (block.isEmpty() && held.isEmpty()) { // an empty hand used on a block does nothing, as on the server
+                return;
+            } else if (block.isEmpty()) {
                 throw new UnsupportedOperationException("simulated: using " + held + " on block " + block(x, y, z) + " at " + x + "," + y + "," + z);
             }
             int px = x + face.dx, py = y + face.dy, pz = z + face.dz;

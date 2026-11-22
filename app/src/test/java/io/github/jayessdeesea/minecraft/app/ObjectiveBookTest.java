@@ -63,6 +63,34 @@ class ObjectiveBookTest {
         assertEquals(new Row(ObjectiveRecord.State.UNDER_WAY, Optional.of("100 blocks to dig")), row(registers, "Charlie"));
     }
 
+    /**
+     * A farm mission's steps: PLANNED when it's given, each taken up by the squad given it - its own row, not a new one -
+     * relieved and taken up again, DONE only when measured; open after a restart at its first step not done.
+     */
+    @Test
+    void aMissionsStepsArePlannedTakenUpAndDoneInTheirOwnRows() {
+        Registers registers = new Registers(state.resolve("registers"));
+        ObjectiveBook book = new ObjectiveBook(() -> registers);
+        io.github.jayessdeesea.minecraft.command.FarmMission farm = io.github.jayessdeesea.minecraft.command.FarmMission.atSeaLevel(1, 3);
+        book.planned(farm, 1_000);
+        book.planned(farm, 1_500);
+        assertEquals(List.of(ObjectiveRecord.State.PLANNED, ObjectiveRecord.State.PLANNED, ObjectiveRecord.State.PLANNED),
+                registers.objectives().stream().map(ObjectiveRecord::state).toList(), "three rows, once");
+        assertEquals(true, book.describe(2_000).contains("- a farm at chunk (1, 3) at y=63, step 2: floor chunk (1, 3)"), book.describe(2_000));
+
+        Objective flatten = new Objective(farm.said(farm.steps().getFirst()), new Position(24, 63, 56), "step 1", new Objective.Task.Keep());
+        book.given("Alpha", flatten, 2_000);
+        book.given("Alpha", FARM, 3_000);
+        book.given("Alpha", flatten, 4_000);
+        assertEquals(3, registers.objectives().stream().filter(r -> r.mission().equals(farm.name())).count(), "the step's own row, relieved and taken up again");
+        assertEquals(new Row(ObjectiveRecord.State.UNDER_WAY, Optional.empty()), row(registers, "Alpha"));
+        assertEquals(java.util.Map.of(farm.name(), 0), book.openMissions());
+
+        book.done(farm, farm.steps().getFirst(), "nothing over y=62", 5_000);
+        assertEquals(Optional.empty(), registers.open("Alpha"), "its squad's row closed");
+        assertEquals(java.util.Map.of(farm.name(), 1), new ObjectiveBook(() -> registers).openMissions(), "after a restart, at its second step");
+    }
+
     /** The register as the platoon leader reads it: each squad's open objective, how it stands and why, and the chunks kept. */
     @Test
     void theRegisterIsDescribedForTheModelToQuote() {

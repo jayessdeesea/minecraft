@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.command.DrillSquadLeader;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.Keep;
+import io.github.jayessdeesea.minecraft.command.FarmMission;
 import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.DayWork;
 import io.github.jayessdeesea.minecraft.command.Phase;
@@ -291,7 +292,7 @@ public class ChainOfCommand implements DisposableBean {
     /** The day as the guardrails read it, now. */
     private DayGuardrails.Day day() {
         return new DayGuardrails.Day(keepByDay && time != null && !((time.dark() || sheltering()) && !surfacing()), farmSquad,
-                Optional.ofNullable(foothold), flatten, phaseNow, flattenBuilders, stores, List.copyOf(squads.keySet()), this::spread,
+                Optional.ofNullable(foothold), flatten(), phaseNow, flattenBuilders, stores, List.copyOf(squads.keySet()), this::spread,
                 this::nextMineSite, mines.keepMine());
     }
 
@@ -420,6 +421,15 @@ public class ChainOfCommand implements DisposableBean {
         transmit("[PL -> " + operator + "] WILCO (" + trace.id + "): flatten " + site.describe());
     }
 
+    /** A farm at a chunk from the operator ({@code !farm}; command.FarmMission): its steps planned, the first under way. Acknowledged on the radio. */
+    public void onOperatorFarm(String operator, FarmMission farm) {
+        int version = missionVersion.incrementAndGet();
+        OrderTrace trace = trace(operator, "!farm " + farm.name(), version);
+        LOG.info("[{} -> PL] FARM ({}): {} - {}", operator, trace.id, farm.name(), farm.steps().stream().map(FarmMission.Step::task).toList());
+        farmMissions.give(farm, clockwork.millis());
+        transmit("[PL -> " + operator + "] WILCO (" + trace.id + "): " + farm.name() + " - " + farm.steps().size() + " steps, the first " + farm.steps().getFirst().task());
+    }
+
     /**
      * The squad that keeps the camp's farm by day as its standing job (operator, 2026-11-15: a
      * dedicated squad for the farming), so no other squad's hands are taken off the work for it -
@@ -471,9 +481,9 @@ public class ChainOfCommand implements DisposableBean {
         return farmSquad;
     }
 
-    /** The ground the squads flatten by day: the operator's last {@code !flatten}, or the configured site. */
+    /** The ground the squads flatten by day: a farm mission's chunk while its flatten is under way, else the operator's last {@code !flatten}, or the configured site. */
     public Flatten flatten() {
-        return flatten;
+        return farmMissions.flatten().orElse(flatten);
     }
 
     /** The ground to flatten - the configured site, then the operator's (minecraft.flatten: "x1 z1 x2 z2 y"). */
@@ -490,7 +500,7 @@ public class ChainOfCommand implements DisposableBean {
         LOG.warn("[{} -> PL] {} - not an order", operator, command);
         transmit("[PL -> " + operator + "] SAY AGAIN: " + command + " is not an order. Orders: " + OperatorOrders.MISSION
                 + " <what to do>, " + OperatorOrders.ESCORT + " [player], " + OperatorOrders.FLATTEN
-                + " <x1> <z1> <x2> <z2> <y> [north]; anything else is passed to the platoon leader as a remark");
+                + " <x1> <z1> <x2> <z2> <y> [north], " + OperatorOrders.FARM + " <x> <z> [y]; anything else is passed to the platoon leader as a remark");
     }
 
     /** Operator orders being followed down the chain - each is dropped once carried out or superseded. */
@@ -598,7 +608,9 @@ public class ChainOfCommand implements DisposableBean {
     /** Every request going up the chain, timed from raised to answered (docs/military-doctrine.md § 4). */
     private final RequestLedger requests = new RequestLedger();
     /** The objective register, kept as objectives are given and squads report (app.ObjectiveBook) - read by the operator's chat; none until handed one. */ volatile Optional<ObjectiveBook> objectiveBook = Optional.empty();
-    /** Keeps the objectives in {@code book}: the garrison's registers. */ void keepObjectives(ObjectiveBook book) { objectiveBook = Optional.of(book); }
+    /** Keeps the objectives in {@code book}: the garrison's registers. */ void keepObjectives(ObjectiveBook book) { objectiveBook = Optional.of(book); farmMissions.keptIn(book); }
+    /** The operator's farm missions, a step at a time (app.FarmMissions): their step under way a guardrail over the day's work. */
+    final FarmMissions farmMissions = new FarmMissions(cause -> wake(cause, true));
     /** Requests raised and settled from each cycle's SITREPs (app.RequestTracking): the soldiers' to their squad leaders, the squads' to the platoon leader. */
     private final RequestTracking requestTracking = new RequestTracking();
 
@@ -878,7 +890,7 @@ public class ChainOfCommand implements DisposableBean {
                 // Before the buildup, no mining: iron waits for it (operator, 2026-11-18).
                 List<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfalls(statuses, Optional.ofNullable(stores)).stream()
                         .filter(s -> s != PlatoonSergeant.Shortfall.IRON || !phaseNow.beforeBuildup()).toList();
-                platoonLeader.receiveDayWork(new DayWork(shortfall, Optional.ofNullable(stores), flatten, keepLevel, keepBlocksLeft,
+                platoonLeader.receiveDayWork(new DayWork(shortfall, Optional.ofNullable(stores), flatten(), keepLevel, keepBlocksLeft,
                         PlatoonSergeant.unarmed(statuses), phaseNow, phaseToNext, ripeWheat));
                 List<Objective> objectives;
                 try {
@@ -905,7 +917,7 @@ public class ChainOfCommand implements DisposableBean {
                     byDay.add(PhaseGuardrails.steady(PhaseGuardrails.noMineBeforeBuildup(byDay(objectives.get(i), statuses.get(i), shortfall, woods), phaseNow,
                             statuses.get(i).squadName(), toShortfall(PlatoonSergeant.Shortfall.FOOD, statuses.get(i), woods, flattenBuilders)), statuses.get(i)));
                 }
-                List<Objective> dayWork = guarded(byDay, statuses, shortfall, woods);
+                List<Objective> dayWork = farmMissions.guarded(guarded(byDay, statuses, shortfall, woods), statuses, farmSquad); // the operator's farm last
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
                     Objective given = WorkArea.attach(sheltered(grounded(dayWork.get(i), statuses.get(i).soldiers()), statuses.get(i)),

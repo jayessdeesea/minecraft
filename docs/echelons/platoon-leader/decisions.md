@@ -47,13 +47,18 @@ The platoon leader's books are kept by code, never asked of the model (operator,
 - **The chunk register**, keyed by the chunk's x and z: what the force has made of it (flattened, floored, wheat,
   trees, the supply point), the level its ground is made to, and its stage as last measured - a wheat chunk's
   `FarmSite` stage, a tree chunk's `TreeChunk` stage. Kept as the world shows it each foothold check, a row written
-  when it changes and said (`app.ChunkLedger`): `[Chunks] chunk (1, 3): WHEAT at y=63, SURVEYED`.
+  when it changes and said (`app.ChunkLedger`): `[Chunks] chunk (1, 3): WHEAT at y=63, SURVEYED`. A farm mission's
+  chunk is written FLATTENED (stage `CUT`) and FLOORED (`PAVED`) at the level below the farm's as each of those
+  steps is measured done, then WHEAT once the camp's farm holds its template (below).
 - **The objective register**: each objective a mission's step on a chunk - its task, the squad on it, how it stands
   (planned, under way, done, CANTCO, relieved), when and why. Written when the platoon leader gives a squad an
   objective - its open one, if another, relieved - or holds one no row is open for (the first decision after a
   restart); and each squad's SITREP pushed into its row as it comes, every second (operator, 2026-11-21: the squad
   leaders push updates to the platoon leader): its squad leader's CANTCO with why, its task's progress as said, done
-  with what was measured (`app.ObjectiveBook`; `[Objectives] Charlie: Flatten ... CANTCO - no route to ...`).
+  with what was measured (`app.ObjectiveBook`; `[Objectives] Charlie: Flatten ... CANTCO - no route to ...`). A farm
+  mission's steps are written PLANNED, no squad on them, when it's given; a squad given a step takes up that step's
+  row - under way, its squad's - rather than a new one, and taken off it (relieved) the step stays open, taken up
+  again when it's given again; it's DONE only when the mission measures it done.
 
 The garrison's file is `minecraft.registers` (`C:/mc-state/registers`), outside a cloud-sync folder since it's held
 open; a simulation's is its state directory's own. The operator's chat is shown them (below); the platoon leader's
@@ -78,6 +83,7 @@ decision prompt isn't yet.
 | `MINE` | Cut a spiral staircase down to the given depth. |
 | `PATROL` | Walk the round inside the wall line, on watch ([military-doctrine.md § 15](../../military-doctrine.md#15-securing-the-camp)). |
 | `KEEP` | Flatten the ground set to flatten, a level at a time to its floor, wherever the objective points ([military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)). |
+| `FLOOR` | Pave a layer in cobblestone, cell by cell: a farm mission's, never the model's to give (below). |
 
 - **The work area**, not the platoon leader's to decide: for `FARM`, `TREE_FARM` and `WOOD` the chain of
   command attaches the ground and the dump to the order it gives (`command.WorkArea`, `WorkArea.attach`).
@@ -86,6 +92,30 @@ decision prompt isn't yet.
   workshop's chest, else the depot's. The OPORD line and the
   standing order in the platoon leader's prompt both say it ("in 1 box over x 0..15, z 0..15, the
   dump at (3, 64, 2)").
+
+## The operator's farm mission
+"A farm at chunk (x, z)" - at any height, sea level (63) by default (operator, 2026-11-21) - is the operator's
+(`!farm`, DEVELOPMENT.md; or the chat's FARM, below) and the platoon leader carries it out by doctrine, computed,
+never the model's (`command.FarmMission`, `app.FarmMissions`): three steps, each an objective, each started when the
+one before is measured done.
+1. **Flatten** the chunk to a block below the farm's level: the `KEEP` task, the ground to flatten the mission's
+   chunk while the step's under way (`ChainOfCommand.flatten`), and the dig the columns of `FlattenPlan.reach` - the
+   chunk, and a slope a block a block out on each side whose `command.Slopes` flag is on, off beside a chunk the
+   force has made a template of (`Slopes.around`), never into a template's ground, its shared fence line included.
+   Done when nothing stands over the level in the chunk or its slopes (`FlattenPlan.cut`, over the world's tops).
+2. **Floor** that layer in cobblestone, every cell, natural stone included (`FLOOR`, [military-doctrine.md
+   § 17](../../military-doctrine.md#17-the-lodgment)). Done when every cell of it is cobblestone.
+3. **The template**: the chunk farm on the floor at the farm's level, taken into the camp's farm (`CampFarm.take`) and
+   worked by a squad on `FARM` at the chunk. Done when its ground is laid - its `FarmSite` stage past SURVEYED.
+
+The step under way has one squad on it, by a guardrail after the platoon leader's decision and the day's own
+(`FarmMissions.guarded`): the squad already on it, else one given its task already (the flatten's squad, say), else
+the last in the order of battle but the farm squad - said, `[Guardrail] the operator's farm - Alpha put on ...`. Each
+foothold check measures it (`[Mission] ... - up to 48 of 256 cells to pave`); done, its row is DONE with what was
+measured, its chunk's row written, the next step started and the platoon leader woken. One mission is worked at a
+time, in the order given; one open in the register is carried on after a restart, at its first step not done.
+Code-sited chunk farms are gone: the camp's farm takes in only the chunk farms its missions give it, and keeps those it
+holds.
 
 ## When it decides
 When woken, never on a clock (backlog/fleet-command.md): at once on an operator's mission or
@@ -115,17 +145,18 @@ turn is a model call through the same `ChatClient` (`command.ai.PlatoonLeaderCha
   conversation, and in the turn's own prompt (`platoon-leader-chat-prompt.md`): `<now>` - the Minecraft time, day or
   night, and the ticks and minutes to the next dusk and dawn, worked out from the overworld clock
   (`command.TimeOfDay`), and the ground to flatten; `<registers>`, its books as they stand now - each squad's open
-  objective with how it stands, for how long and why, and every chunk kept (`ObjectiveBook.describe`), so "what's
+  objective with how it stands, for how long and why, the farm missions' steps still planned, and every chunk kept
+  (`ObjectiveBook.describe`), so "what's
   under way" is answered whenever it last decided (live, field661, asked after a restart it said nothing was in
   flight) - and `<last_decision>`, the user prompt of its last decision
   word for word (`SpringAiPlatoonLeader.lastShown`): the mission, each squad's standing order, task and progress,
   the day's work and the camp's phases, as they stood then. Before its first decision it's told it has been shown
   nothing about the squads.
 - **What it may do** (`command.ai.ChatReply`): answer in words, and take at most one action from a closed set -
-  `MISSION`, `ESCORT` or `FLATTEN`, each given through the operator's own order (`ChainOfCommand.onOperatorMission`,
-  `onOperatorEscort`, `onOperatorFlatten`: the same WILCO and order trace as from game chat), or `FARM`, answered with
-  the chunk farm it would be - the chunk the point is in, its lines, at sea level (63) unless a level is given
-  (`bot.farm.ChunkFarm`) - and CANTCO: no site can be placed through the bids yet (backlog/renewables.md).
+  `MISSION`, `ESCORT`, `FLATTEN` or `FARM`, each given through the operator's own order (`ChainOfCommand.onOperatorMission`,
+  `onOperatorEscort`, `onOperatorFlatten`, `onOperatorFarm`: the same WILCO and order trace as from game chat). `FARM`'s
+  argument is a point and a level, "x z [y]", the farm mission on the chunk the point is in, its steps added to the
+  reply as computed (above).
 - **Every turn** is logged and on the net, `[Operator -> PL]` and `[PL -> Operator]`, with `[Chat] the platoon
   leader is shown` logging the turn's prompt. An action it can't read (a flatten that isn't `x1 z1 x2 z2 y`) fails
   that turn, loud: nothing is said or given, and the page shows why.

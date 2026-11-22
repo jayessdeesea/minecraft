@@ -50,23 +50,19 @@ final class CampFarm {
     private volatile FarmPlan farm;
     /** Whether it's been grown this run, as far as the ground allows. */
     private boolean grown;
-    /** How many chunk farms it had when it last looked for one more this run - looked for again only with a new count. */
-    private int chunkedAt = -1;
-    /**
-     * The most chunk farms it takes in: the next sited once every one it has is past SURVEYED, its ground done
-     * (operator, 2026-11-20: the next chunk farm once one is tended, as soon as can be - farms are what there is to forage).
-     */
-    static final int MOST_CHUNK_FARMS = 4;
+    /** The chunk farms given it by the platoon leader's farm missions this run, to take in at its next look. */
+    private final List<ChunkFarm> given = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     CampFarm(WallStore store, int reachBudget) {
         this.store = store;
         this.reachBudget = reachBudget;
     }
 
-    /** Whether {@code farm} takes in one more chunk farm: fewer than the most, not looked for at this count, every one past SURVEYED. */
-    private boolean wantsChunkFarm(WorldView world, FarmPlan farm) {
-        return farm.chunks().size() != chunkedAt && farm.chunks().size() < MOST_CHUNK_FARMS
-                && farm.chunks().stream().allMatch(c -> FarmSite.work(world, c).stage() != FarmSite.Stage.SURVEYED);
+    /** {@code chunk} taken in at its next look: the farm mission's template, its ground at its level on the floor. */
+    void take(ChunkFarm chunk) {
+        if (!given.contains(chunk)) {
+            given.add(chunk);
+        }
     }
 
     /** Its chunk farms' chests: each a farm's own, its seed apart from the general stockpile's. */
@@ -87,9 +83,9 @@ final class CampFarm {
 
     /**
      * The camp's farm for the camp at {@code at}, kept under {@code key}: as it was, sited afresh if its water's gone,
-     * grown once a run toward {@link #cells} for {@code soldiers}, and with {@code bucket} its chunk farm taken in.
+     * grown once a run toward {@link #cells} for {@code soldiers}, and the chunk farms its farm missions give it taken in.
      */
-    synchronized FarmPlan kept(WorldView world, BlockPos at, String key, int soldiers, boolean bucket) {
+    synchronized FarmPlan kept(WorldView world, BlockPos at, String key, int soldiers) {
         FarmPlan kept = farm;
         if (kept == null) {
             // As it was before a restart, while its water is there.
@@ -97,32 +93,28 @@ final class CampFarm {
                     store.load(key + ",trench").orElse(List.of()), store.load(key + ",chunks").orElse(List.of()).stream()
                     .map(c -> new ChunkFarm(c.x(), c.z(), c.y())).toList())).orElse(null);
         }
-        boolean resite = kept == null || !world.isWater(kept.water().x(), kept.water().y(), kept.water().z());
-        boolean chunk = bucket && kept != null && wantsChunkFarm(world, kept);
-        if (resite || !grown || chunk) {
+        // Sited afresh when its pond is gone - not a farm of chunk farms alone, whose water is its first hole, poured or not.
+        boolean resite = kept == null || !world.isWater(kept.water().x(), kept.water().y(), kept.water().z()) && !kept.holes().contains(kept.water());
+        if (resite || !grown || !given.isEmpty()) {
             Set<BlockPos> walkable = Pathfinder.reachable(world, at, RADIUS + 4, reachBudget);
             FarmPlan before = resite ? null : kept;
             if (resite) {
-                kept = FarmPlan.site(world, at, RADIUS, VERTICAL, walkable::contains).orElse(null);
+                // Its chunk farms kept whatever its water does: each a mission's, not the pond's.
+                List<ChunkFarm> chunks = kept == null ? List.of() : kept.chunks();
+                kept = FarmPlan.site(world, at, RADIUS, VERTICAL, walkable::contains).map(f -> f.with(new FarmPlan(f.water(), List.of(), List.of(), chunks)))
+                        .orElse(chunks.isEmpty() ? null : new FarmPlan(chunks.getFirst().holes().getFirst(), List.of(), List.of(), chunks));
             }
             if (kept != null && !grown) {
                 kept = FarmPlan.grown(world, kept, cells(soldiers), VERTICAL, walkable::contains, GROWN_RADIUS);
                 grown = true;
             }
-            if (kept != null && bucket && wantsChunkFarm(world, kept)) {
-                chunkedAt = kept.chunks().size();
-                FarmPlan watered = kept;
-                Set<Long> taken = kept.chunks().stream().map(c -> ChunkFarm.key(c.chunkX(), c.chunkZ())).collect(java.util.stream.Collectors.toSet());
-                Optional<ChunkFarm> site = ChunkFarm.site(world, at, CHUNK_RINGS, walkable::contains, taken);
-                site.ifPresent(c -> LOG.info("[Foothold] the camp's chunk farm: chunk {}, {} at y={}, {} cells", c.chunkX(), c.chunkZ(), c.level(),
-                        c.plan(world, walkable::contains).plot().size()));
-                // None, it says how near the best came - the ground to level for one (backlog/renewables.md).
-                if (site.isEmpty()) {
-                    ChunkFarm.best(world, at, CHUNK_RINGS, walkable::contains, taken).ifPresentOrElse(c -> LOG.warn(
-                            "[Foothold] no chunk farm by the camp: the best, chunk {}, {} at y={}, makes {} cells of the {} one wants", c.chunkX(), c.chunkZ(),
-                            c.level(), c.plan(world, walkable::contains).plot().size(), ChunkFarm.MIN_CELLS), () -> LOG.warn("[Foothold] no chunk farm by the camp: no ground"));
-                }
-                kept = site.map(c -> watered.with(c.plan(world, walkable::contains))).orElse(kept);
+            // A chunk farm the platoon leader's farm mission gives it, its ground floored at a level below: taken in as it
+            // is - its plot filled in as its dirt is laid (FarmPlan#withChunkGround). It sites none of its own.
+            for (ChunkFarm c : List.copyOf(given)) {
+                FarmPlan base = kept;
+                kept = base == null ? new FarmPlan(c.holes().getFirst(), List.of(), List.of(), List.of(c)) : base.with(new FarmPlan(base.water(), List.of(), List.of(), List.of(c)));
+                given.remove(c);
+                LOG.info("[Foothold] the camp's farm takes in the farm mission's chunk farm: chunk {}, {} at y={}", c.chunkX(), c.chunkZ(), c.level());
             }
             if (kept != null && !kept.equals(before)) {
                 LOG.info("[Foothold] the camp's farm: by the water at {}, {} cells, {} trench cells, {} chunk farms", kept.water(),
@@ -135,6 +127,7 @@ final class CampFarm {
         }
         // Kept however it was found - sited now, or as it was before a restart: live, a farm loaded from disk was
         // never kept, and both squads starved under SECURE with a farm by the camp.
+        kept = kept == null ? null : kept.withChunkGround(world); // its chunk farms' ground planted as it's laid
         farm = kept;
         if (kept != null) {
             // Each chunk farm's stage as a site (bot.farm.FarmSite), said as it moves - what the platoon leader's view of it will be.

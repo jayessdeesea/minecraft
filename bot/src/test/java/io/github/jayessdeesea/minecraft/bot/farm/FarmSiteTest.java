@@ -93,7 +93,7 @@ class FarmSiteTest {
 
         FarmSite.Work work = FarmSite.work(water, FARM);
 
-        assertEquals(216, work.fill(), "its ground built up over the pond");
+        assertEquals(216 + 5, work.fill(), "its ground built up over the pond, and what its four field torches and its chest stand on");
         assertEquals(0, work.pours(), "its holes the pond's own water");
         assertFalse(work.toProducing().bucket(), "no bucket: no iron");
         assertTrue(holes.stream().allMatch(h -> pond.test(h)));
