@@ -25,15 +25,13 @@ few minutes for fifteen runs, had no standing rule answering it.
 
 ## The plan
 The baker's order is built whole - its source, table, batch and dump, and its draw, bake and table read from it
-(docs/military-doctrine.md, `command.BakerDuty`). Left:
-1. **Each duty's yield**: what a share should make in ten minutes - a baker its batches while wheat's stored, a
-   harvester the ripe cells of its plot, a woodcutter its logs. Measured from the errand ledger's counts
-   (`ErrandLedger`), not from a product merely changing (`ShareWatch` today).
-2. **The squad leader's answer to a miss**, a standing rule per cause, each said on the net: the source empty -
+(docs/military-doctrine.md, `command.BakerDuty`) - and each duty's yield a spell is measured from the errand ledger's
+counts (`command.DutyYield`, `ShareWatch`). Left:
+1. **The squad leader's answer to a miss**, a standing rule per cause, each said on the net: the source empty -
    the next source; the table or chest unreachable - the next, or a CANTCO up; the soldier taken by other work for
    the spell - reported as the cause, not re-ordered; no cause found - a gap report to the platoon leader naming the
    duty, the yield short and what was checked.
-3. Then the harvester's and the woodcutter's orders the same way: the harvester's plot and its seed chest, the
+2. Then the harvester's and the woodcutter's orders the same way: the harvester's plot and its seed chest, the
    woodcutter's sector, its planter and the tree chunk's chest.
 
 ## The eval (operator, 2026-11-21: an eval to make sure this will work)

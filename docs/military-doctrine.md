@@ -1231,13 +1231,17 @@ leader writes it each cycle, and says it when it changes: `[Alpha -> Alice] DUTY
 6..8, z -4..4, the dump at (3, 64, 2)`; `[Alpha -> Dana] DUTY: baker, the dump at (3, 64, 1), drawing from
 (3, 64, 1), at the table at (1, 64, -2), 8 a batch` (`app.DutyBook`).
 
-**Timeliness** (operator, 2026-11-18; `command.ShareWatch`). The squad leader watches each share by
-what its duty makes or spends - a harvester's wheat and seed, a baker's wheat and bread, a woodcutter's
-logs, a planter's saplings. A share with no change in it for three minutes is behind, and alarmed once
-a spell: `[Alarm] [Alpha] Carl behind its share: woodcutter over x 8..24, ...`. It's said again when the
-share moves (`back at its share`). A soldier in contact is doing what it should, and a share with nothing
-in it to do isn't behind - a harvester's plot growing (`Farmer.hasWork`), a baker with no wheat in the
-stores: each one's clock starts again.
+**Timeliness** (operator, 2026-11-18; `command.ShareWatch`). The squad leader holds each share, spell by spell of three
+minutes, to what it should yield in the spell (`command.DutyYield`), by what's in it to work as the spell opens: a baker
+its batch while a batch's wheat is stored or carried (fewer for less), a harvester a sweep - 8 - once that many of its
+cells stand ripe, a woodcutter 4 logs, a planter a sapling while its wood has ground opened to plant. What it yielded is
+the errand ledger's count (`ErrandLedger.made`): what the duty's routine - the armourer's bread, the farmer's wheat, the
+gatherer's logs, the forester's saplings planted - added to the pack tick by tick, and what it picks up within 3 s of
+letting go (a felled log reaches the pack after its dig); not a draw's or a deposit's, and not a product merely
+changing. A spell ended short is the share behind, alarmed once: `[Alarm] [Alpha] Carl behind its share: woodcutter over
+x 8..24, ..., made 0 of 4 expected in 180 s`; a spell that meets it after is `back at its share`. Nothing to work -
+a plot growing, no wheat stored, or the soldier in contact, doing what it should - is no spell, and a share behind
+is behind no longer.
 A soldier of a squad on FARM, TREE_FARM or WOOD with no share for three minutes is alarmed as holding
 without one. The platoon leader's part is the squad's: with half or more of its producers behind,
 `[Alarm] [PL] Alpha's gathering wood is behind its order`, and the squad's progress - what the platoon

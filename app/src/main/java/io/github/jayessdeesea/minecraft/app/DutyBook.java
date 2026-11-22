@@ -3,10 +3,10 @@ package io.github.jayessdeesea.minecraft.app;
 import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
-import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.command.BakerDuty;
 import io.github.jayessdeesea.minecraft.command.Box;
 import io.github.jayessdeesea.minecraft.command.DutyOrder;
+import io.github.jayessdeesea.minecraft.command.DutyYield;
 import io.github.jayessdeesea.minecraft.command.FarmDuties;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.ToIntFunction;
+import java.util.function.IntSupplier;
 import java.util.function.ToLongFunction;
 
 /**
@@ -35,10 +35,14 @@ final class DutyBook {
 
     private static final Logger LOG = LogManager.getLogger(DutyBook.class);
 
-    /** What each duty makes or spends: any change in it is the share being worked. */
-    static final Map<DutyOrder.Duty, Set<ItemClass>> PRODUCTS = Map.of(
-            DutyOrder.Duty.HARVESTER, Set.of(ItemClass.WHEAT, ItemClass.SEEDS), DutyOrder.Duty.BAKER, Set.of(ItemClass.WHEAT, ItemClass.FOOD),
-            DutyOrder.Duty.WOODCUTTER, Set.of(ItemClass.LOG), DutyOrder.Duty.PLANTER, Set.of(ItemClass.SAPLING));
+    /** A duty's yield as the errand ledger counts it: the routine that works it, the item, and whether it's spent - planted - not made. */
+    record Yield(String routine, String item, boolean spent) {
+    }
+
+    /** What each duty yields: a harvester's wheat, a baker's bread, a woodcutter's logs, a planter's saplings planted. */
+    static final Map<DutyOrder.Duty, Yield> YIELDS = Map.of(
+            DutyOrder.Duty.HARVESTER, new Yield("FARMER", "wheat", false), DutyOrder.Duty.BAKER, new Yield("ARMOURER", "food", false),
+            DutyOrder.Duty.WOODCUTTER, new Yield("GATHERER", "log", false), DutyOrder.Duty.PLANTER, new Yield("FORESTER", "sapling", true));
 
     private final Map<String, DutyOrder> orders = new ConcurrentHashMap<>();
     private final ShareWatch watch = new ShareWatch();
@@ -75,15 +79,17 @@ final class DutyBook {
     }
 
     /**
-     * {@code soldier}'s share sampled at {@code now}: what its duty makes or spends, as {@code count} has it. One
-     * {@code paused} - in contact, doing what it should, or with nothing in its share to do (a plot growing, no wheat
-     * in the stores to bake) - isn't behind: its clock starts again. The alarm when it falls behind (command.ShareWatch).
+     * {@code soldier}'s share sampled at {@code now}: what its duty has yielded, as {@code ledger} counted it, against what
+     * it should in a spell (command.DutyYield) with {@code workable} in it to work - a baker's wheat stored and carried,
+     * a harvester's ripe cells, a woodcutter's or planter's ground left (more than none) - none while it's rightly
+     * elsewhere, in contact. The alarm when it falls behind (command.ShareWatch).
      */
-    void sample(String squad, String soldier, ToIntFunction<ItemClass> count, boolean paused, long now) {
+    void sample(String squad, String soldier, ErrandLedger ledger, IntSupplier workable, long now) {
         DutyOrder order = orders.get(soldier);
         if (order != null) {
-            int product = PRODUCTS.get(order.duty()).stream().mapToInt(count).sum();
-            watch.sample(squad, order, paused ? Integer.MIN_VALUE : product, now).filter(l -> !paused).ifPresent(LOG::warn);
+            Yield yield = YIELDS.get(order.duty());
+            int made = yield.spent() ? ledger.spent(soldier, yield.routine(), yield.item()) : ledger.made(soldier, yield.routine(), yield.item());
+            watch.sample(squad, order, made, () -> DutyYield.expected(order, workable.getAsInt()), now).ifPresent(LOG::warn);
         }
     }
 

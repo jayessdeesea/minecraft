@@ -14,27 +14,40 @@ class ShareWatchTest {
             Optional.empty());
     private static final long DUE = ShareWatch.DUE_MILLIS;
 
-    /** Nothing made or spent in its due time: behind, said once; once it changes, back at it. */
+    /** A spell ended short of its expected yield: behind, said once; a spell that met it after, back at it. */
     @Test
-    void aShareThatMakesNothingIsBehindOnceThenBack() {
+    void aShareShortOfItsYieldIsBehindOnceThenBack() {
         ShareWatch watch = new ShareWatch();
-        assertEquals(Optional.empty(), watch.sample("Alpha", CUTTER, 0, 0));
-        assertEquals(Optional.empty(), watch.sample("Alpha", CUTTER, 0, DUE - 1));
-        String alarm = watch.sample("Alpha", CUTTER, 0, DUE).orElseThrow();
+        assertEquals(Optional.empty(), watch.sample("Alpha", CUTTER, 0, () -> 4, 0));
+        assertEquals(Optional.empty(), watch.sample("Alpha", CUTTER, 3, () -> 4, DUE - 1));
+        String alarm = watch.sample("Alpha", CUTTER, 3, () -> 4, DUE).orElseThrow();
         assertTrue(alarm.startsWith("[Alarm] [Alpha] Carl behind its share: woodcutter over x 8..24"), alarm);
-        assertEquals(Optional.empty(), watch.sample("Alpha", CUTTER, 0, 2 * DUE), "once a spell");
+        assertTrue(alarm.endsWith("made 3 of 4 expected in 180 s"), alarm);
         assertEquals(1, watch.behind(List.of("Carl", "Alice")));
-        assertEquals(Optional.of("[Alpha] Carl back at its share after 360 s"), watch.sample("Alpha", CUTTER, 4, 2 * DUE));
+        assertEquals(Optional.empty(), watch.sample("Alpha", CUTTER, 3, () -> 4, 2 * DUE), "once, however many spells it stays behind");
+        assertEquals(Optional.of("[Alpha] Carl back at its share after 540 s: made 5 of 4 expected"), watch.sample("Alpha", CUTTER, 8, () -> 4, 3 * DUE));
         assertEquals(0, watch.behind(List.of("Carl")));
     }
 
-    /** Making anything - a log felled, a load put in the chest - keeps the share's clock going. */
+    /** Its yield met, however it changed between - a log felled, a load put in the chest - isn't behind. */
     @Test
-    void anyChangeIsWork() {
+    void aShareThatMeetsItsYieldIsNotBehind() {
         ShareWatch watch = new ShareWatch();
-        watch.sample("Alpha", CUTTER, 0, 0);
-        watch.sample("Alpha", CUTTER, 16, DUE - 1);
-        assertEquals(Optional.empty(), watch.sample("Alpha", CUTTER, 16, DUE + 1));
+        watch.sample("Alpha", CUTTER, 10, () -> 4, 0);
+        assertEquals(Optional.empty(), watch.sample("Alpha", CUTTER, 14, () -> 4, DUE));
+        assertEquals(0, watch.behind(List.of("Carl")));
+    }
+
+    /** Nothing in its share to work, nothing expected: no spell runs, and a share behind is behind no longer. */
+    @Test
+    void aShareWithNothingToWorkIsNotBehind() {
+        ShareWatch watch = new ShareWatch();
+        watch.sample("Alpha", CUTTER, 0, () -> 4, 0);
+        watch.sample("Alpha", CUTTER, 0, () -> 0, DUE);
+        assertEquals(1, watch.behind(List.of("Carl")));
+        assertEquals(Optional.empty(), watch.sample("Alpha", CUTTER, 0, () -> 0, 2 * DUE));
+        assertEquals(0, watch.behind(List.of("Carl")));
+        assertEquals(Optional.empty(), watch.sample("Alpha", CUTTER, 0, () -> 0, 10 * DUE));
     }
 
     /** One of a production squad with no share is alarmed once it's held so its due time. */

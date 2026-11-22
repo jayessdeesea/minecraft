@@ -7102,8 +7102,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // A farmer's hoe, and its wheat baked into bread three at a time - by its baker, on a farm that has one.
             FarmPlan field = dutyBook.field(name, farming.get(name));
             boolean bakes = dutyBook.is(name, DutyOrder.Duty.BAKER);
-            dutyBook.sample(definition.squad(), name, inventory::count, threatened || field != null && !Farmer.hasWork(world, field, Set.of())
-                    || bakes && chainOfCommand.stores().filter(st -> st.wheat() > 0).isEmpty() || dutyBook.plantsNothing(name, planting.get(name), world), clockwork.millis());
+            dutyBook.sample(definition.squad(), name, afterActionReview.errands, () -> threatened ? 0 : bakes ? chainOfCommand.stores().map(st -> st.wheat()).orElse(0)
+                    + inventory.count(ItemClass.WHEAT) : field != null ? Farmer.ripe(world, field) : dutyBook.plantsNothing(name, planting.get(name), world) ? 0 : 1, clockwork.millis());
             Optional.ofNullable(planting.get(name)).ifPresent(g -> tools.addAll(Forester.wants(world, g, inventory))); // its tree chunk's chest, torches
             if (field != null) { // its hoe, a bucket for its farm's water holes, its chunk farm's fixtures (Farmer.wants)
                 tools.addAll(Farmer.wants(world, field, inventory));
