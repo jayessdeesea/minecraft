@@ -77,7 +77,11 @@ seconds or when stuck - a wide search asked again from the same cell to the same
   searching that wide for that goal: a cheap replan on the way round would lead back to the wall.
   A wide search that doesn't get there isn't made again for that goal for 5 seconds
   (`WIDE_RETRY_TICKS`): soldiers at a mine's bottom with no way out made one at the end of every
-  partial route, two thirds of the soldiers' CPU.
+  partial route, two thirds of the soldiers' CPU. Nor after a cheap one that tried every cell it could get to
+  (`Pathfinder.Result.exhausted`). And a plan that found no way at all is tried again after a second,
+  then two, four, eight - sixteen at most - as its failures toward one task mount (`Mover.NO_ROUTE_RETRY_TICKS`):
+  a soldier in a dig whose every cut's stand had no way in planned three and four searches a second,
+  a quarter of the garrison's time.
 - **Asks for help when it's out of ways of its own.** The ladder is: try again later, try another
   target or route, then ask. A routine whose last 3 tries in a row all failed, whatever they were
   at, reports CANTCO with the last one's place and reason - clearing, walling, lighting, farming, or

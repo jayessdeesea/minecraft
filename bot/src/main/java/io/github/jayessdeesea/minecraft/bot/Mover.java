@@ -82,8 +82,8 @@ abstract class Mover {
 
     /** Re-plan at least this often while moving - 2 seconds. */
     static final int REPLAN_TICKS = 40;
-    /** Ticks before a plan that found no route is tried again. */
-    static final int NO_ROUTE_RETRY_TICKS = 20;
+    /** Ticks before a plan that found no route is tried again - doubled with each failed plan toward the same task, up to the most. */
+    static final int NO_ROUTE_RETRY_TICKS = 20, NO_ROUTE_RETRY_MOST_TICKS = 320;
     /** Ticks without real progress along the route before re-planning. */
     static final int STUCK_TICKS = 20;
     /** How long a cell it got stuck short of is routed round: long enough for a squadmate in the way to move on. */
@@ -269,7 +269,10 @@ abstract class Mover {
         // more than half the garrison's CPU.
         // On dry ground only: in water each plan is the plug's next step (the squad simulation's soldier
         // stuck in water with only logs plugs its way out a plan at a time).
-        boolean noRoute = route != null && route.isEmpty() && ticksSincePlan < NO_ROUTE_RETRY_TICKS && !wet && !gait.afloat;
+        // Backed off as the failures toward one task mount: commit 1120's profile, Gus in the keep's dig, each cut's stand a
+        // block off with no way in, planned three and four searches a second for minutes - a quarter of the garrison's time.
+        boolean noRoute = route != null && route.isEmpty() && !wet && !gait.afloat
+                && ticksSincePlan < Math.min(NO_ROUTE_RETRY_MOST_TICKS, NO_ROUTE_RETRY_TICKS << Math.min(4, Math.max(0, failedPlans - 1)));
         List<TrackedEntity> creepers = world.nearbyHostiles(gait.position, CREEPER_WATCH).stream().filter(TrackedEntity::explodes).toList();
         Set<Integer> creeperIds = creepers.stream().map(TrackedEntity::entityId).collect(java.util.stream.Collectors.toUnmodifiableSet());
         boolean newCreeper = !creepersRoutedRound.containsAll(creeperIds);
@@ -320,7 +323,10 @@ abstract class Mover {
             // thirds of the soldiers' CPU.
             boolean wideJustFailed = goal.equals(wideFailedGoal)
                     && navTicks - wideFailedAt < Math.min(WIDE_RETRY_MOST_TICKS, WIDE_RETRY_TICKS << Math.min(4, Math.max(0, wideFailures - 1)));
-            if (!plan.reachesGoal() && failedPlans > 0 && !wideJustFailed) {
+            // Nor after a cheap one that tried every cell it could get to: a wider one walks the same ground. Commit 1120's
+            // profile: Gus, sent each cut to a stand a block off in the keep's dig he'd no way into, searched 60,000 cells
+            // every few seconds - a quarter of the garrison's time.
+            if (!plan.reachesGoal() && failedPlans > 0 && !wideJustFailed && !plan.exhausted()) {
                 Pathfinder.Result wide = wideMemo.find(new Object[]{start, goal, world.stamp(start.x(), start.z(), WIDE_GROUND_CHUNKS), Set.copyOf(avoid),
                         pillarBlocks(), carriesPickaxe()}, () -> Pathfinder.find(world, start, goal, LONG_PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(), carriesPickaxe(), false, avoid, holds(start)));
                 if (wide.reachesGoal()) {

@@ -62,7 +62,15 @@ public final class Pathfinder {
     private static final int[][] ORTHOGONAL = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
     private static final int[][] DIAGONALS = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 
-    public record Result(List<BlockPos> path, boolean reachesGoal) {
+    /**
+     * A route, whether it reaches the goal, and - one that doesn't - whether its search ran out of cells to try before its
+     * budget: every cell it could get to tried, so a wider search finds no more.
+     */
+    public record Result(List<BlockPos> path, boolean reachesGoal, boolean exhausted) {
+
+        public Result(List<BlockPos> path, boolean reachesGoal) {
+            this(path, reachesGoal, false);
+        }
     }
 
     private Pathfinder() {
@@ -321,7 +329,7 @@ public final class Pathfinder {
             }
         }
 
-        return new Search(new Result(reconstruct(cameFrom, start, closest), false), costSoFar.get(closest), spent.get(closest),
+        return new Search(new Result(reconstruct(cameFrom, start, closest), false, open.isEmpty()), costSoFar.get(closest), spent.get(closest),
                 rough.get(closest));
     }
 
