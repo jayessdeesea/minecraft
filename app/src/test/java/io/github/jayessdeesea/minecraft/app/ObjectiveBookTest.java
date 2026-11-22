@@ -115,4 +115,19 @@ class ObjectiveBookTest {
         ObjectiveRecord r = registers.open(squad).orElseThrow(() -> new AssertionError(squad + " has no open objective: " + registers.objectives()));
         return new Row(r.state(), r.why());
     }
+
+    /** A mission's step isn't closed by a squad's SITREP - only by the mission's own measure (field671: a night mine's "done"). */
+    @Test
+    void aMissionsStepIsNotDoneByASquadsSitrep() {
+        Registers registers = new Registers(state.resolve("registers"));
+        ObjectiveBook book = new ObjectiveBook(() -> registers);
+        io.github.jayessdeesea.minecraft.command.FarmMission farm = io.github.jayessdeesea.minecraft.command.FarmMission.atSeaLevel(1, 3);
+        book.planned(farm, 0);
+        io.github.jayessdeesea.minecraft.command.FarmMission.Step flatten = farm.steps().getFirst();
+        book.given("Charlie", new Objective(farm.name() + ": " + flatten.task(), new Position(24, 62, 56), "A farm", new Objective.Task.Keep()), 1_000);
+        book.sitrep("Charlie", new Report.InPosition(), Optional.of(new Progress(Progress.State.DONE, "the stairs are cut down to y=12")), 2_000);
+        assertEquals(ObjectiveRecord.State.UNDER_WAY, registers.objectives().stream().filter(r -> r.step() == 0).findFirst().orElseThrow().state());
+        book.done(farm, flatten, "nothing over y=62", 3_000);
+        assertEquals(ObjectiveRecord.State.DONE, registers.objectives().stream().filter(r -> r.step() == 0).findFirst().orElseThrow().state());
+    }
 }

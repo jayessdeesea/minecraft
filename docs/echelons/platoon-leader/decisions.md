@@ -55,7 +55,9 @@ The platoon leader's books are kept by code, never asked of the model (operator,
   objective - its open one, if another, relieved - or holds one no row is open for (the first decision after a
   restart); and each squad's SITREP pushed into its row as it comes, every second (operator, 2026-11-21: the squad
   leaders push updates to the platoon leader): its squad leader's CANTCO with why, its task's progress as said, done
-  with what was measured (`app.ObjectiveBook`; `[Objectives] Charlie: Flatten ... CANTCO - no route to ...`). A farm
+  with what was measured (`app.ObjectiveBook`; `[Objectives] Charlie: Flatten ... CANTCO - no route to ...`). A farm mission's
+  step is closed only by the mission's own measure, never by a SITREP's "done" (live, field671, a squad's night mine
+  reported its stairs cut and closed the farm's flatten with 640 columns to cut). A farm
   mission's steps are written PLANNED, no squad on them, when it's given; a squad given a step takes up that step's
   row - under way, its squad's - rather than a new one, and taken off it (relieved) the step stays open, taken up
   again when it's given again; it's DONE only when the mission measures it done.

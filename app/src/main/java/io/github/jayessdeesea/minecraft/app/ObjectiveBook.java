@@ -78,6 +78,11 @@ final class ObjectiveBook {
         Optional<String> why = report instanceof Report.Cantco(String reason) ? Optional.of(reason)
                 : progress.map(p -> p.state() == Progress.State.STALLED ? "stalled: " + p.detail() : p.detail());
         ObjectiveRecord was = row.get();
+        // A mission's step is done when the mission measures it so (book.done), never by a squad's SITREP: live (field671),
+        // Charlie's night mine reported its stairs cut and closed the farm mission's flatten, 640 columns still to cut.
+        if (state == ObjectiveRecord.State.DONE && FarmMission.named(was.mission()).isPresent()) {
+            state = ObjectiveRecord.State.UNDER_WAY;
+        }
         if (was.state() == state && was.why().equals(why)) {
             return;
         }
