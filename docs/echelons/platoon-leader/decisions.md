@@ -104,7 +104,11 @@ sea level (`OperatorChat.levelAsSaid`; live, field668, told "at sea level", the 
 numbers in order, however the model writes them - "x=24,z=56" as "24 56"; with none or too few, the operator's own
 words' - the place is the operator's (`OperatorChat.farmArgument`; field670, a FARM with no argument); two or three, or the
 turn fails loud. And the latest order
-for a chunk is the one worked: a farm given there at another level relieves the open one, its steps RELIEVED with why.
+for a chunk is the one worked: a farm given there at another level supersedes the open one, its steps SUPERSEDED with
+why. After a restart the missions are carried on from the register - none superseded - and once its chunk is in sight a
+flatten behind the step under way is measured again, and gone back to if the world shows it uncut: the register's index
+is only what was kept (live, field672, the superseded mission came back first, and the other at its floor with its
+chunk 640 columns uncut).
 1. **Flatten** the chunk to a block below the farm's level: the `KEEP` task, the ground to flatten the mission's
    chunk while the step's under way (`ChainOfCommand.flatten`), and the dig the columns of `FlattenPlan.reach` - the
    chunk, and a slope a block a block out on each side whose `command.Slopes` flag is on, off beside a chunk the

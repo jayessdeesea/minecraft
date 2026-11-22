@@ -184,8 +184,8 @@ final class ObjectiveBook {
     /** {@code mission}'s steps not done relieved at {@code now}, {@code why}: given again for its chunk at another level. */
     synchronized void relieved(FarmMission mission, String why, long now) {
         registers.get().objectives().stream().filter(r -> r.mission().equals(mission.name()) && r.state() != ObjectiveRecord.State.DONE
-                && r.state() != ObjectiveRecord.State.RELIEVED).forEach(r -> {
-            registers.get().update(r.now(ObjectiveRecord.State.RELIEVED, r.squad(), Optional.of(why), now));
+                && r.state() != ObjectiveRecord.State.SUPERSEDED).forEach(r -> {
+            registers.get().update(r.now(ObjectiveRecord.State.SUPERSEDED, r.squad(), Optional.of(why), now));
             r.squad().filter(sq -> open.containsKey(sq) && open.get(sq).id() == r.id()).ifPresent(open::remove);
         });
         LOG.info("[Objectives] {}: relieved - {}", mission.name(), why);
@@ -194,9 +194,23 @@ final class ObjectiveBook {
     /** Each mission with a step not done - a step's squad relieved, the step stays open - and its first step not done. */
     synchronized java.util.Map<String, Integer> openMissions() {
         java.util.Map<String, Integer> missions = new java.util.LinkedHashMap<>();
-        registers.get().objectives().stream().filter(r -> r.state() != ObjectiveRecord.State.DONE && FarmMission.named(r.mission()).isPresent())
+        // Not one superseded - its order replaced; rows kept RELIEVED "superseded by" before SUPERSEDED was its own (field672).
+        java.util.Set<String> superseded = registers.get().objectives().stream().filter(r -> r.state() == ObjectiveRecord.State.SUPERSEDED
+                || r.why().filter(w -> w.startsWith("superseded by")).isPresent()).map(ObjectiveRecord::mission).collect(java.util.stream.Collectors.toSet());
+        registers.get().objectives().stream().filter(r -> r.state() != ObjectiveRecord.State.DONE && FarmMission.named(r.mission()).isPresent()
+                        && !superseded.contains(r.mission()))
                 .sorted(java.util.Comparator.comparingLong(ObjectiveRecord::id)).forEach(r -> missions.merge(r.mission(), r.step(), Math::min));
         return missions;
+    }
+
+    /** {@code mission}'s steps from {@code step} on open again at {@code now}: measured not done after all - PLANNED, no squad yet. */
+    synchronized void reopen(FarmMission mission, FarmMission.Step step, String why, long now) {
+        registers.get().objectives().stream().filter(r -> r.mission().equals(mission.name()) && r.step() >= step.index()
+                && r.state() != ObjectiveRecord.State.PLANNED && r.state() != ObjectiveRecord.State.SUPERSEDED).forEach(r -> {
+            registers.get().update(r.now(ObjectiveRecord.State.PLANNED, Optional.empty(), Optional.of(why), now));
+            r.squad().filter(sq -> open.containsKey(sq) && open.get(sq).id() == r.id()).ifPresent(open::remove);
+        });
+        LOG.info("[Objectives] {}: from {} open again - {}", mission.name(), step.task(), why);
     }
 
     /** The registers it keeps its rows in. */

@@ -180,6 +180,7 @@ final class FarmMissions {
             campFarm.chunks().forEach(c -> chunks.add(ChunkFarm.key(c.chunkX(), c.chunkZ())));
         }
         made = Set.copyOf(chunks);
+        recheck(world, campFarm, now);
         Optional<Map.Entry<FarmMission, FarmMission.Step>> under = current();
         if (under.isEmpty()) {
             return;
@@ -236,6 +237,44 @@ final class FarmMissions {
             LOG.info("[Mission] {} done", m.name());
         }
         wake.accept("a step of the operator's farm done");
+    }
+
+    /** Whether the mission carried on from the register has had its steps behind it measured again. */
+    private boolean rechecked;
+
+    /**
+     * Once, the first measure with the chunk in sight after the missions are carried on from the register: a flatten
+     * behind the step under way measured again, and gone back to if the world says it isn't cut - the register's
+     * index is only what was kept. Live (field672), a flatten closed by a squad's "done" before that couldn't happen
+     * came back at its floor, 640 columns uncut.
+     */
+    private void recheck(WorldView world, FarmPlan campFarm, long now) {
+        if (rechecked) {
+            return;
+        }
+        Optional<Map.Entry<FarmMission, FarmMission.Step>> under = current();
+        if (under.isEmpty()) {
+            rechecked = true;
+            return;
+        }
+        FarmMission m = under.get().getKey();
+        for (int k = 0; k < under.get().getValue().index(); k++) {
+            FarmMission.Step behind = m.steps().get(k);
+            if (behind.kind() != FarmMission.Kind.FLATTEN) {
+                continue;
+            }
+            Optional<FlattenPlan> plan = plan(world, m, behind, campFarm);
+            if (plan.isEmpty()) {
+                return; // not in sight yet: looked at again next measure
+            }
+            if (!plan.get().cut()) {
+                missions.put(m, k);
+                book.ifPresent(b -> b.reopen(m, behind, "measured again: not cut", now));
+                LOG.warn("[Mission] {}: {} measured again - not cut; worked again", m.name(), behind.task());
+            }
+            break;
+        }
+        rechecked = true;
     }
 
     /** The flatten's plan for {@code m} as {@code world} stands, if every column it works is in sight. */
