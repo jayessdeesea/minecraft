@@ -54,8 +54,11 @@ public record TreeFarm(BlockPos centre, List<BlockPos> plot) {
     }
 
     /**
-     * Whether a sapling can go in {@code cell} and grow: soil under it that isn't farmland, room for
-     * a body, and open air above - or a sapling or tree already there, which is the plot doing its job.
+     * Whether a sapling can go in {@code cell} and grow: soil under it that isn't farmland, room for a body, and room to
+     * grow - its trunk's column open {@link #HEADROOM} up, and the ring a block round it open over the trunk's top
+     * {@link #CROWN} blocks, where a birch's leaves form (operator, 2026-11-21: sufficient horizontal and vertical
+     * space) - or a sapling or tree already there, which is the plot doing its job. Leaves don't count against it: a
+     * felled tree's decay within minutes, and a stump is replanted under its own.
      */
     static boolean plantable(WorldView world, BlockPos cell) {
         if (planted(world, cell)) {
@@ -66,11 +69,28 @@ public record TreeFarm(BlockPos centre, List<BlockPos> plot) {
             return false;
         }
         for (int up = 0; up < HEADROOM; up++) {
-            if (world.isSolid(cell.x(), cell.y() + up, cell.z())) {
+            if (blocks(world, cell.x(), cell.y() + up, cell.z())) {
                 return false;
             }
         }
+        for (int up = HEADROOM - CROWN; up < HEADROOM; up++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if ((dx != 0 || dz != 0) && blocks(world, cell.x() + dx, cell.y() + up, cell.z() + dz)) {
+                        return false;
+                    }
+                }
+            }
+        }
         return true;
+    }
+
+    /** The top blocks of a trunk's height its crown needs the ring round it open over. */
+    static final int CROWN = 3;
+
+    /** Whether the block at (x, y, z) keeps a tree from growing into it: solid, and not leaves - those decay. */
+    private static boolean blocks(WorldView world, int x, int y, int z) {
+        return world.isSolid(x, y, z) && world.leaves(x, y, z).isEmpty();
     }
 
     /**

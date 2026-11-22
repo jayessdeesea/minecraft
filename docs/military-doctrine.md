@@ -1251,7 +1251,9 @@ was kicked and rejoined 671 times in forty minutes.
 Wood is grown when it runs out. An objective's task can be `TREE_FARM`: the squad plants saplings
 round the objective, on the world's grid of every fourth block both ways - x and z each two past a
 multiple of four, so groves sited apart or again line up (operator, 2026-11-14) - of open dirt or
-grass within 8 blocks, with seven blocks of air above each for the trunk (`bot.farm.TreeFarm`).
+grass within 8 blocks, with room to grow: its trunk's column open seven blocks up, and the ring a block round it open
+over the trunk's top three, where a birch's leaves form (`bot.farm.TreeFarm.plantable`) - leaves not counted against it,
+since a felled tree's decay in minutes and its stump is replanted under them (operator, 2026-11-21).
 Birch is the farm's first tree - one straight trunk to a predictable height, with no giant form -
 and spruce its second. A soldier plants birch if it carries any, then spruce, then any other, and
 with no sapling breaks leaves for one, birch leaves first, then spruce; one leaf block in twenty

@@ -82,6 +82,10 @@ grid, inside the area of influence (32 blocks out from the camp's edge):
   as the earthwork to it, then the nearer; and the first of each built as soon as one qualifies, a tree chunk growing
   from its second stage, before its fence. A grove sited for a camp the force has left is given up for the camp's
   nearest: live (field630), foresters walked 200 to 330 blocks to plant at one by the old keep, (-30, -73).
+- **Felled, replanted, swept** (operator, 2026-11-21): the rotation fells every tree of an area whole and replants each
+  stump at once, under its own decaying leaves (`TreeFarm.plantable` lets them be), then comes back a couple of minutes on
+  - most leaves decayed, well inside the 5 minutes a drop lies - and sweeps up the saplings and sticks they let fall.
+  Today a cutter stands under each tree while its scavenger takes the logs, and walks on; what decays after is lost.
 - **Saplings supplied, not hoped for** (the errand ledger, field630): foresters failed "no sapling, and no leaves within
   32 blocks" 117 times in a run, each failure a cooldown and a try again, while soldiers off the grove carried 6 and 11
   saplings; and walked 200 to 330 blocks to plant one at a grove by (-30, -73). Wanted: saplings in the kit's report;
