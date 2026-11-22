@@ -222,6 +222,12 @@ site's next ring by what it returns against what holding it costs:
 - **Over-extension** is the area's price rising faster than its yield: a ring whose holding draws soldiers from the
   rings inside it.
 
+**One small flat base first** (operator, 2026-11-21): in the airhead the force makes a single small base, flat, cheap
+to walk and defend, and produces food and wood there reliably before it expands - any height in the airhead (sea level
+in this world, being so close), sea level in later phases, and no multi-level ground. Built: the flatten is the camp's
+own ground, a ring at a time to the area of influence; the night's mine the camp's when the keep's is far. Left: the old
+keep site's depot consolidated into the supply point (renewables.md); expansion gated on food and wood made reliably.
+
 ### Pause, fall back, and holding a level
 **Three responses, by how far a class has fallen:**
 

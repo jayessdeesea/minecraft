@@ -73,8 +73,8 @@ final class DayWorkRules {
 
     /** Whether a mine headed at ({@code x}, {@code z}) would cut into {@code site} or its bench. */
     static boolean cutsInto(Flatten site, int x, int z) {
-        for (int dx = -MINE_SITE_CLEAR; dx <= MINE_SITE_CLEAR; dx++) {
-            for (int dz = -MINE_SITE_CLEAR; dz <= MINE_SITE_CLEAR; dz++) {
+        for (int dx = -MineSites.MINE_SITE_CLEAR; dx <= MineSites.MINE_SITE_CLEAR; dx++) {
+            for (int dz = -MineSites.MINE_SITE_CLEAR; dz <= MineSites.MINE_SITE_CLEAR; dz++) {
                 if (site.benchedContains(x + dx, z + dz)) {
                     return true;
                 }

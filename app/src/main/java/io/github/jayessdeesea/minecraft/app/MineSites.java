@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Flatten;
+import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Position;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -10,19 +11,28 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static io.github.jayessdeesea.minecraft.app.ChainOfCommand.KEEP_MINE;
-import static io.github.jayessdeesea.minecraft.app.ChainOfCommand.MINE_SITE_RINGS;
-import static io.github.jayessdeesea.minecraft.app.ChainOfCommand.MINE_SITE_STEP;
 import static io.github.jayessdeesea.minecraft.app.DayWorkRules.cutsInto;
 
 /**
  * The keep's mine and the sites it has been at and left (operator, 2026-11-16: move to other sites or go deeper): it
- * starts at {@link ChainOfCommand#KEEP_MINE} and, each one dried up, moves to the nearest untried site on a grid round
+ * starts at {@link #KEEP_MINE} and, each one dried up, moves to the nearest untried site on a grid round
  * it, clear of the flatten. Kept on disk by the soldier runner, and set back from it at start-up. Thread-safe.
  */
 final class MineSites {
 
     private static final Logger LOG = LogManager.getLogger(MineSites.class);
+
+    /**
+     * The keep's mine head: off its north-west corner, clear of the slab, its depot and the west
+     * borrow pit (x -25..-20, z -17..17).
+     */
+    static final Position KEEP_MINE = new Position(Keep.MIN - 10, ChainOfCommand.MINE_DEPTH, Keep.MIN - 8);
+    /** How far apart the sites a mine may move to are: two chunks. */
+    static final int MINE_SITE_STEP = 32;
+    /** How many sites out every way from the keep's first mine one may be. */
+    static final int MINE_SITE_RINGS = 6;
+    /** How far round a mine's head is kept clear of the flatten site and its bench: the stairs' well. */
+    static final int MINE_SITE_CLEAR = 8;
 
     private volatile Position keepMine = KEEP_MINE;
     private final Set<Position> tried = ConcurrentHashMap.newKeySet();

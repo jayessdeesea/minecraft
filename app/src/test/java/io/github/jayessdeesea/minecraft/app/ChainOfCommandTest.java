@@ -429,8 +429,8 @@ class ChainOfCommandTest {
         two.setKeepByDay(true);
 
         two.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
-        assertEquals(ChainOfCommand.KEEP_MINE, two.sheltered(WALL, squad("Bravo", "Bob")).location(),
-                "building the keep, the night's mine is the keep's own, beside it");
+        assertEquals(new Position(-44, ChainOfCommand.MINE_DEPTH, 40), two.sheltered(WALL, squad("Bravo", "Bob")).location(),
+                "building the keep, its mine 71 blocks off the camp is the old site's: the night's mine is the camp's, one base (2026-11-21)");
         two.onTime(TimeOfDay.of(TimeOfDay.DAWN - ChainOfCommand.SURFACE_LEAD_TICKS + 1, true));
         Objective climbingOut = two.sheltered(two.byDay(WALL, squad("Bravo", "Bob")), squad("Bravo", "Bob"));
         assertTrue(climbingOut.task() instanceof Objective.Task.Keep, "just before sunrise it climbs out to the day's work: " + climbingOut);
@@ -444,13 +444,13 @@ class ChainOfCommandTest {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
                 new Roster("Alpha:Alice"), true, "model");
-        Position first = ChainOfCommand.KEEP_MINE;
+        Position first = MineSites.KEEP_MINE;
         assertEquals(Optional.empty(), two.onMineDriedUp(100, 100), "another mine's drying up leaves the keep's where it is");
         assertEquals(first, two.keepMine());
 
         Position next = two.onMineDriedUp((int) Math.floor(first.x()), (int) Math.floor(first.z())).orElseThrow();
-        assertEquals(0, Math.floorMod((int) (next.x() - first.x()), ChainOfCommand.MINE_SITE_STEP), "on the grid round the first");
-        assertEquals(0, Math.floorMod((int) (next.z() - first.z()), ChainOfCommand.MINE_SITE_STEP), "on the grid round the first");
+        assertEquals(0, Math.floorMod((int) (next.x() - first.x()), MineSites.MINE_SITE_STEP), "on the grid round the first");
+        assertEquals(0, Math.floorMod((int) (next.z() - first.z()), MineSites.MINE_SITE_STEP), "on the grid round the first");
         assertEquals(next, two.keepMine());
         assertTrue(two.minesTried().contains(first), "the first is tried");
         Position after = two.onMineDriedUp((int) Math.floor(next.x()), (int) Math.floor(next.z())).orElseThrow();
@@ -459,7 +459,7 @@ class ChainOfCommandTest {
         assertTrue(centre <= Math.hypot(after.x() - two.flatten().centre().x(), after.z() - two.flatten().centre().z()),
                 "nearest the keep first");
         next = after;
-        for (int dx = -ChainOfCommand.MINE_SITE_CLEAR; dx <= ChainOfCommand.MINE_SITE_CLEAR; dx++) {
+        for (int dx = -MineSites.MINE_SITE_CLEAR; dx <= MineSites.MINE_SITE_CLEAR; dx++) {
             assertFalse(two.flatten().benchedContains((int) next.x() + dx, (int) next.z()), "clear of the flatten site and its bench");
         }
         assertEquals(Optional.empty(), two.onMineDriedUp((int) Math.floor(first.x()), (int) Math.floor(first.z())),
@@ -626,5 +626,26 @@ class ChainOfCommandTest {
         assertEquals("Shelter in place in the camp through the night", alpha.mission());
         assertTrue(Cohesion.distance(alpha.location(), bravo.location()) >= ChainOfCommand.SPREAD, alpha.location() + " and " + bravo.location());
         assertTrue(alpha.task() instanceof Objective.Task.PatrolBase, "under a roof, its hut: phantoms come to the sky (field498-507)");
+    }
+
+    /**
+     * One small flat base: with a camp, the ground flattened is the camp's - not a site far off - and it grows a ring at a
+     * time to the area of influence (operator, 2026-11-21; field638: the flatten 110 blocks off, the camp's hill standing).
+     */
+    @Test
+    void theGroundFlattenedIsTheCampsAndGrowsARingAtATime() {
+        ChainOfCommand chain = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""), new Roster("Alpha:Alice"), true, "model");
+        chain.setFlatten("-48 -16 -16 16 62");
+        chain.onFoothold(new Foothold(new Position(24, 64, 88), List.of()));
+        io.github.jayessdeesea.minecraft.command.Flatten camp = chain.flatten();
+        assertEquals(24.5, camp.centre().x(), 1, "centred on the camp: " + camp.describe());
+        assertEquals(63, camp.top(), "sea level");
+        assertEquals(ChainOfCommand.CAMP_FLATTEN_FIRST, camp.half());
+        chain.onFlattened(box -> OptionalInt.of(63));
+        assertEquals(ChainOfCommand.CAMP_FLATTEN_FIRST + ChainOfCommand.CAMP_FLATTEN_RING, chain.flatten().half(), "a ring further");
     }
 }

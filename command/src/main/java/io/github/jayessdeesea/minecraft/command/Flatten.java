@@ -149,6 +149,31 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side
         return new Box(minX, top - Keep.FOOTING, minZ, maxX, top, maxZ);
     }
 
+    /** A square {@code half} blocks out from {@code centre}, taken down to {@code top}: the camp's ground. */
+    public static Flatten around(Position centre, int half, int top) {
+        int x = (int) Math.floor(centre.x()), z = (int) Math.floor(centre.z());
+        return new Flatten(x - half, z - half, x + half, z + half, top);
+    }
+
+    /**
+     * The camp's ground in place of this, if this lies past {@code most} of the {@code camp}: a square {@code first} out
+     * from it, at {@code top} (operator, 2026-11-21: one small flat base - the ground flattened the camp's own).
+     */
+    public Optional<Flatten> camps(Position camp, int first, int most, int top) {
+        return Math.hypot(centre().x() - camp.x(), centre().z() - camp.z()) > most ? Optional.of(around(camp, first, top)) : Optional.empty();
+    }
+
+    /** The camp's ground a {@code ring} further, if this is the camp's and short of {@code most}. */
+    public Optional<Flatten> ringFurther(Position camp, int ring, int most) {
+        return half() < most && Math.hypot(centre().x() - camp.x(), centre().z() - camp.z()) <= ring
+                ? Optional.of(around(camp, Math.min(most, half() + ring), top)) : Optional.empty();
+    }
+
+    /** How far its square reaches out from its middle, the larger way. */
+    public int half() {
+        return Math.max(maxX - minX, maxZ - minZ) / 2;
+    }
+
     /** Whether column ({@code x}, {@code z}) is the site's. */
     public boolean contains(int x, int z) {
         return x >= minX && x <= maxX && z >= minZ && z <= maxZ;

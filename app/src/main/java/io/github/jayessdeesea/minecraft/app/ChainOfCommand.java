@@ -212,8 +212,7 @@ public class ChainOfCommand implements DisposableBean {
     }
 
     /** As the app's with the squad leader's model, on {@code clockwork}'s time and threads. */
-    ChainOfCommand(PlatoonLeader platoonLeader, ChatClient squadLeaderClient,
-                   SquadLeaderPrompts squadLeaderPrompts, Roster roster,
+    ChainOfCommand(PlatoonLeader platoonLeader, ChatClient squadLeaderClient, SquadLeaderPrompts squadLeaderPrompts, Roster roster,
                    boolean shelterAtNight, Clockwork clockwork) {
         this(platoonLeader, squadLeaders("model", squadLeaderClient, squadLeaderPrompts), roster, shelterAtNight, clockwork);
     }
@@ -313,23 +312,12 @@ public class ChainOfCommand implements DisposableBean {
     static final int MINE_HEAD_DX = 4;
     static final int MINE_HEAD_DZ = -4;
     /**
-     * The keep's mine head: off its north-west corner, clear of the slab, its depot and the west
-     * borrow pit (x -25..-20, z -17..17).
-     */
-    static final Position KEEP_MINE = new Position(Keep.MIN - 10, ChainOfCommand.MINE_DEPTH, Keep.MIN - 8);
-    /**
-     * The keep's mine as it stands: {@link #KEEP_MINE} until it's dried up, then a fresh site
-     * {@link #MINE_SITE_STEP} further west each time, clear of the flatten site and its bench
+     * The keep's mine as it stands: {@link MineSites#KEEP_MINE} until it's dried up, then a fresh site
+     * {@link MineSites#MINE_SITE_STEP} further west each time, clear of the flatten site and its bench
      * (operator, 2026-11-16: move to other sites or go deeper). Kept on disk by the soldier runner,
      * and set back from it at start-up ({@link #setKeepMine}).
      */
     private final MineSites mines = new MineSites();
-    /** How far apart the sites a mine may move to are: two chunks. */
-    static final int MINE_SITE_STEP = 32;
-    /** How many sites out every way from the keep's first mine one may be. */
-    static final int MINE_SITE_RINGS = 6;
-    /** How far round a mine's head is kept clear of the flatten site and its bench: the stairs' well. */
-    static final int MINE_SITE_CLEAR = 8;
 
     /** The sites the keep's mine has been at and left. */
     Set<Position> minesTried() {
@@ -566,7 +554,13 @@ public class ChainOfCommand implements DisposableBean {
         }
         platoonLeader.receiveFoothold(foothold);
         this.foothold = foothold;
+        // One small flat base (operator, 2026-11-21): the ground flattened the camp's own - live (field638) it was the old keep's, 110 off.
+        flatten.camps(foothold.camp(), CAMP_FLATTEN_FIRST, CAMP_FLATTEN_MOST, Keep.TOP).ifPresent(f -> LOG.info("[PL] the ground to flatten is the camp's: {}",
+                (flatten = f).describe()));
     }
+
+    /** The camp's ground flattened first this far out, a ring further each time it's flat, to its area of influence. */
+    static final int CAMP_FLATTEN_FIRST = 16, CAMP_FLATTEN_RING = 8, CAMP_FLATTEN_MOST = SoldierRunner.WALL_RADIUS + CampGround.INFLUENCE;
 
     private volatile String lastFoothold = "";
     /** The home base's progress, last measured - a soldier's thread writes, the squads' read. */
@@ -586,6 +580,13 @@ public class ChainOfCommand implements DisposableBean {
      */
     public void onFlattened(java.util.function.Function<io.github.jayessdeesea.minecraft.command.Box, java.util.OptionalInt> topOf) {
         Flatten was = flatten;
+        Optional<Flatten> ring = Optional.ofNullable(foothold).flatMap(b -> was.ringFurther(b.camp(), CAMP_FLATTEN_RING, CAMP_FLATTEN_MOST));
+        if (ring.isPresent()) { // the camp's ground a ring further, to its area of influence, before anywhere else
+            flatten = ring.get();
+            LOG.info("[PL] the camp's ground at {} is flat - a ring further: {}", was.describe(), flatten.describe());
+            wake("the next ground to flatten", true);
+            return;
+        }
         was.next(squads.values().stream().flatMap(s -> s.objective().stream()).filter(o -> o.farm() || o.treeFarm())
                 .flatMap(o -> o.area().stream()).flatMap(a -> a.boxes().stream()).toList(), topOf).ifPresent(next -> {
             flatten = next;
@@ -828,8 +829,7 @@ public class ChainOfCommand implements DisposableBean {
     }
 
     /** {@code squad}'s soldiers' standing plans, as kept, and how each one's work order stands, for its squad leader's next look. */
-    public void receivePlans(String squad, Map<String, Plan> plans,
-                             Map<String, String> workOrders) {
+    public void receivePlans(String squad, Map<String, Plan> plans, Map<String, String> workOrders) {
         squads.get(squad).receivePlans(plans, workOrders);
     }
 

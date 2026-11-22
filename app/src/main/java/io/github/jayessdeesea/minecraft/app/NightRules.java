@@ -119,6 +119,9 @@ final class NightRules {
      * The night's work for every squad at the camp's mine - every squad's, its stairs shared
      * (operator, 2026-11-13: both squads work the mine at night) - or empty with no camp measured yet.
      */
+    /** How near the camp a keep's own mine must be to be the night's: within the camp's area of influence and a chunk. */
+    static final int KEEP_MINE_NEAR = SoldierRunner.WALL_RADIUS + CampGround.INFLUENCE + 16;
+
     static Optional<Objective> nightShift(Night n) {
         Foothold camp = n.foothold().orElse(null);
         // Before the buildup, nobody down the mine by night (operator, 2026-11-18: not safe; we don't want to lose the
@@ -129,7 +132,8 @@ final class NightRules {
         // Building the keep by day, the night's mine is the keep's own, beside it: from the camp's,
         // 65 blocks off and 48 down, the climb out and the walk to the keep were two-fifths of the
         // day (field151; operator, 2026-11-13: cutting a second mine is fine).
-        if (n.keepByDay()) {
+        // Only a keep's mine by the camp: one base (operator, 2026-11-21) - a keep's mine far off is the old site's.
+        if (n.keepByDay() && Math.hypot(n.keepMine().x() - camp.camp().x(), n.keepMine().z() - camp.camp().z()) <= KEEP_MINE_NEAR) {
             // Its intent what the mine yields: the keep's slab isn't built up from stone (Keep.FILL; operator, 2026-11-15),
             // and "stone for the keep's slab" went to the platoon leader and the radio long after (operator, 2026-11-21: stale).
             return Optional.of(new Objective("Cut the keep's mine down to the iron through the night", n.keepMine(),

@@ -2013,8 +2013,11 @@ The main base is built beside the foothold, which stays the base until it's done
 (backlog/cells.md): first its keep (`command.Keep`), the task `KEEP` - x and z from -16 to 16,
 taken down to y=63 (operator, 2026-11-15), its floor walked at feet 64. Flattening is a primitive
 of its own, not the keep's (operator, 2026-11-15): the task digs whatever ground is set to flatten
-(`command.Flatten`, a rectangle and a level) - the keep's first ground to begin with, then any the
-operator names with `!flatten` - with its depot off the site's west edge, or its north
+(`command.Flatten`, a rectangle and a level) - with a camp, the camp's own: one small flat base (operator,
+2026-11-21: in the airhead a single small base, flat, food and wood made reliably before it expands; at sea level in
+later phases; no multi-level ground), a square 16 out from the camp at sea level, a ring of 8 further each time it's
+flat, to the area of influence 40 out (`ChainOfCommand.onFoothold`; live, field638, the flatten worked a square 110
+blocks off, the old keep's, and the camp's hill to y=74 stood) - or any the operator names with `!flatten` - with its depot off the site's west edge, or its north
 (`Flatten.Side`: the farm-and-grove ground's west edge is the camp's farm), sited again when the
 site moves away from the one standing. A chest standing on the ground to flatten - the old depot's, the
 site moved onto it - is salvaged before it's dug: the site is looked over for chests every 30 s from the
@@ -2037,7 +2040,7 @@ top is soil (`Flatten.soil`, ground for groves and the farm) has its top layer i
 its rock dug, and once the dig's done the gaps filled with dirt alone (`Order.Fill.Material.SOIL`), a builder
 short of dirt sent for a load of it from the ground east of the site past its bench, which the keep's site
 there has to have dug anyway (`Tasking.soil`). Once the site is flat - nothing left to dig, and its ground
-reading level - the next ground to flatten is the nearest box of the squads' farm and grove areas whose
+reading level - the camp's ground a ring further, while it's short of its area of influence; then the nearest box of the squads' farm and grove areas whose
 ground reads more than a block off the site's level, at that level, soil (`Flatten.next`,
 `ChainOfCommand.onFlattened`; operator, 2026-11-18: trend to sea level, even in the airhead - flat is
 efficient to walk and to grow): the lodgment works its way to one level, a site at a time, in every phase
