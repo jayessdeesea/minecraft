@@ -138,6 +138,34 @@ public final class Clearing {
         return cells;
     }
 
+    /**
+     * The water in {@code box}, sources and flow alike: in a clear's way, but no block to dig - and the clear breaks nothing
+     * beside it (#letsInWater), so it's filled with dirt first and dug as ground after (operator, 2026-11-22: fill the water
+     * block with dirt, then rip it down). Live (field684), the flatten at chunk (1, 3) stood at its levels round the old
+     * farm's water holes, and its builders fell in.
+     */
+    public static List<BlockPos> waterIn(WorldView world, Box box, Set<Cell> except) {
+        List<BlockPos> cells = new ArrayList<>();
+        for (int x = box.minX(); x <= box.maxX(); x++) {
+            for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                if (!world.isLoaded(x, z)) {
+                    continue;
+                }
+                for (int y = box.maxY(); y >= box.minY(); y--) {
+                    int bottom = Math.floorDiv(y, 16) * 16;
+                    if (y > bottom && bottom >= box.minY() && world.openSection(x, y, z)) {
+                        y = bottom + 1;
+                        continue;
+                    }
+                    if (world.isWater(x, y, z) && !except.contains(new Cell(x, y, z))) {
+                        cells.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        return cells;
+    }
+
     public static List<BlockPos> toClear(WorldView world, Box box, Set<Cell> except, boolean tunnel) {
         if (!tunnel) {
             return toClear(world, box, except);

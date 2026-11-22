@@ -63,15 +63,9 @@ a squad; an objective is a place. The code's `Objective` type and `objective` ta
    corrects the estimate.
 
 ## Left from the flatten work (2026-11-22)
-- **Water in the dig**, operator: fill the water block with dirt, then rip it down. Half built, out of main: the work
-  in progress is `C:/mc-worktrees/wip/flatten-tops-water-wip.patch` (with `FlattenTopsSimulationTest.java.wip`, its
-  `aWaterSourceInTheDigIsFilledThenDug` cell). Found so far: the clear breaks nothing beside water
-  (`Clearing.letsInWater`), the fill counts water as floor (`Clearing.toFill`), the keep gives out fill orders only
-  once nothing is left to dig, and a fill order's cells come from `Clearing.toFill` (SoldierRunner, `filling.put`).
-  With water scanned (`Clearing.waterIn` in `SiteClears`), counted in the level, the share's water given out to fill
-  while digging and put first in a fill order's cells, the water is seen ("water in the dig: 1 cell(s) 40,65,8") and
-  still nobody fills it - the next thing to trace is the soldier's filler taking that order. Don't ship the level held
-  at the water without the fill: it stalls the flatten for good.
+- **Water in the dig beyond one source.** A source in the dig is filled, then dug (docs/military-doctrine.md § 17,
+  `FlattenTopsSimulationTest`). Not yet a case: a pond's worth, where the fill of one cell is flowed into from the
+  next; water the flatten's own cut lets in from beside the site; and the old farm's holes at chunk (1, 3) live.
 - **The dig/place loop** on a raised chunk's last layer: builders dig a cell and put it back (FarmMissionSimulationTest's
   stale-farm world, cells (37,64,5), (43,64,5)) - its own case, then the fix.
 - **A flatten crew's deposit to a mine's stash** (Bob, field681: the camp mine's chest at y=8, 59 below; his pack then

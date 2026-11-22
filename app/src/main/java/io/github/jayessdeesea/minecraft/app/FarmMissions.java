@@ -226,9 +226,11 @@ final class FarmMissions {
                         + (p.steps().isEmpty() ? "" : ", " + String.join("; ", p.steps()))).orElse("not all of it in sight"));
                 // A block of no known break time over the level is in the way though the plan's ground measure can't see it: not
                 // done while it stands, and said (FlattenTopsSimulationTest: a chest in the chunk, the flatten measured done round it).
-                List<BlockPos> unknown = Clearing.unknownIn(world, new Box(m.minX(), step.level() + 1, m.minZ(), m.minX() + 15, Keep.SKY_TOP, m.minZ() + 15), Set.of());
+                Box over = new Box(m.minX(), step.level() + 1, m.minZ(), m.minX() + 15, Keep.SKY_TOP, m.minZ() + 15);
+                List<BlockPos> unknown = Clearing.unknownIn(world, over, Set.of());
+                List<BlockPos> water = Clearing.waterIn(world, over, Set.of()); // the plan's ground measure sees no water: it's filled and dug first
                 unknown.stream().findFirst().ifPresent(c -> say(m, step, Clearer.unknownSaid(world, c)));
-                yield plan.filter(FlattenPlan::cut).filter(p -> unknown.isEmpty()).map(p -> "nothing over y=" + step.level() + " in the chunk or its " + slopes(m, campFarm).said()
+                yield plan.filter(FlattenPlan::cut).filter(p -> unknown.isEmpty() && water.isEmpty()).map(p -> "nothing over y=" + step.level() + " in the chunk or its " + slopes(m, campFarm).said()
                         + (p.fill().isEmpty() ? "" : ", " + p.fill().size() + " column(s) under it - the floor's inside, the ground's outside"));
             }
             case FLOOR -> {

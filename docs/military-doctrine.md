@@ -2174,8 +2174,12 @@ who fight. Where a rule of a clearing below meets the standard, it says which pa
    state> at ... in the dig ... the block tables want it` (`Clearing.unknownIn`, `SiteClears`), for the
    tables to be put right from the log, said up the same way, and a farm mission's flatten isn't
    measured done while one stands. The cases are the eval `FlattenTopsSimulationTest`: a spike out of
-   reach, a log under an overhang, ore past the squad's pickaxes, an unknown block, fence gates and a block put down
-   on ground already cut. A fence gate, shut or open, is dug as a gate (`Digger.Target.GATE`): open, it reads
+   reach, a log under an overhang, ore past the squad's pickaxes, an unknown block, fence gates, a water source and a
+   block put down on ground already cut. Water in the dig is no block to dig, and the clear breaks nothing beside it
+   lest it flood the dig (`Clearing.letsInWater`): it's scanned with the site (`Clearing.waterIn`, logged `[Keep] water
+   in the dig`), holds the level it stands at, and is filled with dirt by one hand - the builder whose rectangle holds
+   it (`Tasking.water`), the rest digging on - then dug as ground; a farm mission's flatten isn't measured done while
+   any stands. A fence gate, shut or open, is dug as a gate (`Digger.Target.GATE`): open, it reads
    passable, and needs nothing under it - live (2026-11-22), the old farm's gates hung in the air over the flatten
    at chunk (1, 3); a section with one in it is no open section to skip (`ChunkCache.openSection`). The site is
    looked at again every second (`SiteClears`), so a block put down since sets the level again.

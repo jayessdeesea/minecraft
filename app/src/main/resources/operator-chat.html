@@ -35,7 +35,8 @@
   #status table { border-collapse: collapse; width: 100%; }
   #status th { text-align: left; color: var(--muted); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
   #status th, #status td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-  #status td.activity { font-weight: 600; white-space: nowrap; }
+  #status td.activity, #status td.nowrap { white-space: nowrap; }
+  #status td.activity { font-weight: 600; }
   #status td.muted, #status .stale { color: var(--muted); }
   #status .warn { color: var(--err); }
   @media (max-width: 900px) { #main { flex-direction: column; } #status { border-left: 0; border-top: 1px solid var(--line); } }
@@ -198,9 +199,9 @@ function showStatus(status) {
       cell(row, s.unit === squad.name ? s.name : s.name + " (" + s.unit + ")");
       const stuck = s.taskState === "STALLED" || s.taskState === "CANTCO";
       cell(row, s.activity === null ? null : s.activity + (stuck ? " [" + s.taskState + "]" : ""), "activity" + (stuck ? " warn" : ""));
-      cell(row, held(s.seconds));
-      cell(row, s.hands === null ? "free" : s.hands, s.hands === null ? "muted" : "");
-      cell(row, s.order);
+      cell(row, held(s.seconds), "nowrap");
+      cell(row, s.hands === null ? "free" : s.hands, s.hands === null ? "muted nowrap" : "nowrap");
+      cell(row, s.order, "nowrap");
       cell(row, s.report + " at (" + s.x + ", " + s.y + ", " + s.z + ")");
       cell(row, s.health === null ? null : Math.round(s.health), s.health !== null && s.health <= 8 ? "warn" : "");
       cell(row, s.food, s.food !== null && s.food <= 6 ? "warn" : "");

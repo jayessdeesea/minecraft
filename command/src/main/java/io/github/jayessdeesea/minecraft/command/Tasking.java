@@ -79,6 +79,24 @@ public final class Tasking {
     }
 
     /**
+     * The fill of {@code water} standing in a dig, as one hand's command over its dig: the hand whose strip in
+     * {@code digs} holds the water, else the first of {@code hands} - in dirt, or sent for a load of it as in
+     * {@link #soil}. One hand's, and the same hand's each cycle while the strips stand: the rest dig on. No water, or
+     * no hands, is no order. The clear breaks nothing beside water, so until it's filled the ground round it stands.
+     */
+    public static Map<String, Order> water(Map<String, Order> digs, List<Hand> hands, Optional<Box> water, Box borrow, Set<Cell> except,
+                                           Set<String> gathering) {
+        if (hands.isEmpty() || water.isEmpty()) {
+            return Map.of();
+        }
+        Box at = water.get();
+        Hand hand = hands.stream().filter(h -> digs.get(h.name()) instanceof Order.Dig dig
+                && dig.box().minX() <= at.minX() && at.minX() <= dig.box().maxX() && dig.box().minZ() <= at.minZ() && at.minZ() <= dig.box().maxZ())
+                .findFirst().orElse(hands.getFirst());
+        return soil(List.of(hand), water, borrow, except, gathering);
+    }
+
+    /**
      * Each of {@code hands}'s command for the ground work round {@code feet}: {@code dig} and
      * {@code fill} the boxes with work left in them (empty when there's none), {@code except} the
      * cells neither touches, {@code gathering} those sent for dirt last cycle.

@@ -38,6 +38,8 @@ final class SiteClears {
     private final Map<Set<Cell>, Object[]> scans = new LinkedHashMap<>();
     /** The blocks of no known break time in the site's dig as last scanned ({@code Clearing.unknownIn}): left, and said up. */
     private volatile List<BlockPos> unknown = List.of();
+    /** The water in the site's dig as last scanned ({@code Clearing.waterIn}): to fill with dirt, then dig as ground. */
+    private volatile List<BlockPos> water = List.of();
     /** Those alerted, once each. */
     private final Set<BlockPos> alerted = new HashSet<>();
 
@@ -79,11 +81,17 @@ final class SiteClears {
         }
         List<BlockPos> cells = new ArrayList<>();
         List<BlockPos> unknowns = new ArrayList<>();
+        List<BlockPos> waters = new ArrayList<>();
         for (Box box : boxes) {
             cells.addAll(Clearing.toClear(world, box, except));
             unknowns.addAll(Clearing.unknownIn(world, box, except));
+            waters.addAll(Clearing.waterIn(world, box, except));
         }
         unknown = List.copyOf(unknowns);
+        if (!waters.equals(water)) {
+            LOG.info("[Keep] water in the dig: {} cell(s){} - filled with dirt, then dug", waters.size(), waters.stream().limit(4).map(c -> " " + c.x() + "," + c.y() + "," + c.z()).reduce("", String::concat));
+        }
+        water = List.copyOf(waters);
         synchronized (alerted) {
             // Said once each, by name, so the block tables are put right from the log (operator, 2026-11-22).
             unknowns.stream().filter(alerted::add).forEach(c -> LOG.warn("[Alert] unknown block {} at {} in the dig: no break time known - left, "
@@ -98,6 +106,11 @@ final class SiteClears {
             }
         }
         return scanned;
+    }
+
+    /** The water in the dig as last scanned: filled first, then dug with the ground. */
+    List<BlockPos> water() {
+        return water;
     }
 
     /** The blocks of no known break time in the dig as last scanned: in the clear's way, left for orders. */

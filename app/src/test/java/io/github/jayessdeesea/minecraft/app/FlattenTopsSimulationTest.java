@@ -219,6 +219,33 @@ class FlattenTopsSimulationTest {
     }
 
     /**
+     * A water source in the dig, over the level: filled with dirt, then dug out with the ground round it (operator,
+     * 2026-11-22: "there are blocks of water the crew does not know how to deal with - fill the water block with dirt, then
+     * rip it down"). The clear never breaks a block beside water, lest it flood the dig, and the fill counted water as floor:
+     * live (field684), the flatten at chunk (1, 3) stood at its levels round the old y=67 template's water holes, and its
+     * builders fell in. A mound two over the ground, a source in a hole in its top: nothing of either over the level after.
+     */
+    @Test
+    void aWaterSourceInTheDigIsFilledThenDug() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, with((x, y, z) -> x == 40 && z == 8 && y == GROUND + 2 ? SimServer.WATER
+                : x >= 37 && x <= 43 && z >= 5 && z <= 11 && y > GROUND && y <= GROUND + 2 ? SimServer.DIRT : -1), 1000);
+        List<String> log = run(server, clock, FarmMissionSimulationTest.kit(), 40);
+        assertEquals(List.of(), over(server), "no ground over the farm's level" + mission(log));
+        List<String> water = new ArrayList<>();
+        for (int x = FARM.minX(); x <= FARM.minX() + 15; x++) {
+            for (int z = FARM.minZ(); z <= FARM.minZ() + 15; z++) {
+                for (int y = FarmMission.SEA_LEVEL + 1; y <= GROUND + 4; y++) {
+                    if (server.block(x, y, z) == SimServer.WATER) {
+                        water.add(x + "," + y + "," + z);
+                    }
+                }
+            }
+        }
+        assertEquals(List.of(), water, "no water left over the level - filled and dug" + mission(log));
+    }
+
+    /**
      * A block put down on ground already cut below it, partway through: seen at the next look over the whole area, and the
      * level goes back up to it (operator, 2026-11-22: before each next level, find the highest anything in the area - it
      * could have been added since the last look).

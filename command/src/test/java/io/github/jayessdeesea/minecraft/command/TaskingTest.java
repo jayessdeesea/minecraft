@@ -81,4 +81,22 @@ class TaskingTest {
         assertEquals(Map.of("Hal", new Order.Dig(oneBlock, Set.of())), Tasking.allocate(hands, FEET, 7, Optional.of(oneBlock), Optional.empty(),
                 Set.of(), Set.of(), (hand, box) -> hand.equals("Hal") ? 1 : 10), "the hand nearest it");
     }
+    /** Water in a dig is one hand's to fill - the hand whose strip holds it - and the others dig on. */
+    @Test
+    void waterInADigIsFilledByTheHandWhoseStripHoldsIt() {
+        java.util.Map<String, Order> digs = java.util.Map.of(
+                "Alice", new Order.Dig(new Box(0, 64, 0, 3, 70, 7), java.util.Set.of()),
+                "Bob", new Order.Dig(new Box(4, 64, 0, 7, 70, 7), java.util.Set.of()));
+        java.util.List<Tasking.Hand> hands = java.util.List.of(new Tasking.Hand("Alice", 64), new Tasking.Hand("Bob", 64));
+        Box water = new Box(5, 66, 2, 5, 66, 2), borrow = new Box(20, 60, 0, 24, 64, 4);
+
+        assertEquals(java.util.Map.of("Bob", new Order.Fill(water, java.util.Set.of(), Order.Fill.Material.SOIL)),
+                Tasking.water(digs, hands, java.util.Optional.of(water), borrow, java.util.Set.of(), java.util.Set.of()));
+        assertEquals(java.util.Map.of("Bob", new Order.Gather(Resource.SOIL, borrow, Tasking.LOAD)),
+                Tasking.water(digs, java.util.List.of(new Tasking.Hand("Alice", 64), new Tasking.Hand("Bob", 0)), java.util.Optional.of(water), borrow,
+                        java.util.Set.of(), java.util.Set.of()), "short of dirt, it's sent for a load");
+        assertEquals(java.util.Map.of("Alice", new Order.Fill(water, java.util.Set.of(), Order.Fill.Material.SOIL)),
+                Tasking.water(java.util.Map.of(), hands, java.util.Optional.of(water), borrow, java.util.Set.of(), java.util.Set.of()), "no strip holds it: the first hand");
+        assertEquals(java.util.Map.of(), Tasking.water(digs, hands, java.util.Optional.empty(), borrow, java.util.Set.of(), java.util.Set.of()));
+    }
 }

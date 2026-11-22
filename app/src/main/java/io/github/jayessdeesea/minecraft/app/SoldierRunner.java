@@ -2310,6 +2310,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // a tree's last two blocks at y=78 stood over a finished keep with nobody given them.
         wholeDig.forEach(c -> (scaffolding.contains(c) || world.isLog(c.x(), c.y(), c.z()) || world.leaves(c.x(), c.y(), c.z()).isPresent()
                 ? stepTops : tops).merge(((long) c.x() << 32) ^ (c.z() & 0xffffffffL), c.y(), Math::max));
+        siteClears.water().forEach(c -> tops.merge(((long) c.x() << 32) ^ (c.z() & 0xffffffffL), c.y(), Math::max)); // water holds the level: filled, then dug
         // A column whose chunk nobody has loaded is unknown, not dug: its last known top stands for it,
         // or the level drops when the chunk goes and comes back when it's seen again. Live, the big
         // site's east edge is the first column of a chunk mostly off it, loaded and let go as builders
@@ -2341,7 +2342,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Not built up for now (operator, 2026-11-15): taken down to its ground and left. A soil site's top
         // is: the gaps its rock left, filled with dirt.
         Box soilShare = slab.strips(Math.max(1, onKeep.size())).get(share);
-        List<BlockPos> toFill = !toDig.isEmpty() ? List.of() : ground.soil() ? Clearing.toFill(world, soilShare, kept)
+        // Water over the level in its share filled now, whatever's left to dig: then it's ground, dug in its turn (operator, 2026-11-22).
+        List<BlockPos> shareWater = siteClears.water().stream().filter(c -> c.x() >= digShare.minX() && c.x() <= digShare.maxX() && c.z() >= digShare.minZ() && c.z() <= digShare.maxZ()).toList();
+        List<BlockPos> toFill = !shareWater.isEmpty() ? shareWater : !toDig.isEmpty() ? List.of() : ground.soil() ? Clearing.toFill(world, soilShare, kept)
                 : Keep.FILL ? Clearing.toFill(world, fillShare, kept) : List.of();
         state.keepDigLeft = toDig.size();
         keepState.digLeftBySquad.put(squad, toDig.size());
@@ -2364,20 +2367,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Each soldier a fixed range of x and z, its strip of the squad's share, from its floor up
         // (operator, 2026-11-13: you get this x range and this z range, top down) - not cut from
         // where work is left: a strip that narrow left no stand beside its last block.
+        List<Tasking.Hand> dirtHands = hands.stream().map(h -> new Tasking.Hand(h.name(), h.condition().flatMap(c -> c.kit()).map(Kit::dirt).orElse(0))).toList();
         Map<String, Order> orders = new HashMap<>(!toDig.isEmpty() ? Map.of()
-                : ground.soil() ? Tasking.soil(hands.stream().map(h -> new Tasking.Hand(h.name(),
-                        h.condition().flatMap(c -> c.kit()).map(Kit::dirt).orElse(0))).toList(), bounds(toFill), soilBorrow(ground), kept, state.fetchingDirt)
+                : ground.soil() || !shareWater.isEmpty() ? Tasking.soil(dirtHands, bounds(toFill), soilBorrow(ground), kept, state.fetchingDirt)
                 : Tasking.keep(crew, Optional.empty(), bounds(toFill), kept));
         if (toDig.isEmpty() && ground.soil()) {
             state.fetchingDirt.clear();
-            orders.forEach((n, o) -> {
-                if (o instanceof Order.Gather) {
-                    state.fetchingDirt.add(n);
-                }
-            });
+            state.fetchingDirt.addAll(orders.entrySet().stream().filter(e -> e.getValue() instanceof Order.Gather).map(Map.Entry::getKey).toList());
         }
         if (!toDig.isEmpty()) {
             orders.putAll(foremansNet(squad, onKeep, hands, crew, top, stepTop, layer, digExcept));
+            orders.putAll(Tasking.water(orders, dirtHands, bounds(shareWater), soilBorrow(ground), kept, state.fetchingDirt)); // one hand's, over its rectangle
         } else {
             keepState.crews.remove(squad);
         }
@@ -3778,7 +3778,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 groundGather.remove(soldier);
             }
             case Order.Fill f -> {
-                filling.put(soldier, Clearing.toFill(world, f.box(), f.except()));
+                filling.put(soldier, Stream.concat(Clearing.waterIn(world, f.box(), f.except()).stream(), Clearing.toFill(world, f.box(), f.except()).stream()).toList()); // its water first, the fill counts it floor
                 if (f.stoneOnly()) {
                     stoneFilling.add(soldier);
                 } else {
