@@ -109,6 +109,19 @@ public final class WorldModel implements WorldView {
         return chunks.hardness(x, y, z);
     }
 
+    /** The chunks whose farmland is given up, by ChunkFarm#key: the farm missions' chunks under flatten and floor, set each cycle. */
+    private volatile java.util.Set<Long> farmlandGivenUp = java.util.Set.of();
+
+    /** {@code chunks} - by ChunkFarm#key - the ones whose farmland is given up from now (farmlandGivenUp). */
+    public void farmlandGivenUp(java.util.Set<Long> chunks) {
+        farmlandGivenUp = java.util.Set.copyOf(chunks);
+    }
+
+    @Override
+    public boolean farmlandGivenUp(int x, int z) {
+        return farmlandGivenUp.contains(io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm.key(Math.floorDiv(x, 16), Math.floorDiv(z, 16)));
+    }
+
     @Override
     public String describeAt(int x, int y, int z) {
         return chunks.describeAt(x, y, z);

@@ -172,7 +172,8 @@ final class Digger {
                 case ORE -> world.isOre(block.x(), block.y(), block.z());
                 case GRASS -> world.isGrassPlant(block.x(), block.y(), block.z());
                 case WHEAT -> world.wheatAge(block.x(), block.y(), block.z()).orElse(-1) == RIPE;
-                case SOIL -> world.isSoil(block.x(), block.y(), block.z()) && !world.isFarmland(block.x(), block.y(), block.z())
+                case SOIL -> world.isSoil(block.x(), block.y(), block.z())
+                        && (!world.isFarmland(block.x(), block.y(), block.z()) || world.farmlandGivenUp(block.x(), block.z()))
                         && !world.isSolid(block.x(), block.y() + 1, block.z());
                 case BIRCH_LEAVES -> world.leaves(block.x(), block.y(), block.z()).filter("birch"::equals).isPresent();
                 case SPRUCE_LEAVES -> world.leaves(block.x(), block.y(), block.z()).filter("spruce"::equals).isPresent();

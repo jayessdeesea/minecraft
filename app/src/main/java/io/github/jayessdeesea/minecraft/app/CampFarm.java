@@ -60,8 +60,28 @@ final class CampFarm {
 
     /** {@code chunk} taken in at its next look: the farm mission's template, its ground at its level on the floor. */
     void take(ChunkFarm chunk) {
+        given.removeIf(c -> c.chunkX() == chunk.chunkX() && c.chunkZ() == chunk.chunkZ() && !c.equals(chunk));
+        givenUp.remove(ChunkFarm.key(chunk.chunkX(), chunk.chunkZ()));
         if (!given.contains(chunk)) {
             given.add(chunk);
+        }
+    }
+
+    /** Chunks whose farm is to be given up at its next look, by chunk key. */
+    private final Set<Long> givenUp = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /**
+     * The farm on chunk ({@code chunkX}, {@code chunkZ}) given up at its next look - its chunk farm and the plot's cells
+     * in that chunk: the chunk is a farm mission's to flatten and floor, and is no farm till its template's taken in again.
+     * Live (field668-682), a superseded mission's y=67 template stood in the camp's farm, was tilled and sown, and the
+     * operator's sea-level flatten cut round its wheat. A no-op when the farm holds nothing there.
+     */
+    void giveUp(int chunkX, int chunkZ) {
+        given.removeIf(c -> c.chunkX() == chunkX && c.chunkZ() == chunkZ);
+        FarmPlan kept = farm;
+        if (kept != null && (kept.chunks().stream().anyMatch(c -> c.chunkX() == chunkX && c.chunkZ() == chunkZ)
+                || kept.plot().stream().anyMatch(c -> Math.floorDiv(c.x(), 16) == chunkX && Math.floorDiv(c.z(), 16) == chunkZ))) {
+            givenUp.add(ChunkFarm.key(chunkX, chunkZ));
         }
     }
 
@@ -95,6 +115,18 @@ final class CampFarm {
         }
         // Sited afresh when its pond is gone - not a farm of chunk farms alone, whose water is its first hole, poured or not.
         boolean resite = kept == null || !world.isWater(kept.water().x(), kept.water().y(), kept.water().z()) && !kept.holes().contains(kept.water());
+        if (kept != null && !givenUp.isEmpty()) {
+            FarmPlan was = kept;
+            java.util.function.Predicate<BlockPos> out = c -> givenUp.contains(ChunkFarm.key(Math.floorDiv(c.x(), 16), Math.floorDiv(c.z(), 16)));
+            kept.chunks().stream().filter(c -> givenUp.contains(ChunkFarm.key(c.chunkX(), c.chunkZ()))).forEach(c -> LOG.info(
+                    "[Foothold] the camp's farm gives up the chunk farm at chunk {}, {} at y={} - the chunk a farm mission's to flatten", c.chunkX(), c.chunkZ(), c.level()));
+            kept = new FarmPlan(was.water(), was.plot().stream().filter(out.negate()).toList(), was.trenches().stream().filter(out.negate()).toList(),
+                    was.chunks().stream().filter(c -> !givenUp.contains(ChunkFarm.key(c.chunkX(), c.chunkZ()))).toList());
+            givenUp.clear();
+            store.save(key, Stream.concat(Stream.of(kept.water()), kept.plot().stream()).toList());
+            store.save(key + ",trench", kept.trenches());
+            store.save(key + ",chunks", kept.chunks().stream().map(c -> new BlockPos(c.chunkX(), c.level(), c.chunkZ())).toList());
+        }
         if (resite || !grown || !given.isEmpty()) {
             Set<BlockPos> walkable = Pathfinder.reachable(world, at, RADIUS + 4, reachBudget);
             FarmPlan before = resite ? null : kept;

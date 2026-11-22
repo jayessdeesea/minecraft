@@ -248,9 +248,12 @@ public final class Clearing {
         if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent()) {
             return true;
         }
-        boolean breaks = world.isSoil(x, y, z) && !world.isFarmland(x, y, z) || world.isStone(x, y, z) || world.isGravel(x, y, z)
+        // Farmland is a farm's, never a clear's - but where it's given up, a farm mission's chunk to flatten: live (field681),
+        // the operator's flatten crew cut round the wheat of a farm the mission had superseded.
+        boolean farmland = world.isFarmland(x, y, z) && !world.farmlandGivenUp(x, z);
+        boolean breaks = world.isSoil(x, y, z) && !farmland || world.isStone(x, y, z) || world.isGravel(x, y, z)
                 || world.isCobblestone(x, y, z)
-                || world.isSolid(x, y, z) && !world.isFarmland(x, y, z)
+                || world.isSolid(x, y, z) && !farmland
                 && world.hardness(x, y, z).filter(h -> h.ticks(Hardness.HAND) <= MAX_DIG_TICKS).isPresent();
         return breaks && !letsInWater(world, new BlockPos(x, y, z));
     }

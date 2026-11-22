@@ -112,6 +112,14 @@ public interface WorldView {
         return Optional.empty();
     }
 
+    /**
+     * Whether farmland at column ({@code x}, {@code z}) is given up - its chunk a farm mission's to flatten and floor - so a
+     * clear digs it as soil. Elsewhere farmland is a farm's, and no clear's (Clearing#diggable).
+     */
+    default boolean farmlandGivenUp(int x, int z) {
+        return false;
+    }
+
     /** The block's name and class - "chest C" - or "unknown": what's said of a block the force can't handle (ChunkCache#describeAt). */
     default String describeAt(int x, int y, int z) {
         return "unknown";

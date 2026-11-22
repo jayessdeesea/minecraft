@@ -171,6 +171,60 @@ class FarmMissionSimulationTest {
                 "the chunk register has it a wheat chunk");
     }
 
+    /**
+     * The chunk farm a mission at another level left on the mission's chunk - its template's ground there, farmland and
+     * wheat: two over sea level, live's y=67 four, the same give-up a lighter dig.
+     */
+    static final ChunkFarm HIGH = new ChunkFarm(FARM.chunkX(), FARM.chunkZ(), 65);
+
+    /** Flat by the camp's pond, the mission's chunk built up to {@link #HIGH}'s floor and its ground farmland, wheat on it. */
+    static int raisedFarm(int x, int y, int z) {
+        if (y == GROUND && x == 10 && z == 0) {
+            return SimServer.WATER;
+        }
+        BlockPos c = new BlockPos(x, y, z);
+        boolean inChunk = x >= FARM.minX() && x <= FARM.minX() + 15 && z >= FARM.minZ() && z <= FARM.minZ() + 15;
+        if (inChunk && HIGH.ground().contains(c)) {
+            return SimServer.FARMLAND;
+        }
+        if (inChunk && HIGH.ground().contains(c.offset(0, -1, 0))) {
+            return SimServer.WHEAT_SPROUT;
+        }
+        if (inChunk && y > GROUND && y < HIGH.level()) {
+            return SimServer.DIRT;
+        }
+        return SquadSimulationTest.flat(x, y, z);
+    }
+
+    /**
+     * Live (field668-682): a farm mission given at y=67 was superseded by the operator's at sea level - but the y=67
+     * mission's template had been taken into the camp's farm, and stood in it. The farm squad tilled and sowed it, the
+     * flatten's dig kept the camp's farm out, and its builders cut round the wheat (operator, 2026-11-22: "he's working
+     * around the blocks with wheat on them"). The camp's farm kept on disk with that chunk farm in it, and the sea-level
+     * mission given: the chunk farm given up, and the old farm's ground - its farmland and the wheat on it - cut away. (The
+     * layer under it, dug out and put back by its builders cell by cell here, is a stall of its own.)
+     */
+    @Test
+    void aChunkFarmLeftByASupersededMissionIsGivenUpAndFlattened() throws IOException {
+        WallStore farms = new WallStore(state, "farm");
+        farms.save("0,0", List.of(new BlockPos(10, GROUND, 0), new BlockPos(11, GROUND, 0)));
+        farms.save("0,0,chunks", List.of(new BlockPos(HIGH.chunkX(), HIGH.level(), HIGH.chunkZ())));
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, FarmMissionSimulationTest::raisedFarm, new PlayerPosition(30.5, GROUND + 1, 8.5), "0,0", 60);
+        List<String> log = Files.readAllLines(Path.of("target", "sim", "aChunkFarmLeftByASupersededMissionIsGivenUpAndFlattened.log"));
+        String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("gives up")).limit(20).toList();
+        assertTrue(log.stream().anyMatch(l -> l.contains("gives up the chunk farm") && l.contains("y=" + HIGH.level())), "the stale chunk farm given up" + missionLines);
+        List<String> high = new ArrayList<>();
+        for (int x = FARM.minX(); x <= FARM.minX() + 15; x++) {
+            for (int z = FARM.minZ(); z <= FARM.minZ() + 15; z++) {
+                if (groundTop(server, x, z) >= HIGH.level()) {
+                    high.add(x + "," + z + " at " + groundTop(server, x, z));
+                }
+            }
+        }
+        assertEquals(List.of(), high.stream().limit(12).toList(), "none of the old farm's ground left - its level and up" + missionLines);
+    }
+
     /** The farm built beside the mission's chunk, on chunk (1, 0): its ground at sea level, fenced, watered and sown. */
     static final ChunkFarm BESIDE = new ChunkFarm(1, 0, LEVEL);
 

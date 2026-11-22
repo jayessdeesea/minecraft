@@ -737,7 +737,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM", farm.map(f -> new Position(f.water().x() + 0.5, f.water().y(), f.water().z() + 0.5))));
         Optional<TreeFarm> grove = campTrees.grove(world, at, campFarm, clockwork.millis()).or(() -> TreeFarm.site(world, at, CAMP_RADIUS)); // close (CampTrees); right after food (operator, 2026-11-14), with the keep's
         chunkLedger.measure(world, campFarm, campTrees.chunk(), clockwork.millis()); // the platoon leader's chunk register, as the world shows it
-        chainOfCommand.farmMissions.measure(world, campFarm, campFarms, clockwork.millis()); // the operator's farm, its step under way measured
+        chainOfCommand.farmMissions.measure(world, campFarm, campFarms, clockwork.millis()); world.farmlandGivenUp(chainOfCommand.farmMissions.farmlandGivenUp()); // the operator's farm measured, its chunk's farmland given up
         TreeFarm keepTrees = campTrees.chunk().isPresent() ? null : keepGrove; // not walked 200 blocks to while the camp has its own
         long trees = grove.map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).count()).orElse(0L)
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());

@@ -2208,6 +2208,11 @@ brought to the base's layers one step at a time, each started when the one befor
   it said, and no column of a template's ground - its box, its fence line on the chunk's own edge included - dug.
   Done when nothing stands over the level in the chunk or its slopes (`FlattenPlan.cut`); a hollow under the level
   is the floor's to cover inside, and the ground's own outside.
+  While it's flattened and floored the chunk is no farm, whatever was farmed there before: the camp's farm gives up
+  any chunk farm and plot it holds in it (`CampFarm.giveUp`), and its farmland - elsewhere a farm's, never a clear's -
+  is dug as soil (`WorldView.farmlandGivenUp`); its own template is taken in again once the floor's done. Live
+  (field668-682), a superseded mission's y=67 template stood in the camp's farm, was sown, and the operator's
+  sea-level flatten cut round its wheat.
 - **Floored in cobblestone** at that level, every cell, natural stone included, but a template's (`Objective.Task.Floor`,
   `Mason.pave`): each paver its strip of the layer, the nearest cell first, stood for from the cell beside it a block
   up; a cell solid and not cobblestone dug out by hand's break time and its cobblestone put back in the one job, so

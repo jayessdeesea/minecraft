@@ -84,6 +84,12 @@ final class FarmMissions {
     }
 
     /** The mission worked now and its step under way, if any is open: those before a restart once the first measure has read them. */
+    /** The chunk - by ChunkFarm#key - whose farmland is given up: the mission's under way, while it's flattened and floored. */
+    synchronized Set<Long> farmlandGivenUp() {
+        return current().filter(e -> e.getValue().kind() != FarmMission.Kind.FARM_TEMPLATE)
+                .map(e -> Set.of(ChunkFarm.key(e.getKey().chunkX(), e.getKey().chunkZ()))).orElse(Set.of());
+    }
+
     synchronized Optional<Map.Entry<FarmMission, FarmMission.Step>> current() {
         return missions.entrySet().stream().findFirst().map(e -> Map.entry(e.getKey(), e.getKey().steps().get(e.getValue())));
     }
@@ -189,6 +195,12 @@ final class FarmMissions {
         }
         FarmMission m = under.get().getKey();
         FarmMission.Step step = under.get().getValue();
+        // A chunk being flattened and floored is no farm: what the camp's farm holds there - a superseded mission's template
+        // (field668-682, at y=67) - is given up, or the farm squad sows it and the dig cuts round it. Its own template's
+        // taken in again when the floor's done.
+        if (step.kind() != FarmMission.Kind.FARM_TEMPLATE && farms != null) {
+            farms.giveUp(m.chunkX(), m.chunkZ());
+        }
         Optional<String> done = switch (step.kind()) {
             case FLATTEN -> {
                 Optional<FlattenPlan> plan = plan(world, m, step, campFarm);
