@@ -23,13 +23,20 @@ It will be iterated on over time; it starts multi-turn.
     (backlog/renewables.md) - the same path an order from chat takes, not a second one.
   - *What objectives are you tracking and what is their status?* - each squad's objective, task and progress,
     and each site's stage, as its prompt already holds them.
+- **A chat page** (operator, 2026-11-21: a full chat interface, conversed with naturally): the endpoint also serves
+  one page at `/` - a text box and send, the conversation above it, the platoon leader's replies as they come.
+  At its top, a strip kept current by the page's own script: the Minecraft time of day, and the time to the next
+  dawn and the next dusk, from the overworld clock the server last sent (`command.TimeOfDay`, served as JSON and
+  ticked forward in the browser between fetches - a Minecraft day is 20 minutes, 24,000 ticks).
 - Every turn is on the radio net (`[Operator -> PL]`, `[PL -> Operator]`) and in the log, with what the platoon
   leader was shown for it.
 - A test with a scripted `ChatModel` drives a three-turn conversation through the endpoint.
 
 ## Notes
 - **Standard library**: the JDK's `com.sun.net.httpserver.HttpServer`, JSON through the Jackson the app already
-  carries - no web framework added (docs/stack.md). The model call goes through Spring AI's `ChatClient` as every
+  carries - no web framework added (docs/stack.md). The page is one static HTML file in the app's resources, its script plain
+  JavaScript with no build step and nothing loaded from off the machine; messages and the clock as JSON
+  (`POST /chat`, `GET /clock`). The model call goes through Spring AI's `ChatClient` as every
   other does, through `ModelCalls`' queue, never on a soldier's tick.
 - **What it may do** is a closed set of actions the platoon leader can take, each one the operator's chat orders
   already have or the bids will (a mission, a flatten, a site to build), offered to the model as tools; anything
