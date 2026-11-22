@@ -240,6 +240,36 @@ class ChainOfCommandTest {
         assertEquals(near.location(), guarded.get(1).location(), "near it: left be");
     }
 
+    /**
+     * Food work and the farm squad's standing job go to the camp's farm, not its centre: live (field648), the chunk farm
+     * 30 blocks off, Bravo and Delta were held at the camp's centre "without work".
+     */
+    @Test
+    void foodWorkGoesToTheCampsFarmNotItsCentre() {
+        ChainOfCommand two = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+        two.setKeepByDay(true);
+        two.restorePhase(Phase.CONSOLIDATION, 0);
+        two.setGround((x, z, nearY) -> OptionalInt.of(64));
+        two.onTime(TimeOfDay.of(1000, true));
+        Position farmAt = new Position(24.5, 63, 56.5);
+        two.onFoothold(new Foothold(new Position(24, 73, 88), List.of(new Foothold.Standard(3, "food", false,
+                "0 of 96 cells growing", "FARM", Optional.of(farmAt)))));
+        Objective atCamp = new Objective("Farm", new Position(24, 73, 88), "Food", new Objective.Task.Farm());
+        Objective flatten = new Objective("Flatten", new Position(24, 64, 89), "Flat", new Objective.Task.Keep());
+        java.util.function.Function<String, SquadStatus> idle = name -> new SquadStatus(name, new Report.Idle(),
+                squad(name, name.substring(0, 1) + "x").soldiers(), List.of(), Optional.empty(), false);
+
+        List<Objective> guarded = two.guarded(List.of(atCamp, flatten, flatten), List.of(idle.apply("Alpha"), idle.apply("Bravo"),
+                idle.apply("Charlie")), List.of(), List.of());
+
+        assertEquals(farmAt, guarded.get(0).location(), "to the camp's farm: " + guarded);
+    }
+
     /** The platoon leader's FORAGE for squads standing on FARM stands: food work, not put back on the farm. */
     @Test
     void aForageOrderForASquadOnTheFarmStands() {

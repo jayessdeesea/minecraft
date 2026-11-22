@@ -60,7 +60,7 @@ final class DayGuardrails {
         // The farm squad keeps the camp's farm, not the ground - whatever it's given: its standing job by day.
         if (d.farmSquad().filter(squad.squadName()::equals).isPresent()) {
             Foothold base = d.foothold().orElse(null);
-            Position at = base != null ? base.camp() : objective.location();
+            Position at = DayWorkRules.at(d.foothold(), "FARM").orElse(base != null ? base.camp() : objective.location()); // the farm, not the camp's centre
             if (!(objective.task() instanceof Objective.Task.None) || !objective.location().equals(at)) {
                 LOG.info("[PL -> {}] by day, the farm squad: keeps the camp's farm, not '{}'", squad.squadName(), objective.mission());
             }
@@ -241,16 +241,17 @@ final class DayGuardrails {
                     out.set(k, new Objective("Plant the groves", f.standards().stream().filter(s -> !s.met() && "TREE_FARM".equals(s.task()))
                             .flatMap(s -> s.at().stream()).findFirst().orElse(f.camp()), "Wood that grows back", new Objective.Task.TreeFarm()));
                 }));
-        // A TREE_FARM goes where the groves are bare - the camp's tree chunk - wherever the platoon leader put it: live
-        // (field647), squads were moved to its point 40 blocks off while their foresters walked to the chunk, and timed out.
-        d.foothold().flatMap(f -> f.standards().stream().filter(s -> "TREE_FARM".equals(s.task())).flatMap(s -> s.at().stream()).findFirst())
-                .ifPresent(bare -> out.replaceAll(o -> o.task() instanceof Objective.Task.TreeFarm
-                        && Math.hypot(o.location().x() - bare.x(), o.location().z() - bare.z()) > GROVE_NEAR
-                        ? new Objective(o.mission(), bare, o.intent(), o.task()) : o));
+        // A TREE_FARM goes where the groves are bare - the camp's tree chunk - and a FARM to the camp's farm, wherever the
+        // platoon leader put them: live (field647-648), squads were held at its point 30 and 40 blocks off while their
+        // foresters and farmers walked to the chunk, and timed out or stood.
+        Optional<Position> bare = DayWorkRules.at(d.foothold(), "TREE_FARM"), farm = DayWorkRules.at(d.foothold(), "FARM");
+        out.replaceAll(o -> (o.task() instanceof Objective.Task.TreeFarm ? bare : o.task() instanceof Objective.Task.Farm ? farm : Optional.<Position>empty())
+                .filter(at -> Math.hypot(o.location().x() - at.x(), o.location().z() - at.z()) > GROVE_NEAR)
+                .map(at -> new Objective(o.mission(), at, o.intent(), o.task())).orElse(o));
         return out;
     }
 
-    /** How near a TREE_FARM's point is left where it is: a tree chunk's breadth, so a squad isn't re-sent each cell planted. */
+    /** How near a TREE_FARM's or FARM's point is left where it is: a chunk's breadth, so a squad isn't re-sent each cell planted. */
     static final int GROVE_NEAR = 24;
 
     /** The work that makes good {@code shortfall} for a squad released from the flatten, if there's somewhere to do it. */

@@ -108,6 +108,14 @@ final class DayWorkRules {
                 .anyMatch(k -> stores.count(k) < ProductionLevels.STANDING.of(k).most());
     }
 
+    /**
+     * Where {@code base}'s standard for {@code task} says its work is - the camp's farm, its grove's bare cell - if it says:
+     * live (field648), food work sent to the camp's centre held squads 30 blocks from the chunk farm, "without work".
+     */
+    static Optional<Position> at(Optional<Foothold> base, String task) {
+        return base.flatMap(f -> f.standards().stream().filter(s -> task.equals(s.task())).flatMap(s -> s.at().stream()).findFirst());
+    }
+
     /** The builders the ground's level wants, said: "not planned yet" before its foreman's first plan. */
     static String buildersWanted(int wanted) {
         return wanted == Integer.MAX_VALUE ? "its level not planned yet" : "its level wants " + wanted + " builder(s)";
@@ -177,7 +185,7 @@ final class DayWorkRules {
     static Optional<Objective> toShortfall(PlatoonSergeant.Shortfall shortfall, SquadStatus squad, List<ResourceSite> woods, String why,
                                            Optional<Foothold> base, Position keepMine, Flatten flatten) {
         return switch (shortfall) {
-            case FOOD -> base.map(b -> new Objective("Work the camp's farm", b.camp(), why + "food", new Objective.Task.Farm()));
+            case FOOD -> base.map(b -> new Objective("Work the camp's farm", at(base, "FARM").orElse(b.camp()), why + "food", new Objective.Task.Farm()));
             case IRON -> Optional.of(new Objective("Mine the keep's mine for iron", keepMine, why + "iron", new Objective.Task.Mine()));
             case WOOD -> {
                 Position from = squad.soldiers().isEmpty() ? flatten.centre() : squad.soldiers().getFirst().position();

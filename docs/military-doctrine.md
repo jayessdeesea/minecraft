@@ -189,7 +189,9 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    since the walk is the cost: that one was taken off the farm 24 seconds after arriving. With a
    farm squad named (operator, 2026-11-15: a dedicated squad for the farming; `minecraft.farm-squad`),
    all of the above gives way to it: that squad keeps the camp's farm by day as its standing job, every
-   soldier of it, whatever it's ordered, and no other squad farms but under a FARM order - a hungry
+   soldier of it, whatever it's ordered, sent to the farm itself - the food standard says where, and food work and a
+   FARM order more than 24 blocks off go there too (`DayWorkRules.at`; live, field648, held at the camp's centre 30 blocks
+   from the chunk farm, "without work") - and no other squad farms but under a FARM order - a hungry
    soldier elsewhere is fed from the stockpile or a squadmate's pack. Live, half of each hungry squad
    on the keep went to the farm by the rule above, and the keep's crew was a third off its ground. The camp's farm is sited once, on ground by water near the camp that
    the squad can walk to - a flood from the camp's ground, as a FARM order's plot is from the squad -

@@ -773,7 +773,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 (farm.isEmpty() ? "no ground to farm by water near the camp" : growing + " of " + farm.get().plot().size()
                         + " cells of the camp's farm ground, by the water at x=" + farm.get().water().x() + " z=" + farm.get().water().z()
                         + ", growing wheat")
-                        + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM"));
+                        + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM", farm.map(f -> new Position(f.water().x() + 0.5, f.water().y(), f.water().z() + 0.5))));
         Optional<TreeFarm> grove = campTrees.grove(world, at, campFarm, clockwork.millis()).or(() -> TreeFarm.site(world, at, CAMP_RADIUS)); // close (CampTrees)
         // Right after food (operator, 2026-11-14: tree farms just after the wheat farms - a camp goes through a lot of wood): the camp's grove and the keep's together.
         TreeFarm keepTrees = campTrees.chunk().isPresent() ? null : keepGrove; // not walked 200 blocks to while the camp has its own
