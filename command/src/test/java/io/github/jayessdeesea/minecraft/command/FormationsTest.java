@@ -77,6 +77,20 @@ class FormationsTest {
         assertEquals(70, slot.y(), "same floor as the point man");
     }
 
+    /**
+     * At the site, the point man up a pillar to cut a high block: the slots at the site's height, not his. In the squad
+     * simulation (FlattenTopsSimulationTest), the squad's slots rose with him and each built route steps up into the air.
+     */
+    @Test
+    void atTheSiteTheSlotsAreAtItsHeightNotThePointMansUpAPillar() {
+        Position upAPillar = new Position(4, 73, -46);
+        List<Order> orders = Formations.assign(
+                new SquadOrder(NORTH, Formation.WEDGE, Interval.NORMAL, 4, Risk.LOW, "flatten"), squadAt(upAPillar, POINT, POINT));
+
+        assertEquals(64, order(orders, 1).y(), "the site's height: " + orders.get(1));
+        assertEquals(64, order(orders, 2).y(), "the site's height: " + orders.get(2));
+    }
+
     @Test
     void onArrivalTheFormationKeepsTheApproachHeading() {
         // Point man at the objective; the other soldier is south of him, so they came from the south.

@@ -8,8 +8,11 @@ import io.github.jayessdeesea.minecraft.command.Cell;
 import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.FlattenPlan;
 import io.github.jayessdeesea.minecraft.command.Keep;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +27,8 @@ import java.util.function.LongSupplier;
  */
 final class SiteClears {
 
+    private static final Logger LOG = LogManager.getLogger(SiteClears.class);
+
     /** How long a site's dig, as scanned, serves every squad's cycle before it's scanned again. */
     static final long SITE_CLEAR_MILLIS = 1_000;
 
@@ -31,6 +36,10 @@ final class SiteClears {
     private final LongSupplier clock;
     /** The site's dig as last scanned, by what was kept out of it: its ground, its columns, when, the cells. */
     private final Map<Set<Cell>, Object[]> scans = new LinkedHashMap<>();
+    /** The blocks of no known break time in the site's dig as last scanned ({@code Clearing.unknownIn}): left, and said up. */
+    private volatile List<BlockPos> unknown = List.of();
+    /** Those alerted, once each. */
+    private final Set<BlockPos> alerted = new HashSet<>();
 
     SiteClears(WorldView world, LongSupplier clock) {
         this.world = world;
@@ -52,23 +61,33 @@ final class SiteClears {
                 return cells;
             }
         }
-        List<BlockPos> cells = new ArrayList<>();
+        List<Box> boxes = new ArrayList<>();
         if (reach.isPresent()) {
             for (FlattenPlan.Column c : reach.get()) {
                 if (c.to() < Keep.SKY_TOP) {
-                    cells.addAll(Clearing.toClear(world, new Box(c.x(), c.to() + 1, c.z(), c.x(), Keep.SKY_TOP, c.z()), except));
+                    boxes.add(new Box(c.x(), c.to() + 1, c.z(), c.x(), Keep.SKY_TOP, c.z()));
                 }
             }
         } else {
             // The site and its benched edge (clearing rule 6): each row of the ring round it, d out, dug down
             // to d over the floor, so the edge is a walkable slope - live, soldiers put steps in the edge
             // column to climb the hillside the site was cut into, each one a level of its own.
-            cells.addAll(Clearing.toClear(world, ground.dig(), except));
+            boxes.add(ground.dig());
             for (int d = 1; d <= Flatten.BENCH; d++) {
-                for (Box row : ground.bench(d)) {
-                    cells.addAll(Clearing.toClear(world, row, except));
-                }
+                boxes.addAll(ground.bench(d));
             }
+        }
+        List<BlockPos> cells = new ArrayList<>();
+        List<BlockPos> unknowns = new ArrayList<>();
+        for (Box box : boxes) {
+            cells.addAll(Clearing.toClear(world, box, except));
+            unknowns.addAll(Clearing.unknownIn(world, box, except));
+        }
+        unknown = List.copyOf(unknowns);
+        synchronized (alerted) {
+            // Said once each, by name, so the block tables are put right from the log (operator, 2026-11-22).
+            unknowns.stream().filter(alerted::add).forEach(c -> LOG.warn("[Alert] unknown block {} at {} in the dig: no break time known - left, "
+                    + "and said up; the block tables want it", world.describeAt(c.x(), c.y(), c.z()), c));
         }
         List<BlockPos> scanned = List.copyOf(cells);
         synchronized (scans) {
@@ -79,5 +98,10 @@ final class SiteClears {
             }
         }
         return scanned;
+    }
+
+    /** The blocks of no known break time in the dig as last scanned: in the clear's way, left for orders. */
+    List<BlockPos> unknown() {
+        return unknown;
     }
 }

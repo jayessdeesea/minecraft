@@ -107,6 +107,35 @@ public final class Clearing {
      * up ({@code Stairway.up}), cut under rock - every block in the box that breaks but {@code except},
      * open top or none, lowest first.
      */
+    /**
+     * The blocks in {@code box} a clear can't dig for not knowing them: solid, no log or leaves, and no break time known -
+     * so no {@link #diggable} block, and left out of {@link #toClear} - but in the clear's way all the same. Said up by name,
+     * so what's known of blocks is put right (operator, 2026-11-22): in the squad simulation, a chest in a farm's chunk
+     * was left standing and the flatten measured done round it.
+     */
+    public static List<BlockPos> unknownIn(WorldView world, Box box, Set<Cell> except) {
+        List<BlockPos> cells = new ArrayList<>();
+        for (int x = box.minX(); x <= box.maxX(); x++) {
+            for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                if (!world.isLoaded(x, z)) {
+                    continue; // a column not in sight is no block known or unknown: unloaded cells read solid
+                }
+                for (int y = box.maxY(); y >= box.minY(); y--) {
+                    int bottom = Math.floorDiv(y, 16) * 16;
+                    if (y > bottom && bottom >= box.minY() && world.openSection(x, y, z)) {
+                        y = bottom + 1;
+                        continue;
+                    }
+                    if (world.isSolid(x, y, z) && world.hardness(x, y, z).isEmpty() && !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty()
+                            && !except.contains(new Cell(x, y, z))) {
+                        cells.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        return cells;
+    }
+
     public static List<BlockPos> toClear(WorldView world, Box box, Set<Cell> except, boolean tunnel) {
         if (!tunnel) {
             return toClear(world, box, except);

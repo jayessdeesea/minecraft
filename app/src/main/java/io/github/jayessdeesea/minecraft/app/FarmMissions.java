@@ -3,7 +3,9 @@ package io.github.jayessdeesea.minecraft.app;
 import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmSite;
+import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.supply.Clearer;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Box;
 import io.github.jayessdeesea.minecraft.command.ChunkRecord;
@@ -193,7 +195,11 @@ final class FarmMissions {
                 // Said a chunk's row of columns at a time, not each block: the count moves with every cut.
                 say(m, step, plan.map(p -> (p.dig().isEmpty() ? "no" : "up to " + (p.dig().size() + 15) / 16 * 16) + " column(s) to cut"
                         + (p.steps().isEmpty() ? "" : ", " + String.join("; ", p.steps()))).orElse("not all of it in sight"));
-                yield plan.filter(FlattenPlan::cut).map(p -> "nothing over y=" + step.level() + " in the chunk or its " + slopes(m, campFarm).said()
+                // A block of no known break time over the level is in the way though the plan's ground measure can't see it: not
+                // done while it stands, and said (FlattenTopsSimulationTest: a chest in the chunk, the flatten measured done round it).
+                List<BlockPos> unknown = Clearing.unknownIn(world, new Box(m.minX(), step.level() + 1, m.minZ(), m.minX() + 15, Keep.SKY_TOP, m.minZ() + 15), Set.of());
+                unknown.stream().findFirst().ifPresent(c -> say(m, step, Clearer.unknownSaid(world, c)));
+                yield plan.filter(FlattenPlan::cut).filter(p -> unknown.isEmpty()).map(p -> "nothing over y=" + step.level() + " in the chunk or its " + slopes(m, campFarm).said()
                         + (p.fill().isEmpty() ? "" : ", " + p.fill().size() + " column(s) under it - the floor's inside, the ground's outside"));
             }
             case FLOOR -> {

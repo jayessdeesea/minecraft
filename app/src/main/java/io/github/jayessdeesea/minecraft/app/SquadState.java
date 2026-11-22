@@ -82,6 +82,8 @@ final class SquadState {
     int keepDigLeft = -1;
     /** The keep's ore set aside for a better pickaxe, as last said. */
     Set<Cell> keepOreAside = Set.of();
+    /** The first of it said for help - the ore, and the pickaxe it wants (Clearer#oreWanting) - or null with none. */
+    String keepWanting;
     int keepFillLeft = -1;
     /** Wall cells left to fill at the last check: -1 before the first. */
     int wallLeft = -1;

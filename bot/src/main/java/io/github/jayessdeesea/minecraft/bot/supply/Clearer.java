@@ -94,7 +94,33 @@ public final class Clearer {
 
     /** Why it needs its squad leader's help, if it's out of ways of its own ({@link Setbacks#stuck}). */
     public synchronized Optional<String> stuck() {
-        return failed.stuck().map(s -> "can't clear the camp: " + s);
+        return failed.stuck().map(s -> "can't clear the camp: " + s).or(() -> Optional.ofNullable(wanting));
+    }
+
+    /**
+     * What of its cover it has left for want of a tool, said up for help once it has nothing else
+     * to cut (operator, 2026-11-22: as with every job, the tools for it in hand, re-checked as things change; learning an
+     * iron pickaxe is wanted, ask - someone else may be assigned it). Null with none.
+     */
+    private String wanting;
+    /** A pickaxe's name by its mining tier (ItemClassRegistry.miningTier). */
+    private static final String[] PICKAXES = {"wooden", "stone", "iron", "diamond", "netherite"};
+
+    /**
+     * Ore at {@code c} left for want of a pickaxe, said for help: "the emerald ore at ... wants an iron pickaxe for its
+     * drop, the best carried stone - left for one who has it". {@code whose} says whose best {@code bestTier} is.
+     */
+    public static String oreWanting(WorldView world, BlockPos c, int bestTier, String whose) {
+        int wanted = world.hardness(c.x(), c.y(), c.z()).orElseThrow(() -> new IllegalStateException("no break time for the ore at " + c))
+                .pickaxeTier();
+        return "the " + world.oreOf(c.x(), c.y(), c.z()).orElse("unknown") + " ore at " + c + " wants a" + (wanted == 2 ? "n " : " ")
+                + PICKAXES[wanted] + " pickaxe for its drop, " + (bestTier == Hardness.HAND ? "no pickaxe" : whose + " " + PICKAXES[bestTier])
+                + " - left for one who has it";
+    }
+
+    /** A block at {@code c} with no break time known, said for orders: "the chest C at ... has no break time known - left for orders". */
+    public static String unknownSaid(WorldView world, BlockPos c) {
+        return "the " + world.describeAt(c.x(), c.y(), c.z()) + " at " + c + " has no break time known - left for orders";
     }
 
     /** Why it isn't cutting, as of its last tick - empty while it is (the flatten's pace telemetry). */
@@ -165,6 +191,7 @@ public final class Clearer {
         }
         if (cover.isEmpty()) {
             failed.noWork();
+            wanting = null;
         }
         if (!free || cover.isEmpty()) {
             stop();
@@ -226,6 +253,7 @@ public final class Clearer {
                 .filter(c -> world.hardness(c.x(), c.y(), c.z()).filter(h -> h.tool() == Hardness.Tool.PICKAXE && !h.drops(bestTier)).isPresent())
                 .toList();
         excluded.addAll(beyondItsTools);
+        wanting = beyondItsTools.stream().findFirst().map(c -> oreWanting(world, c, bestTier, "the best carried")).orElse(null);
         if (beyondItsTools.size() != leftForTools) {
             leftForTools = beyondItsTools.size();
             if (leftForTools > 0) {

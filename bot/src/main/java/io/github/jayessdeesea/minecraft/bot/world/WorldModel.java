@@ -110,6 +110,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public String describeAt(int x, int y, int z) {
+        return chunks.describeAt(x, y, z);
+    }
+
+    @Override
     public Optional<String> leaves(int x, int y, int z) {
         return chunks.leaves(x, y, z);
     }

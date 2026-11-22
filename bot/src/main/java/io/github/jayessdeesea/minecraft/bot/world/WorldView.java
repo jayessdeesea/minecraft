@@ -112,6 +112,11 @@ public interface WorldView {
         return Optional.empty();
     }
 
+    /** The block's name and class - "chest C" - or "unknown": what's said of a block the force can't handle (ChunkCache#describeAt). */
+    default String describeAt(int x, int y, int z) {
+        return "unknown";
+    }
+
     /** The tree whose leaves the block is ("spruce", "oak"), if it's leaves (it's also {@link #isSolid}). */
     default Optional<String> leaves(int x, int y, int z) {
         return Optional.empty();

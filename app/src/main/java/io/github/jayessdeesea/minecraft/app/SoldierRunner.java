@@ -2313,6 +2313,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         squad, oreAside.size(), oreAside.stream().limit(4).map(c -> c.x() + " " + c.y() + " " + c.z()).toList());
             }
             state.keepOreAside = oreAside;
+            state.keepWanting = oreAside.stream().findFirst().map(c -> Clearer.oreWanting(world, new BlockPos(c.x(), c.y(), c.z()), squadsBest, "the squad's best")).orElse(null);
         }
         keepOreAsideBySquad.put(squad, oreAside.size());
         digExcept.addAll(oreAside);
@@ -3184,9 +3185,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * each a survey that did or didn't see the trees, her rectangle handed back and forth with Bob.
      */
     private boolean treesSeenLately(boolean seenNow, long now) {
-        if (seenNow) {
-            keepTreesSeenAt = now;
-        }
+        if (seenNow) { keepTreesSeenAt = now; }
         return now - keepTreesSeenAt <= TREES_SEEN_MILLIS;
     }
 
@@ -4695,6 +4694,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             case Objective.Task.Gather(Resource r) when r == Resource.WOOD && dutyBook.spent(squad) -> done = Optional.of("every strip of the wood is cut out");
             case Objective.Task.Patrol() -> left = Optional.of("walking the round, on watch");
+            // What's left for want of a tool or of knowing the block, said up for help (operator, 2026-11-22; FlattenTopsSimulationTest).
+            case Objective.Task.Keep() -> left = Optional.ofNullable(state.keepWanting).or(() -> siteClears.unknown().stream().findFirst().map(c -> Clearer.unknownSaid(world, c)));
             default -> {
             }
         }
@@ -5602,9 +5603,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return level;
         }).orElse(null);
         state.stairs = stairs;
-        if (stairs != null) {
-            state.lastStairs = stairs;
-        }
+        if (stairs != null) { state.lastStairs = stairs; }
         if (stairs == null) {
             squadStairs.remove(squadName);
         } else {

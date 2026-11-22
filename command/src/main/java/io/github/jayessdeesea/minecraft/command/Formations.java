@@ -21,6 +21,9 @@ public final class Formations {
     /** How close the point man aims to get - he's the squad's reference, so tighter than the slots. */
     static final double POINT_TOLERANCE = 1.5;
 
+    /** How near its objective the point man is at the site, across: a chunk's half-diagonal and then some. */
+    static final double AT_THE_SITE = 16;
+
     private Formations() {
     }
 
@@ -37,11 +40,15 @@ public final class Formations {
         List<Order> orders = new ArrayList<>(soldiers.size());
         orders.add(new Order.MoveTo(objective.x(), objective.y(), objective.z(), POINT_TOLERANCE, order.verticalTolerance(),
                 order.riskFor(soldiers.get(0).name())));
+        // On the march the slots are at the point man's height, over the ground he's crossing; at the site, its own: the point
+        // man up a pillar to cut a high block is no height to form on. Live and in the squad simulation (FlattenTopsSimulationTest),
+        // squadmates' slots rose with him into the air beside the dig, and each built route steps up to its own.
+        double slotY = Math.hypot(point.x() - objective.x(), point.z() - objective.z()) <= AT_THE_SITE ? objective.y() : point.y();
         for (int i = 1; i < soldiers.size(); i++) {
             double[] offset = order.formation().offset(i, interval);
             double x = point.x() + forward[0] * offset[0] - forward[1] * offset[1];
             double z = point.z() + forward[1] * offset[0] + forward[0] * offset[1];
-            orders.add(new Order.MoveTo(x, point.y(), z, interval / 2, order.verticalTolerance(),
+            orders.add(new Order.MoveTo(x, slotY, z, interval / 2, order.verticalTolerance(),
                     order.riskFor(soldiers.get(i).name())));
         }
         return orders;

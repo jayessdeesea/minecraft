@@ -2150,10 +2150,24 @@ who fight. Where a rule of a clearing below meets the standard, it says which pa
    level to level, which go uneven: last level's full region is empty this one (2026-11-14/15).
 3. **Scaffolding to reach.** A builder builds up to a high block - steps, a pillar - to take it.
    Scaffolding is part of the job; it's ground in the dig, and comes down top first with the
-   levels (2026-11-13, 2026-11-15).
+   levels (2026-11-13, 2026-11-15). It goes up in the dig area, where it's easy to clean up, of the
+   cheapest block carried - dirt before cobblestone (`Footing.placeStep`; 2026-11-12, 2026-11-22). Its squadmates' formation slots
+   stay at the site's height while the point man is up one (`command.Formations`: within 16 of the
+   objective, its height, not his - the slots rose with him, and each built route steps into the air).
 4. **Never leave a high block.** The level doesn't move on past a block over it - not for one
    that's out of reach, not for one nobody can get to yet: a block left high is where zombies hide
-   under. A block hard to reach is the problem to solve, not to skip (2026-11-15).
+   under. A block hard to reach is the problem to solve, not to skip (2026-11-15). One the force
+   hasn't the tool for, or doesn't know, is left and said up for help, as any job's want of a tool or a
+   supply is (2026-11-22): ore whose drop wants a better pickaxe than the squad's best is set aside,
+   the task's progress naming it - "the emerald ore at ... wants an iron pickaxe for its drop, the
+   squad's best stone - left for one who has it" (`Clearer.oreWanting`), so a stall reported up says
+   why and someone with the pickaxe can be sent; a soldier's own clearer says the same of ore its own
+   tools can't take. A block of no known break time - a state past the client's tables - is no
+   diggable block, so no clear's cell: it's alerted once by name, `[Alert] unknown block <name or
+   state> at ... in the dig ... the block tables want it` (`Clearing.unknownIn`, `SiteClears`), for the
+   tables to be put right from the log, said up the same way, and a farm mission's flatten isn't
+   measured done while one stands. The cases are the eval `FlattenTopsSimulationTest`: a spike out of
+   reach, a log under an overhang, ore past the squad's pickaxes, and an unknown block.
 5. **One haul road.** A site has one way in and out that everyone takes - from its depot down to
    its working floor, steps no more than a block, carved into the hillside or the ground round
    the dig rather than built, so the pathfinder prefers it to any stairs of its own; cut again as
