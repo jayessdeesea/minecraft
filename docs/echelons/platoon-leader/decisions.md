@@ -97,7 +97,9 @@ decision prompt isn't yet.
 "A farm at chunk (x, z)" - at any height, sea level (63) by default (operator, 2026-11-21) - is the operator's
 (`!farm`, DEVELOPMENT.md; or the chat's FARM, below) and the platoon leader carries it out by doctrine, computed,
 never the model's (`command.FarmMission`, `app.FarmMissions`): three steps, each an objective, each started when the
-one before is measured done.
+one before is measured done. The level is the operator's alone: the chat's FARM keeps a level only if the operator's own words say it, else
+sea level (`OperatorChat.levelAsSaid`; live, field668, told "at sea level", the model gave y=67). And the latest order
+for a chunk is the one worked: a farm given there at another level relieves the open one, its steps RELIEVED with why.
 1. **Flatten** the chunk to a block below the farm's level: the `KEEP` task, the ground to flatten the mission's
    chunk while the step's under way (`ChainOfCommand.flatten`), and the dig the columns of `FlattenPlan.reach` - the
    chunk, and a slope a block a block out on each side whose `command.Slopes` flag is on, off beside a chunk the

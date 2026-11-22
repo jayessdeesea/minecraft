@@ -64,6 +64,13 @@ final class FarmMissions {
     /** {@code mission} given at {@code now}: its steps PLANNED in the register, the first worked once those before it are done. */
     synchronized void give(FarmMission mission, long now) {
         load();
+        // The latest order for a chunk is the one worked: one at another level, still open, relieved - live (field668), a
+        // mission given at the wrong level had no other way to be put right.
+        for (FarmMission old : missions.keySet().stream().filter(m -> !m.equals(mission) && m.chunkX() == mission.chunkX() && m.chunkZ() == mission.chunkZ()).toList()) {
+            missions.remove(old);
+            book.ifPresent(b -> b.relieved(old, "superseded by " + mission.name(), now));
+            LOG.info("[Mission] {} superseded by {}", old.name(), mission.name());
+        }
         if (missions.containsKey(mission)) {
             LOG.info("[Mission] {} is open already, at step {}", mission.name(), missions.get(mission) + 1);
             return;

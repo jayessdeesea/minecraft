@@ -186,6 +186,18 @@ class OperatorChatTest {
         assertEquals(200, next.statusCode());
     }
 
+    /**
+     * A FARM's level kept only if the operator said it, else sea level: live (field668), told "at sea level", the model gave
+     * y=67 and the mission was to flatten a chunk to 66.
+     */
+    @Test
+    void aFarmsLevelIsTheOperatorsOrSeaLevel() {
+        assertEquals("24 56", OperatorChat.levelAsSaid("24 56 67", "Create a farm at chunk (1, 3): x=24 z=56, at sea level."));
+        assertEquals("24 56 70", OperatorChat.levelAsSaid("24 56 70", "a farm at x=24 z=56 at y=70"));
+        assertEquals("24 56", OperatorChat.levelAsSaid("24 56", "a farm at x=24 z=56"));
+        assertEquals("24 56", OperatorChat.levelAsSaid("24 56 6", "a farm at x=24 z=56"), "a digit inside a coordinate isn't a level said");
+    }
+
     @Test
     void onlyThisMachinesNamesAreServed() {
         assertTrue(OperatorChat.local("127.0.0.1:8125"));

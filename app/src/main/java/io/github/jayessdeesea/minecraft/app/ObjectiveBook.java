@@ -176,6 +176,16 @@ final class ObjectiveBook {
         });
     }
 
+    /** {@code mission}'s steps not done relieved at {@code now}, {@code why}: given again for its chunk at another level. */
+    synchronized void relieved(FarmMission mission, String why, long now) {
+        registers.get().objectives().stream().filter(r -> r.mission().equals(mission.name()) && r.state() != ObjectiveRecord.State.DONE
+                && r.state() != ObjectiveRecord.State.RELIEVED).forEach(r -> {
+            registers.get().update(r.now(ObjectiveRecord.State.RELIEVED, r.squad(), Optional.of(why), now));
+            r.squad().filter(sq -> open.containsKey(sq) && open.get(sq).id() == r.id()).ifPresent(open::remove);
+        });
+        LOG.info("[Objectives] {}: relieved - {}", mission.name(), why);
+    }
+
     /** Each mission with a step not done - a step's squad relieved, the step stays open - and its first step not done. */
     synchronized java.util.Map<String, Integer> openMissions() {
         java.util.Map<String, Integer> missions = new java.util.LinkedHashMap<>();

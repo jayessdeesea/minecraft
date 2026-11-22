@@ -175,6 +175,10 @@ public class OperatorChat implements DisposableBean {
             ticket.finished();
         }
         String argument = reply.argument() == null ? "" : reply.argument().strip();
+        if (reply.action() == ChatReply.Action.FARM && !levelAsSaid(argument, message).equals(argument)) {
+            LOG.warn("[Chat] the platoon leader's FARM \"{}\" gave a level the operator didn't: at sea level instead", argument);
+            argument = levelAsSaid(argument, message);
+        }
         Runnable order = order(reply.action(), argument);
         String said = reply.reply().strip() + (reply.action() == ChatReply.Action.FARM ? " " + farm(argument).name() + ": " + String.join(", then ",
                 farm(argument).steps().stream().map(FarmMission.Step::task).toList()) + "." : "");
@@ -206,6 +210,18 @@ public class OperatorChat implements DisposableBean {
                 yield () -> chain.onOperatorFlatten(OPERATOR, site);
             }
         };
+    }
+
+    /**
+     * {@code argument} - a FARM's "x z" or "x z y" - with its level kept only if the operator's {@code message} says it: the
+     * level is the operator's to give, and sea level unless given. Live (field668), told "at sea level", the model gave y=67,
+     * and the mission was to flatten a chunk to 66.
+     */
+    static String levelAsSaid(String argument, String message) {
+        String[] parts = argument.strip().split("\\s+");
+        boolean said = parts.length != 3 || java.util.regex.Pattern.compile("(?<![0-9-])" + java.util.regex.Pattern.quote(parts[2]) + "(?![0-9])")
+                .matcher(message).find();
+        return said ? argument : parts[0] + " " + parts[1];
     }
 
     /**
