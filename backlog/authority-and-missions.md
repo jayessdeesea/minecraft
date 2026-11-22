@@ -55,8 +55,9 @@ a squad; an objective is a place. The code's `Objective` type and `objective` ta
 7. **Missions' times** (operator: the operator always takes priority; missions end on an exit criterion): each mission,
    phase and task carries an expected duration - computed from the measured pace of its kind of work, the squads on
    it and the walking, known holds counted, calibrated by past actual/estimate - and a maximum. The deadline extends
-   only while progress holds (the stall check on active time), never past the operator's ceiling - by default one day
-   (built as a real day; a game day is 20 minutes - the operator hasn't said which). At an overrun, an `[Overrun]`
+   only while progress holds (the stall check on active time), never past the operator's ceiling - by default one real
+   day (24 hours), which the platoon leader (from its estimate, said in its WILCO) or the operator (in the chat, when
+   giving the mission or after) may override; the operator's limit stands over the platoon leader's. At an overrun, an `[Overrun]`
    line with the computed breakdown (working / on hold / idle, CANTCOs and reasons, contacts, reassignments, pace
    against the estimate's), and a deep dive: an exceptional event becomes a sim cell and a fix; a wrong expectation
    corrects the estimate.
@@ -76,6 +77,12 @@ a squad; an objective is a place. The code's `Objective` type and `objective` ta
 - **A flatten crew's deposit to a mine's stash** (Bob, field681: the camp mine's chest at y=8, 59 below; his pack then
   threw out seeds, 67 throw-aways in Alpha): a surface crew's deposit skips a chest that's a mine's - eval: a squad that
   mined by night flattening by day with full packs, its loads in the depot, nothing thrown away.
+- **Weapons cross-levelled into a full pack** (Ivy, field685): Jack and Kate cross-levelled a weapon to her 14 times
+  in two minutes while she held a stone sword and spares, her pack full and throwing seeds and granite away to make
+  room - the cross-level rule counts her short as fast as her pack sheds them. Eval: an armed soldier with a full pack
+  is cross-levelled nothing, and nothing handed her is thrown away.
+- **A soldier taken off a stalled task is left with nothing** (Ivy, field685: "reports Working ... but 414 left hasn't
+  fallen in 120 s", then idle with two alerts) - the squad leader's to re-split, step 4.
 - **Gus's stands in the keep's dig with no way in** (field681; the retry back-off, commit 1122, took the CPU but not the
   stall).
 - **The camp's tree chunk sited on a mission's chunk** (chunk (1, 3)): CampTrees' siting skips chunks a mission holds -
