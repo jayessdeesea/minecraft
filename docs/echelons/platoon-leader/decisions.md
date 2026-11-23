@@ -122,7 +122,8 @@ ground left since saplings want soil, then the tree chunk's template on it - don
 its nine torches are in (`TreeChunk.Stage`); its chunk is the camp's tree chunk from then on, whatever the siting rule
 would have chosen (`CampTrees.take`), and after a restart too, read back from its template's row. Each open mission's
 phase under way is worked at once, a squad each - a wheat farm's floor and a tree farm's flatten together - but one
-flatten at a time, the first given, since the squads flatten one ground (`FarmMissions.worked`). The level is the operator's alone: the chat's `giveFarmMission` keeps a
+flatten at a time, the first given, since the squads flatten one ground (`FarmMissions.worked`). A mission carried on at
+its template isn't measured back to its flatten: the template's own ground stands over the flatten's level. The level is the operator's alone: the chat's `giveFarmMission` keeps a
 level only if the operator's own words say it, else sea level (`PlatoonLeaderTools.levelAsSaid`; live, field668, told "at
 sea level", the model gave y=67). And the latest order for a chunk is the one worked: a farm given there at another level
 supersedes the open one, its phases SUPERSEDED with why. Cancelled (the chat's `cancelMission`, `FarmMissions.cancel`),

@@ -1816,10 +1816,17 @@ its holes all night). Live, every branch met a cave and was given
 up, and the squads spent their nights with nothing left to cut. A tunnel that would let in water or lava, or whose cave is
 wider than that, is given up alone, and the rest are cut; so are branches off a stretch of main
 tunnel that was given up. The camp's mine standard (§ 17) is met once the stairs reach the bottom.
+A dig takes the pickaxe for the job, not the best nor the first found (operator, 2026-11-22; `Digger.Target.pickaxeFor`,
+`Breacher`): the lowest tier carried that gets the block's drop - the better ones kept for what only they take - but stone
+before wood, rock being the work. Ore the best pickaxe carried gets nothing from is left in the rock and noted, never
+dug for no drop: seen from a tunnel it's passed by, and in a tunnel's own way the tunnel is given up there (the stairs
+go on: they're the only way down). The note - the block and the tier it wants - is kept on disk with the mines
+(`app.OreNotes`, `[Ore]`), for a soldier with that pickaxe to come back for.
 Its yield is checked (docs/conventions.md, check the outcome): at dawn, the ore blocks the mine's
 cutters took through the night against 16 (`SoldierRunner.NIGHT_ORE`) - "[Outcome] the night's
 mining: 3 ore block(s) taken, 16 expected - SHORT" - and a short night says each mine's level, length and whether its
-cutters were all done. A mine is worked while ore is wanted - the force short of iron, or any
+cutters were all done. A mine is worked while ore is wanted - the force holding less than a soldier's kit of iron each, raw or smelted, carried
+or in the stores (`SoldierRunner.IRON_RESERVE_A_SOLDIER`, 32), or any
 soldier in less than a full set of armour: worked out, its main tunnel is run on a stretch, and
 past its last stretch it's cut a level deeper off the same stairs, 16 blocks down, a fresh main
 tunnel there (`Staircase.deeper`; operator, 2026-11-16: go deeper, or pick other sites) - "[Outcome]

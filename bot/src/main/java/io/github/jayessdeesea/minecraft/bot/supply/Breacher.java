@@ -96,6 +96,7 @@ public final class Breacher {
             if (cooldown > 0) {
                 return false;
             }
+            needed = cells.stream().mapToInt(c -> world.hardness(c.x(), c.y(), c.z()).map(Hardness::pickaxeTier).orElse(0)).max().orElse(0);
             script = open(cells);
             scripted = List.copyOf(cells);
         }
@@ -115,8 +116,10 @@ public final class Breacher {
 
     private Script open(List<BlockPos> cells) {
         List<Step> steps = new ArrayList<>();
-        steps.add(new Step("pickaxe in hand", () -> inventory.slotOf(ItemClass.PICKAXE) < 0 || pickaxeInHand(), () -> {
-            int pickaxe = inventory.slotOf(ItemClass.PICKAXE);
+        // The pickaxe for the job, not the first found (Digger.Target.pickaxeFor): an ore wants its tier of pickaxe or drops
+        // nothing, and the pack is searched before the hotbar - a spare wooden one in the pack dug iron ore for no iron.
+        steps.add(new Step("pickaxe in hand", () -> pickaxe() < 0 || pickaxeInHand(), () -> {
+            int pickaxe = pickaxe();
             previousHotbar = inventory.heldHotbarSlot();
             int hotbar = pickaxe >= Inventory.HOTBAR_FIRST ? pickaxe - Inventory.HOTBAR_FIRST : spareHotbarSlot();
             if (pickaxe < Inventory.HOTBAR_FIRST) {
@@ -170,9 +173,20 @@ public final class Breacher {
         this.keepStations = keep;
     }
 
+    /** The tier of pickaxe the cells being opened want for their drops: 0 for plain rock. */
+    private int needed;
+
+    /** The pickaxe for the cells being opened - with none carried that does the job, the best there is: the caller says what's left. */
+    private int pickaxe() {
+        int forTheJob = Digger.Target.pickaxeFor(inventory, needed);
+        return forTheJob >= 0 ? forTheJob : Digger.Target.bestTool(inventory);
+    }
+
+    /** Whether the pickaxe for the job is the one in hand - one of its tier. */
     private boolean pickaxeInHand() {
-        return ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot()))
-                .equals(Optional.of(ItemClass.PICKAXE));
+        int pickaxe = pickaxe();
+        int held = inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot());
+        return pickaxe >= 0 && ItemClassRegistry.miningTier(held).equals(ItemClassRegistry.miningTier(inventory.itemAt(pickaxe)));
     }
 
     /** Stops: whatever was in hand before goes back. */

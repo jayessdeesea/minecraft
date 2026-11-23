@@ -477,8 +477,8 @@ static void assertMinedToTheIron(SimServer server) {
     }
 
     /**
-     * By night, the camp's mine cut out and no ore wanted - the iron pickaxe carried, every soldier in a full set of
-     * armour - its MINE reads DONE and the camp's mine moves to its next site, and the night's objective with it. Live
+     * By night, the camp's mine cut out and no ore wanted - the force's reserve of iron held, every soldier in a full set
+     * of armour - its MINE reads DONE and the camp's mine moves to its next site, and the night's objective with it. Live
      * (field663), with nowhere for it to go, every squad was given the same order for the cut-out mine each minute all
      * night, DONE within a second each time, and the night's mining yielded nothing.
      */
@@ -497,7 +497,7 @@ static void assertMinedToTheIron(SimServer server) {
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.itemNamedOrMinus("iron_pickaxe"), 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{38, SimServer.ITEM_BREAD, 16}, new int[]{9, SimServer.itemNamedOrMinus("iron_ingot"), 64},
                         new int[]{5, SimServer.itemNamedOrMinus("iron_helmet"), 1},
                         new int[]{6, SimServer.itemNamedOrMinus("iron_chestplate"), 1},
                         new int[]{7, SimServer.itemNamedOrMinus("iron_leggings"), 1},

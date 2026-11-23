@@ -389,6 +389,13 @@ final class FarmMissions {
             rechecked = true;
             return;
         }
+        // Not once its template is going on: the template's own ground and fence stand over the flatten's level, and read as
+        // uncut. Live (field693), a wheat farm restarted at its template went back to its flatten, to dig up the ground laid,
+        // and - one flatten at a time - held the tree farm's flatten behind it.
+        if (template(under.get().getValue().kind())) {
+            rechecked = true;
+            return;
+        }
         FarmMission m = under.get().getKey();
         for (int k = 0; k < under.get().getValue().index(); k++) {
             FarmMission.Step behind = m.steps().get(k);

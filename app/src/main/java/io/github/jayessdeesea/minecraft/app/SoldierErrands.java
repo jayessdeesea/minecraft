@@ -98,6 +98,21 @@ final class SoldierErrands {
         };
     }
 
+    /**
+     * Whether a soldier on a mission's task makes itself a thing of class {@code makes} now, carrying {@code weapons} and
+     * {@code pickaxes}: only the weapon or the pickaxe it has none of. A spare, armour, the rest of its kit wait for the
+     * task's end (operator, 2026-11-22: a soldier on a task stays on it). Live (field692), a builder's load plan put its
+     * spare sword and its logs into the chest and its kit rule drew a stack of logs and made the sword again, a trip of
+     * 50 blocks each way, a block dug between.
+     */
+    static boolean madeOnMission(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass makes, int weapons, int pickaxes) {
+        return switch (makes) {
+            case WEAPON -> weapons == 0;
+            case PICKAXE -> pickaxes == 0;
+            default -> false;
+        };
+    }
+
     /** How far across, and how far up or down, a chest is still in reach of a soldier on a mission's task. */
     static final double MISSION_REACH = 48, MISSION_REACH_UP = 12;
 

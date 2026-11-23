@@ -406,4 +406,27 @@ class DiggerTest {
 
         assertTrue(progress instanceof Digger.Progress.Failed failed && failed.why().contains("LOG picked up"), progress.toString());
     }
+
+    /**
+     * The pickaxe for the job (operator, 2026-11-22: not the best pickaxe - the best pickaxe for the job): for plain rock
+     * and for iron ore the stone one, the iron one kept; for diamond the iron one; and with only wood carried, none for
+     * diamond or iron ore - they're left - and the wooden one for rock.
+     */
+    @Test
+    void thePickaxeForTheJobIsTheLeastThatDoesItStoneBeforeWood() {
+        Inventory all = new Inventory();
+        all.setSlot(Inventory.MAIN_FIRST, new int[]{item("wooden_pickaxe"), 1});
+        all.setSlot(Inventory.MAIN_FIRST + 1, new int[]{item("iron_pickaxe"), 1});
+        all.setSlot(Inventory.HOTBAR_FIRST + 1, new int[]{item("stone_pickaxe"), 1});
+        assertEquals(Inventory.HOTBAR_FIRST + 1, Digger.Target.pickaxeFor(all, 0), "rock: the stone one, not the wooden nor the iron");
+        assertEquals(Inventory.HOTBAR_FIRST + 1, Digger.Target.pickaxeFor(all, 1), "iron ore: the stone one does it");
+        assertEquals(Inventory.MAIN_FIRST + 1, Digger.Target.pickaxeFor(all, 2), "diamond: the iron one");
+        assertEquals(-1, Digger.Target.pickaxeFor(all, 3), "obsidian: nothing carried does it");
+
+        Inventory wood = new Inventory();
+        wood.setSlot(Inventory.MAIN_FIRST, new int[]{item("wooden_pickaxe"), 1});
+        assertEquals(Inventory.MAIN_FIRST, Digger.Target.pickaxeFor(wood, 0), "rock with only wood: the wooden one");
+        assertEquals(-1, Digger.Target.pickaxeFor(wood, 1), "iron ore with only wood: left");
+        assertEquals(-1, Digger.Target.pickaxeFor(new Inventory(), 0), "no pickaxe at all");
+    }
 }

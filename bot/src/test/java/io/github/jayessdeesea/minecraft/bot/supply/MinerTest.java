@@ -35,6 +35,10 @@ class MinerTest {
     private final Set<BlockPos> dug = new HashSet<>();
     private final Set<BlockPos> water = new HashSet<>();
     private final Set<BlockPos> ore = new HashSet<>();
+    /** Of the ore, the cells that are diamond: an iron pickaxe's, tier 2. */
+    private final Set<BlockPos> diamonds = new HashSet<>();
+    /** The miner {@link #dig} last ran, for what it noted. */
+    private Miner last;
     private final Set<BlockPos> tree = new HashSet<>();
     /** An open cave, and the blocks put into it. */
     private final Set<BlockPos> cave = new HashSet<>();
@@ -84,7 +88,7 @@ class MinerTest {
         @Override
         public Optional<Hardness> hardness(int x, int y, int z) {
             return !isSolid(x, y, z) ? Optional.empty()
-                    : isOre(x, y, z) ? Optional.of(new Hardness(3.0, 1)) : Optional.of(new Hardness(0.5, Hardness.HAND));
+                    : isOre(x, y, z) ? Optional.of(new Hardness(3.0, diamonds.contains(new BlockPos(x, y, z)) ? 2 : 1)) : Optional.of(new Hardness(0.5, Hardness.HAND));
         }
 
         @Override
@@ -128,6 +132,7 @@ class MinerTest {
 
     private Miner.Progress dig(Staircase stairs, int ticks, Inventory inventory, Position from) {
         Miner miner = new Miner("Alice", session, inventory);
+        last = miner;
         Position soldier = from;
         Miner.Progress progress = null;
         for (int tick = 0; tick < ticks; tick++) {
@@ -469,6 +474,58 @@ class MinerTest {
         BlockPos landing = stairs.step(stairs.steps() - 1);
         assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000, stonePickaxe, new Position(landing.x() + 0.5, landing.y(), landing.z() + 0.5)));
         assertTrue(dug.contains(above), "from the bottom, the ore over branch 1 at " + above + " is mined");
+    }
+
+    /**
+     * Ore its pickaxe gets nothing from is left in the rock and noted, for a soldier with the pickaxe to come back for
+     * (operator, 2026-11-22: if you only have wood, leave the diamonds there, make a note, and we will come back). A
+     * diamond over a branch, a stone pickaxe carried: not dug, and noted once with the tier it wants. With an iron
+     * pickaxe it's taken.
+     */
+    @Test
+    void oreItsPickaxeGetsNothingFromIsLeftAndNoted() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 20);
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 120000));
+        BlockPos above = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList().get(3).feet().offset(0, Staircase.TUNNEL_HEIGHT, 0);
+        dug.remove(above);
+        ore.add(above);
+        diamonds.add(above);
+        BlockPos landing = stairs.step(stairs.steps() - 1);
+        Position bottom = new Position(landing.x() + 0.5, landing.y(), landing.z() + 0.5);
+        Inventory stonePickaxe = new Inventory();
+        stonePickaxe.setSlot(Inventory.HOTBAR_FIRST, new int[]{pickaxe(1), 1});
+
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000, stonePickaxe, bottom));
+        assertTrue(!dug.contains(above), "the diamond at " + above + " left in the rock");
+        assertEquals(List.of(new Miner.OreLeft(above, 2)), last.takeOreLeft(), "noted once, with the pickaxe it wants");
+        assertEquals(List.of(), last.takeOreLeft(), "and not again");
+
+        Inventory ironPickaxe = new Inventory();
+        ironPickaxe.setSlot(Inventory.HOTBAR_FIRST, new int[]{pickaxe(2), 1});
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000, ironPickaxe, bottom));
+        assertTrue(dug.contains(above), "with an iron pickaxe, taken");
+        assertEquals(List.of(), last.takeOreLeft(), "nothing to note");
+    }
+
+    /**
+     * A tunnel is not cut through ore its pickaxe gets nothing from: cut as rock, a diamond in a branch's way was broken for
+     * nothing. The branch is given up at it and the diamond noted; the rest of the mine is cut.
+     */
+    @Test
+    void aTunnelIsNotCutThroughOreItsPickaxeGetsNothingFrom() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 20);
+        BlockPos inTheWay = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList().get(3).feet();
+        ore.add(inTheWay);
+        diamonds.add(inTheWay);
+        Inventory stonePickaxe = new Inventory();
+        stonePickaxe.setSlot(Inventory.HOTBAR_FIRST, new int[]{pickaxe(1), 1});
+
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 120000, stonePickaxe));
+
+        assertTrue(!dug.contains(inTheWay), "the diamond in branch 1's way at " + inTheWay + " not broken");
+        assertTrue(last.takeOreLeft().contains(new Miner.OreLeft(inTheWay, 2)), "and noted");
+        BlockPos elsewhere = stairs.cuts().stream().filter(c -> c.tunnel() == 2).toList().get(3).feet();
+        assertTrue(dug.contains(elsewhere), "branch 2 cut all the same, at " + elsewhere);
     }
 
     /**

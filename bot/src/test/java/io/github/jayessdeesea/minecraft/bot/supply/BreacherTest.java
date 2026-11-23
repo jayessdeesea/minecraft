@@ -103,6 +103,34 @@ class BreacherTest {
         assertEquals(List.of("start " + CELLS.get(0), "finish " + CELLS.get(0), "start " + CELLS.get(1), "finish " + CELLS.get(1)), calls);
     }
 
+    /**
+     * The best pickaxe carried is the one taken in hand, not the first found (operator, 2026-11-22: why so little iron?):
+     * a spare wooden pickaxe in the pack, the stone one in the hotbar's second slot where the layout keeps it - the stone
+     * one is selected, with no swap. An ore dug with too low a pickaxe drops nothing.
+     */
+    @Test
+    void theBestPickaxeCarriedIsTheOneItDigsWith() {
+        int wooden = DiggerTest.item("wooden_pickaxe"), stone = DiggerTest.item("stone_pickaxe");
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{wooden, 1});
+        inventory.setSlot(Inventory.HOTBAR_FIRST + Hotbar.PICKAXE, new int[]{stone, 1});
+        Breacher doorway = new Breacher("Alice", session, inventory);
+
+        assertTrue(run(doorway, 2 * (Breacher.PICKAXE_TICKS + 8)));
+        assertEquals("select " + Hotbar.PICKAXE, calls.getFirst(), "the stone pickaxe's slot selected, nothing swapped: " + calls);
+        assertTrue(calls.stream().noneMatch(c -> c.startsWith("swap")), "the wooden one left in the pack: " + calls);
+    }
+
+    /** Rock is dug with the stone pickaxe though an iron one is carried: the iron one is for what only it takes. */
+    @Test
+    void anIronPickaxeIsKeptForWhatOnlyItTakes() {
+        inventory.setSlot(Inventory.HOTBAR_FIRST + Hotbar.PICKAXE, new int[]{DiggerTest.item("iron_pickaxe"), 1});
+        inventory.setSlot(Inventory.HOTBAR_FIRST + Hotbar.SHOVEL, new int[]{DiggerTest.item("stone_pickaxe"), 1});
+        Breacher doorway = new Breacher("Alice", session, inventory);
+
+        assertTrue(run(doorway, 2 * (Breacher.PICKAXE_TICKS + 8)));
+        assertEquals("select " + Hotbar.SHOVEL, calls.getFirst(), "the stone pickaxe's slot selected for plain rock: " + calls);
+    }
+
     @Test
     void withAPickaxeInThePackItTakesItInHandFirstAndDigsFaster() {
         int pickaxe = IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(ItemClass.PICKAXE)))

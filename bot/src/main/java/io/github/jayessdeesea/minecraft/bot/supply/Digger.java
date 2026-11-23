@@ -262,6 +262,31 @@ final class Digger {
         }
 
         /** The inventory slot of the best pickaxe, or -1. */
+        /**
+         * The slot of the pickaxe for a job that wants tier {@code needed} (operator, 2026-11-22: not the best pickaxe, the
+         * best pickaxe for the job): the lowest tier carried that does it, so the better ones are kept for what only they
+         * can take - but stone before wood, rock being the work and wood half its pace. -1 when nothing carried does it:
+         * the block is left, never dug for no drop.
+         */
+        static int pickaxeFor(Inventory inventory, int needed) {
+            int chosen = -1, chosenTier = Integer.MAX_VALUE, least = -1, leastTier = Integer.MAX_VALUE;
+            for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+                int tier = ItemClassRegistry.miningTier(inventory.itemAt(slot)).orElse(-1);
+                if (tier < Math.max(needed, 0)) {
+                    continue;
+                }
+                if (tier >= Hardness.STONE_TIER && tier < chosenTier) {
+                    chosen = slot;
+                    chosenTier = tier;
+                }
+                if (tier < leastTier) {
+                    least = slot;
+                    leastTier = tier;
+                }
+            }
+            return chosen >= 0 ? chosen : least;
+        }
+
         static int bestTool(Inventory inventory) {
             int best = -1;
             int bestTier = -1;

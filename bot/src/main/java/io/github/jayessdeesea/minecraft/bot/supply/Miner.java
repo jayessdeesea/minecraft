@@ -591,9 +591,43 @@ public final class Miner {
             }
             return new Progress.Working(k, cuts.size());
         }
+        // Ore in a tunnel's own way that its best pickaxe gets nothing from: the tunnel is given up there, not cut through -
+        // cut as rock, a diamond met with a stone pickaxe was broken for nothing. The stairs go on: they're the only way down.
+        int best = bestPickaxe();
+        Optional<BlockPos> beyond = cut.tunnel() < 0 ? Optional.empty() : cut.cells().stream().filter(c -> world.isOre(c.x(), c.y(), c.z())
+                && world.hardness(c.x(), c.y(), c.z()).filter(h -> !h.drops(best)).isPresent()).findFirst();
+        if (beyond.isPresent()) {
+            wanting(beyond.get(), world.hardness(beyond.get().x(), beyond.get().y(), beyond.get().z()).orElseThrow().pickaxeTier(), best);
+            LOG.warn("{} gives up tunnel {} of the mine: the ore at {} is in its way, and its pickaxe gets nothing from it", name, cut.tunnel(), beyond.get());
+            blocked.add(cut.tunnel());
+            breacher.stop();
+            return new Progress.Working(k, cuts.size());
+        }
         breacher.keepStations(cut.recess());
         breacher.tick(world, cut.cells());
         return new Progress.Working(k, cuts.size());
+    }
+
+    /** Ore seen that its best pickaxe gets no drop from, and the tier it wants: left in the rock, noted once, for a soldier with the pickaxe to come back for. */
+    public record OreLeft(BlockPos at, int tier) {
+    }
+
+    private final Set<BlockPos> wanted = new HashSet<>();
+    private final List<OreLeft> notes = new ArrayList<>();
+
+    /** Notes {@code at} as ore wanting a pickaxe of {@code tier}, its best one of {@code best} (operator, 2026-11-22: leave it there, make a note, and we will come back). */
+    private void wanting(BlockPos at, int tier, int best) {
+        if (wanted.add(at)) {
+            notes.add(new OreLeft(at, tier));
+            LOG.info("{} leaves the ore at {} in the rock: it wants a pickaxe of tier {}, its best is {} - noted, to come back for", name, at, tier, best);
+        }
+    }
+
+    /** The ore noted since last asked, for whoever keeps the notes. */
+    public synchronized List<OreLeft> takeOreLeft() {
+        List<OreLeft> taken = List.copyOf(notes);
+        notes.clear();
+        return taken;
     }
 
     /** Ore blocks it set about mining, and of them those it left unbroken: what it took is the difference. */
@@ -820,10 +854,14 @@ public final class Miner {
      * profile), each cut's ask built every cut of the mine again, a sixth of the garrison's CPU.
      */
     private Optional<BlockPos> oreInSight(WorldView world, Staircase stairs, BlockPos from, Staircase.Cut cut, Set<BlockPos> floors, int tier) {
-        java.util.function.Predicate<BlockPos> takeable = at -> world.isOre(at.x(), at.y(), at.z()) && !stairs.inShaft(at.x(), at.z())
-                && !floors.contains(at) && !leftOre.contains(at)
-                && world.hardness(at.x(), at.y(), at.z()).map(h -> h.drops(tier)).orElse(false)
-                && !besideLiquid(world, at);
+        java.util.function.Predicate<BlockPos> takeable = at -> {
+            if (!world.isOre(at.x(), at.y(), at.z()) || stairs.inShaft(at.x(), at.z()) || floors.contains(at) || leftOre.contains(at)) {
+                return false;
+            }
+            Optional<Hardness> hardness = world.hardness(at.x(), at.y(), at.z());
+            hardness.filter(h -> !h.drops(tier)).ifPresent(h -> wanting(at, h.pickaxeTier(), tier));
+            return hardness.map(h -> h.drops(tier)).orElse(false) && !besideLiquid(world, at);
+        };
         List<BlockPos> near = new ArrayList<>(List.of(from, from.offset(0, 1, 0)));
         near.addAll(cut.cells());
         for (BlockPos cell : near) {

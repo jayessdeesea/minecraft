@@ -15,6 +15,27 @@ stops there, and a mine's base has one furnace and nothing to re-arm a respawn w
 diamonds near y=-55, in veins a few blocks off any one shaft.
 
 ## What's left
+**The strip mine as agreed** (operator, 2026-11-22). Built already: levels at y % 4 == 0, tunnels three high, a strip
+every third block of the tunnel it comes off, ore taken in reach and its hole put back in the wall, the pickaxe for the job
+and ore beyond it left and noted (docs/military-doctrine.md § 16). To build, in this order:
+- **Every soldier its own tunnel.** Two a level, in opposite directions from the landing, each its own main tunnel and
+  its own strips - none waits on another's. A squad of four works two levels at once, all four cutting; today two of
+  four cut, the second's strips waiting on the first's tunnel. `bot.supply.Miner` is 985 lines: this is its split.
+- **The axis fixed, and turned level by level**: a level's tunnels along x, east and west, their strips along z at
+  x % 3 == 0; the next level down along z, its strips at z % 3 == 0 - so levels four apart work different rock (the
+  "unworked rock" below).
+- **A vein followed to its end**, then its pocket filled back with cobblestone or what's carried: floors and walls kept
+  whole, nobody falls through, and a mob has one way in. Today a vein is followed two blocks.
+- **A strip that breaks into a cave is walled off**, not bridged: the mine stays a closed set of corridors.
+- **Mines never stop for want of a use**: a lot of iron every night is the expectation. The reserve that says ore is
+  wanted (`IRON_RESERVE_A_SOLDIER`) goes; a mine is worked till its rock is, then the next.
+- **Two bands**: iron's levels from y=16 down first; with iron pickaxes carried, a mine straight down to about y=-56
+  for diamonds, not seventeen levels crept through. The ore noted for want of a pickaxe (`app.OreNotes`) is gone back for.
+- **The mineshaft as a template** - the fourth, after wheat, trees and the supply point: a chunk fenced as theirs are,
+  its shaft's head in it, its workings filled back in cobblestone; mines spread out over the ground, a different squad
+  down one each night until each is mined out. A mission as a farm's is (`command.FarmMission`), the platoon leader's
+  to give.
+
 **Where the squads mine, and who says so**
 - **By night, a mine site per squad** - backlog/authority-and-missions.md step 3; today every squad goes down the
   camp's one shaft. To measure over a garrison night once that stands: whether hostiles follow a squad down from the

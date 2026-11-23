@@ -139,8 +139,10 @@ armour, arrows, logs, cobblestone, dirt, rations, shield, pickaxe, bow, spare we
   operator's mission (`FarmMissions.on`), it hauls nothing from a mine's stash or an old camp's chest, and draws logs for
   its tools only from a chest in its reach - 48 blocks across and 12 up or down (`SoldierErrands.inMissionReach`). Live
   (field692), two of a squad flattening a chunk walked 300 blocks each to a chest at the bottom of the mine for eight
-  logs. Its other errands - a full pack's deposit, cobblestone and metal drawn for a tool - are still its own
-  (backlog/authority-and-missions.md).
+  logs. Nor does it make kit but the weapon or the pickaxe it has none of, or make a trip for its load's surplus
+  (`SoldierErrands.madeOnMission`): live, a builder's load plan put its spare sword and its logs in the chest and its kit
+  rule drew a stack of logs and made the sword again, 50 blocks each way, a block dug between. A full pack's deposit and
+  cobblestone and metal drawn for a tool are still its own (backlog/authority-and-missions.md).
 
 ## What it approximates
 Its movement (`bot.Gait`, `bot.Mover`, `bot.nav.Pathfinder`) and its senses approximate the game's. A gap is closed when

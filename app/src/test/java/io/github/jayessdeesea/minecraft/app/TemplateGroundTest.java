@@ -108,4 +108,17 @@ class TemplateGroundTest {
         assertFalse(SoldierErrands.inMissionReach(new Position(39.5, 8, 75.5), digger), "the mine's stash, 58 below (field692)");
         assertFalse(SoldierErrands.inMissionReach(new Position(-47.5, 73, 45.5), digger), "the old camp's chest, 92 off");
     }
+
+    /** On a mission's task a soldier makes only the weapon or the pickaxe it has none of: no spare, no armour (field692, Dana). */
+    @Test
+    void onAMissionsTaskOnlyTheWeaponOrPickaxeItLacksIsMade() {
+        var weapon = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.WEAPON;
+        var pickaxe = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.PICKAXE;
+        var armour = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.ARMOUR;
+        assertTrue(SoldierErrands.madeOnMission(weapon, 0, 2), "bare-handed: its weapon");
+        assertFalse(SoldierErrands.madeOnMission(weapon, 1, 2), "a spare sword waits");
+        assertTrue(SoldierErrands.madeOnMission(pickaxe, 1, 0), "no pickaxe: one is made");
+        assertFalse(SoldierErrands.madeOnMission(pickaxe, 1, 1), "a second pickaxe waits");
+        assertFalse(SoldierErrands.madeOnMission(armour, 1, 1), "armour waits");
+    }
 }

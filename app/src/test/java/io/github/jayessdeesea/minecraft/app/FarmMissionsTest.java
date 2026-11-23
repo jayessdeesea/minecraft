@@ -141,6 +141,45 @@ class FarmMissionsTest {
         assertEquals(1, day.stream().filter(idle::equals).count(), "the third left to its own order");
     }
 
+    /**
+     * Carried on from the register at its template, a farm isn't sent back to its flatten: the template's own ground stands
+     * over the flatten's level. Live (field693), restarted with 17 cells of the template's dirt laid, the wheat farm's flatten
+     * was "measured again - not cut", the squad set to dig the ground up, and the tree farm's flatten held behind it.
+     */
+    @Test
+    void reloadedAtItsTemplateAFarmIsNotSentBackToItsFlatten() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMission wheat = FarmMission.atSeaLevel(1, 3);
+        for (FarmMission.Step step : wheat.steps()) {
+            registers.add(new ObjectiveRecord(0, wheat.name(), step.index(), step.task(), 1, 3, java.util.Optional.empty(),
+                    step.index() < 2 ? ObjectiveRecord.State.DONE : ObjectiveRecord.State.PLANNED, 0, java.util.Optional.empty()));
+        }
+        FarmMissions restarted = new FarmMissions(cause -> { });
+        restarted.keptIn(new ObjectiveBook(() -> registers));
+
+        // The floor at 62, and the template's dirt laid over it at 63 in the chunk: over the flatten's level.
+        restarted.measure(new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 62 || y == 63 && x >= 16 && x <= 31 && z >= 48 && z <= 63;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return List.of();
+            }
+        }, null, new CampFarm(new WallStore(state, "farm"), 1000), null, 5_000);
+
+        assertEquals(List.of(FarmMission.Kind.FARM_TEMPLATE), restarted.worked().stream().map(e -> e.getValue().kind()).toList(), "still at its template");
+        assertEquals(List.of(ObjectiveRecord.State.DONE, ObjectiveRecord.State.DONE), registers.objectives().stream().filter(r -> r.step() < 2)
+                .map(ObjectiveRecord::state).toList(), "its flatten and floor still done");
+    }
+
     /** A tree chunk a mission made is the camp's tree chunk after a restart too: read back from its template's row, done. */
     @Test
     void theTreeChunkAMissionMadeIsTheCampsAfterARestart() {
