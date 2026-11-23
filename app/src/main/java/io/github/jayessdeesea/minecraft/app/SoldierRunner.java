@@ -6153,10 +6153,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             && Depositor.withinReach(new Position(centre.x() + 0.3, centre.y(), centre.z() - 0.3), chest)
                             && Depositor.withinReach(new Position(centre.x() - 0.3, centre.y(), centre.z() + 0.3), chest)
                             && Depositor.withinReach(new Position(centre.x() + 0.3, centre.y(), centre.z() + 0.3), chest);
-                    if (!reachable.contains(cell) || !reachedFromAll || world.isChest(cell.x(), cell.y() - 1, cell.z()) || SoldierErrands.standTaken(centre, from, activeSoldiers.values().stream().map(d -> d.status().position()).toList())) { // or another soldier's stand already
+                    if (!reachable.contains(cell) || !reachedFromAll || world.isChest(cell.x(), cell.y() - 1, cell.z())) {
                         continue;
                     }
-                    double distance = Math.hypot(centre.x() - from.x(), centre.z() - from.z()) + Math.abs(centre.y() - from.y());
+                    double distance = Math.hypot(centre.x() - from.x(), centre.z() - from.z()) + Math.abs(centre.y() - from.y()) + (SoldierErrands.standTaken(centre, from, activeSoldiers.values().stream().map(d -> d.status().position()).toList()) ? 1_000 : 0); // another soldier's stand is the last chosen, not ruled out: with every stand taken the walk went to the chest's own cell, and seven stood round one chest, each keeping the others' stands taken (field704)
                     if (distance < bestDistance) {
                         best = cell;
                         bestDistance = distance;
