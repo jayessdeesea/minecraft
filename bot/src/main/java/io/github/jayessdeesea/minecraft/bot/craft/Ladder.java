@@ -28,6 +28,7 @@ import java.util.function.Predicate;
  *       against a skeleton, whose arrows on the way in do most of the harm.
  *   <li><b>A stone pickaxe</b> - 3 cobblestone, and it mines iron ore.
  *   <li><b>A spare weapon and a spare pickaxe</b> - of stone: both wear out.
+ *   <li><b>Two buckets</b> - 3 ingots each, after the iron pickaxe: water carried to a farm's holes (see {@code WaterCarrier}).
  *   <li><b>A shield</b> - 1 iron ingot and 6 planks, raised against arrows in flight: against a
  *       skeleton it's worth what a chestplate is, for an eighth of the iron.
  *   <li><b>Iron armour</b>, chestplate, leggings, boots, helmet - by protection per ingot (6 points
@@ -37,7 +38,6 @@ import java.util.function.Predicate;
  *       hostiles it rarely saves a blow: 20 health still takes 4.
  *   <li><b>An iron pickaxe</b> - 3 ingots, for durability.
  *   <li><b>An iron axe</b> - 3 ingots, and a log chops in a sixth of the bare-handed time.
- *   <li><b>A bucket</b> - 3 ingots: water carried to a farm's holes (see {@code WaterCarrier}).
  * </ol>
  * A rung is held once something as good is - an iron sword holds the stone-sword rung too. A rung
  * whose materials can't be had is passed over for the next, not waited on. Materials set aside for
@@ -52,6 +52,9 @@ public final class Ladder {
             this(name, held, options, false);
         }
     }
+
+    /** Buckets in a soldier's kit (operator, 2026-11-22). */
+    public static final int BUCKETS = 2;
 
     static final List<Rung> LADDER = List.of(
             new Rung("a weapon", i -> bestMelee(i) >= 0, List.of(Recipe.STONE_SWORD, Recipe.WOODEN_SWORD)),
@@ -71,6 +74,9 @@ public final class Ladder {
             // the pickaxe after four pieces of iron armour and an iron sword, 27 ingots off, nobody
             // ever made one.
             new Rung("an iron pickaxe", i -> bestPickaxe(i) >= 2, List.of(Recipe.IRON_PICKAXE)),
+            // Two buckets, 3 ingots each, in every soldier's kit (operator, 2026-11-22: two, both of water - a farm's holes
+            // filled by whoever lays its ground). Next after the pickaxe: the iron that feeds the force before the iron it wears.
+            new Rung("two buckets", i -> i.count(ItemClass.BUCKET) + i.count(ItemClass.WATER_BUCKET) >= BUCKETS, List.of(Recipe.BUCKET)),
             new Rung("a shield", i -> Stock.of(i).classes().getOrDefault(ItemClass.SHIELD, 0) > 0, List.of(Recipe.SHIELD)),
             // Copper first, where there is copper: it's on the surface far more often than iron, and
             // a soldier in copper is better off than one in nothing while the iron is found.
@@ -84,8 +90,6 @@ public final class Ladder {
             new Rung("an iron helmet", i -> armour(i, Recipe.IRON_HELMET), List.of(Recipe.IRON_HELMET)),
             new Rung("an iron sword", i -> bestMelee(i) >= ItemClassRegistry.meleeRank("iron_sword"), List.of(Recipe.IRON_SWORD)),
             new Rung("an iron axe", i -> bestAxeSpeed(i) >= 6, List.of(Recipe.IRON_AXE)),
-            // A bucket, 3 ingots: water carried to a farm's holes where no pond is (operator, 2026-11-19).
-            new Rung("a bucket", i -> i.count(ItemClass.BUCKET) + i.count(ItemClass.WATER_BUCKET) > 0, List.of(Recipe.BUCKET)),
             // Diamond only after the iron armour, and only with the diamonds carried: they're ore
             // the miner takes beside its stairs, not something a soldier goes and fetches.
             new Rung("a diamond sword", i -> bestMelee(i) >= ItemClassRegistry.meleeRank("diamond_sword"), List.of(Recipe.DIAMOND_SWORD)),
@@ -159,7 +163,7 @@ public final class Ladder {
      * enabler, three iron, and what breaks the keep's emerald and opens diamonds (operator,
      * 2026-11-15) - live, the camp fell to SHELTER when eight soldiers joined unarmed, and twelve
      * raw iron sat in a pack with no pickaxe made. SHELTER: nothing else that costs iron.
-     * BUILDUP: a shield, armour, and iron tools for producers - an iron axe, a bucket - as well. ESTABLISHED and
+     * BUILDUP: a shield, armour, and an iron axe for producers as well; buckets at any level, as the pickaxe. ESTABLISHED and
      * above: iron for all, diamond for weapons and armour. Below SHELTER, as SHELTER.
      */
     public static boolean authorised(Recipe recipe, Optional<io.github.jayessdeesea.minecraft.command.Site.Level> level) {
@@ -177,10 +181,10 @@ public final class Ladder {
         if (!iron) {
             return true;
         }
-        if (recipe == Recipe.IRON_PICKAXE) {
+        if (recipe == Recipe.IRON_PICKAXE || recipe == Recipe.BUCKET) { // the enablers: what opens the ore, what waters the farms
             return true;
         }
-        return at >= buildup && (recipe == Recipe.SHIELD || recipe == Recipe.IRON_AXE || recipe == Recipe.BUCKET
+        return at >= buildup && (recipe == Recipe.SHIELD || recipe == Recipe.IRON_AXE
                 || recipe.makes() == ItemClass.ARMOUR);
     }
 
@@ -188,13 +192,20 @@ public final class Ladder {
     public static Optional<Recipe> upTo(Inventory inventory, Map<ItemClass, Integer> setAside, Set<Workstation> inReach,
                                         Predicate<ItemClass> canGather, int highest,
                                         Optional<Optional<io.github.jayessdeesea.minecraft.command.Site.Level>> level) {
+        return upTo(inventory, setAside, inReach, canGather, highest, level, r -> false);
+    }
+
+    /** As the above, a recipe {@code passedOver} says yes to never made: its rung passed over for the next, not waited on ({@link LoadPlan#putsAway}). */
+    public static Optional<Recipe> upTo(Inventory inventory, Map<ItemClass, Integer> setAside, Set<Workstation> inReach,
+                                        Predicate<ItemClass> canGather, int highest,
+                                        Optional<Optional<io.github.jayessdeesea.minecraft.command.Site.Level>> level, Predicate<Recipe> passedOver) {
         Stock stock = Stock.of(inventory).less(setAside);
         for (Rung rung : LADDER.subList(0, Math.max(0, Math.min(LADDER.size(), highest + 1)))) {
             if (rung.held().test(inventory)) {
                 continue;
             }
             for (Recipe option : rung.options()) {
-                if (level.isPresent() && !authorised(option, level.get())) {
+                if (level.isPresent() && !authorised(option, level.get()) || passedOver.test(option)) {
                     continue;
                 }
                 // One more than carried: a spare is a second of what's held.

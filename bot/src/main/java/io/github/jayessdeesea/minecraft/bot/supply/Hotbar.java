@@ -13,14 +13,15 @@ import java.util.function.ToIntFunction;
  * The hotbar laid out as a player keeps it (operator, 2026-11-15, 2026-11-22): the tools of the trade a switch away,
  * never fetched from the pack while the work waits. The sword first, always - an attack comes at any time; the pickaxe
  * second, the shovel third, the axe fourth; a stack of blocks sixth - dirt before cobblestone - to stop lava or water
- * with at once; food second to last, torches last. The fifth and seventh slots are for a hoe or a bucket and what a
+ * with at once; food second to last, torches last. The bow fifth (operator, 2026-11-22: the bow in the hotbar), a
+ * quick tool there with none carried. The seventh slot is for a hoe or a bucket and what a
  * routine swaps in for the moment; anything else between - emeralds, ore, a spare sword - goes to the main pack.
  * Pure: the inventory in, the next swap out, one at a time.
  */
 public final class Hotbar {
 
     /** The hotbar's fixed places, 0-8. */
-    public static final int WEAPON = 0, PICKAXE = 1, SHOVEL = 2, AXE = 3, BLOCKS = 5, FOOD = 7, TORCHES = 8;
+    public static final int WEAPON = 0, PICKAXE = 1, SHOVEL = 2, AXE = 3, BOW = 4, BLOCKS = 5, FOOD = 7, TORCHES = 8;
 
     /** What may stand in the slots between: the quick tools. */
     static final Set<ItemClass> QUICK = EnumSet.of(ItemClass.SHOVEL, ItemClass.HOE, ItemClass.BUCKET, ItemClass.WATER_BUCKET,
@@ -46,6 +47,7 @@ public final class Hotbar {
                 .or(() -> placed(inventory, SHOVEL, slot -> speed(ItemClassRegistry.shovelSpeed(inventory.itemAt(slot)))))
                 // Never the axe in the weapon's slot: taken for the axe's, the weapon's slot would take it back, for ever.
                 .or(() -> placed(inventory, AXE, slot -> slot == Inventory.HOTBAR_FIRST + WEAPON ? -1 : speed(ItemClassRegistry.axeSpeed(inventory.itemAt(slot)))))
+                .or(() -> placed(inventory, BOW, slot -> bow(inventory.itemAt(slot)) ? 1 : -1))
                 .or(() -> placed(inventory, BLOCKS, slot -> is(inventory, slot, ItemClass.DIRT) ? 1000 + inventory.countAt(slot)
                         : is(inventory, slot, ItemClass.COBBLESTONE) ? inventory.countAt(slot) : -1))
                 .or(() -> placed(inventory, FOOD, slot -> is(inventory, slot, ItemClass.FOOD) ? inventory.countAt(slot) : -1))
@@ -56,7 +58,7 @@ public final class Hotbar {
         for (int hotbar = PICKAXE + 1; hotbar < FOOD; hotbar++) {
             int slot = Inventory.HOTBAR_FIRST + hotbar;
             int item = inventory.itemAt(slot);
-            if (item < 0 || quick(item)) {
+            if (item < 0 || quick(item) || hotbar == BOW && bow(item)) {
                 continue;
             }
             for (int main = Inventory.MAIN_FIRST; main < Inventory.HOTBAR_FIRST; main++) {
@@ -95,6 +97,10 @@ public final class Hotbar {
 
     private static boolean is(Inventory inventory, int slot, ItemClass itemClass) {
         return ItemClassRegistry.classOf(inventory.itemAt(slot)).filter(itemClass::equals).isPresent();
+    }
+
+    private static boolean bow(int item) {
+        return ItemClassRegistry.nameOf(item).filter("bow"::equals).isPresent();
     }
 
     /** Whether {@code item} may stand in the slots between: a shovel, axe, hoe or bucket, or a block of dirt or cobblestone. */

@@ -164,6 +164,14 @@ public final class Depositor {
      * finds past the soldier's load for its work (bot.craft.LoadPlan; operator, 2026-11-15: a third
      * sword, a worse pickaxe, an emerald to the depot) - on any trip it makes.
      */
+    /**
+     * What it carried when it set off on its trip, and the load a trip put nothing in of: not carried to a chest again
+     * while it's unchanged. Live (field693), Kate walked farm to chest and back every 20 s, 30 blocks each way, the same
+     * load each time and none of it the chest's; whoever asks for the trip, a trip that moves nothing isn't one.
+     */
+    private String carriedOut;
+    private String futile;
+
     public synchronized void tick(Position soldier, Optional<Position> stockpile, boolean wanted, Set<ItemClass> pooled,
                                   java.util.function.Function<Inventory, List<Integer>> surplus) {
         if (script == null) {
@@ -180,11 +188,12 @@ public final class Depositor {
             trips.noWork();
         }
         if (script == null) {
-            if (!wanted || cooldown > 0 || stockpile.isEmpty() || trips.barred(stockpile.get(), ticks)) {
+            if (!wanted || cooldown > 0 || stockpile.isEmpty() || trips.barred(stockpile.get(), ticks) || inventory.summary().equals(futile)) {
                 return;
             }
             at = stockpile.get();
-            LOG.info("{} carries a load to the stockpile at {} - {}", name, at, inventory.summary());
+            carriedOut = inventory.summary();
+            LOG.info("{} carries a load to the stockpile at {} - {}", name, at, carriedOut);
             script = trip();
         }
         switch (script.tick()) {
@@ -197,6 +206,10 @@ public final class Depositor {
                 stockpileSeen.accept(seen);
                 trips.worked(at);
                 full = Optional.empty();
+                if (inventory.summary().equals(carriedOut)) {
+                    futile = carriedOut;
+                    LOG.warn("{} put nothing in at {}: the trip isn't made again while it carries the same - {}", name, at, carriedOut);
+                }
                 finish();
             }
             case Script.Status.Interrupted _ -> finish();

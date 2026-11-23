@@ -58,6 +58,20 @@ final class ErrandLedger {
         int moved;
     }
 
+    /**
+     * Trips that didn't pay, one after another with none between that did, that make a loop: live (field693), Kate walked
+     * farm to chest and back every 20 s, Dana chest to workshop for a sword her load put away - each trip said, none
+     * counted against the last. A loop is the eval's failure: an [Outcome] SHORT live, none allowed in a simulation.
+     */
+    static final int LOOP_TRIPS = 4;
+    private final Map<String, Integer> unpaidRunning = new HashMap<>();
+    private int loops;
+
+    /** Loops found since the start. */
+    synchronized int loops() {
+        return loops;
+    }
+
     private final Map<String, Spell> spells = new HashMap<>();
     /**
      * What's used up since the start, by item: what each spell of a routine that works its items - crafting, building,
@@ -142,7 +156,16 @@ final class ErrandLedger {
                 x.walked += spell.walked;
                 x.moved += moved;
             }
+            if (moved > LITTLE_ITEMS) {
+                unpaidRunning.remove(soldier);
+            }
             if (spell.walked >= FAR_BLOCKS && moved <= LITTLE_ITEMS) {
+                // Trip after trip for nothing is a loop, and said as one, once: two rules sending it back and forth.
+                if (unpaidRunning.merge(soldier, 1, Integer::sum) == LOOP_TRIPS) {
+                    loops++;
+                    lines.add(String.format(Locale.ROOT, "loop: %s has walked %d trips running for nothing, the last its %s out to %s", soldier,
+                            LOOP_TRIPS, spell.routine, at(spell.farthest)));
+                }
                 t.unpaid++;
                 d.unpaid++;
                 String who = soldier + "'s " + spell.routine;

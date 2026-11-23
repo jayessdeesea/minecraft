@@ -99,6 +99,18 @@ public record LoadPlan(int weapons, int pickaxes, int shovels, int axes, int tor
         return List.copyOf(sorted);
     }
 
+    /**
+     * Whether what {@code recipe} makes would be put away as soon as made: a melee weapon no better than the best carried,
+     * with this load's weapons carried already. The kit ladder's spare sword is such a thing on a load of one: live
+     * (field692, field693), surface workers put the spare in the chest, dug stone and made it again, trip after trip. A
+     * better weapon is made - it's the worse one that's put away.
+     */
+    public boolean putsAway(Recipe recipe, Inventory inventory) {
+        // A sword: a bow is a weapon too, and no melee one - it has no rank to ask for.
+        return recipe.makes() == ItemClass.WEAPON && inventory.meleeWeapons() >= weapons
+                && recipe.item().filter(item -> item.endsWith("_sword")).map(ItemClassRegistry::meleeRank).orElse(Integer.MAX_VALUE) <= Ladder.bestMelee(inventory);
+    }
+
     /** The slots of a kind - where {@code rank} is a number - past the best {@code keep} of them. */
     private static void past(Inventory inventory, int keep, ToDoubleFunction<Integer> rank, Set<Integer> out) {
         // Each slot ranked once, then sorted on that: ranked again in the sort, a slot changed by the

@@ -162,6 +162,8 @@ class PackTest {
         inventory.setSlot(Inventory.MAIN_FIRST + 3, new int[]{item(ItemClass.DIRT), 12});
         inventory.setSlot(Inventory.MAIN_FIRST + 4, new int[]{pickaxe, 1});
         inventory.setSlot(Inventory.MAIN_FIRST + 5, new int[]{sword, 1});
+        inventory.setSlot(Inventory.MAIN_FIRST + 6, new int[]{DiggerTest.item("bow"), 1});
+        inventory.setSlot(Inventory.HOTBAR_FIRST + Hotbar.BOW, new int[]{DiggerTest.item("stone_hoe"), 1}); // a quick tool where the bow goes
 
         int swaps = 0;
         for (; swaps < 20; swaps++) {
@@ -181,6 +183,7 @@ class PackTest {
         assertEquals(pickaxe, inventory.itemAt(Inventory.HOTBAR_FIRST + Hotbar.PICKAXE));
         assertEquals(shovel, inventory.itemAt(Inventory.HOTBAR_FIRST + Hotbar.SHOVEL));
         assertEquals(axe, inventory.itemAt(Inventory.HOTBAR_FIRST + Hotbar.AXE));
+        assertEquals(DiggerTest.item("bow"), inventory.itemAt(Inventory.HOTBAR_FIRST + Hotbar.BOW), "the bow fifth (operator, 2026-11-22)");
         assertEquals(item(ItemClass.DIRT), inventory.itemAt(Inventory.HOTBAR_FIRST + Hotbar.BLOCKS), "dirt before cobblestone");
     }
 

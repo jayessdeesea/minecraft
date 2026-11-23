@@ -157,4 +157,28 @@ class DepositorTest {
         assertEquals(Gatherer.CARRY_STONE, server.inventory.count(ItemClass.COBBLESTONE));
         assertTrue(depositor.full().isPresent(), "and it says which chest was full, for the depot's next");
     }
+
+    /**
+     * A trip that put nothing in isn't made again while the soldier carries the same (field693, Kate: farm to chest and
+     * back every 20 s with a load none of which was the chest's). With something new carried, it goes again.
+     */
+    @Test
+    void aTripThatPutNothingInIsNotMadeAgainWithTheSameLoad() {
+        server.inventory.setSlot(12, new int[]{itemOf(ItemClass.LOG), 3}); // pickaxe wood: kept, so nothing to put in
+
+        run(3, FAR, true);
+        run(10, BESIDE, true);
+        assertFalse(depositor.active(), "the first trip made, and over");
+        int opened = seen.size();
+
+        run(10, BESIDE, true);
+        assertFalse(depositor.active(), "not set off again");
+        assertEquals(opened, seen.size(), "nor the chest opened again");
+
+        server.inventory.setSlot(10, new int[]{itemOf(ItemClass.COBBLESTONE), Gatherer.CARRY_STONE});
+        for (int i = 0; i < 400 && !depositor.active(); i++) {
+            run(1, FAR, true);
+        }
+        assertTrue(depositor.active(), "a new load: a new trip");
+    }
 }

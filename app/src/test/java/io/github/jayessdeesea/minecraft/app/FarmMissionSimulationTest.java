@@ -104,6 +104,7 @@ class FarmMissionSimulationTest {
         runner.simulated(clock, server.connector(spawn, kit)).run();
         clock.advance(minutes * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
+        assertEquals(0, runner.afterActionReview.errands.loops(), "no soldier walking trip after trip for nothing (ErrandLedger.LOOP_TRIPS)");
         return server;
     }
 

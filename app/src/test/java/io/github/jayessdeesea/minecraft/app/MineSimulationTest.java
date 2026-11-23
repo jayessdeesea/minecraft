@@ -477,13 +477,13 @@ static void assertMinedToTheIron(SimServer server) {
     }
 
     /**
-     * By night, the camp's mine cut out and no ore wanted - the force's reserve of iron held, every soldier in a full set
-     * of armour - its MINE reads DONE and the camp's mine moves to its next site, and the night's objective with it. Live
-     * (field663), with nowhere for it to go, every squad was given the same order for the cut-out mine each minute all
-     * night, DONE within a second each time, and the night's mining yielded nothing.
+     * By night, the camp's mine cut out is run on where it is - a mine never stops for want of a use (operator, 2026-11-22:
+     * stockpile all the iron that can be had), though the force holds iron and every soldier wears a full set - and its
+     * order is given once, not each minute. Live (field663), every squad was given the same order for the cut-out mine
+     * each minute all night, DONE within a second each time, and the night's mining yielded nothing.
      */
     @Test
-    void byNightTheCampsMineCutOutMovesToItsNextSite() {
+    void byNightTheCampsMineCutOutIsRunOnNotLeft() {
         KeptStairs.keptInTheBuildup(state);
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, KeptStairs::keptStairsAllCut, 14_000); // an hour after dusk
@@ -513,17 +513,7 @@ static void assertMinedToTheIron(SimServer server) {
         long atFirst = given.stream().filter(r -> r.chunkX() == Math.floorDiv(ChainOfCommand.MINE_HEAD_DX, 16)
                 && r.chunkZ() == Math.floorDiv(ChainOfCommand.MINE_HEAD_DZ, 16)).count();
         assertTrue(atFirst <= 1, "the night's mining given for the cut-out mine " + atFirst + " times: " + given);
-        Position next = chain.campMines.site(camp);
-        assertNotEquals(first, next, "the camp's mine moved on");
-        assertTrue(given.stream().anyMatch(r -> r.chunkX() == Math.floorDiv((int) next.x(), 16) && r.chunkZ() == Math.floorDiv((int) next.z(), 16)),
-                "the squad given the next site, " + next + ": " + given);
-        assertEquals(List.of(new BlockPos((int) next.x(), (int) next.y(), (int) next.z())), new WallStore(state, "chests").load("campmine").orElseThrow(),
-                "the camp's mine as it stands kept on disk");
-        // Its well sited there and kept as the camp's - in its chunk, the cut-out one let go.
-        BlockPos head = new WallStore(state, "stairs").load("well 0,0").map(List::getFirst).orElseThrow();
-        assertEquals(List.of(Math.floorDiv((int) next.x(), 16), Math.floorDiv((int) next.z(), 16)),
-                List.of(Math.floorDiv(head.x(), 16), Math.floorDiv(head.z(), 16)), "the camp's well at " + head);
-        assertEquals(Optional.of(List.of()), new WallStore(state, "stairs").load("0,0"), "the cut-out staircase let go");
+        assertEquals(first, chain.campMines.site(camp), "the camp's mine run on where it is, not left");
     }
 
     /** The camp's mine as it stands, and the sites it has left, are read back at start-up: not sent back to the first. */

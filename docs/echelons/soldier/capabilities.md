@@ -139,10 +139,14 @@ armour, arrows, logs, cobblestone, dirt, rations, shield, pickaxe, bow, spare we
   operator's mission (`FarmMissions.on`), it hauls nothing from a mine's stash or an old camp's chest, and draws logs for
   its tools only from a chest in its reach - 48 blocks across and 12 up or down (`SoldierErrands.inMissionReach`). Live
   (field692), two of a squad flattening a chunk walked 300 blocks each to a chest at the bottom of the mine for eight
-  logs. Nor does it make kit but the weapon or the pickaxe it has none of, or make a trip for its load's surplus
-  (`SoldierErrands.madeOnMission`): live, a builder's load plan put its spare sword and its logs in the chest and its kit
-  rule drew a stack of logs and made the sword again, 50 blocks each way, a block dug between. A full pack's deposit and
-  cobblestone and metal drawn for a tool are still its own (backlog/authority-and-missions.md).
+  logs.
+- Climb the kit ladder, or make a trip for its load's surplus, on any task: that's the squad leader's leave, given to a
+  squad holding (docs/military-doctrine.md § 11). On a task it makes only the weapon or the pickaxe it has none of. Live,
+  a builder's load plan put its spare sword and its logs in the chest and its kit rule drew a stack of logs and made the
+  sword again, 50 blocks each way, a block dug between.
+- Carry the same load to a chest twice: a trip that put nothing in isn't made again while it carries the same
+  (`Depositor`). Live (field693), a harvester walked farm to chest and back every 20 s, 30 blocks each way.
+- What it still starts itself is listed, to be taken away, in backlog/authority-and-missions.md.
 
 ## What it approximates
 Its movement (`bot.Gait`, `bot.Mover`, `bot.nav.Pathfinder`) and its senses approximate the game's. A gap is closed when

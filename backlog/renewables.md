@@ -89,6 +89,11 @@ One cycle for wheat chunks, tree chunks and the supply point; only the template 
 The camp's stores on a chunk of their own, on the layout above. The name is the Army's for where supplies are held
 and issued (FM 4-0, ATP 4-90); the stockpile is what's held (`ProductionLevels`). Today "supply point" in the code is
 one chest (`Foothold.dump`).
+- **Settled for the first one** (operator, 2026-11-22): ordered by the platoon leader as a farm's mission is, not by
+  bids - at chunk (1, 4), south of the wheat farm; its ground cobblestone at sea level; the mission done when it's
+  fenced and lit, its workshop in - a table and four furnaces - and the food and Class IV rows up, a later row a
+  follow-on order; what has no row of its own (diamonds, minerals, buckets, string, beds) in the Classes II and IX row;
+  the old chests emptied into it by a haul order of its own, after.
 - **Chests by class of supply**: rows of double chests along x, six to a half-row, a cross-aisle at local x=8, two
   aisles between rows, each chest reached from both sides - local z=3 Class I (food), z=6 Class IV (cobblestone, dirt,
   logs, planks), z=9 Classes II and IX (tools, armour, ore, ingots), z=12 Classes III and V (coal, torches, arrows);

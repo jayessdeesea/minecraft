@@ -112,4 +112,23 @@ class LoadPlanTest {
 
         assertEquals(6, LoadPlan.FLATTENING.surplus(inventory).size(), "two swords of three and four shovels of six");
     }
+
+    /**
+     * A spare sword isn't made on a load of one (field693, Jack: the spare put in the chest, stone dug, the sword made
+     * again): with a stone sword carried, a second is put away as soon as made on the surface load, kept on a mine's; an
+     * iron one is an upgrade, and made; bare-handed, the first is made.
+     */
+    @Test
+    void aWeaponTheLoadWouldPutAwayIsNotMade() {
+        int stoneSword = IntStream.range(0, 4096).filter(id -> ItemClassRegistry.meleeRank(id).isPresent() && ItemClassRegistry.axeSpeed(id).isEmpty()
+                && ItemClassRegistry.meleeRank(id).getAsInt() == ItemClassRegistry.meleeRank("stone_sword")).findFirst().orElseThrow();
+        Inventory inventory = new Inventory();
+        assertTrue(!LoadPlan.FLATTENING.putsAway(Recipe.STONE_SWORD, inventory), "bare-handed: its sword is made");
+        inventory.setSlot(Inventory.HOTBAR_FIRST, new int[]{stoneSword, 1});
+        assertTrue(LoadPlan.FLATTENING.putsAway(Recipe.STONE_SWORD, inventory), "a second stone sword on a load of one");
+        assertTrue(!LoadPlan.FLATTENING.putsAway(Recipe.IRON_SWORD, inventory), "an iron sword is an upgrade");
+        assertTrue(!LoadPlan.MINING.putsAway(Recipe.STONE_SWORD, inventory), "a mine's load keeps a spare");
+        assertTrue(!LoadPlan.FLATTENING.putsAway(Recipe.STONE_PICKAXE, inventory), "not a weapon: not this rule's");
+        assertTrue(!LoadPlan.FLATTENING.putsAway(Recipe.BOW, inventory), "a bow is no melee weapon: kept, and asked of without a fault");
+    }
 }

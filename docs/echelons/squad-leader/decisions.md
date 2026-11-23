@@ -28,14 +28,16 @@ platoon leader's to give as data.
   ([military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)). The rules' formation
   is WEDGE, FILE once the point man reports his route blocked; interval TIGHT at night and in a
   patrol base, NORMAL by day; risk LOW, MEDIUM for one soldier whose CANTCO says a MEDIUM route
-  exists; rearm by day, out of contact, not building a patrol base; CANTCO only with no surveyed
+  exists; rearm by day, out of contact, with no task - the squad holding; CANTCO only with no surveyed
   ground reachable.
 - **How:** formation (`WEDGE`, `FILE`, `LINE`) and interval (`TIGHT`, `NORMAL`, `EXTENDED`;
   [military-doctrine.md § 2](../../military-doctrine.md#2-formations-and-intervals)).
 - **Vertical tolerance:** how far from the point's height the squad may end up.
 - **Risk:** the squad's, and per soldier (`soldierRisk`)
   ([military-doctrine.md § 7](../../military-doctrine.md#7-risk-acceptance)).
-- **Rearm:** whether soldiers may stop to make kit past their basic load - which runs through copper or iron armour, and they keep on their own - to an iron sword and up.
+- **Rearm:** whether soldiers may climb the kit ladder - armour, spares, buckets, the tool load - and make a trip for
+  their load's surplus. Given only to a squad holding with no task (operator, 2026-11-22: soldiers do nothing without a
+  command); without it a soldier makes only the weapon or the pickaxe it has none of.
 - **Intent**, in words, logged with the order.
 - **Task organisation:** changes to its soldiers' standing plans, usually none - `roleChanges`, a
   soldier's role and site; `detached`, a soldier sent off on a job of his own: `GO_TO`, `FETCH`, `LEVEL`, or

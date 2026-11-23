@@ -537,6 +537,7 @@ public final class Armourer {
                 ? inventory.count(ItemClass.FOOD) + inventory.count(ItemClass.WHEAT) / 3
                 : r == Recipe.COPPER_INGOT ? inventory.count(ItemClass.COPPER_INGOT) + inventory.count(ItemClass.RAW_COPPER)
                 : r == Recipe.IRON_INGOT ? inventory.count(ItemClass.IRON_INGOT) + inventory.count(ItemClass.RAW_IRON)
+                : r == Recipe.BUCKET ? Ladder.BUCKETS // the kit's two, not one more than carried: asked for without a break, one more stopped at the first
                 : kitWanted.computeIfAbsent(r, k -> Stock.of(inventory).count(k) + 1)));
         return items;
     }

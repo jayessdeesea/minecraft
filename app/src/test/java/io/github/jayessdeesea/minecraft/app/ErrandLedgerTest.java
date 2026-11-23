@@ -96,4 +96,36 @@ class ErrandLedgerTest {
         assertEquals(100, ledger.held("Dana", "ARMOURER"));
         assertEquals(ErrandLedger.PICKUP_MILLIS + 1 - 50, ledger.held("Dana", ErrandLedger.FREE));
     }
+
+    /**
+     * Trip after trip for nothing is a loop, said once (field693, Kate: farm to chest and back every 20 s, the farmer's
+     * walk and the depositor's by turns, nothing moved): the fourth running says so; a trip that pays between starts the
+     * count again.
+     */
+    @Test
+    void fourTripsRunningForNothingAreALoop() {
+        ErrandLedger ledger = new ErrandLedger();
+        List<String> lines = new ArrayList<>();
+        Map<String, Integer> pack = Map.of("food", 112, "cobblestone", 25);
+        long now = 0;
+        for (int trip = 0; trip < 5; trip++) {
+            String routine = trip % 2 == 0 ? "DEPOSITOR" : "FARMER";
+            for (int x = 0; x <= 45; x++, now += 250) {
+                lines.addAll(ledger.tick("Kate", Optional.of(routine), new Position(trip % 2 == 0 ? x : 45 - x, 63, 0), pack, now));
+            }
+        }
+        lines.addAll(ledger.tick("Kate", Optional.empty(), new Position(45, 63, 0), pack, now));
+        assertEquals(1, lines.stream().filter(l -> l.startsWith("loop: Kate has walked 4 trips running for nothing")).count(), lines.toString());
+        assertEquals(1, ledger.loops());
+
+        ErrandLedger paying = new ErrandLedger();
+        now = 0;
+        for (int trip = 0; trip < 8; trip++) {
+            Map<String, Integer> carried = trip % 3 == 2 ? Map.of("cobblestone", 64) : pack;
+            for (int x = 0; x <= 45; x++, now += 250) {
+                paying.tick("Kate", Optional.of(trip % 2 == 0 ? "DEPOSITOR" : "FARMER"), new Position(x, 63, 0), x < 45 ? carried : pack, now);
+            }
+        }
+        assertEquals(0, paying.loops(), "a trip that pays every third: no loop");
+    }
 }

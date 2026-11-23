@@ -120,10 +120,13 @@ final class PlacementAudit {
         }
     }
 
-    /** What {@code soldier}'s hotbar slot {@code hotbar} holds: what it swapped there, else what the inventory says. */
+    /**
+     * What {@code soldier}'s hotbar slot {@code hotbar} holds: what it swapped there, else what the inventory says. A swap's
+     * button past the hotbar is the off hand's (40): read as a hotbar slot, a shield put on failed its soldier's tick.
+     */
     private int held(String soldier, int hotbar, Inventory inventory) {
         long[] swapped = sent.getOrDefault(soldier, Map.of()).get(hotbar);
-        return swapped != null && clock.getAsLong() - swapped[1] < SENT_MILLIS ? (int) swapped[0] : inventory.itemAt(Inventory.HOTBAR_FIRST + hotbar);
+        return swapped != null && clock.getAsLong() - swapped[1] < SENT_MILLIS ? (int) swapped[0] : inventory.itemAt(hotbar > 8 ? Inventory.OFF_HAND : Inventory.HOTBAR_FIRST + hotbar);
     }
 
     /** The counts by routine / item since the last summary (the audit's test). */

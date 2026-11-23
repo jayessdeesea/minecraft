@@ -27,14 +27,25 @@ and ore beyond it left and noted (docs/military-doctrine.md § 16). To build, in
 - **A vein followed to its end**, then its pocket filled back with cobblestone or what's carried: floors and walls kept
   whole, nobody falls through, and a mob has one way in. Today a vein is followed two blocks.
 - **A strip that breaks into a cave is walled off**, not bridged: the mine stays a closed set of corridors.
-- **Mines never stop for want of a use**: a lot of iron every night is the expectation. The reserve that says ore is
-  wanted (`IRON_RESERVE_A_SOLDIER`) goes; a mine is worked till its rock is, then the next.
 - **Two bands**: iron's levels from y=16 down first; with iron pickaxes carried, a mine straight down to about y=-56
   for diamonds, not seventeen levels crept through. The ore noted for want of a pickaxe (`app.OreNotes`) is gone back for.
-- **The mineshaft as a template** - the fourth, after wheat, trees and the supply point: a chunk fenced as theirs are,
-  its shaft's head in it, its workings filled back in cobblestone; mines spread out over the ground, a different squad
-  down one each night until each is mined out. A mission as a farm's is (`command.FarmMission`), the platoon leader's
-  to give.
+- **The mineshaft as a template** - the fourth, after wheat, trees and the supply point (operator, 2026-11-22): a chunk
+  fenced as theirs are, its shaft's head in it, its workings filled back in cobblestone. One every two chunks or so; a
+  squad goes down one and mines it till dry, a different squad down one each night until each is mined out. A chunk
+  mined dry is then free to be given a wheat or a tree template. A mission as a farm's is (`command.FarmMission`), the
+  platoon leader's to give - and **the chunk's history is the platoon leader's**: what each chunk has been (mined dry on
+  which night, a farm since), kept durably with its missions (backlog/authority-and-missions.md), so it sites the next
+  shaft and the next farm from the record, not from a rule in a soldier.
+  Settled (operator, 2026-11-22):
+  - *Where*: chunks whose two coordinates are both even, but one a farm or the supply point holds. *Down*: the
+    staircase, as now; a ladder shaft once soldiers climb them (backlog/ladders.md). *Levels*: every fourth from y=56 to
+    y=-56, an iron pickaxe carried below y=16.
+  - *Dry* is everything cut, out to where its tunnels would run into the next mineshaft's ground.
+  - *Backfill* is what solid rock would have left: an ore pocket or a cave broken into filled back to the corridor's
+    line. Tunnels and shaft aren't closed off, and are kept lit. Mined dry, the top of the shaft is filled: the ground
+    over it is a farm's next, or another resource's.
+  - *One squad at a time to a shaft.* By night as a rule; by need - the force short of ore - the platoon leader sends
+    a squad down full time.
 
 **Where the squads mine, and who says so**
 - **By night, a mine site per squad** - backlog/authority-and-missions.md step 3; today every squad goes down the

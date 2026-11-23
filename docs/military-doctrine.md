@@ -877,7 +877,8 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
 9. Iron armour: chestplate, leggings, boots, helmet.
 10. An iron sword.
 11. An iron axe, which chops a log in a sixth of the bare-handed time.
-12. A bucket, 3 ingots, for water carried to a farm's holes (`bot.supply.WaterCarrier`): filled at
+12. Two buckets (`Ladder.BUCKETS`), 3 ingots each, every soldier's and at any site's level (operator, 2026-11-22) - made
+    next after the iron pickaxe (6), before the shield: the iron that feeds the force before the iron it wears - for water carried to a farm's holes (`bot.supply.WaterCarrier`): filled at
     a pond's source with two sources beside it, which fills again - never a lone one, which a bucket
     empties for good - up to 64 blocks off and 8 up or down, as a hole takes one bucket - and poured from the ground beside the cell, looking at the far side of it half way
     up: the server casts its ray along the look, stops on the ground beyond, and the water goes in the
@@ -1042,13 +1043,11 @@ cobblestone at the table - and places it into its cell. A fixture counts as stan
 another block there - a wall's cobblestone - isn't the chest. With no workshop sited, the soldier says so
 rather than putting a table down where it stands.
 
-A soldier's basic load is its own to keep: out of contact, it makes a weapon and climbs unordered
-through a stone sword, a bow, a stone pickaxe, a spare weapon and pickaxe, a shield and copper or iron armour from the ore to
-hand (`Ladder.BASIC_LOAD`) - the kit the camp's armed and armoured standards ask of it. The squad
-leader decides whether there's time for more: its order's `rearm` lets soldiers climb past the
-basic load, to an iron sword and up. Climbing past it also waits until the
-squad isn't ordered to a patrol base, since shelter comes first
-and digging iron isn't building it. Each soldier also keeps back its share of the cobblestone its
+Unordered, out of contact, a soldier makes only the weapon or the pickaxe it has none of
+(`SoldierErrands.madeOnMission`): what it can't work or fight without. The ladder past that - a bow, spares, buckets, a
+shield, armour, the tool load - is climbed on the squad leader's order (`SquadOrder.rearm`), given by day, out of
+contact, to a squad holding with no task (operator, 2026-11-22: soldiers do nothing without a command; a squad given
+work does the work). Nor is a rung made that the soldier's load would put away (`LoadPlan.putsAway`). Each soldier also keeps back its share of the cobblestone its
 squad's base still needs, so a stone sword never costs a wall. A soldier at it reports `Rearming`,
 and the squad doesn't halt for it.
 
@@ -1287,8 +1286,8 @@ didn't merge never holds off the rest of the pack's keeping. The hotbar is kept 
 his (2026-11-15, 2026-11-22; `bot.supply.Hotbar`): the tools of the trade a switch away, never fetched
 from the pack while the work waits. The best weapon in the first slot, always - an attack comes at
 any time; the best pickaxe in the second, the fastest shovel in the third, the fastest axe in the
-fourth; a stack of blocks in the sixth, dirt before cobblestone, to stop lava or water with at once;
-food in the second to last, torches in the last. The fifth and seventh slots are for a hoe or a
+fourth, the bow in the fifth; a stack of blocks in the sixth, dirt before cobblestone, to stop lava or water with at once;
+food in the second to last, torches in the last. The seventh slot - and the fifth with no bow carried - is for a hoe or a
 bucket and what a routine swaps in for the moment; anything else between, an emerald or a spare
 sword, goes to the main pack. A dig takes its tool from where it lies: in the hotbar it's selected,
 no swap (`Footing.hold`). With its hands free a soldier makes a swap a tick till it's laid out. Food to
@@ -1825,9 +1824,8 @@ go on: they're the only way down). The note - the block and the tier it wants - 
 Its yield is checked (docs/conventions.md, check the outcome): at dawn, the ore blocks the mine's
 cutters took through the night against 16 (`SoldierRunner.NIGHT_ORE`) - "[Outcome] the night's
 mining: 3 ore block(s) taken, 16 expected - SHORT" - and a short night says each mine's level, length and whether its
-cutters were all done. A mine is worked while ore is wanted - the force holding less than a soldier's kit of iron each, raw or smelted, carried
-or in the stores (`SoldierRunner.IRON_RESERVE_A_SOLDIER`, 32), or any
-soldier in less than a full set of armour: worked out, its main tunnel is run on a stretch, and
+cutters were all done. A mine never stops for want of a use (operator, 2026-11-22: iron is the most
+valuable thing there is - stockpile all that can be had): worked out, its main tunnel is run on a stretch, and
 past its last stretch it's cut a level deeper off the same stairs, 16 blocks down, a fresh main
 tunnel there (`Staircase.deeper`; operator, 2026-11-16: go deeper, or pick other sites) - "[Outcome]
 the mine at ... is worked out at y=16 - its next level cut at y=0" - down to just above bedrock; past

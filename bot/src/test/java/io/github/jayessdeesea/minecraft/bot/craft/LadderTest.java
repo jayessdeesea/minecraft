@@ -107,6 +107,8 @@ class LadderTest {
         assertEquals(Optional.of(Recipe.IRON_PICKAXE), Ladder.next(inventory, Map.of(), NONE, c -> c != ItemClass.STRING),
                 "iron to be had: the first of it to an iron pickaxe (operator, 2026-11-14)");
         carrying("iron_pickaxe", 1);
+        assertEquals(Optional.of(Recipe.BUCKET), Ladder.next(inventory, Map.of(), NONE, c -> c != ItemClass.STRING), "then its buckets");
+        carrying("bucket", 1).carrying("water_bucket", 1);
         assertEquals(Optional.of(Recipe.SHIELD), Ladder.next(inventory, Map.of(), NONE, c -> c != ItemClass.STRING), "then the shield");
     }
 
@@ -121,18 +123,19 @@ class LadderTest {
         assertEquals(Optional.of(Recipe.DIAMOND_SWORD), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY));
     }
 
-    /** A bucket after the iron axe, from 3 ingots: once one's carried, full or empty, the rung is held. */
+    /** Two buckets, full or empty, 3 ingots each, at any site's level (operator, 2026-11-22: two in every soldier's kit). */
     @Test
-    void aBucketComesAfterTheIronAxe() {
+    void twoBucketsAreEverySoldiersKit() {
         carrying("iron_sword", 1).carrying("bow", 1).carrying("iron_pickaxe", 1).carrying("stone_pickaxe", 1).carrying("iron_axe", 1).carrying("shield", 1)
                 .carrying("iron_ingot", 3);
         wearing("iron_helmet", 5).wearing("iron_chestplate", 6).wearing("iron_leggings", 7).wearing("iron_boots", 8);
 
         assertEquals(Optional.of(Recipe.BUCKET), Ladder.next(inventory, Map.of(), Set.of(Workstation.CRAFTING_TABLE), LOGS_ONLY));
         carrying("water_bucket", 1);
-        assertEquals(Optional.empty(), Ladder.next(inventory, Map.of(), Set.of(Workstation.CRAFTING_TABLE), LOGS_ONLY), "a full one holds it");
-        assertFalse(Ladder.authorised(Recipe.BUCKET, Optional.of(io.github.jayessdeesea.minecraft.command.Site.Level.SHELTER)), "not at SHELTER");
-        assertTrue(Ladder.authorised(Recipe.BUCKET, Optional.of(io.github.jayessdeesea.minecraft.command.Site.Level.BUILDUP)), "the buildup's");
+        assertEquals(Optional.of(Recipe.BUCKET), Ladder.next(inventory, Map.of(), Set.of(Workstation.CRAFTING_TABLE), LOGS_ONLY), "one isn't two");
+        carrying("bucket", 1);
+        assertEquals(Optional.empty(), Ladder.next(inventory, Map.of(), Set.of(Workstation.CRAFTING_TABLE), LOGS_ONLY), "two, full or empty, hold it");
+        assertTrue(Ladder.authorised(Recipe.BUCKET, Optional.of(io.github.jayessdeesea.minecraft.command.Site.Level.SHELTER)), "at any level, as the pickaxe");
     }
 
     @Test
@@ -164,7 +167,7 @@ class LadderTest {
 
     @Test
     void armourGoesOnChestplateFirstAndWhatsWornCounts() {
-        carrying("stone_sword", 1).carrying("stone_sword", 1).carrying("iron_pickaxe", 1).carrying("stone_pickaxe", 1).carrying("shield", 1).carrying("iron_ingot", 30).carrying("oak_log", 4);
+        carrying("stone_sword", 1).carrying("stone_sword", 1).carrying("iron_pickaxe", 1).carrying("stone_pickaxe", 1).carrying("shield", 1).carrying("bucket", 2).carrying("iron_ingot", 30).carrying("oak_log", 4);
 
         assertEquals(Optional.of(Recipe.IRON_CHESTPLATE), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY));
         wearing("iron_chestplate", 6).wearing("diamond_leggings", 7);
@@ -199,7 +202,7 @@ class LadderTest {
 
         assertEquals(Optional.of(Recipe.IRON_PICKAXE), Ladder.next(inventory, Map.of(), Set.of(Workstation.CRAFTING_TABLE), LOGS_ONLY),
                 "the stone pickaxe passed over: the iron one comes next, and three of the four ingots make it");
-        carrying("iron_pickaxe", 1);
+        carrying("iron_pickaxe", 1).carrying("bucket", 2);
         assertEquals(Optional.of(Recipe.IRON_BOOTS), Ladder.next(inventory, Map.of(), Set.of(Workstation.CRAFTING_TABLE), LOGS_ONLY),
                 "short of ingots for a chestplate or leggings, but boots take four");
     }

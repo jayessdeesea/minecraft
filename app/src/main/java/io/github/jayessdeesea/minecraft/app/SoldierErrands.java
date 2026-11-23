@@ -99,7 +99,7 @@ final class SoldierErrands {
     }
 
     /**
-     * Whether a soldier on a mission's task makes itself a thing of class {@code makes} now, carrying {@code weapons} and
+     * Whether a soldier without its squad leader's leave to rearm (a squad on a task) makes itself a thing of class {@code makes} now, carrying {@code weapons} and
      * {@code pickaxes}: only the weapon or the pickaxe it has none of. A spare, armour, the rest of its kit wait for the
      * task's end (operator, 2026-11-22: a soldier on a task stays on it). Live (field692), a builder's load plan put its
      * spare sword and its logs into the chest and its kit rule drew a stack of logs and made the sword again, a trip of

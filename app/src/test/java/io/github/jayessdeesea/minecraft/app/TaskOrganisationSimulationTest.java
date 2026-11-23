@@ -65,11 +65,16 @@ class TaskOrganisationSimulationTest {
 
     /** A squad leader holding the squad at the camp, every reply with these {@code roles} and {@code orders}. */
     private static ChatClient squadLeader(String roles, String orders) {
+        return squadLeader(roles, orders, false);
+    }
+
+    /** As {@link #squadLeader(String, String)}, its order giving leave to rearm or not. */
+    private static ChatClient squadLeader(String roles, String orders, boolean rearm) {
         String reply = String.format(Locale.ROOT, """
                 {"x": %.1f, "y": %.1f, "z": %.1f, "formation": "WEDGE", "interval": "NORMAL",
-                 "verticalTolerance": 4, "risk": "LOW", "soldierRisks": [], "rearm": false,
+                 "verticalTolerance": 4, "risk": "LOW", "soldierRisks": [], "rearm": %s,
                  "intent": "hold the camp", "cantco": "", "roleChanges": %s, "detached": %s}
-                """, CAMP.x(), CAMP.y(), CAMP.z(), roles, orders);
+                """, CAMP.x(), CAMP.y(), CAMP.z(), rearm, roles, orders);
         return ChatClient.create((ChatModel) prompt ->
                 new ChatResponse(List.of(new Generation(new AssistantMessage(reply)))));
     }
@@ -582,17 +587,47 @@ class TaskOrganisationSimulationTest {
     }
 
     /**
-     * A soldier's basic load is its own: with a wooden sword and the makings of a stone one - two
-     * cobblestone and a stick - it makes the stone sword, though its squad leader hasn't said
-     * "rearm". Live, 2 of 8 carried a stone sword or better for days, every upgrade waiting on it.
+     * Without its squad leader's leave a soldier climbs no kit ladder: a wooden sword and the makings of a stone one
+     * carried, no "rearm" said - no stone sword made, nor a table put down for one. Live (field692-693), soldiers on a
+     * task walked off to make spare swords their loads then put away.
      */
     @Test
-    void aSoldierMakesItsStoneSwordWithoutBeingToldTo() {
+    void withoutItsSquadLeadersLeaveASoldierMakesNoKitButWhatItLacks() {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
                 "A foothold", new Objective.Task.None())), squadLeader("[]", "[]"),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_COBBLESTONE, 4},
+                        new int[]{11, SimServer.ITEM_OAK_LOG, 4})))
+                .run();
+        clock.advance(5 * 60_000);
+
+        for (String soldier : List.of("Alice", "Bob")) {
+            assertEquals(0, server.count(soldier, SimServer.itemNamedOrMinus("stone_sword")), soldier + " made a stone sword unordered");
+            assertEquals(4, server.count(soldier, SimServer.ITEM_OAK_LOG), soldier + "'s logs spent on kit nobody ordered");
+        }
+    }
+
+    /**
+     * The kit ladder is the squad leader's leave (operator, 2026-11-22: soldiers do nothing without a command): with a
+     * wooden sword and the makings of a stone one - two cobblestone and a stick - a soldier makes the stone sword once its
+     * squad leader says "rearm".
+     */
+    @Test
+    void onItsSquadLeadersLeaveASoldierMakesItsStoneSword() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
+                "A foothold", new Objective.Task.None())), squadLeader("[]", "[]", true),
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
         new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
@@ -617,12 +652,12 @@ class TaskOrganisationSimulationTest {
      * down the mine.
      */
     @Test
-    void aSoldierMakesASpareSwordAndPickaxeWithoutBeingToldTo() {
+    void onItsSquadLeadersLeaveASoldierMakesASparePickaxeAndNoSwordItsLoadPutsAway() {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
         Roster roster = new Roster("Alpha:Alice");
         ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
-                "A foothold", new Objective.Task.None())), squadLeader("[]", "[]"),
+                "A foothold", new Objective.Task.None())), squadLeader("[]", "[]", true),
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
         new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
@@ -636,7 +671,7 @@ class TaskOrganisationSimulationTest {
         clock.advance(5 * 60_000);
 
         String events = "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size());
-        assertEquals(2, server.count("Alice", SimServer.itemNamedOrMinus("stone_sword")), "a spare sword" + events);
+        assertEquals(1, server.count("Alice", SimServer.itemNamedOrMinus("stone_sword")), "no spare sword: its surface load keeps one (LoadPlan.putsAway)" + events);
         assertEquals(2, server.count("Alice", SimServer.ITEM_STONE_PICKAXE), "a spare pickaxe" + events);
     }
 
@@ -646,12 +681,12 @@ class TaskOrganisationSimulationTest {
      * 32 slots for days with ore in the soldiers' packs: in 700 FRAGOs no squad leader said "rearm".
      */
     @Test
-    void aSoldierMakesItsIronArmourWithoutBeingToldTo() {
+    void onItsSquadLeadersLeaveASoldierMakesItsIronArmour() {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
         Roster roster = new Roster("Alpha:Alice");
         ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
-                "A foothold", new Objective.Task.None())), squadLeader("[]", "[]"),
+                "A foothold", new Objective.Task.None())), squadLeader("[]", "[]", true),
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
         new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
@@ -681,7 +716,7 @@ class TaskOrganisationSimulationTest {
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
         Roster roster = new Roster("Alpha:Alice;Bravo:Bob");
         ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
-                "A foothold", new Objective.Task.None())), squadLeader("[]", "[]"),
+                "A foothold", new Objective.Task.None())), squadLeader("[]", "[]", true),
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
         new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())

@@ -25,6 +25,11 @@ tiers the force has outgrown.
 - **The depot cleared of old tiers as the force matures** (operator, 2026-11-15): what's two tiers below the best the
   force now makes - wooden swords once stone is standard, stone once iron is - is cleared out; wooden tools burn as
   the smelter's fuel.
+- **Both buckets kept full of water** (operator, 2026-11-22: two buckets in the toolkit, both filled - it will help
+  tremendously with the wheat farms). Built: two buckets on every soldier's kit ladder (`Ladder.BUCKETS`). Left: a bucket
+  is filled only on the way to a hole (`bot.supply.WaterCarrier`), and only a farm's tender waters; an empty one is to be
+  filled at a pond's source when one is passed, and a template's holes watered by whoever lays its ground
+  (`app.TemplateGround`) - with two full buckets a soldier makes its own source beside the farm and needs no pond.
 - The first figures - the miner's third pickaxe, the stacks of 64 - refined from live wear.
 - **The hotbar by the task** (operator, 2026-11-22: the tools for the trade quickly accessible). Built: the sword,
   pickaxe, shovel, axe, a stack of blocks, food and torches each in its slot whatever the task (`bot.supply.Hotbar`,

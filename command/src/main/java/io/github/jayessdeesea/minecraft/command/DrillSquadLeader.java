@@ -21,7 +21,9 @@ import java.util.stream.Stream;
  *       base, NORMAL by day.</li>
  *   <li><b>Risk:</b> LOW, and MEDIUM for one soldier whose CANTCO says a MEDIUM route exists - a
  *       stuck soldier freed for half his health at most.</li>
- *   <li><b>Rearm:</b> by day, out of contact, and not building a patrol base.</li>
+ *   <li><b>Rearm:</b> by day, out of contact, and with no task - the squad holding. A squad given work does the work
+ *       (operator, 2026-11-22: soldiers do nothing without a command): its soldiers climb no kit ladder on a task, only
+ *       make the weapon or the pickaxe they have none of.</li>
  *   <li><b>Task organisation:</b> plans as they stand, but for one: with every soldier detached on a
  *       role, the one nearest the objective comes back to the squad as a rifleman - live, a squad
  *       of four miners left the platoon leader's FORTIFY to nobody all day.</li>
@@ -87,7 +89,7 @@ public final class DrillSquadLeader implements SquadLeader {
         Map<String, Risk> soldierRisk = new HashMap<>();
         soldiers.stream().skip(1).filter(s -> s.report() instanceof Report.Cantco(String why) && why.contains("(MEDIUM risk)"))
                 .forEach(s -> soldierRisk.put(s.name(), Risk.MEDIUM));
-        boolean rearm = !night && !inContact && !current.patrolBase();
+        boolean rearm = !night && !inContact && current.task() instanceof Objective.Task.None;
         return Optional.of(new SquadOrder(at, formation, interval, VERTICAL_TOLERANCE, Risk.LOW, soldierRisk, rearm, current.intent(),
                 changes(soldiers, current)));
     }

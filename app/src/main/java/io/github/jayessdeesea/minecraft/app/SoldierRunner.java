@@ -920,7 +920,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Each connected soldier's staircase cutting, by name. */
     private final Map<String, Miner> miners = new ConcurrentHashMap<>();
     /** The day's deaths and idlers, reviewed at each dawn. */
-    private final AfterActionReview afterActionReview = new AfterActionReview();
+    final AfterActionReview afterActionReview = new AfterActionReview();
     /** Where each soldier's food goes: sampled each tick, reviewed at dawn. */
     private final FoodLedger foodLedger = new FoodLedger();
     /** Soldiers walking a PATROL, and the leg of its round each is on - squad loop writes, tick reads. */
@@ -4015,27 +4015,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .or(() -> mineStore.load(base).filter(k -> k.size() == 2 || k.size() == 3).map(k -> keptStairs(k, false)));
     }
 
-    /** Iron a soldier - raw or smelted, carried or in the stores - the force holds before its mines stop for want of a use: a soldier's kit in iron. */
-    static final int IRON_RESERVE_A_SOLDIER = 32;
-
-    /**
-     * Whether the force wants ore: under its reserve of iron (operator, 2026-11-22: there should be a massive amount of iron
-     * in the camp), or a soldier wearing less than a full set of armour. A mine worked out is run on while it does. Live
-     * (field692), "wanted" was no iron pickaxe in the force and under three iron: with one pickaxe made, every mine was done.
-     */
-    private boolean oreWanted() {
-        return ironHeld() < IRON_RESERVE_A_SOLDIER * soldierDefinitions.size() || activeSoldiers.values().stream()
-                .anyMatch(s -> s.status().condition().flatMap(Condition::kit).map(k -> k.armour() < FULL_ARMOUR).orElse(false));
-    }
-
-    /** Pieces in a full set of armour. */
-    static final int FULL_ARMOUR = 4;
-
-    private int ironHeld() {
-        return soldierIron.values().stream().mapToInt(Integer::intValue).sum() + chainOfCommand.stores().map(s -> s.rawIron() + s.ironIngots()).orElse(0);
-    }
-
-
     /**
      * Ore blocks a night's mining should bring up at least (docs/conventions.md, check the outcome):
      * every squad works the mine through the night, and a mine with tunnels to cut finds a vein or
@@ -4113,8 +4092,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     + e.getValue().tunnel() + " blocks, crew " + mineCrew(e.getValue()).stream()
                     .map(n -> n + " " + Optional.ofNullable(stairsProgress.get(n)).map(p -> p.getClass().getSimpleName()).orElse("none"))
                     .toList()).collect(Collectors.joining("; "));
-            LOG.warn("[Outcome] the night's mining: {} ore block(s) taken, {} expected - SHORT; ore wanted {}; {}", night, NIGHT_ORE,
-                    oreWanted(), mines);
+            LOG.warn("[Outcome] the night's mining: {} ore block(s) taken, {} expected - SHORT; {}", night, NIGHT_ORE, mines);
         } else {
             LOG.info("[Outcome] the night's mining: {} ore block(s) taken, {} expected", night, NIGHT_ORE);
         }
@@ -4184,7 +4162,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // wider before it's left): live (field357), the second pair at y=-52 had no level under it, read
             // the keep's mine dried up and moved the night shift off it, its tunnels at 96 of 192.
             // Then the next free level under the rest and under the one it leaves - never the same again.
-            Optional<Staircase> runOn = left == null || !oreWanted() ? Optional.empty() : left.extended();
+            Optional<Staircase> runOn = left == null ? Optional.empty() : left.extended();
             Optional<Staircase> next = runOn.or(() -> freeLevel(left == null ? first : left.bottom() < first.bottom() ? left : first, key)
                     .filter(n -> left == null || n.bottom() < left.bottom()));
             squadStairs.remove(key);
@@ -4561,9 +4539,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 List<String> crew = state.stairs == null ? List.of() : mineCrew(state.stairs).stream()
                         .filter(n -> statuses.stream().anyMatch(s -> s.name().equals(n))).toList();
                 if (!crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done)) {
-                    // With ore wanted it's run on, not done (field674: DONE each minute as it was extended); with none, the camp's is spent and moves on (field663).
-                    if (oreWanted()) left = Optional.of("the stairs cut down to y=" + state.stairs.bottom() + ", worked on for the ore wanted");
-                    else { done = Optional.of("the stairs are cut down to y=" + state.stairs.bottom() + ", and the ore beside them taken"); if (campStairs().filter(c -> c.head().equals(state.stairs.head())).isPresent() && driedUp.add(state.stairs.head())) campMineSpent(); }
+                    // Run on, never done (field674: DONE each minute as it was extended): a mine doesn't stop for want of a use; with no level left it's dried up, and moves.
+                    left = Optional.of("the stairs cut down to y=" + state.stairs.bottom() + ", worked on for its ore");
                 } else if (state.stairs != null) {
                     left = Optional.of("the stairs " + state.stairs.stepsCut(world) + " of " + state.stairs.steps() + " steps down");
                 }
@@ -5334,7 +5311,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // DONE for their own, and it ran on from 24 blocks to 96 in seconds with nothing cut.
                 // Worked on while ore is wanted: the iron short, or anyone short of armour (operator,
                 // 2026-11-16: by now everyone should have armour). Run on a stretch, then a level deeper.
-                if (workedOut && oreWanted() && now - mineExtendedAt.getOrDefault(state.stairs.head(), 0L) >= EXTEND_SETTLE_MILLIS) {
+                if (workedOut && now - mineExtendedAt.getOrDefault(state.stairs.head(), 0L) >= EXTEND_SETTLE_MILLIS) {
                     Optional<Staircase> run = state.stairs.extended();
                     Optional<Staircase> longer = run.or(() -> freeLevel(state.stairs, squadName));
                     if (run.isEmpty() && longer.isPresent()) {
@@ -5598,8 +5575,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
                     .or(() -> Optional.ofNullable(acrossSquads.get(soldierName)))
                     .ifPresentOrElse(t -> deliveries.put(soldierName, t), () -> deliveries.remove(soldierName));
-            // The basic load - a weapon up to a stone sword - is the soldier's own to keep, out of
-            // contact; beyond it, the squad leader's leave. Live, 2 of 8 carried a stone sword or better for days, every rung waiting on "rearm".
+            // The weapon or the pickaxe it has none of is the soldier's own to make, out of contact; the kit ladder
+            // beyond it is the squad leader's leave (SquadOrder.rearm: a squad holding, with no task).
             rearmAllowed.put(soldierName, !squadInContact);
             upgradeAllowed.put(soldierName, order.rearm() && !squadInContact && !baseOrdered);
             stoneSetAside.put(soldierName, stoneShare);
@@ -6891,7 +6868,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 ladderStep.set(nextRung(name, inventory, status.position()));
             }
             // The ladder's next rung, if allowed; a pickaxe, if sent for stone without one - both at one table.
-            // On a mission's task it stays on it (operator, 2026-11-22): no haul from a mine's stash or an old camp's chest, logs only from a chest in its reach, no kit made but the weapon or pickaxe it lacks, no trip for its load's surplus.
+            // On a mission's task it stays on it (operator, 2026-11-22): no haul from a mine's stash or an old camp's chest, logs only from a chest in its reach.
             boolean onMission = chainOfCommand.farmMissions.on(objectiveOf(unitOf(name, definition.squad())));
             Set<Recipe> tools = new LinkedHashSet<>();
             // Not a keep builder's with a full load: it unloads first. A rung is made through planks,
@@ -6903,8 +6880,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // By day it's made at the squad's workshop on the surface.
             boolean belowByNight = chainOfCommand.time().map(TimeOfDay::dark).orElse(false) && underground(status.position());
             Optional<Recipe> rung = (keepState.hands.contains(name) && Pack.freeSlots(inventory) <= KEEP_FULL_AT ? Optional.<Recipe>empty() : ladderStep.get())
-                    .filter(r -> !(belowByNight && r.makes() == ItemClassRegistry.ItemClass.ARMOUR))
-                    .filter(r -> !onMission || SoldierErrands.madeOnMission(r.makes(), inventory.meleeWeapons(), inventory.count(ItemClass.PICKAXE)));
+                    .filter(r -> !(belowByNight && r.makes() == ItemClassRegistry.ItemClass.ARMOUR));
             rung.ifPresent(tools::add);
             // A lumberjack's axe: a builder sent to cut trees for the keep makes a stone one first, from
             // the cobblestone it carries (operator, 2026-11-14: the lumberjacks use axes).
@@ -7421,10 +7397,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     if (stashOre) {
                         pooled.addAll(STASHED);
                     }
-                    // What it carries past its work's load goes in too (LoadPlan; backlog/load-plans.md): a mine's cutters mine, the
-                    // rest work the surface by the base (field505: Gus 11 shovels, Dana 5 swords). A trip of its own once it's a few slots.
+                    // What it carries past its work's load goes in too (LoadPlan: field505, Gus 11 shovels, Dana 5 swords): a trip of its own once it's a few slots.
                     Optional<LoadPlan> plan = Optional.of(cutting.containsKey(name) ? LoadPlan.MINING : LoadPlan.FLATTENING);
-                    boolean surplusTrip = !onMission && plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
+                    boolean surplusTrip = upgradeAllowed.getOrDefault(name, false) && plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
                     // The depot's kinds past what the pack keeps go in with it while the depot's under its
                     // most (StockLevels) - not into a mine's stash - and a reserve run short is a trip of its own.
                     Map<ItemClass, Integer> packKept = planting.containsKey(name) ? SoldierErrands.PLANTER_CARRIED : keepState.hands.contains(name) ? KEEP_PACK
@@ -7591,7 +7566,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Optional<Hands.Routine> hands = Hands.tick(turns);
             placementAudit.routine(name, hands);
             afterActionReview.errands.contact(name, threatened, clockwork.millis()).tick(name, hands, status.position(), ErrandLedger.carried(inventory), clockwork.millis())
-                    .forEach(line -> LOG.info(line.startsWith("errands") ? "[Errand] {}" : "[Productivity] {}", line)); // a trip's yield against its walk
+                    .forEach(line -> { if (line.startsWith("loop")) LOG.warn("[Outcome] {} - SHORT", line); else LOG.info(line.startsWith("errands") ? "[Errand] {}" : "[Productivity] {}", line); }); // a trip's yield against its walk
             if (keepState.hands.contains(name)) {
                 keepState.saplingsCarried.put(name, inventory.count(ItemClass.SAPLING));
                 clearer.drainTimes().forEach(t -> keepState.pace.merge(name, t, LevelPace.Tally::plus));
@@ -7995,9 +7970,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Past no rung the camp's level doesn't authorise (docs/military-doctrine.md § 11, basis of issue); with no camp there's no level to go by.
         Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig,
                 upgradeAllowed.getOrDefault(name, false) ? highest : Math.min(highest, Ladder.BASIC_LOAD),
-                camp == null ? Optional.empty() : Optional.of(campLevel));
-        next.ifPresentOrElse(r -> rungsWanted.put(name, Ladder.rungOf(r)), () -> rungsWanted.remove(name));
-        return next;
+                camp == null ? Optional.empty() : Optional.of(campLevel), r -> (cutting.containsKey(name) ? LoadPlan.MINING : LoadPlan.FLATTENING).putsAway(r, inventory)); // nor what its load puts away
+        Optional<Recipe> made = upgradeAllowed.getOrDefault(name, false) ? next
+                : next.filter(r -> SoldierErrands.madeOnMission(r.makes(), inventory.meleeWeapons(), inventory.count(ItemClass.PICKAXE)));
+        made.ifPresentOrElse(r -> rungsWanted.put(name, Ladder.rungOf(r)), () -> rungsWanted.remove(name));
+        return made;
     }
 
     /** Each squad's staircase, while it has one - squad loops write, the site measure reads. */

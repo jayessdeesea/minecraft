@@ -133,6 +133,26 @@ a squad; an objective is a place. The code's `Objective` type and `objective` ta
    against the estimate's), and a deep dive: an exceptional event becomes a sim cell and a fix; a wrong expectation
    corrects the estimate.
 
+## What a soldier still starts itself (operator, 2026-11-22: get rid of the soldiers' free will)
+The freedom left to a soldier: fight or flee, eat what it carries, take the tool for the block in front of it, get itself
+out of a hole or out of water, and say what it can't do or is short of. Built: the kit ladder and the surplus trip are
+the squad leader's leave (`SquadOrder.rearm`, a squad holding); a trip that moved nothing isn't made again. Each of the
+rest becomes a report up and a task down - the soldier short of a thing says so, its squad leader gives the draw, the
+haul or the making to somebody as a task - or goes:
+- **`DEPOSITOR`'s own trips** (`SoldierRunner`, the depositor's turn): a reserve run short at the depot (`stockTrip`),
+  bread past its load, ore to pool, a full pack; and its draws - food, seeds, dirt, logs, cobblestone, metal, string
+  for a bed, a mine's stash hauled up. A full pack is "can't go on" and stays; the rest are logistics, the squad
+  leader's or the platoon sergeant's to order.
+- **`ARMOURER`'s walks**: to quarry stone, to dig ore, to a workshop 40 blocks off for one sword. With leave it still
+  chooses where; it should be told.
+- **`SUPPLY_RUN`**, **`HUNTER`**, **`TORCHMAKER`**, **`SCAVENGER`**, **`GATHERER`** started for its own tools.
+- **The rules that give work no one ordered**: by night every squad's objective becomes the camp's mine
+  (`app.NightRules`), and "fill the camp's ground", "dig the keep" and the harvester's and baker's duties are handed
+  out by rule. They become the platoon leader's standing orders, kept with its missions (the plan below, step 1).
+- **Rearm as an order of its own**: today it rides on a squad holding. The platoon leader should be able to order a
+  refit - buckets, armour - for a squad, by name.
+- An idle soldier is then the signal: its echelon above gave it nothing.
+
 ## Left from the flatten work (2026-11-22)
 - **Water in the dig beyond one source.** A source in the dig is filled, then dug (docs/military-doctrine.md § 17,
   `FlattenTopsSimulationTest`). Not yet a case: a pond's worth, where the fill of one cell is flowed into from the
