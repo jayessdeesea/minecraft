@@ -2235,7 +2235,12 @@ tree chunk's template (§ 12), a trunk cell with no soil under it said and passe
   no hole stands open below sea level; an open one built; a paver out of cobblestone draws a load from the stockpile
   while it holds some. Done when every cell is cobblestone.
 - **The template** at the farm's level on the floor: its dirt laid on the cobblestone, its water holes' floor the
-  cobblestone under them, its crop a block over (§ 12, the camp's farm).
+  cobblestone under them, its crop a block over (§ 12, the camp's farm). While any of its ground is missing, laying it is
+  the whole squad's (operator, 2026-11-22; `app.TemplateGround`): each soldier a strip of the missing cells in dirt
+  (`Tasking.soil`), the holes left open, the task "lay the farm's ground" on the squad's register; one short of dirt draws
+  a load from the nearest chest holding some, and with none in any chest is sent for a load from the ground east of the
+  chunk over its level. Laid, the chunk is its one tender's again. Live (field692), a floored chunk wanted 247 cells of
+  dirt, its tender laid the 11 it carried and stood.
 
 Level by level, in lock step, planned by the keep's foreman (`command.LevelPlan`, operator
 2026-11-14): one soldier the squad leader appoints - the first builder of the first squad on the

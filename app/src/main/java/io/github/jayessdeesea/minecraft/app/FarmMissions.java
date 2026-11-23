@@ -162,6 +162,18 @@ final class FarmMissions {
         }).toList();
     }
 
+    /** Whether {@code objective} is a mission's step worked now: its squad is on the operator's mission. */
+    boolean on(Optional<Objective> objective) {
+        return objective.filter(objectives()::contains).isPresent();
+    }
+
+    /** The chunk farm whose template {@code objective} is - a wheat farm mission's last step, worked now - if it is one. */
+    Optional<ChunkFarm> template(Optional<Objective> objective) {
+        return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.FARM_TEMPLATE
+                        && objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent())
+                .map(c -> new ChunkFarm(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level())).findFirst();
+    }
+
     /** The mission whose flatten is under way, and that step. */
     private Optional<Map.Entry<FarmMission, FarmMission.Step>> flattening() {
         return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.FLATTEN).findFirst();

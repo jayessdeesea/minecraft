@@ -25,7 +25,12 @@ for the issuer to answer. Anything else that changes what a soldier or squad is 
 own. The platoon leader is to be giving commands shortly, so a soldier idle is the platoon leader's fault, and counted
 against it: the measure of the platoon leader is soldier-time without a task (`[Idle]`, the chain of command's share;
 the status page's "no task"). The errands a soldier still makes up for itself (`app.SoldierErrands`) and the runner's
-per-soldier rules go as backlog/soldier-order.md and step 4 take them.
+per-soldier rules go as backlog/soldier-order.md and step 4 take them. Begun: on a mission's task a soldier hauls
+nothing from a mine's stash or an old camp's chest and draws logs only from a chest in its reach
+(docs/echelons/soldier/capabilities.md, "What it can't do"); its deposits, its stone and metal draws and its making of
+its own kit are left, and nothing yet says its shortage up to its squad leader in their place. Live (field692): Eli
+lost under the old camp's hill a whole run on "dig the camp's ground", 3,758 changes of activity - the camp upkeep's
+rule, a recovery nobody ordered.
 
 **There is always a mission** (operator, 2026-11-22). The standing one, in force whenever the operator has given no
 other: go back to the ground round x=0, z=0 at sea level and fortify the permanent structure there; if there is none

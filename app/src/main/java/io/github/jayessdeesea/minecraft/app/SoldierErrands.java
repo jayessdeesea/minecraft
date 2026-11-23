@@ -85,6 +85,31 @@ final class SoldierErrands {
         return java.util.regex.Pattern.compile("[{ ]" + item + "=").matcher(failure).find();
     }
 
+    /** What a chest holds of {@code metal} - raw ore, an ingot, logs or cobblestone - by its stockpile's count. */
+    static java.util.function.ToIntFunction<Stockpile> held(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass metal) {
+        return switch (metal) {
+            case RAW_IRON -> Stockpile::rawIron;
+            case RAW_COPPER -> Stockpile::rawCopper;
+            case IRON_INGOT -> Stockpile::ironIngots;
+            case COPPER_INGOT -> Stockpile::copperIngots;
+            case LOG -> Stockpile::logs;
+            case COBBLESTONE -> Stockpile::stone;
+            default -> throw new IllegalArgumentException(metal + " isn't drawn from the chest holding it");
+        };
+    }
+
+    /** How far across, and how far up or down, a chest is still in reach of a soldier on a mission's task. */
+    static final double MISSION_REACH = 48, MISSION_REACH_UP = 12;
+
+    /**
+     * Whether {@code chest} is in reach of a soldier at {@code from} whose squad is on a mission's task (operator,
+     * 2026-11-22: a soldier on a task stays on it): near by, and near its own height. Live (field692), two of a squad
+     * flattening a chunk walked 300 blocks each to a chest at the bottom of the mine, 60 under them, for eight logs.
+     */
+    static boolean inMissionReach(Position chest, Position from) {
+        return Math.hypot(chest.x() - from.x(), chest.z() - from.z()) <= MISSION_REACH && Math.abs(chest.y() - from.y()) <= MISSION_REACH_UP;
+    }
+
     /** Cobblestone drawn for a weapon or tool short of it: a stone sword's blade, a pickaxe's head, and some over. */
     static final int DRAW_STONE = 8;
 

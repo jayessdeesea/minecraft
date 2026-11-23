@@ -135,6 +135,12 @@ armour, arrows, logs, cobblestone, dirt, rations, shield, pickaxe, bow, spare we
 - Open doors or gates on its route. A farmer opens a chunk farm's gates once they stand and leaves them open
   (docs/military-doctrine.md, the camp's farm); a route through a shut gate is no route.
 - Decide what to work on. That comes from its squad's task (see [routines.md](routines.md)).
+- Leave a mission's task for an errand of its own (operator, 2026-11-22). While its squad's objective is a step of the
+  operator's mission (`FarmMissions.on`), it hauls nothing from a mine's stash or an old camp's chest, and draws logs for
+  its tools only from a chest in its reach - 48 blocks across and 12 up or down (`SoldierErrands.inMissionReach`). Live
+  (field692), two of a squad flattening a chunk walked 300 blocks each to a chest at the bottom of the mine for eight
+  logs. Its other errands - a full pack's deposit, cobblestone and metal drawn for a tool - are still its own
+  (backlog/authority-and-missions.md).
 
 ## What it approximates
 Its movement (`bot.Gait`, `bot.Mover`, `bot.nav.Pathfinder`) and its senses approximate the game's. A gap is closed when

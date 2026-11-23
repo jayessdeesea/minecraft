@@ -1063,15 +1063,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** The nearest surface chest last seen holding {@code metal} - raw ore or an ingot - to {@code from}. */
     private Optional<Position> metalChest(ItemClass metal, Position from) {
-        java.util.function.ToIntFunction<Stockpile> count = switch (metal) {
-            case RAW_IRON -> Stockpile::rawIron;
-            case RAW_COPPER -> Stockpile::rawCopper;
-            case IRON_INGOT -> Stockpile::ironIngots;
-            case COPPER_INGOT -> Stockpile::copperIngots;
-            case LOG -> Stockpile::logs;
-            case COBBLESTONE -> Stockpile::stone;
-            default -> throw new IllegalArgumentException(metal + " isn't drawn from the chest holding it");
-        };
+        java.util.function.ToIntFunction<Stockpile> count = SoldierErrands.held(metal);
         // A chest the world no longer shows is forgotten, not walked to: live (field324), a draw went
         // seven times to a mine's old stash at y=24 that wasn't there, and failed each time.
         forgetChestsGone(chestsSeen, world);
@@ -3853,7 +3845,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         for (SoldierStatus s : statuses) {
             String n = s.name();
             String task = groundGather.containsKey(n) ? "gather " + groundGather.get(n).resource()
-                    : filling.containsKey(n) ? (keepState.hands.contains(n) ? "fill the keep" : "fill the camp's ground")
+                    : filling.containsKey(n) ? (keepState.hands.contains(n) ? "fill the keep" : farming.containsKey(n) ? "lay the farm's ground" : "fill the camp's ground")
                     : clearing.containsKey(n) ? (keepState.hands.contains(n) ? "dig the keep" : "dig the camp's ground")
                     : walling.containsKey(n) ? "wall the camp"
                     : repointing.containsKey(n) ? "wall the camp in stone"
@@ -3882,7 +3874,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             List<?> left = switch (task) {
                 case "dig the camp's ground", "dig the keep" -> clearing.get(n);
-                case "fill the camp's ground", "fill the keep" -> filling.get(n);
+                case "fill the camp's ground", "fill the keep", "lay the farm's ground" -> filling.get(n);
                 case "wall the camp" -> walling.get(n);
                 case "wall the camp in stone" -> repointing.get(n);
                 case "light the ground" -> lighting.get(n);
@@ -5268,6 +5260,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 dutyBook.cutOut(squadName, statuses.stream().map(SoldierStatus::name).toList(), objectiveOf(squadName),
                         n -> gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE), at -> woodsBook.spent(chainOfCommand, at, clockwork.millis())));
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
+        // A farm mission's template whose ground isn't laid: the whole squad lays it in dirt, not its tender alone (app.TemplateGround).
+        chainOfCommand.farmMissions.template(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.orders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt)));
         statuses.forEach(s -> policeCall.order(s, ground.containsKey(s.name()), withoutWork.alarmed(s.name()) || idleWatch.alarmed(s.name()) && s.report() instanceof Report.Cantco,
                 world, scaffolding, stepPlacedAt, activeSoldiers.values().stream().map(d -> d.status().position()).toList(),
                 Optional.ofNullable(campWallKey).map(walls::get).map(Set::copyOf).orElse(Set.of()), clockwork.millis()).ifPresent(o -> ground.put(s.name(), o)));
@@ -6968,7 +6962,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Logs from the nearest chest holding them, as metal is: its own stockpile may hold none. Live
             // (field347), Eli at the mine's head couldn't make a pickaxe, "no LOG within 48 blocks", with
             // 71 logs in the stores - in the keep's depot, and his stockpile the camp's chest.
-            Optional<Position> logsAt = metalChest(ItemClass.LOG, status.position());
+            // On a mission's task it stays on it (operator, 2026-11-22): no haul from a mine's stash or an old camp's chest, and logs only from a chest in its reach.
+            boolean onMission = chainOfCommand.farmMissions.on(objectiveOf(unitOf(name, definition.squad())));
+            Optional<Position> logsAt = metalChest(ItemClass.LOG, status.position()).filter(c -> !onMission || SoldierErrands.inMissionReach(c, status.position()));
             boolean drawingMetal = metalDraw.isPresent() || MetalPool.METALS.stream().anyMatch(depositor::drawing);
             if (drawingMetal) {
                 rung.ifPresent(tools::remove);
@@ -6980,7 +6976,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean darkNow = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
             boolean stashOre = darkNow && working != null && mineOfChest(chestCentre(working)).isPresent()
                     && STASHED.stream().mapToInt(inventory::count).sum() >= STASH_ORE;
-            Optional<Unstash> unstash = unstashFor(status.position(), inventory, darkNow)
+            Optional<Unstash> unstash = onMission ? Optional.empty() : unstashFor(status.position(), inventory, darkNow)
                     .or(() -> salvageFor(name, status.position(), inventory, darkNow, depositor::barred));
             // Bare-handed - or short of a stone sword, the phase's arms, with its own work CANTCO'd - its weapon is its own upkeep
             // (docs/echelons/tenets.md): live (field536), Eli stuck in his mine with a wooden sword held the seizure a day.
@@ -7383,6 +7379,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else if (carried != null && Subsistence.short_(carried.rations()) && chestHolding(ItemClass.FOOD, status.position()).isPresent()) {
                     // No rations: bread first, from the nearest chest holding some - not after metal and stone, nor only its own depot's. Live (field568), Eli drew iron and cobblestone all run, shot dead at 1 health.
                     depositor.tickDraw(status.position(), chestHolding(ItemClass.FOOD, status.position()), ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened);
+                } else if (soilFilling.contains(name) && filling.containsKey(name) && inventory.count(ItemClass.DIRT) < Tasking.LOW && chestHolding(ItemClass.DIRT, status.position()).isPresent()) { // its fill's dirt, drawn from the nearest chest holding some (operator, 2026-11-22)
+                    depositor.tickDraw(status.position(), chestHolding(ItemClass.DIRT, status.position()), ItemClass.DIRT, Tasking.LOAD, free && !threatened);
                 } else if (farmer.outOfSeeds() && chestHolding(ItemClass.SEEDS, status.position()).isPresent()) { // its sowing's seeds, drawn (field603)
                     depositor.tickDraw(status.position(), chestHolding(ItemClass.SEEDS, status.position()), ItemClass.SEEDS, SEEDS_DRAWN, free && !threatened);
                 } else if (unstash.isPresent()) {

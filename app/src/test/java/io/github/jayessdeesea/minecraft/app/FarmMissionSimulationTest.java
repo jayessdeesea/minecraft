@@ -87,6 +87,11 @@ class FarmMissionSimulationTest {
 
     /** A squad of four on the camp's farm by the platoon leader's own order, the operator's farm given at the start. */
     private SimServer run(SimClock clock, SimServer.Terrain world, PlayerPosition spawn, String camp, long minutes) {
+        return run(clock, world, spawn, camp, minutes, kit());
+    }
+
+    /** As {@link #run(SimClock, SimServer.Terrain, PlayerPosition, String, long)}, each soldier joining with {@code kit}. */
+    private SimServer run(SimClock clock, SimServer.Terrain world, PlayerPosition spawn, String camp, long minutes, List<int[]> kit) {
         SimServer server = new SimServer(clock, world, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
         Position chunk = FARM.centre(FARM.steps().getFirst());
@@ -96,10 +101,39 @@ class FarmMissionSimulationTest {
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
         SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, camp, state.toString());
         chain.onOperatorFarm("Pat", FARM);
-        runner.simulated(clock, server.connector(spawn, kit())).run();
+        runner.simulated(clock, server.connector(spawn, kit)).run();
         clock.advance(minutes * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         return server;
+    }
+
+    /**
+     * The eval: the template's ground is the whole squad's to lay (operator, 2026-11-22). The same hilly chunk, but nobody
+     * joins carrying dirt: what the squad has is what its flatten dug, spread over the four of them. Live (field692), a
+     * floored chunk wanted 247 cells of dirt, its one tender laid the 11 it carried and stood, and the farm never came.
+     * Every cell of the template's ground laid, and wheat sown on it.
+     */
+    @Test
+    void aSquadJoiningWithNoDirtLaysTheTemplatesGroundBetweenThem() throws IOException {
+        SimClock clock = new SimClock();
+        List<int[]> noDirt = kit().stream().filter(slot -> slot[1] != SimServer.ITEM_DIRT).toList();
+        SimServer server = run(clock, FarmMissionSimulationTest::hills, new PlayerPosition(30.5, GROUND + 1, 8.5), "0,0", 90, noDirt);
+        List<String> log = Files.readAllLines(Path.of("target", "sim", "aSquadJoiningWithNoDirtLaysTheTemplatesGroundBetweenThem.log"));
+        String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]")).toList();
+
+        ChunkFarm farm = new ChunkFarm(FARM.chunkX(), FARM.chunkZ(), LEVEL);
+        List<String> bare = farm.ground().stream().filter(g -> server.block(g.x(), g.y(), g.z()) != SimServer.DIRT
+                && server.block(g.x(), g.y(), g.z()) != SimServer.FARMLAND && server.block(g.x(), g.y(), g.z()) != SimServer.GRASS)
+                .map(g -> g.x() + "," + g.z() + "=" + server.block(g.x(), g.y(), g.z())).toList();
+        assertEquals(List.of(), bare, "every cell of the template's ground laid" + missionLines);
+        long layers = log.stream().filter(l -> l.contains("[Register]") && l.contains("on lay the farm's ground")).map(l -> l.replaceAll(".*\\[Register\\] (\\w+) on .*", "$1"))
+                .distinct().count();
+        assertTrue(layers >= 3, "the squad laid it between them, not one tender: " + layers + " of 4 were on it" + missionLines);
+        Set<String> ground = new HashSet<>();
+        farm.ground().forEach(g -> ground.add(g.x() + "," + (g.y() + 1) + "," + g.z()));
+        long sown = List.copyOf(server.log).stream().filter(l -> l.contains(" sowed ")).map(l -> l.substring(l.indexOf(" sowed ") + 7)).filter(ground::contains)
+                .distinct().count();
+        assertTrue(sown >= 150, "wheat sown on the template's ground: " + sown + " of " + ground.size() + missionLines);
     }
 
     /** The tree farm's chunk: (2, 0) too, its ground at sea level. */
