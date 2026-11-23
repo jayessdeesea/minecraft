@@ -246,4 +246,48 @@ class FarmMissionsTest {
 
     private record Row(ObjectiveRecord.State state, java.util.Optional<String> why) {
     }
+
+    /**
+     * A mineshaft's mission: its head, then its shaft - a MINE at the chunk's middle, its y the depth to cut to - done when
+     * whoever works it says the mine there is dry (operator, 2026-11-22: a squad goes down one and mines it till dry).
+     */
+    @Test
+    void aMineshaftsShaftIsDoneWhenItsMineIsDry() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMission shaft = new FarmMission(2, 4, 63, FarmMission.Crop.MINE);
+        assertEquals("a mineshaft at chunk (2, 4) at y=63", shaft.name());
+        assertEquals(java.util.Optional.of(shaft), FarmMission.named(shaft.name()));
+        for (FarmMission.Step step : shaft.steps()) {
+            registers.add(new ObjectiveRecord(0, shaft.name(), step.index(), step.task(), 2, 4, java.util.Optional.empty(),
+                    step.index() == 0 ? ObjectiveRecord.State.DONE : ObjectiveRecord.State.PLANNED, 0, java.util.Optional.empty()));
+        }
+        FarmMissions missions = new FarmMissions(cause -> { });
+        missions.keptIn(new ObjectiveBook(() -> registers));
+        io.github.jayessdeesea.minecraft.bot.world.WorldView world = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        missions.measure(world, null, null, null, 5_000);
+        io.github.jayessdeesea.minecraft.command.Objective mine = missions.objectives().getFirst();
+        assertTrue(mine.task() instanceof io.github.jayessdeesea.minecraft.command.Objective.Task.Mine, "its squad's task a MINE: " + mine);
+        assertEquals(new io.github.jayessdeesea.minecraft.command.Position(40.5, ChainOfCommand.MINE_DEPTH, 72.5), mine.location(), "at the chunk's middle, its y the depth");
+
+        missions.mineDry(40, 72);
+        missions.measure(world, null, null, null, 6_000);
+        assertEquals(List.of(), missions.worked(), "dry: the mission done");
+        assertEquals(ObjectiveRecord.State.DONE, registers.objectives().stream().filter(r -> r.step() == 1).findFirst().orElseThrow().state());
+    }
 }

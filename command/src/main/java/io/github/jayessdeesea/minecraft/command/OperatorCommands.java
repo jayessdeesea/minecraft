@@ -27,6 +27,12 @@ public interface OperatorCommands {
     String giveSupplyPointMission(int x, int z, OptionalInt level);
 
     /**
+     * The mineshaft mission on the chunk block ({@code x}, {@code z}) is in, its head at {@code level} - sea level if
+     * none: the head fenced, lit and its chests put up, then its shaft mined till dry.
+     */
+    String giveMineshaftMission(int x, int z, OptionalInt level);
+
+    /**
      * The farm mission open on chunk ({@code chunkX}, {@code chunkZ}) cancelled: its phases not done closed SUPERSEDED,
      * {@code reason} kept in each row's why, none deleted - and not taken up again after a restart.
      */

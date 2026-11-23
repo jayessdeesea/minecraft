@@ -126,7 +126,12 @@ flattened to its level, that ground paved in cobblestone, then the supply point'
 the chunk farms' fence and gates, nine torches, a workshop of a table and four furnaces, four rows of six double chests
 by class of supply) - each fixture made and put in the cell the layout names by the squad on its `STORES` task
 (`bot.supply.Fixtures`), done when it's fenced and lit, its workshop in and its first two rows up, food and Class IV
-(`StoresChunk.stocked`). Each open mission's
+(`StoresChunk.stocked`). "A mineshaft at chunk (x, z)" (operator, 2026-11-22; the chat's `giveMineshaftMission`) has
+no flatten - a shaft goes down from the ground as it lies - and two phases: its head (`bot.farm.MineHead`: the chunk
+farms' fence and gates, four torches, four chests along its south side for ore and what's worth keeping, its middle
+left clear), put up as a supply point's fixtures are; then its shaft, a `MINE` at the chunk's middle for the one squad
+on the mission, worked day and night, done when that mine is dried up - every level cut (`FarmMissions.mineDry`, told
+by the runner). Where the mineshafts are is kept with the missions, in the task register's rows. Each open mission's
 phase under way is worked at once, a squad each - a wheat farm's floor and a tree farm's flatten together - but one
 flatten at a time, the first given, since the squads flatten one ground (`FarmMissions.worked`). A mission carried on at
 its template isn't measured back to its flatten: the template's own ground stands over the flatten's level. The level is the operator's alone: the chat's `giveFarmMission` keeps a
@@ -220,7 +225,7 @@ turn is a model call through the same `ChatClient` (`command.ai.PlatoonLeaderCha
   prompt: the tools read them as they stand at the moment asked, at the level asked.
 - **What it may do: commands, as tools** (`command.OperatorCommands`, `app.ChatCommands`), each one of the operator's
   own orders through the chain of command - the same WILCO on the net, order trace and checks as from game chat:
-  `giveFarmMission`, `giveTreeFarmMission` and `giveSupplyPointMission` (`ChainOfCommand.onOperatorFarm`), `cancelMission` (`onOperatorCancel`), `replacePlatoonMission`
+  `giveFarmMission`, `giveTreeFarmMission`, `giveSupplyPointMission` and `giveMineshaftMission` (`ChainOfCommand.onOperatorFarm`), `cancelMission` (`onOperatorCancel`), `replacePlatoonMission`
   (`onOperatorMission`), `escort` (`onOperatorEscort`) and `setFlattenGround` (`onOperatorFlatten`). None writes,
   edits or deletes a register's row: the rows are the chain of command's to keep. The prompt and each command's
   description say it's used only when the operator asks for it in this turn. What each command did is said as it

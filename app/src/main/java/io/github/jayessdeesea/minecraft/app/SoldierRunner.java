@@ -4032,7 +4032,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private volatile boolean wasDark = true;
     /** The mine at ({@code x}, {@code z}) - its head, or the site ordered with no well there - dried up: the keep's moves on if it's that one, the camp's if the camp's. */
     private void mineDriedUp(int x, int z) {
-        chainOfCommand.onMineDriedUp(x, z).ifPresent(site -> mineSiteBook.keepKeepMine(chainOfCommand));
+        chainOfCommand.onMineDriedUp(x, z).ifPresent(site -> mineSiteBook.keepKeepMine(chainOfCommand)); chainOfCommand.farmMissions.mineDry(x, z);
         if (campStairs().filter(s -> s.head().x() == x && s.head().z() == z).isPresent()
                 || campMineSite().filter(s -> (int) Math.floor(s.x()) == x && (int) Math.floor(s.z()) == z).isPresent()) {
             campMineSpent();
@@ -6961,7 +6961,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             dutyBook.sample(definition.squad(), name, afterActionReview.errands, () -> bakes ? chainOfCommand.stores().map(st -> st.wheat()).orElse(0) + inventory.count(ItemClass.WHEAT)
                     : field != null ? Farmer.ripe(world, field) : dutyBook.plantsNothing(name, planting.get(name), world) ? 0 : 1, bakes ? armourer.failure() : farmer.failure(), clockwork.millis());
             Optional.ofNullable(planting.get(name)).ifPresent(g -> tools.addAll(Forester.wants(world, g, inventory))); // its tree chunk's chest, torches
-            Optional<io.github.jayessdeesea.minecraft.bot.farm.StoresChunk> stores = chainOfCommand.farmMissions.stores(objectiveOf(unitOf(name, definition.squad()))); tools.addAll(templateFixtures.wants(world, stores, inventory)); // a supply point's fixtures
+            Optional<Map<ItemClass, List<BlockPos>>> stores = chainOfCommand.farmMissions.fixtures(objectiveOf(unitOf(name, definition.squad()))); tools.addAll(templateFixtures.wants(world, stores, inventory)); // a supply point's fixtures
             if (field != null) { // its hoe, a bucket for its farm's water holes, its chunk farm's fixtures (Farmer.wants)
                 tools.addAll(Farmer.wants(world, field, inventory));
                 bucketOnFarm |= inventory.count(ItemClass.BUCKET) + inventory.count(ItemClass.WATER_BUCKET) > 0;

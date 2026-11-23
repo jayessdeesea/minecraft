@@ -173,6 +173,20 @@ final class PlatoonLeaderTools {
         return command("giveSupplyPointMission " + x + " " + z + (y == null ? "" : " " + y), () -> commands.giveSupplyPointMission(x, z, level));
     }
 
+    @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "giveMineshaftMission", description = "A command - only when the operator asks for it in this turn. Gives the "
+            + "mission 'a mineshaft at' the chunk a block is in, carried out in two phases: its head - the chunk fenced and gated, four "
+            + "torches, four chests for ore and valuables - then its shaft, cut down from the chunk's middle and mined by one squad, day "
+            + "and night, till it's dry. Quote its result.")
+    String giveMineshaftMission(@ToolParam(description = "a block's x in the chunk") int x, @ToolParam(description = "a block's z in the chunk") int z,
+                                @ToolParam(required = false, description = "the level of the ground at its head, only if the operator said one; leave it out for sea level")
+                                Integer y) {
+        OptionalInt level = levelAsSaid(y, message);
+        if (y != null && level.isEmpty()) {
+            LOG.warn("[Chat] the platoon leader's mineshaft at y={} read as sea level: the operator said no level", y);
+        }
+        return command("giveMineshaftMission " + x + " " + z + (y == null ? "" : " " + y), () -> commands.giveMineshaftMission(x, z, level));
+    }
+
     @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "cancelMission", description = "A command - only when the operator asks for it in this turn. Cancels the farm "
             + "or tree farm mission open on a chunk: its phases not done are closed SUPERSEDED with the operator's reason kept, none deleted, and it "
             + "isn't taken up again. Quote its result.")

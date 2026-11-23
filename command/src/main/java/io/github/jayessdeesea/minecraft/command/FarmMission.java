@@ -20,6 +20,9 @@ import java.util.regex.Pattern;
  * <p>A supply point (operator, 2026-11-22) is the same again: the chunk flattened to the level, that ground paved in
  * cobblestone, then the supply point's template on it - its fence, torches, workshop and first rows of chests.
  *
+ * <p>A mineshaft (operator, 2026-11-22) has no flatten: its head - fence, lights, a bank of chests - then its shaft, worked
+ * by its squad till it's dry.
+ *
  * @param chunkX the chunk's x, block x / 16
  * @param chunkZ the chunk's z, block z / 16
  * @param level  the farm's ground: the dirt's level, the crops or saplings a block over it
@@ -28,7 +31,7 @@ import java.util.regex.Pattern;
 public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
 
     /** What a mission makes of its chunk: wheat on a chunk farm, trees on a tree chunk, or the supply point's stores. */
-    public enum Crop { WHEAT, TREES, STORES }
+    public enum Crop { WHEAT, TREES, STORES, MINE }
 
     public FarmMission {
         Objects.requireNonNull(crop, "crop");
@@ -43,7 +46,7 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
     public static final int SEA_LEVEL = 63;
 
     /** What a step of the mission is. */
-    public enum Kind { FLATTEN, FLOOR, FARM_TEMPLATE, TREE_TEMPLATE, STORES_TEMPLATE }
+    public enum Kind { FLATTEN, FLOOR, FARM_TEMPLATE, TREE_TEMPLATE, STORES_TEMPLATE, MINE_HEAD, MINE }
 
     /** A step of the mission: its place in it, what it is, the level it works to, as said down the chain. */
     public record Step(int index, Kind kind, int level, String task) {
@@ -70,12 +73,20 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
             case WHEAT -> "wheat farm";
             case TREES -> "tree farm";
             case STORES -> "supply point";
+            case MINE -> "mineshaft";
         };
     }
 
     /** Its steps, in order: flatten to the level below, floor it in cobblestone there, the farm template at the level. */
     public List<Step> steps() {
         String chunk = String.format(Locale.ROOT, "chunk (%d, %d), x %d..%d z %d..%d", chunkX, chunkZ, minX(), minX() + 15, minZ(), minZ() + 15);
+        if (crop == Crop.MINE) {
+            // No flatten: a shaft goes down from the ground as it lies. Its head first - fence, lights, chests - then the
+            // shaft worked till it's dry (operator, 2026-11-22: a squad goes down one and mines it till dry).
+            return List.of(
+                    new Step(0, Kind.MINE_HEAD, level, "the mineshaft's head on " + chunk + " at y=" + level),
+                    new Step(1, Kind.MINE, level, "mine the shaft under " + chunk + " till it's dry"));
+        }
         if (crop == Crop.STORES) {
             return List.of(
                     new Step(0, Kind.FLATTEN, level, "flatten " + chunk + " to y=" + level),
@@ -98,13 +109,13 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
         return name() + ": " + step.task();
     }
 
-    private static final Pattern NAME = Pattern.compile("a (tree farm|farm|supply point) at chunk \\((-?\\d+), (-?\\d+)\\) at y=(-?\\d+)");
+    private static final Pattern NAME = Pattern.compile("a (tree farm|farm|supply point|mineshaft) at chunk \\((-?\\d+), (-?\\d+)\\) at y=(-?\\d+)");
 
     /** The mission {@code name} names, as {@link #name} says it: empty for any other. */
     public static Optional<FarmMission> named(String name) {
         Matcher m = NAME.matcher(name);
         return m.matches() ? Optional.of(new FarmMission(Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)), Integer.parseInt(m.group(4)),
-                m.group(1).equals("farm") ? Crop.WHEAT : m.group(1).equals("tree farm") ? Crop.TREES : Crop.STORES)) : Optional.empty();
+                m.group(1).equals("farm") ? Crop.WHEAT : m.group(1).equals("tree farm") ? Crop.TREES : m.group(1).equals("mineshaft") ? Crop.MINE : Crop.STORES)) : Optional.empty();
     }
 
     /**

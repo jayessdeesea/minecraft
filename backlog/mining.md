@@ -29,7 +29,9 @@ and ore beyond it left and noted (docs/military-doctrine.md § 16). To build, in
 - **A strip that breaks into a cave is walled off**, not bridged: the mine stays a closed set of corridors.
 - **Two bands**: iron's levels from y=16 down first; with iron pickaxes carried, a mine straight down to about y=-56
   for diamonds, not seventeen levels crept through. The ore noted for want of a pickaxe (`app.OreNotes`) is gone back for.
-- **The mineshaft as a template** - the fourth, after wheat, trees and the supply point (operator, 2026-11-22): a chunk
+- **The mineshaft as a template** - the fourth, after wheat, trees and the supply point (operator, 2026-11-22). Built
+  (docs/echelons/platoon-leader/decisions.md): its mission - the head fenced, lit and its chests up, then its shaft a
+  MINE for one squad till it's dried up - and its chat command. Left: everything below. A chunk
   fenced as theirs are, its shaft's head in it, its workings filled back in cobblestone. One every two chunks or so; a
   squad goes down one and mines it till dry, a different squad down one each night until each is mined out. A chunk
   mined dry is then free to be given a wheat or a tree template. A mission as a farm's is (`command.FarmMission`), the
@@ -46,11 +48,15 @@ and ore beyond it left and noted (docs/military-doctrine.md § 16). To build, in
     over it is a farm's next, or another resource's.
   - *One squad at a time to a shaft*, and each squad may have its own (operator, 2026-11-22). By night as a rule; by
     need - the force short of ore - the platoon leader sends a squad down full time.
-  - *Where the mineshafts are is the platoon leader's to keep, in its registers*: a row a shaft - its chunk, its head,
-    the levels cut, the squad on it, dry or not - beside its missions and chunks, read back at a restart; today each
-    mine's stairs are a file of the runner's (`WallStore` "stairs").
+  - *Where the mineshafts are is the platoon leader's to keep, in its registers*: built as far as its mission's rows
+    (chunk, squad, head done, shaft under way or dry). Left: a row a shaft in the chunk register - the levels cut - and
+    the mine's stairs read from it; today they're a file of the runner's (`WallStore` "stairs").
   - *Chests at its head and at each level*, a bank of them, for what's worth keeping and won't fit a pack: ore, ingots,
-    diamonds and the other minerals, tools - everything but dirt and cobblestone, which never go in them.
+    diamonds and the other minerals, tools - everything but dirt and cobblestone, which never go in them. Built: the
+    head's four. Left: a level's; and the miners' loads going to them - today a mine's stash is its own chest at its
+    landing, which takes cobblestone too.
+  - *A cave a strip opens into is walled off* - first of what's left: live (field697) Dana, on the night shift, went
+    from the mine into a cave with a creeper, two zombies and a spider, and was killed there.
   - *Dirt and cobblestone past a load are thrown out* down the mine: carried, they fill the pack that the ore wants
     and help nothing. A stack or two kept for steps and for filling back a vein's pocket; the rest dumped where it's dug.
 

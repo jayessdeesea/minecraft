@@ -217,6 +217,57 @@ class FarmMissionSimulationTest {
         assertTrue(sown >= 150, "wheat sown on the template's ground: " + sown + " of " + ground.size() + missionLines);
     }
 
+    /** The mineshaft's chunk: (2, 0) too, its head on the ground at sea level. */
+    static final FarmMission MINESHAFT = new FarmMission(2, 0, GROUND, FarmMission.Crop.MINE);
+
+    /**
+     * The eval: a chunk given the mineshaft mission (operator, 2026-11-22: the mineshaft template - fenced, lit, chests at
+     * its head; a squad goes down it and mines it till dry). Its head's four torches and four chests in, each where the
+     * layout has it, and no gate left open; its head step DONE and its shaft's step under way; and the squad cutting down
+     * under the chunk's middle - blocks dug well below the ground.
+     */
+    @Test
+    void aMineshaftsHeadIsPutUpAndItsSquadGoesDownIt() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
+        io.github.jayessdeesea.minecraft.bot.farm.MineHead head = new io.github.jayessdeesea.minecraft.bot.farm.MineHead(MINESHAFT.chunkX(), MINESHAFT.chunkZ(), GROUND);
+        Position chunk = new Position(head.shaft().x() + 0.5, GROUND + 1, head.shaft().z() + 0.5);
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
+        chain.onOperatorFarm("Pat", MINESHAFT);
+        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
+                new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
+                new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.ITEM_COBBLESTONE, 64},
+                new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 32}))).run();
+        clock.advance(40 * 60_000);
+        server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
+        List<String> log = Files.readAllLines(Path.of("target", "sim", "aMineshaftsHeadIsPutUpAndItsSquadGoesDownIt.log"));
+        String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]")).toList();
+
+        assertEquals(4, head.torches().stream().filter(t -> server.block(t.x(), t.y(), t.z()) == SimServer.TORCH).count(), "its four torches" + missionLines);
+        assertEquals(4, head.chests().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.CHEST).count(), "its head's four chests" + missionLines);
+        assertEquals(List.of(), head.grid().gates().stream().filter(g -> server.block(g.x(), g.y(), g.z()) == SimItems.GATE_OPEN).toList(), "no gate left open" + missionLines);
+        List<ObjectiveRecord> rows = new Registers(state.resolve("registers")).objectives().stream().filter(r -> r.mission().equals(MINESHAFT.name())).toList();
+        assertEquals(ObjectiveRecord.State.DONE, rows.stream().filter(r -> r.step() == 0).findFirst().orElseThrow().state(), "its head done: " + rows + missionLines);
+        assertEquals(ObjectiveRecord.State.UNDER_WAY, rows.stream().filter(r -> r.step() == 1).findFirst().orElseThrow().state(), "its shaft under way: " + rows + missionLines);
+        long below = 0;
+        for (int x = MINESHAFT.minX(); x <= MINESHAFT.minX() + 15; x++) {
+            for (int z = MINESHAFT.minZ(); z <= MINESHAFT.minZ() + 15; z++) {
+                for (int y = GROUND - 12; y <= GROUND - 4; y++) {
+                    if (server.block(x, y, z) == SimServer.AIR || server.block(x, y, z) == SimServer.TORCH) {
+                        below++;
+                    }
+                }
+            }
+        }
+        assertTrue(below >= 12, "its squad cutting down under the chunk: " + below + " cells open 4 to 12 under the ground" + missionLines);
+    }
+
     /** The supply point's chunk: (2, 0) too, its ground at sea level. */
     static final FarmMission STORES = new FarmMission(2, 0, GROUND, FarmMission.Crop.STORES);
 

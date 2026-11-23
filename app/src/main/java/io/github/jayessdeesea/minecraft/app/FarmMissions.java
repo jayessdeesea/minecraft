@@ -109,7 +109,8 @@ final class FarmMissions {
 
     /** Whether a step of {@code kind} lays a template on ground already made, digging and paving nothing. */
     private static boolean template(FarmMission.Kind kind) {
-        return kind == FarmMission.Kind.FARM_TEMPLATE || kind == FarmMission.Kind.TREE_TEMPLATE || kind == FarmMission.Kind.STORES_TEMPLATE;
+        return kind == FarmMission.Kind.FARM_TEMPLATE || kind == FarmMission.Kind.TREE_TEMPLATE || kind == FarmMission.Kind.STORES_TEMPLATE
+                || kind == FarmMission.Kind.MINE_HEAD || kind == FarmMission.Kind.MINE;
     }
 
     /** The chunks - by ChunkFarm#key - whose farmland is given up: each mission's worked, while it's flattened and floored. */
@@ -159,9 +160,12 @@ final class FarmMissions {
                 case FLOOR -> new Objective.Task.Floor(m.layer(step.level()));
                 case FARM_TEMPLATE -> new Objective.Task.Farm();
                 case TREE_TEMPLATE -> new Objective.Task.TreeFarm();
-                case STORES_TEMPLATE -> new Objective.Task.Stores();
+                case STORES_TEMPLATE, MINE_HEAD -> new Objective.Task.Stores();
+                case MINE -> new Objective.Task.Mine();
             };
-            return new Objective(m.said(step), m.centre(step), "The operator's " + m.what()
+            // A shaft's objective is its head's x and z and the depth to cut to: a MINE's y is a depth (NightRules.grounded).
+            io.github.jayessdeesea.minecraft.command.Position at = step.kind() == FarmMission.Kind.MINE ? new io.github.jayessdeesea.minecraft.command.Position(m.minX() + 8.5, ChainOfCommand.MINE_DEPTH, m.minZ() + 8.5) : m.centre(step);
+            return new Objective(m.said(step), at, "The operator's " + m.what()
                     + ", step " + (step.index() + 1) + " of " + m.steps().size() + ": " + step.task(), task);
         }).toList();
     }
@@ -178,11 +182,25 @@ final class FarmMissions {
                 .map(c -> new ChunkFarm(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level())).findFirst();
     }
 
-    /** The supply point whose template {@code objective} is - its mission's last step, worked now - if it is one. */
-    Optional<StoresChunk> stores(Optional<Objective> objective) {
-        return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.STORES_TEMPLATE
-                        && objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent())
-                .map(c -> new StoresChunk(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level())).findFirst();
+    /**
+     * The fixtures {@code objective}'s squad puts up, if it's a step worked now that lays them out: a supply point's
+     * template, a mineshaft's head - which item in which cells, in the order they're built ({@code bot.supply.Fixtures}).
+     */
+    Optional<Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>>> fixtures(Optional<Objective> objective) {
+        return worked().stream().filter(c -> objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent())
+                .flatMap(c -> switch (c.getValue().kind()) {
+                    case STORES_TEMPLATE -> java.util.stream.Stream.of(new StoresChunk(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level()).fixtures());
+                    case MINE_HEAD -> java.util.stream.Stream.of(new io.github.jayessdeesea.minecraft.bot.farm.MineHead(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level()).fixtures());
+                    default -> java.util.stream.Stream.empty();
+                }).findFirst();
+    }
+
+    /** The mineshafts mined dry, by their chunks' keys: told by whoever works them ({@link #mineDry}). */
+    private final Set<Long> dry = new HashSet<>();
+
+    /** The mine whose head is at block ({@code x}, {@code z}) is dry: a mineshaft mission on that chunk is done at its next measure. */
+    synchronized void mineDry(int x, int z) {
+        dry.add(ChunkFarm.key(Math.floorDiv(x, 16), Math.floorDiv(z, 16)));
     }
 
     /** The mission whose flatten is under way, and that step. */
@@ -318,6 +336,7 @@ final class FarmMissions {
                 boolean chest = world.isChest(chunk.chest().x(), chunk.chest().y(), chunk.chest().z());
                 yield dark == 0 && chest ? Optional.empty() : Optional.of((chest ? "" : "its chest is gone; ") + dark + " of its " + chunk.torches().size() + " torches gone");
             }
+            case MINE -> Optional.empty(); // mined dry and done with: its ground is another template's next
             case STORES -> {
                 StoresChunk stores = new StoresChunk(m.chunkX(), m.chunkZ(), m.level());
                 yield stores.stocked(world) ? Optional.empty() : Optional.of("back at " + stores.stage(world) + " - to put up again: "
@@ -376,7 +395,9 @@ final class FarmMissions {
                 Optional<FlattenPlan> plan = plan(world, m, step, campFarm);
                 // Said a chunk's row of columns at a time, not each block: the count moves with every cut.
                 say(m, step, plan.map(p -> (p.dig().isEmpty() ? "no" : "up to " + (p.dig().size() + 15) / 16 * 16) + " column(s) to cut"
-                        + (p.steps().isEmpty() ? "" : ", " + String.join("; ", p.steps()))).orElse("not all of it in sight"));
+                        + (p.steps().isEmpty() ? "" : ", " + String.join("; ", p.steps()))
+                        // The last of them named: live (field697), "up to 16 column(s)" stood four hours and said nothing of which.
+                        + (p.dig().isEmpty() || p.dig().size() > 16 ? "" : " - at " + p.dig().stream().limit(8).map(c -> c.x() + "," + c.z()).toList())).orElse("not all of it in sight"));
                 // A block of no known break time over the level is in the way though the plan's ground measure can't see it: not
                 // done while it stands, and said (FlattenTopsSimulationTest: a chest in the chunk, the flatten measured done round it).
                 Box over = new Box(m.minX(), step.level() + 1, m.minZ(), m.minX() + 15, Keep.SKY_TOP, m.minZ() + 15);
@@ -417,6 +438,22 @@ final class FarmMissions {
                         + (stage == TreeChunk.Stage.GROUND ? ", the rest want soil under them and nothing over" : ""));
                 yield stage.compareTo(TreeChunk.Stage.PRODUCING) >= 0 ? Optional.of("its " + chunk.trunks().size()
                         + " saplings in, its chest and its " + chunk.torches().size() + " torches - " + stage) : Optional.empty();
+            }
+            case MINE_HEAD -> {
+                io.github.jayessdeesea.minecraft.bot.farm.MineHead head = new io.github.jayessdeesea.minecraft.bot.farm.MineHead(m.chunkX(), m.chunkZ(), step.level());
+                if (!world.isLoaded(m.minX(), m.minZ()) || !world.isLoaded(m.minX() + 15, m.minZ() + 15)) {
+                    say(m, step, "not all of it in sight");
+                    yield Optional.empty();
+                }
+                // Everything its ground takes: a cell with no ground under it, or ground standing in it, is passed over.
+                Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> left = Fixtures.left(world, head.fixtures());
+                say(m, step, "to put up: " + (left.isEmpty() ? "nothing" : left.entrySet().stream()
+                        .map(e -> e.getValue().size() + " " + e.getKey().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' ')).collect(Collectors.joining(", "))));
+                yield left.isEmpty() ? Optional.of("fenced and lit, its head's chests up") : Optional.empty();
+            }
+            case MINE -> {
+                say(m, step, "its squad down it");
+                yield dry.contains(ChunkFarm.key(m.chunkX(), m.chunkZ())) ? Optional.of("mined dry: every level cut, its ore taken or noted") : Optional.empty();
             }
             case STORES_TEMPLATE -> {
                 StoresChunk stores = new StoresChunk(m.chunkX(), m.chunkZ(), step.level());
