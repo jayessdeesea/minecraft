@@ -53,6 +53,13 @@ public final class Depositor {
     private int cooldown;
     /** A stockpile its trips keep failing at - not reached, or not opened - is left longer each time. */
     private final Setbacks<Position> trips = new Setbacks<>(COOLDOWN_TICKS, 60L * COOLDOWN_TICKS);
+    /**
+     * The chests a load was carried to and nothing of it put in, each left alone longer each time - for putting in only.
+     * Apart from {@link #trips}: a chest that took nothing can still be drawn from, and isn't one it can't reach. Live
+     * (field703), counted with the trips that failed, a paver out of cobblestone was barred from the chest holding it and
+     * said "can't reach the stockpile".
+     */
+    private final Setbacks<Position> tookNothing = new Setbacks<>(COOLDOWN_TICKS, 60L * COOLDOWN_TICKS);
     private long ticks;
     private Position at;
     private Position soldierAt;
@@ -188,7 +195,7 @@ public final class Depositor {
             trips.noWork();
         }
         if (script == null) {
-            if (!wanted || cooldown > 0 || stockpile.isEmpty() || trips.barred(stockpile.get(), ticks) || inventory.summary().equals(futile)) {
+            if (!wanted || cooldown > 0 || stockpile.isEmpty() || trips.barred(stockpile.get(), ticks) || tookNothing.barred(stockpile.get(), ticks) || inventory.summary().equals(futile)) {
                 return;
             }
             at = stockpile.get();
@@ -211,11 +218,12 @@ public final class Depositor {
                     // Ivy paved two blocks of a floor and walked 25 blocks to a full chest and back, each time - her load
                     // two cobblestone lighter, so "the same load" never held.
                     futile = carriedOut;
-                    trips.failed(at, ticks, "put nothing in");
+                    tookNothing.failed(at, ticks, "put nothing in");
                     LOG.warn("{} put nothing in at {}: the trip isn't made again while it carries the same, nor there for a while - {}", name, at, carriedOut);
                 } else {
-                    trips.worked(at);
+                    tookNothing.worked(at);
                 }
+                trips.worked(at);
                 finish();
             }
             case Script.Status.Interrupted _ -> finish();
@@ -499,6 +507,14 @@ public final class Depositor {
      */
     private int foodKept = Subsistence.CARRY_MOST;
 
+    /** Whether its cobblestone is its work's - a paver's - and never put in, however much it carries. */
+    private boolean stoneKept;
+
+    /** {@code kept}: its cobblestone stays in its pack on every trip (in the squad simulation a paver drew a chest's 627 and put 625 back, round and round; live, field703, 60 drawn, one paved, 59 put back). */
+    public synchronized void keepsStone(boolean kept) {
+        this.stoneKept = kept;
+    }
+
     /** Keeps {@code rations} of its bread, the rest put in. */
     public synchronized void keepsFood(int rations) {
         this.foodKept = rations;
@@ -532,7 +548,7 @@ public final class Depositor {
         if (inventory.count(ItemClass.LOG) >= Gatherer.CARRY_LOGS) {
             load.add(ItemClass.LOG);
         }
-        if (inventory.count(ItemClass.COBBLESTONE) >= Gatherer.CARRY_STONE) {
+        if (!stoneKept && inventory.count(ItemClass.COBBLESTONE) >= Gatherer.CARRY_STONE) {
             load.add(ItemClass.COBBLESTONE);
         }
         foodLeft = storesFood ? inventory.count(ItemClass.FOOD) : Integer.MAX_VALUE;

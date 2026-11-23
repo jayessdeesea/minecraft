@@ -188,4 +188,20 @@ class DepositorTest {
         }
         assertTrue(depositor.active(), "a new load: a new trip");
     }
+
+    /**
+     * A paver's cobblestone is its work's: told to keep it, a trip puts none of it in, however much it carries (in the
+     * squad simulation one drew a chest's 627 and put 625 back, round and round; live, 60 drawn, one paved, 59 put back).
+     */
+    @Test
+    void aPaversCobblestoneIsNotPutIn() {
+        server.inventory.setSlot(10, new int[]{itemOf(ItemClass.COBBLESTONE), 64});
+        server.inventory.setSlot(11, new int[]{itemOf(ItemClass.COBBLESTONE), 64});
+        depositor.keepsStone(true);
+
+        run(3, FAR, true);
+        run(10, BESIDE, true);
+
+        assertEquals(128, server.inventory.count(ItemClass.COBBLESTONE), "all of it still carried");
+    }
 }

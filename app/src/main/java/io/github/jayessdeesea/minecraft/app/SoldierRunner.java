@@ -7418,7 +7418,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     Integer nightFloor = nightBelow.get(unitOf(name, definition.squad()));
                     boolean downForTheNight = nightFloor != null && status.position().y() < nightFloor - MINE_BELOW && !stashOre;
                     boolean breadWanted = toDepot && !StockLevels.atMost(ItemClass.FOOD, k -> stockedAt(k, Optional.empty()));
-                    depositor.storesFood(breadWanted); depositor.keepsFood(bakes ? Subsistence.BASIC_LOAD : Subsistence.CARRY_MOST); // a baker's bread the stores' past its own load (field664: 162 carried, none stored)
+                    depositor.storesFood(breadWanted); depositor.keepsStone(paving.containsKey(name)); depositor.keepsFood(bakes ? Subsistence.BASIC_LOAD : Subsistence.CARRY_MOST); // a baker's bread the stores' past its own load (field664: 162 carried, none stored)
                     // Not while the recovery drill has it: its way out is its work, as for the supply run. Live
                     // (field424), Eli on his stair up from y=-43 set off for the depot 49 times in ten minutes, each
                     // trip taking his hands from the stair and dropped as no longer wanted.
