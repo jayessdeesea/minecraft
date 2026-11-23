@@ -635,6 +635,58 @@ class FarmMissionSimulationTest {
         assertEquals(List.of(), left.stream().limit(20).toList(), "the mound against the farm's line cut");
     }
 
+    /**
+     * The eval: a tree farm built beside a farm leaves the farm as it was - its flatten a block under its level, its
+     * slab, its level's paving and its template each keeping off the line the two share. Live (field705), a wheat farm's
+     * review found "its ground is gone in places ... fill=10 ... posts=14" along x=32, the line it shares with the tree
+     * farm east of it, and reopened it again and again.
+     */
+    @Test
+    void aTreeFarmBuiltBesideAFarmLeavesTheFarmAsItWas() {
+        SimClock clock = new SimClock();
+        Registers registers = new Registers(state.resolve("registers"));
+        registers.put(new ChunkRecord(BESIDE.chunkX(), BESIDE.chunkZ(), ChunkRecord.Kind.WHEAT, LEVEL, Optional.of("FENCED"), 0));
+        Map<BlockPos, Integer> before = new HashMap<>();
+        for (int x = 16; x <= 32; x++) {
+            for (int z = 0; z <= 16; z++) {
+                for (int y = LEVEL - 2; y <= LEVEL + 3; y++) {
+                    before.put(new BlockPos(x, y, z), besideAFarm(x, y, z));
+                }
+            }
+        }
+        SimServer server = new SimServer(clock, FarmMissionSimulationTest::besideAFarm, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(TREES.centre(TREES.steps().getFirst())),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "72,8", state.toString());
+        chain.onOperatorFarm("Pat", TREES);
+        runner.simulated(clock, server.connector(new PlayerPosition(68.5, GROUND + 1, 8.5), List.of(
+                new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
+                new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.itemNamedOrMinus("spruce_sapling"), 64},
+                new int[]{10, SimServer.itemNamedOrMinus("torch"), 16}, new int[]{11, SimServer.itemNamedOrMinus("chest"), 1},
+                new int[]{12, SimServer.ITEM_COBBLESTONE, 64}, new int[]{13, SimServer.ITEM_COBBLESTONE, 64},
+                new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_DIRT, 64}))).run();
+        clock.advance(120 * 60_000);
+        server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
+
+        List<String> changed = new ArrayList<>();
+        before.forEach((c, b) -> {
+            int now = server.block(c.x(), c.y(), c.z());
+            boolean grown = b == SimServer.WHEAT_SPROUT && now >= SimServer.WHEAT_SPROUT && now <= SimServer.WHEAT_RIPE;
+            if (now != b && !grown && !(b == SimItems.GATE && now == SimItems.GATE_OPEN && c.x() == TREES.minX())) {
+                changed.add(c + " " + b + " -> " + now);
+            }
+        });
+        assertEquals(List.of(), changed.stream().sorted().limit(20).toList(), "the farm beside unchanged");
+        io.github.jayessdeesea.minecraft.bot.farm.TreeChunk template = new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(TREES.chunkX(), TREES.chunkZ(), GROUND);
+        long planted = template.trunks().stream().filter(t -> server.block(t.x(), t.y(), t.z()) == SimServer.SPRUCE_SAPLING
+                || server.block(t.x(), t.y(), t.z()) == SimServer.SPRUCE_LOG).count();
+        assertEquals(16, planted, "and the tree farm built beside it");
+    }
+
     static int indexOf(List<String> log, String part) {
         for (int i = 0; i < log.size(); i++) {
             if (log.get(i).contains(part)) {

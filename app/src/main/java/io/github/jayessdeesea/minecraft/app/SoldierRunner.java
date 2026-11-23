@@ -5942,7 +5942,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         : standOf(soldierName, holding).map(p -> holding == Hands.Routine.DEPOSITOR
                         ? chestStand(here, p).or(() -> Optional.ofNullable(workshops.get(soldierName))
                                 .filter(w -> w.chest().filter(c -> c.x() == (int) Math.floor(p.x()) && c.z() == (int) Math.floor(p.z())).isPresent())
-                                .map(w -> new Position(w.stand().x() + 0.5, w.stand().y(), w.stand().z() + 0.5))).orElse(p) : p);
+                                .map(w -> new Position(w.stand().x() + 0.5, w.stand().y(), w.stand().z() + 0.5))).orElse(Depositor.withinReach(here, p) ? here : p) : p); // no stand found and in reach where it stands: it stands - never ordered into the chest's cell (field704-706)
                 if (routine.isPresent()) {
                     byName.get(soldierName).receiveOrder(new Order.MoveTo(routine.get().x(), routine.get().y(), routine.get().z(), 0.3, 0.5, Risk.LOW));
                     continue;

@@ -275,7 +275,10 @@ public final class Clearer {
         // as each timed out.
         Predicate<BlockPos> beside = s -> strip.map(b -> s.x() >= b.minX() - 1 && s.x() <= b.maxX() + 1
                 && s.z() >= b.minZ() - 1 && s.z() <= b.maxZ() + 1).orElse(true);
-        Predicate<BlockPos> standable = s -> reachable.contains(s) && stands.test(world, s) && beside.test(s);
+        // Not a cell with a block in it - a shut gate, which a route passes through and nothing stands in: in the squad
+        // simulation a flatten beside a farm chose the farm's gate for its stand, "the stand ... has a block in it", again
+        // and again, and its ground was never cut (live, the flattens stalled beside every built farm's line).
+        Predicate<BlockPos> standable = s -> reachable.contains(s) && stands.test(world, s) && beside.test(s) && !world.isSolid(s.x(), s.y(), s.z());
         Optional<Clearing.Cut> cut = tunnel ? Clearing.nextInTunnel(world, cover, soldier, excluded, standable)
                 : Clearing.next(world, cover, soldier, excluded, standable, steps);
         // Nothing on the ground reaches: the top layer from the air, on steps it builds - only with
