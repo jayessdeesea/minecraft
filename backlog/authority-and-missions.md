@@ -21,6 +21,21 @@ was given, or make one up, except in specific circumstances: to defend against h
 (backlog/soldier-order.md, the stack for interruptions) - and when it can't be carried out, said up as CANTCO with why,
 for the issuer to answer. Anything else that changes what a soldier or squad is on is a rule to remove, not to keep.
 
+**A soldier does nothing without a command** (operator, 2026-11-22): it stands, defends itself and eats - no work of its
+own. The platoon leader is to be giving commands shortly, so a soldier idle is the platoon leader's fault, and counted
+against it: the measure of the platoon leader is soldier-time without a task (`[Idle]`, the chain of command's share;
+the status page's "no task"). The errands a soldier still makes up for itself (`app.SoldierErrands`) and the runner's
+per-soldier rules go as backlog/soldier-order.md and step 4 take them.
+
+**There is always a mission** (operator, 2026-11-22). The standing one, in force whenever the operator has given no
+other: go back to the ground round x=0, z=0 at sea level and fortify the permanent structure there; if there is none
+yet, build one; if the force isn't yet strong and supplied enough to build one, build renewable farms and mine by
+night until it is. Later: troops sent out to remote permanent structures - to build them first, then to mine from
+them and look for other villages. The platoon leader works out what to do under it - farming, whatever it takes - and
+gives the commands: "no mission" is never a reason for a squad to stand idle. In the register it's the first row,
+given by the operator's standing order, superseded when the operator gives another and in force again when that one
+ends.
+
 ## The terms
 One home: docs/echelons/platoon-leader/decisions.md, "Terms". A mission is what the operator gives the platoon; its
 operation runs in phases; each phase - and each assignment the platoon leader makes by its own decision - is a task to
@@ -45,6 +60,16 @@ a squad; an objective is a place. The code's `Objective` type and `objective` ta
    it, read back at start. The command line keeps only what the deployment is: the operator's name, the roster, the
    models and prompts, the ports, where state is kept. Done when a garrison restarted with none of those arguments
    carries on with the mission, camp and rules it had, and the chat says what's in force and who ordered it.
+   **The templated farms are the platoon leader's to order** (operator, 2026-11-22: why hasn't it ordered tree farms
+   using the template?). Live (field690) it couldn't: a wheat chunk is a mission only the operator gives, in the chat
+   (`giveFarmMission`); the tree chunk is sited by a standing rule (`app.CampTrees`: chunk (5, 5), 64 blocks from the
+   camp, its stage still GROUND) and built by nobody's order; the only tree task it can give is the old grove of
+   saplings round a point (`TREE_FARM`), and its prompt doesn't say a template exists. And nothing asked for wood:
+   994 logs stood against a reorder point of 64. Built since: a tree chunk is a mission as a wheat chunk is, given by
+   the operator in the chat (`giveTreeFarmMission`), worked alongside a wheat farm's. Left: the platoon leader gives
+   either itself under the mission in force, choosing the chunk, when the supply it's shown says the reserves want it
+   (backlog/renewables.md, backlog/sites.md's levels) - its decision reply names the mission to start, as the chat's
+   command does; and a supply dump the same way, whose template isn't built (backlog/renewables.md, the supply point).
    The platoon leader is the single-threaded leader (operator, 2026-11-22): priority and locations are its to decide
    and to keep - where the camp is, where a farm or a supply dump goes, what comes first - from the operator's
    mission and its end state. A location or a priority fixed on the command line is split brain, and static: it

@@ -103,6 +103,12 @@ class OperatorChatScenarioIT {
             }
 
             @Override
+            public String giveTreeFarmMission(int x, int z, OptionalInt level) {
+                commanded.add("giveTreeFarmMission");
+                return "not given: a question";
+            }
+
+            @Override
             public String cancelMission(int chunkX, int chunkZ, String reason) {
                 commanded.add("cancelMission");
                 return "not cancelled: a question";

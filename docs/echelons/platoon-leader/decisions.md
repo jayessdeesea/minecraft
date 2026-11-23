@@ -116,7 +116,13 @@ platoon leader's decision prompt isn't shown them yet.
 "A farm at chunk (x, z)" - at any height, sea level (63) by default (operator, 2026-11-21) - is the operator's
 (`!farm`, DEVELOPMENT.md; or the chat's `giveFarmMission`, below) and the platoon leader carries it out by doctrine,
 computed, never the model's (`command.FarmMission`, `app.FarmMissions`): an operation of three phases, each a task, each
-started when the one before is measured done. The level is the operator's alone: the chat's `giveFarmMission` keeps a
+started when the one before is measured done. "A tree farm at chunk (x, z)" (operator, 2026-11-22; the chat's
+`giveTreeFarmMission`) is the same mission with trees for its crop, in two phases: the chunk flattened to its level, its
+ground left since saplings want soil, then the tree chunk's template on it - done when its sixteen saplings, its chest and
+its nine torches are in (`TreeChunk.Stage`); its chunk is the camp's tree chunk from then on, whatever the siting rule
+would have chosen (`CampTrees.take`), and after a restart too, read back from its template's row. Each open mission's
+phase under way is worked at once, a squad each - a wheat farm's floor and a tree farm's flatten together - but one
+flatten at a time, the first given, since the squads flatten one ground (`FarmMissions.worked`). The level is the operator's alone: the chat's `giveFarmMission` keeps a
 level only if the operator's own words say it, else sea level (`PlatoonLeaderTools.levelAsSaid`; live, field668, told "at
 sea level", the model gave y=67). And the latest order for a chunk is the one worked: a farm given there at another level
 supersedes the open one, its phases SUPERSEDED with why. Cancelled (the chat's `cancelMission`, `FarmMissions.cancel`),
@@ -186,7 +192,7 @@ turn is a model call through the same `ChatClient` (`command.ai.PlatoonLeaderCha
   prompt: the tools read them as they stand at the moment asked, at the level asked.
 - **What it may do: commands, as tools** (`command.OperatorCommands`, `app.ChatCommands`), each one of the operator's
   own orders through the chain of command - the same WILCO on the net, order trace and checks as from game chat:
-  `giveFarmMission` (`ChainOfCommand.onOperatorFarm`), `cancelMission` (`onOperatorCancel`), `replacePlatoonMission`
+  `giveFarmMission` and `giveTreeFarmMission` (`ChainOfCommand.onOperatorFarm`), `cancelMission` (`onOperatorCancel`), `replacePlatoonMission`
   (`onOperatorMission`), `escort` (`onOperatorEscort`) and `setFlattenGround` (`onOperatorFlatten`). None writes,
   edits or deletes a register's row: the rows are the chain of command's to keep. The prompt and each command's
   description say it's used only when the operator asks for it in this turn. What each command did is said as it

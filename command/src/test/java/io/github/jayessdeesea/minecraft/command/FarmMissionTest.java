@@ -23,6 +23,19 @@ class FarmMissionTest {
         assertEquals(List.of(69, 69, 70), new FarmMission(1, 3, 70).steps().stream().map(FarmMission.Step::level).toList(), "at any height");
     }
 
+    /** A tree farm at chunk (1, 4) at sea level: flatten to 63 - its ground left, saplings want soil - then the tree template at 63. */
+    @Test
+    void aTreeFarmIsAFlattenToItsLevelAndTheTreeTemplateOnIt() {
+        FarmMission trees = FarmMission.parse("20 70", FarmMission.Crop.TREES).orElseThrow();
+        assertEquals(new FarmMission(1, 4, 63, FarmMission.Crop.TREES), trees);
+        assertEquals("a tree farm at chunk (1, 4) at y=63", trees.name());
+        assertEquals(List.of(FarmMission.Kind.FLATTEN, FarmMission.Kind.TREE_TEMPLATE), trees.steps().stream().map(FarmMission.Step::kind).toList());
+        assertEquals(List.of(63, 63), trees.steps().stream().map(FarmMission.Step::level).toList());
+        assertEquals("flatten chunk (1, 4), x 16..31 z 64..79 to y=63", trees.steps().getFirst().task());
+        assertEquals(java.util.Optional.of(trees), FarmMission.named(trees.name()), "read back from its name, as the register keeps it");
+        assertEquals(java.util.Optional.of(FarmMission.atSeaLevel(1, 3)), FarmMission.named("a farm at chunk (1, 3) at y=63"), "a wheat farm's name still a wheat farm");
+    }
+
     /** A chunk in a hill five high: its ground dug to 62, the hill stepped down a block a block out on each side. */
     @Test
     void aChunkCutIntoAHillIsSteppedAtItsEdges() {

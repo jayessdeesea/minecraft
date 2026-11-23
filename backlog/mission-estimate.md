@@ -63,6 +63,9 @@ worked from an existing base. The platoon leader is shown no estimate when it ch
   3. Establish trade with the villagers - smaller permanent structures first, so the distances are safe to travel.
   4. Explore the other realms, the Nether and the End - gather what's there, and trade as appropriate.
 
+  Remote permanent structures are built first, then mined from and scouted from for other villages (2026-11-22). The
+  first two steps are the standing mission, in force when no other is (backlog/authority-and-missions.md).
+
   The platoon leader makes up no missions of its own: what it chooses among is the operator's current mission and what
   its estimate adds - a preparation, an outpost where the reach runs out.
 - First figures - walking speed, work rates - are measured in the scoreboard and refined.

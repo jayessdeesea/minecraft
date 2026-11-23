@@ -1284,11 +1284,14 @@ scavenger fetching it back to be shed again (`SoldierRunner.thrownNear`). And pa
 merged, the smaller onto the larger (`Pack.mergeable`), for what stacks to 64 only - a tool put on
 a tool swaps them - and an item merged isn't merged again for 5 minutes, so one the server
 didn't merge never holds off the rest of the pack's keeping. The hotbar is kept as the operator keeps
-his (2026-11-15; `bot.supply.Hotbar`): the best weapon in the first slot, the best pickaxe in the
-second, food in the second to last, torches in the last - only what's switched to in a hurry. The
-slots between hold the quick tools (shovel, axe, hoe, bucket) and what a routine swaps in for the
-moment - building blocks while it builds; anything else there, an emerald or a spare sword, goes
-to the main pack. With its hands free a soldier makes a swap a tick till it's laid out. Food to
+his (2026-11-15, 2026-11-22; `bot.supply.Hotbar`): the tools of the trade a switch away, never fetched
+from the pack while the work waits. The best weapon in the first slot, always - an attack comes at
+any time; the best pickaxe in the second, the fastest shovel in the third, the fastest axe in the
+fourth; a stack of blocks in the sixth, dirt before cobblestone, to stop lava or water with at once;
+food in the second to last, torches in the last. The fifth and seventh slots are for a hoe or a
+bucket and what a routine swaps in for the moment; anything else between, an emerald or a spare
+sword, goes to the main pack. A dig takes its tool from where it lies: in the hotbar it's selected,
+no swap (`Footing.hold`). With its hands free a soldier makes a swap a tick till it's laid out. Food to
 eat, a block to place, a hoe are swapped into a slot between first (`Inventory.spareHotbarSlot`,
 one rule for every routine), else a second of a kind carried elsewhere - never the one in hand:
 live, a soldier whose hotbar was nine weapons and tools couldn't eat or build. And no
@@ -2210,7 +2213,9 @@ who fight. Where a rule of a clearing below meets the standard, it says which pa
    big site was cut against, each one a level of its own, and builders on the hill had no walk down.
 
 **A farm mission's chunk** (operator, 2026-11-21; `command.FarmMission`, docs/echelons/platoon-leader/decisions.md) is
-brought to the base's layers one step at a time, each started when the one before is measured done:
+brought to the base's layers one step at a time, each started when the one before is measured done. A tree farm's
+(2026-11-22) has two - flattened to its own level, not a block below, its ground left for the saplings' soil; then the
+tree chunk's template (§ 12), a trunk cell with no soil under it said and passed over. A wheat farm's:
 - **Flattened a block below the farm's level** as any site is, its ground the chunk, but its edge the slope of
   `command.FlattenPlan` in place of the bench: each column of the chunk and of a ring twelve out cut to the level,
   the ring's row d out to d over it - the bench's 1:1 - on each side sloped (`command.Slopes`), a side beside a

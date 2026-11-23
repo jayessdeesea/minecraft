@@ -102,6 +102,59 @@ class FarmMissionSimulationTest {
         return server;
     }
 
+    /** The tree farm's chunk: (2, 0) too, its ground at sea level. */
+    static final FarmMission TREES = new FarmMission(2, 0, GROUND, FarmMission.Crop.TREES);
+
+    /**
+     * The eval: a chunk with a mound given the tree farm mission (operator, 2026-11-22: a command for the templated tree
+     * chunk). Nothing of the ground left over its level; a sapling at each of its sixteen trunks, its chest and its nine
+     * torches in; and its two steps in the objective register DONE, in order.
+     */
+    @Test
+    void aTreeFarmIsFlattenedPlantedLitAndItsChestPutUp() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FarmMissionSimulationTest::hills, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
+        Position chunk = TREES.centre(TREES.steps().getFirst());
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
+        chain.onOperatorFarm("Pat", TREES);
+        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
+                new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
+                new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.itemNamedOrMinus("spruce_sapling"), 16},
+                new int[]{10, SimServer.itemNamedOrMinus("torch"), 16}, new int[]{11, SimServer.itemNamedOrMinus("chest"), 1}))).run();
+        clock.advance(45 * 60_000);
+        server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
+        List<String> log = Files.readAllLines(Path.of("target", "sim", "aTreeFarmIsFlattenedPlantedLitAndItsChestPutUp.log"));
+        String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]") || l.contains("[Trees]")).toList();
+
+        List<String> over = new ArrayList<>();
+        for (int x = TREES.minX(); x <= TREES.minX() + 15; x++) {
+            for (int z = TREES.minZ(); z <= TREES.minZ() + 15; z++) {
+                if (groundTop(server, x, z) > GROUND) {
+                    over.add(x + "," + z + " at " + groundTop(server, x, z));
+                }
+            }
+        }
+        assertEquals(List.of(), over, "nothing of the ground over the tree farm's level" + missionLines);
+
+        io.github.jayessdeesea.minecraft.bot.farm.TreeChunk template = new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(TREES.chunkX(), TREES.chunkZ(), GROUND);
+        // A sapling, or the tree it has grown into since: in the simulation a sapling grows in minutes.
+        long planted = template.trunks().stream().filter(t -> server.block(t.x(), t.y(), t.z()) == SimServer.SPRUCE_SAPLING
+                || server.block(t.x(), t.y(), t.z()) == SimServer.SPRUCE_LOG).count();
+        assertEquals(16, planted, "a sapling or its tree at each trunk" + missionLines);
+        assertEquals(9, template.torches().stream().filter(t -> server.block(t.x(), t.y(), t.z()) == SimServer.TORCH).count(), "its nine torches" + missionLines);
+        assertEquals(SimServer.CHEST, server.block(template.chest().x(), template.chest().y(), template.chest().z()), "its chest" + missionLines);
+
+        List<ObjectiveRecord> rows = new Registers(state.resolve("registers")).objectives().stream().filter(r -> r.mission().equals(TREES.name())).toList();
+        assertEquals(List.of(0, 1), rows.stream().map(ObjectiveRecord::step).toList(), "the mission's two steps: " + rows);
+        assertTrue(rows.stream().allMatch(r -> r.state() == ObjectiveRecord.State.DONE), "each DONE: " + rows + missionLines);
+    }
+
     /** The highest of the ground's own blocks - soil, stone, cobblestone - at a column: no fence, torch or crop. */
     static int groundTop(SimServer server, int x, int z) {
         for (int y = GROUND + 12; y > GROUND - 8; y--) {

@@ -147,6 +147,58 @@ class PackTest {
      * The hotbar as the operator keeps it: the sword first, the pickaxe second, food second to
      * last, torches last; an emerald in the slots between goes to the pack.
      */
+    /**
+     * The tools of the trade a switch away (operator, 2026-11-22): from a pack in no order, the sword, the pickaxe, the
+     * shovel and the axe each in its slot, dirt - before cobblestone - in the blocks' slot, and the layout then kept.
+     */
+    @Test
+    void theHotbarHoldsTheToolsOfTheTradeAndBlocksToStopAFlow() {
+        Inventory inventory = new Inventory();
+        int sword = DiggerTest.item("stone_sword"), pickaxe = DiggerTest.item("stone_pickaxe"), shovel = DiggerTest.item("stone_shovel"),
+                axe = DiggerTest.item("stone_axe");
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{axe, 1});
+        inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{item(ItemClass.COBBLESTONE), 64});
+        inventory.setSlot(Inventory.MAIN_FIRST + 2, new int[]{shovel, 1});
+        inventory.setSlot(Inventory.MAIN_FIRST + 3, new int[]{item(ItemClass.DIRT), 12});
+        inventory.setSlot(Inventory.MAIN_FIRST + 4, new int[]{pickaxe, 1});
+        inventory.setSlot(Inventory.MAIN_FIRST + 5, new int[]{sword, 1});
+
+        int swaps = 0;
+        for (; swaps < 20; swaps++) {
+            Optional<Hotbar.Swap> swap = Hotbar.next(inventory);
+            if (swap.isEmpty()) {
+                break;
+            }
+            int a = swap.get().slot(), b = Inventory.HOTBAR_FIRST + swap.get().hotbar();
+            int[] at = inventory.itemAt(a) < 0 ? null : new int[]{inventory.itemAt(a), inventory.countAt(a)};
+            int[] to = inventory.itemAt(b) < 0 ? null : new int[]{inventory.itemAt(b), inventory.countAt(b)};
+            inventory.setSlot(a, to);
+            inventory.setSlot(b, at);
+        }
+
+        assertTrue(swaps < 20, "the layout settles");
+        assertEquals(sword, inventory.itemAt(Inventory.HOTBAR_FIRST + Hotbar.WEAPON));
+        assertEquals(pickaxe, inventory.itemAt(Inventory.HOTBAR_FIRST + Hotbar.PICKAXE));
+        assertEquals(shovel, inventory.itemAt(Inventory.HOTBAR_FIRST + Hotbar.SHOVEL));
+        assertEquals(axe, inventory.itemAt(Inventory.HOTBAR_FIRST + Hotbar.AXE));
+        assertEquals(item(ItemClass.DIRT), inventory.itemAt(Inventory.HOTBAR_FIRST + Hotbar.BLOCKS), "dirt before cobblestone");
+    }
+
+    /** With no sword, the axe is the weapon and stays in the weapon's slot: the axe's slot doesn't take it, back and forth. */
+    @Test
+    void anAxeThatIsTheWeaponStaysInTheWeaponsSlot() {
+        Inventory inventory = new Inventory();
+        int axe = DiggerTest.item("stone_axe");
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{axe, 1});
+
+        Hotbar.Swap first = Hotbar.next(inventory).orElseThrow();
+        inventory.setSlot(first.slot(), null);
+        inventory.setSlot(Inventory.HOTBAR_FIRST + first.hotbar(), new int[]{axe, 1});
+
+        assertEquals(Hotbar.WEAPON, first.hotbar());
+        assertEquals(Optional.empty(), Hotbar.next(inventory), "kept there");
+    }
+
     @Test
     void theHotbarIsLaidOutSwordPickaxeFoodTorchesAndNothingElse() {
         Inventory inventory = new Inventory();

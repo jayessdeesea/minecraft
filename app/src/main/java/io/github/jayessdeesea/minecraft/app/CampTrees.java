@@ -32,15 +32,26 @@ final class CampTrees {
 
     private volatile TreeChunk chunk;
     private volatile long lookedAt = Long.MIN_VALUE;
+    /** Whether the chunk was ordered - a tree farm mission's ({@link FarmMissions}) - and so not the siting rule's to choose or move. */
+    private volatile boolean byOrder;
+
+    /** {@code ordered} is the camp's tree chunk from now on, whatever the siting rule would choose: a tree farm mission's chunk. */
+    synchronized void take(TreeChunk ordered) {
+        if (!ordered.equals(chunk)) {
+            LOG.info("[Trees] the camp's tree chunk is the mission's: chunk ({}, {}), its ground at y={}", ordered.chunkX(), ordered.chunkZ(), ordered.level());
+        }
+        chunk = ordered;
+        byOrder = true;
+    }
 
     /** The camp's tree chunk as a grove, sited from {@code camp} beside {@code farm}'s wheat chunks at {@code now}: none if none qualifies. */
     synchronized Optional<TreeFarm> grove(WorldView world, BlockPos camp, FarmPlan farm, long now) {
         Set<Long> wheat = farm == null ? Set.of() : farm.chunks().stream().map(c -> ChunkFarm.key(c.chunkX(), c.chunkZ()))
                 .collect(Collectors.toSet());
-        if (chunk != null && wheat.contains(ChunkFarm.key(chunk.chunkX(), chunk.chunkZ()))) {
+        if (!byOrder && chunk != null && wheat.contains(ChunkFarm.key(chunk.chunkX(), chunk.chunkZ()))) {
             chunk = null; // taken for wheat: sited again
         }
-        if (chunk == null && (lookedAt == Long.MIN_VALUE || now - lookedAt >= RESITE_MILLIS)) {
+        if (!byOrder && chunk == null && (lookedAt == Long.MIN_VALUE || now - lookedAt >= RESITE_MILLIS)) {
             lookedAt = now;
             chunk = TreeChunk.site(world, camp, RINGS, c -> true, wheat, wheat).orElse(null);
             if (chunk != null) {

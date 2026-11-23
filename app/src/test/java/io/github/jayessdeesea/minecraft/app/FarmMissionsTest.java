@@ -73,7 +73,7 @@ class FarmMissionsTest {
             }
         };
 
-        missions.measure(hill, null, new CampFarm(new WallStore(state, "farm"), 1000), 1_000);
+        missions.measure(hill, null, new CampFarm(new WallStore(state, "farm"), 1000), null, 1_000);
 
         assertEquals(java.util.Map.entry(right, right.steps().getFirst()), missions.current().orElseThrow(), "the sea-level one, back at its flatten");
         assertEquals(ObjectiveRecord.State.PLANNED, registers.objectives().stream().filter(r -> r.mission().equals(right.name()) && r.step() == 0)
@@ -101,6 +101,82 @@ class FarmMissionsTest {
         assertEquals(List.of(new Row(ObjectiveRecord.State.SUPERSEDED, java.util.Optional.of("cancelled by Operator: not needed"))),
                 registers.objectives().stream().filter(r -> r.chunkX() == 1).map(r -> new Row(r.state(), r.why())).distinct().toList());
         assertEquals("the operator's farm cancelled", woken.getLast());
+    }
+
+    /**
+     * A tree farm given beside a wheat farm at its floor is worked alongside it, a squad each (operator, 2026-11-22: a
+     * command for the templated tree chunk right next to the wheat farm) - but a second mission's flatten waits for the
+     * first's, since the squads flatten one ground.
+     */
+    @Test
+    void aTreeFarmIsWorkedAlongsideAWheatFarmAndOneFlattenAtATime() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMission wheat = FarmMission.atSeaLevel(1, 3), trees = new FarmMission(1, 4, 63, FarmMission.Crop.TREES), later = FarmMission.atSeaLevel(2, 3);
+        for (FarmMission.Step step : wheat.steps()) { // the wheat farm at its floor, as live
+            registers.add(new ObjectiveRecord(0, wheat.name(), step.index(), step.task(), 1, 3, java.util.Optional.empty(),
+                    step.index() == 0 ? ObjectiveRecord.State.DONE : ObjectiveRecord.State.PLANNED, 0, java.util.Optional.empty()));
+        }
+        FarmMissions missions = new FarmMissions(cause -> { });
+        missions.keptIn(new ObjectiveBook(() -> registers));
+
+        missions.give(trees, 1_000);
+        missions.give(later, 1_000);
+
+        assertEquals(List.of(FarmMission.Kind.FLOOR, FarmMission.Kind.FLATTEN), missions.worked().stream().map(e -> e.getValue().kind()).toList(),
+                "the wheat's floor and the trees' flatten; the later farm's flatten waits");
+        assertEquals(List.of(wheat, trees), missions.worked().stream().map(java.util.Map.Entry::getKey).toList());
+        assertEquals(new io.github.jayessdeesea.minecraft.command.Flatten(16, 64, 31, 79, 63), missions.flatten().orElseThrow(), "the ground to flatten is the trees' chunk, to its level");
+        List<io.github.jayessdeesea.minecraft.command.Objective> steps = missions.objectives();
+        assertEquals(List.of("a farm at chunk (1, 3) at y=63: floor chunk (1, 3), x 16..31 z 48..63 in cobblestone at y=62",
+                "a tree farm at chunk (1, 4) at y=63: flatten chunk (1, 4), x 16..31 z 64..79 to y=63"),
+                steps.stream().map(io.github.jayessdeesea.minecraft.command.Objective::mission).toList());
+
+        // A squad to each: Alpha already on the floor keeps it, and another is put on the trees' flatten.
+        io.github.jayessdeesea.minecraft.command.Objective idle = new io.github.jayessdeesea.minecraft.command.Objective("Hold the camp",
+                new io.github.jayessdeesea.minecraft.command.Position(24, 64, 88), "nothing else to do");
+        List<io.github.jayessdeesea.minecraft.command.SquadStatus> squads = List.of(squad("Alpha"), squad("Bravo"), squad("Charlie"));
+        List<io.github.jayessdeesea.minecraft.command.Objective> day = missions.guarded(List.of(steps.getFirst(), idle, idle), squads, java.util.Optional.empty());
+        assertEquals(steps.getFirst(), day.getFirst(), "Alpha keeps the floor");
+        assertEquals(1, day.stream().filter(steps.get(1)::equals).count(), "one squad on the trees' flatten: " + day);
+        assertEquals(1, day.stream().filter(idle::equals).count(), "the third left to its own order");
+    }
+
+    /** A tree chunk a mission made is the camp's tree chunk after a restart too: read back from its template's row, done. */
+    @Test
+    void theTreeChunkAMissionMadeIsTheCampsAfterARestart() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMission trees = new FarmMission(1, 4, 63, FarmMission.Crop.TREES);
+        for (FarmMission.Step step : trees.steps()) {
+            registers.add(new ObjectiveRecord(0, trees.name(), step.index(), step.task(), 1, 4, java.util.Optional.empty(),
+                    ObjectiveRecord.State.DONE, 0, java.util.Optional.empty()));
+        }
+        FarmMissions restarted = new FarmMissions(cause -> { });
+        restarted.keptIn(new ObjectiveBook(() -> registers));
+        CampTrees campTrees = new CampTrees();
+
+        restarted.measure(new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return List.of();
+            }
+        }, null, null, campTrees, 5_000);
+
+        assertEquals(java.util.Optional.of(new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(1, 4, 63)), campTrees.chunk());
+        assertEquals(List.of(), restarted.worked(), "the mission itself done: nothing worked");
+    }
+
+    private static io.github.jayessdeesea.minecraft.command.SquadStatus squad(String name) {
+        return new io.github.jayessdeesea.minecraft.command.SquadStatus(name, new io.github.jayessdeesea.minecraft.command.Report.InPosition(), List.of(), List.of(), java.util.Optional.empty(), false);
     }
 
     private record Row(ObjectiveRecord.State state, java.util.Optional<String> why) {

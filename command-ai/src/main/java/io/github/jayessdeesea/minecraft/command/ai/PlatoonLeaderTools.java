@@ -119,8 +119,22 @@ final class PlatoonLeaderTools {
         return command("giveFarmMission " + x + " " + z + (y == null ? "" : " " + y), () -> commands.giveFarmMission(x, z, level));
     }
 
+    @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "giveTreeFarmMission", description = "A command - only when the operator asks for it in this turn. Gives the "
+            + "mission 'a tree farm at' the chunk a block is in - trees, not wheat - carried out in two phases: the chunk flattened "
+            + "to the level, then the tree farm template on it: sixteen saplings, a chest, nine torches. It's worked alongside a "
+            + "wheat farm's mission, a squad each. Quote its result.")
+    String giveTreeFarmMission(@ToolParam(description = "a block's x in the chunk") int x, @ToolParam(description = "a block's z in the chunk") int z,
+                               @ToolParam(required = false, description = "the farm's level, only if the operator said one; leave it out for sea level")
+                               Integer y) {
+        OptionalInt level = levelAsSaid(y, message);
+        if (y != null && level.isEmpty()) {
+            LOG.warn("[Chat] the platoon leader's tree farm at y={} read as sea level: the operator said no level", y);
+        }
+        return command("giveTreeFarmMission " + x + " " + z + (y == null ? "" : " " + y), () -> commands.giveTreeFarmMission(x, z, level));
+    }
+
     @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "cancelMission", description = "A command - only when the operator asks for it in this turn. Cancels the farm "
-            + "mission open on a chunk: its phases not done are closed SUPERSEDED with the operator's reason kept, none deleted, and it "
+            + "or tree farm mission open on a chunk: its phases not done are closed SUPERSEDED with the operator's reason kept, none deleted, and it "
             + "isn't taken up again. Quote its result.")
     String cancelMission(@ToolParam(description = "the mission's chunk x, as its name says it: 'a farm at chunk (1, 3)' is 1") int chunkX,
                          @ToolParam(description = "the mission's chunk z: 'a farm at chunk (1, 3)' is 3") int chunkZ,

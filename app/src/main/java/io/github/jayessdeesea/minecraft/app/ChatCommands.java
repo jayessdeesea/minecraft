@@ -25,8 +25,17 @@ public class ChatCommands implements OperatorCommands {
 
     @Override
     public String giveFarmMission(int x, int z, OptionalInt level) {
+        return give(x, z, level, FarmMission.Crop.WHEAT);
+    }
+
+    @Override
+    public String giveTreeFarmMission(int x, int z, OptionalInt level) {
+        return give(x, z, level, FarmMission.Crop.TREES);
+    }
+
+    private String give(int x, int z, OptionalInt level, FarmMission.Crop crop) {
         String order = x + " " + z + (level.isPresent() ? " " + level.getAsInt() : "");
-        FarmMission farm = FarmMission.parse(order).orElseThrow(() -> new IllegalArgumentException(
+        FarmMission farm = FarmMission.parse(order, crop).orElseThrow(() -> new IllegalArgumentException(
                 "no farm mission at x=" + x + " z=" + z + (level.isPresent() ? " y=" + level.getAsInt() : "") + ": its level must be inside the world"));
         chain.onOperatorFarm(OperatorChat.OPERATOR, farm);
         return "WILCO: " + farm.name() + ", in " + farm.steps().size() + " phases, each started when the one before is measured done: "

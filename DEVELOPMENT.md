@@ -211,7 +211,7 @@ orders (`!fortify the base`) is answered SAY AGAIN, with the orders there are - 
 start). It's bound to the loopback address, so it isn't reachable from another machine. Type a message and press
 Enter: the platoon leader answers from its registers, what it was shown at its last decision and the clock now - "what
 time of day is it?", "list the missions", "what tasks are open for Charlie?", "what chunk is x=20 z=50 in?" - and from
-plain words can give or cancel a farm mission, replace the platoon's mission, escort or set the ground to flatten, said on
+plain words can give or cancel a farm mission or a tree farm mission ("a tree farm at x=20 z=70"), replace the platoon's mission, escort or set the ground to flatten, said on
 the net as from game chat; what each command did is shown under its reply. The strip at the top is the Minecraft time and the time to the next dusk and dawn.
 Beside the conversation is the garrison's status, fetched every second (`GET /status`, `app.StatusBoard`): each squad's
 objective, and a row a soldier present - what it's doing (a fight, a recovery, its task on the squad's register or

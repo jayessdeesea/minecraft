@@ -13,17 +13,34 @@ import java.util.regex.Pattern;
  * the chunk flattened to a block below the level, its floor laid in cobblestone there, then the chunk farm template on
  * the floor at the level - dirt at the level, its water holes on the cobblestone. Computed here, never by a model.
  *
+ * <p>A tree farm (operator, 2026-11-22: a command for the templated tree chunk) is the same mission with another crop:
+ * the chunk flattened to the level - its ground left, for saplings want soil - then the tree chunk's template on it, its
+ * sixteen saplings, its chest and its nine torches.
+ *
  * @param chunkX the chunk's x, block x / 16
  * @param chunkZ the chunk's z, block z / 16
- * @param level  the farm's ground: the dirt's level, the crops a block over it
+ * @param level  the farm's ground: the dirt's level, the crops or saplings a block over it
+ * @param crop   what's grown on it
  */
-public record FarmMission(int chunkX, int chunkZ, int level) {
+public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
+
+    /** What a farm mission grows: wheat on a chunk farm, or trees on a tree chunk. */
+    public enum Crop { WHEAT, TREES }
+
+    public FarmMission {
+        Objects.requireNonNull(crop, "crop");
+    }
+
+    /** A wheat farm: the mission as first given. */
+    public FarmMission(int chunkX, int chunkZ, int level) {
+        this(chunkX, chunkZ, level, Crop.WHEAT);
+    }
 
     /** The level a farm is made at unless the order gives one: the world's sea level. */
     public static final int SEA_LEVEL = 63;
 
     /** What a step of the mission is. */
-    public enum Kind { FLATTEN, FLOOR, FARM_TEMPLATE }
+    public enum Kind { FLATTEN, FLOOR, FARM_TEMPLATE, TREE_TEMPLATE }
 
     /** A step of the mission: its place in it, what it is, the level it works to, as said down the chain. */
     public record Step(int index, Kind kind, int level, String task) {
@@ -38,14 +55,19 @@ public record FarmMission(int chunkX, int chunkZ, int level) {
         return new FarmMission(chunkX, chunkZ, SEA_LEVEL);
     }
 
-    /** The mission as given and kept: "a farm at chunk (1, 3) at y=63". */
+    /** The mission as given and kept: "a farm at chunk (1, 3) at y=63", "a tree farm at chunk (1, 4) at y=63". */
     public String name() {
-        return String.format(Locale.ROOT, "a farm at chunk (%d, %d) at y=%d", chunkX, chunkZ, level);
+        return String.format(Locale.ROOT, "a %sfarm at chunk (%d, %d) at y=%d", crop == Crop.TREES ? "tree " : "", chunkX, chunkZ, level);
     }
 
     /** Its steps, in order: flatten to the level below, floor it in cobblestone there, the farm template at the level. */
     public List<Step> steps() {
         String chunk = String.format(Locale.ROOT, "chunk (%d, %d), x %d..%d z %d..%d", chunkX, chunkZ, minX(), minX() + 15, minZ(), minZ() + 15);
+        if (crop == Crop.TREES) {
+            return List.of(
+                    new Step(0, Kind.FLATTEN, level, "flatten " + chunk + " to y=" + level),
+                    new Step(1, Kind.TREE_TEMPLATE, level, "the tree farm template on " + chunk + " at y=" + level));
+        }
         return List.of(
                 new Step(0, Kind.FLATTEN, level - 1, "flatten " + chunk + " to y=" + (level - 1)),
                 new Step(1, Kind.FLOOR, level - 1, "floor " + chunk + " in cobblestone at y=" + (level - 1)),
@@ -57,13 +79,13 @@ public record FarmMission(int chunkX, int chunkZ, int level) {
         return name() + ": " + step.task();
     }
 
-    private static final Pattern NAME = Pattern.compile("a farm at chunk \\((-?\\d+), (-?\\d+)\\) at y=(-?\\d+)");
+    private static final Pattern NAME = Pattern.compile("a (tree )?farm at chunk \\((-?\\d+), (-?\\d+)\\) at y=(-?\\d+)");
 
     /** The mission {@code name} names, as {@link #name} says it: empty for any other. */
     public static Optional<FarmMission> named(String name) {
         Matcher m = NAME.matcher(name);
-        return m.matches() ? Optional.of(new FarmMission(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3))))
-                : Optional.empty();
+        return m.matches() ? Optional.of(new FarmMission(Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)), Integer.parseInt(m.group(4)),
+                m.group(1) == null ? Crop.WHEAT : Crop.TREES)) : Optional.empty();
     }
 
     /**
@@ -71,6 +93,11 @@ public record FarmMission(int chunkX, int chunkZ, int level) {
      * {@code !farm}: a farm on the chunk the block is in, at sea level unless a level is given. Empty for anything else.
      */
     public static Optional<FarmMission> parse(String text) {
+        return parse(text, Crop.WHEAT);
+    }
+
+    /** As {@link #parse(String)}, for a farm of {@code crop}. */
+    public static Optional<FarmMission> parse(String text, Crop crop) {
         String[] words = text.strip().split("[\\s,]+");
         if (words.length != 2 && words.length != 3) {
             return Optional.empty();
@@ -80,7 +107,7 @@ public record FarmMission(int chunkX, int chunkZ, int level) {
             if (level <= Flatten.LOWEST + 1 || level >= Flatten.HIGHEST) {
                 return Optional.empty();
             }
-            return Optional.of(new FarmMission(Math.floorDiv(Integer.parseInt(words[0]), 16), Math.floorDiv(Integer.parseInt(words[1]), 16), level));
+            return Optional.of(new FarmMission(Math.floorDiv(Integer.parseInt(words[0]), 16), Math.floorDiv(Integer.parseInt(words[1]), 16), level, crop));
         } catch (NumberFormatException e) {
             return Optional.empty();
         }

@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.app;
 import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmSite;
+import io.github.jayessdeesea.minecraft.bot.farm.TreeChunk;
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.supply.Clearer;
@@ -28,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * The operator's farm missions carried out by doctrine (operator, 2026-11-21: a farm at a chunk, at any height, sea level by
@@ -43,16 +45,18 @@ final class FarmMissions {
 
     private static final Logger LOG = LogManager.getLogger(FarmMissions.class);
 
-    /** Each open mission, in the order given, and the step under way: the first is the one worked. */
+    /** Each open mission, in the order given, and the step under way: each is worked, but one flatten at a time ({@link #worked}). */
     private final Map<FarmMission, Integer> missions = new LinkedHashMap<>();
+    /** The tree chunk a tree farm mission made, the last of them: the camp's from then on, read back from the register at a restart. */
+    private volatile Optional<TreeChunk> treesMade = Optional.empty();
     /** Wakes the platoon leader: a mission given, a step done. */
     private final Consumer<String> wake;
     private volatile Optional<ObjectiveBook> book = Optional.empty();
     private boolean loaded;
     /** The chunks the force has made a template of, as last measured: a flatten slopes off none of them, nor digs into any. */
     private volatile Set<Long> made = Set.of();
-    /** What was last said of the step under way, so each change is said once. */
-    private String said = "";
+    /** What was last said of each mission's step under way, so each change is said once. */
+    private final Map<FarmMission, String> said = new java.util.HashMap<>();
 
     FarmMissions(Consumer<String> wake) {
         this.wake = wake;
@@ -100,36 +104,72 @@ final class FarmMissions {
         return open;
     }
 
-    /** The mission worked now and its step under way, if any is open: those before a restart once the first measure has read them. */
-    /** The chunk - by ChunkFarm#key - whose farmland is given up: the mission's under way, while it's flattened and floored. */
-    synchronized Set<Long> farmlandGivenUp() {
-        return current().filter(e -> e.getValue().kind() != FarmMission.Kind.FARM_TEMPLATE)
-                .map(e -> Set.of(ChunkFarm.key(e.getKey().chunkX(), e.getKey().chunkZ()))).orElse(Set.of());
+    /** Whether a step of {@code kind} lays a template on ground already made, digging and paving nothing. */
+    private static boolean template(FarmMission.Kind kind) {
+        return kind == FarmMission.Kind.FARM_TEMPLATE || kind == FarmMission.Kind.TREE_TEMPLATE;
     }
 
+    /** The chunks - by ChunkFarm#key - whose farmland is given up: each mission's worked, while it's flattened and floored. */
+    synchronized Set<Long> farmlandGivenUp() {
+        return worked().stream().filter(e -> !template(e.getValue().kind()))
+                .map(e -> ChunkFarm.key(e.getKey().chunkX(), e.getKey().chunkZ())).collect(Collectors.toSet());
+    }
+
+    /** The first mission given and its step under way, if any is open: those before a restart once the first measure has read them. */
     synchronized Optional<Map.Entry<FarmMission, FarmMission.Step>> current() {
         return missions.entrySet().stream().findFirst().map(e -> Map.entry(e.getKey(), e.getKey().steps().get(e.getValue())));
     }
 
-    /** The objective a squad on the step under way is given: the step as said down the chain, at the chunk, its task. */
+    /**
+     * The steps worked now, in the order their missions were given: each open mission's step under way - a wheat farm's
+     * floor and a tree farm's flatten at once, a squad each - but one flatten at a time, the first given, since the squads
+     * flatten one ground ({@code ChainOfCommand.flatten}); a later mission's flatten waits for it.
+     */
+    synchronized List<Map.Entry<FarmMission, FarmMission.Step>> worked() {
+        List<Map.Entry<FarmMission, FarmMission.Step>> worked = new ArrayList<>();
+        boolean flattening = false;
+        for (Map.Entry<FarmMission, Integer> e : missions.entrySet()) {
+            FarmMission.Step step = e.getKey().steps().get(e.getValue());
+            if (step.kind() == FarmMission.Kind.FLATTEN) {
+                if (flattening) {
+                    continue;
+                }
+                flattening = true;
+            }
+            worked.add(Map.entry(e.getKey(), step));
+        }
+        return worked;
+    }
+
+    /** The first mission's objective, if one is open ({@link #objectives}). */
     Optional<Objective> objective() {
-        return current().map(c -> {
+        return objectives().stream().findFirst();
+    }
+
+    /** The objective a squad on each step worked is given: the step as said down the chain, at the chunk, its task. */
+    List<Objective> objectives() {
+        return worked().stream().map(c -> {
             FarmMission m = c.getKey();
             FarmMission.Step step = c.getValue();
             Objective.Task task = switch (step.kind()) {
                 case FLATTEN -> new Objective.Task.Keep();
                 case FLOOR -> new Objective.Task.Floor(m.layer(step.level()));
                 case FARM_TEMPLATE -> new Objective.Task.Farm();
+                case TREE_TEMPLATE -> new Objective.Task.TreeFarm();
             };
-            return new Objective(m.said(step), m.centre(step), "The operator's farm, step " + (step.index() + 1) + " of "
-                    + m.steps().size() + ": " + step.task(), task);
-        });
+            return new Objective(m.said(step), m.centre(step), "The operator's " + (m.crop() == FarmMission.Crop.TREES ? "tree farm" : "farm")
+                    + ", step " + (step.index() + 1) + " of " + m.steps().size() + ": " + step.task(), task);
+        }).toList();
     }
 
-    /** The ground to flatten while a mission's flatten is under way: its chunk, down to a block below the farm's level. */
+    /** The mission whose flatten is under way, and that step. */
+    private Optional<Map.Entry<FarmMission, FarmMission.Step>> flattening() {
+        return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.FLATTEN).findFirst();
+    }
+
+    /** The ground to flatten while a mission's flatten is under way: its chunk, down to the step's level. */
     Optional<Flatten> flatten() {
-        return current().filter(c -> c.getValue().kind() == FarmMission.Kind.FLATTEN)
-                .map(c -> new Flatten(c.getKey().minX(), c.getKey().minZ(), c.getKey().minX() + 15, c.getKey().minZ() + 15, c.getValue().level()));
+        return flattening().map(c -> new Flatten(c.getKey().minX(), c.getKey().minZ(), c.getKey().minX() + 15, c.getKey().minZ() + 15, c.getValue().level()));
     }
 
     /**
@@ -137,14 +177,14 @@ final class FarmMissions {
      * sloped on each side with no template beside it, never into a template's ground.
      */
     Optional<List<FlattenPlan.Column>> reach(Flatten ground, FarmPlan campFarm) {
-        return current().filter(c -> c.getValue().kind() == FarmMission.Kind.FLATTEN && flatten().filter(ground::equals).isPresent())
+        return flattening().filter(c -> flatten().filter(ground::equals).isPresent())
                 .map(c -> FlattenPlan.reach(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level(), slopes(c.getKey(), campFarm),
                         kept(c.getKey(), campFarm)));
     }
 
     /** The cells of {@code layer} a floor paves: none of a template's ground beside it (its fence line shared). */
     List<BlockPos> floorCells(Box layer, FarmPlan campFarm) {
-        BiPredicate<Integer, Integer> kept = current().map(c -> kept(c.getKey(), campFarm)).orElse((x, z) -> false);
+        BiPredicate<Integer, Integer> kept = on(layer).map(m -> kept(m, campFarm)).orElse((x, z) -> false);
         List<BlockPos> cells = new ArrayList<>();
         for (int x = layer.minX(); x <= layer.maxX(); x++) {
             for (int z = layer.minZ(); z <= layer.maxZ(); z++) {
@@ -156,6 +196,11 @@ final class FarmMissions {
         return cells;
     }
 
+    /** The open mission whose chunk {@code layer} lies in. */
+    private synchronized Optional<FarmMission> on(Box layer) {
+        return missions.keySet().stream().filter(m -> m.chunkX() == Math.floorDiv(layer.minX(), 16) && m.chunkZ() == Math.floorDiv(layer.minZ(), 16)).findFirst();
+    }
+
     /** The {@code i}th of {@code n} pavers' share of {@code layer}: a strip of it each, west to east or north to south, none another's. */
     List<BlockPos> share(Box layer, FarmPlan campFarm, int i, int n) {
         List<Box> strips = layer.strips(Math.max(1, n));
@@ -163,40 +208,47 @@ final class FarmMissions {
     }
 
     /**
-     * {@code day}'s objectives with one squad on the mission's step under way, if one is and none holds it (operator,
-     * 2026-11-21): the squad already on it; else one given its task already - the flatten's squad, say - which is put
-     * on the step as said; else the last in the order of battle but the farm squad. Each move said.
+     * {@code day}'s objectives with a squad on each step worked ({@link #worked}) that none holds (operator, 2026-11-21):
+     * the squad already on it; else one given its task already - the flatten's squad, say - which is put on the step as
+     * said; else the last in the order of battle but the farm squad and those holding another mission's step. Each move
+     * said.
      */
     List<Objective> guarded(List<Objective> day, List<SquadStatus> statuses, Optional<String> farmSquad) {
-        Optional<Objective> step = objective();
-        if (step.isEmpty() || day.contains(step.get())) {
-            return day;
-        }
         List<Objective> out = new ArrayList<>(day);
-        List<Integer> movable = new ArrayList<>();
-        for (int i = 0; i < statuses.size(); i++) {
-            if (farmSquad.filter(statuses.get(i).squadName()::equals).isEmpty()) {
-                movable.add(i);
+        Set<Integer> held = new HashSet<>();
+        for (Objective step : objectives()) {
+            int on = out.indexOf(step);
+            if (on >= 0) {
+                held.add(on);
+                continue;
             }
+            List<Integer> movable = new ArrayList<>();
+            for (int i = 0; i < statuses.size(); i++) {
+                if (!held.contains(i) && farmSquad.filter(statuses.get(i).squadName()::equals).isEmpty()) {
+                    movable.add(i);
+                }
+            }
+            if (movable.isEmpty()) {
+                LOG.warn("[Guardrail] no squad to put on '{}': the others hold the missions' steps before it, the farm squad keeps the farm", step.mission());
+                continue;
+            }
+            int k = movable.stream().filter(i -> statuses.get(i).standing().filter(step::equals).isPresent()).findFirst()
+                    .or(() -> movable.stream().filter(i -> out.get(i).task().getClass() == step.task().getClass()).findFirst())
+                    .orElse(movable.getLast());
+            LOG.warn("[Guardrail] the operator's farm - {} put on '{}', not '{}'", statuses.get(k).squadName(), step.mission(), out.get(k).mission());
+            out.set(k, step);
+            held.add(k);
         }
-        if (movable.isEmpty()) {
-            LOG.warn("[Guardrail] no squad to put on '{}': the farm squad keeps the farm", step.get().mission());
-            return day;
-        }
-        int k = movable.stream().filter(i -> statuses.get(i).standing().filter(step.get()::equals).isPresent()).findFirst()
-                .or(() -> movable.stream().filter(i -> out.get(i).task().getClass() == step.get().task().getClass()).findFirst())
-                .orElse(movable.getLast());
-        LOG.warn("[Guardrail] the operator's farm - {} put on '{}', not '{}'", statuses.get(k).squadName(), step.get().mission(), out.get(k).mission());
-        out.set(k, step.get());
         return out;
     }
 
     /**
-     * Measures the step under way in {@code world} at {@code now}, {@code campFarm} the camp's farm as kept: done, it's
-     * written DONE with what was measured, its result kept in the chunk register, and the next started - the template's
-     * chunk farm taken into the camp's ({@code farms}) as it is.
+     * Measures each step worked in {@code world} at {@code now}, {@code campFarm} the camp's farm as kept: done, it's
+     * written DONE with what was measured, its result kept in the chunk register, and the next started - a wheat
+     * template's chunk farm taken into the camp's ({@code farms}) as it is, a tree template's chunk the camp's tree chunk
+     * ({@code trees}) from then on.
      */
-    synchronized void measure(WorldView world, FarmPlan campFarm, CampFarm farms, long now) {
+    synchronized void measure(WorldView world, FarmPlan campFarm, CampFarm farms, CampTrees trees, long now) {
         load();
         Set<Long> chunks = new HashSet<>();
         book.ifPresent(b -> b.registers().chunks().stream().filter(c -> c.kind() == ChunkRecord.Kind.WHEAT || c.kind() == ChunkRecord.Kind.TREES
@@ -206,16 +258,28 @@ final class FarmMissions {
         }
         made = Set.copyOf(chunks);
         recheck(world, campFarm, now);
-        Optional<Map.Entry<FarmMission, FarmMission.Step>> under = current();
-        if (under.isEmpty()) {
-            return;
+        if (trees != null) {
+            treeChunk().ifPresent(trees::take);
         }
-        FarmMission m = under.get().getKey();
-        FarmMission.Step step = under.get().getValue();
+        for (Map.Entry<FarmMission, FarmMission.Step> under : worked()) {
+            measure(world, campFarm, farms, now, under.getKey(), under.getValue());
+        }
+    }
+
+    /**
+     * The tree chunk the missions give the camp: the one a tree farm mission is laying its template on, else the last one
+     * made - kept in the register's rows, so a restart reads it back.
+     */
+    private Optional<TreeChunk> treeChunk() {
+        return missions.entrySet().stream().filter(e -> e.getKey().steps().get(e.getValue()).kind() == FarmMission.Kind.TREE_TEMPLATE)
+                .map(e -> new TreeChunk(e.getKey().chunkX(), e.getKey().chunkZ(), e.getKey().level())).reduce((first, last) -> last).or(() -> treesMade);
+    }
+
+    private void measure(WorldView world, FarmPlan campFarm, CampFarm farms, long now, FarmMission m, FarmMission.Step step) {
         // A chunk being flattened and floored is no farm: what the camp's farm holds there - a superseded mission's template
         // (field668-682, at y=67) - is given up, or the farm squad sows it and the dig cuts round it. Its own template's
         // taken in again when the floor's done.
-        if (step.kind() != FarmMission.Kind.FARM_TEMPLATE && farms != null) {
+        if (!template(step.kind()) && farms != null) {
             farms.giveUp(m.chunkX(), m.chunkZ());
         }
         Optional<String> done = switch (step.kind()) {
@@ -250,6 +314,21 @@ final class FarmMissions {
                         + FarmSite.surveyed(world, farm).get(1).stream().limit(6).map(c -> c.x() + "," + c.y() + "," + c.z()).toList()));
                 yield work.stage() == FarmSite.Stage.SURVEYED ? Optional.empty() : Optional.of("the template's ground laid at y=" + step.level() + ", " + work.stage());
             }
+            case TREE_TEMPLATE -> {
+                TreeChunk chunk = new TreeChunk(m.chunkX(), m.chunkZ(), step.level());
+                if (chunk.trunks().stream().anyMatch(c -> !world.isLoaded(c.x(), c.z()))) {
+                    say(m, step, "not all of it in sight");
+                    yield Optional.empty();
+                }
+                // Planted, its chest in and lit: the fence is the grid's, not this mission's. A trunk with no soil under it
+                // is said, since the stage stands at GROUND while one lacks it and the planters pass it over.
+                TreeChunk.Stage stage = chunk.stage(world);
+                int takes = chunk.plantable(world).size();
+                say(m, step, stage + " - " + takes + " of " + chunk.trunks().size() + " trunk cells take a sapling"
+                        + (stage == TreeChunk.Stage.GROUND ? ", the rest want soil under them and nothing over" : ""));
+                yield stage.compareTo(TreeChunk.Stage.PRODUCING) >= 0 ? Optional.of("its " + chunk.trunks().size()
+                        + " saplings in, its chest and its " + chunk.torches().size() + " torches - " + stage) : Optional.empty();
+            }
         };
         if (done.isEmpty()) {
             return;
@@ -257,7 +336,7 @@ final class FarmMissions {
         LOG.info("[Mission] {}: {} - DONE, {}", m.name(), step.task(), done.get());
         book.ifPresent(b -> {
             b.done(m, step, done.get(), now);
-            if (step.kind() != FarmMission.Kind.FARM_TEMPLATE) {
+            if (!template(step.kind())) {
                 b.registers().put(new ChunkRecord(m.chunkX(), m.chunkZ(), step.kind() == FarmMission.Kind.FLATTEN ? ChunkRecord.Kind.FLATTENED
                         : ChunkRecord.Kind.FLOORED, step.level(), Optional.of(step.kind() == FarmMission.Kind.FLATTEN ? "CUT" : "PAVED"), now));
             }
@@ -271,6 +350,10 @@ final class FarmMissions {
             LOG.info("[Mission] {}: {} - next", m.name(), next.task());
         } else {
             missions.remove(m);
+            said.remove(m);
+            if (step.kind() == FarmMission.Kind.TREE_TEMPLATE) {
+                treesMade = Optional.of(new TreeChunk(m.chunkX(), m.chunkZ(), step.level()));
+            }
             LOG.info("[Mission] {} done", m.name());
         }
         wake.accept("a step of the operator's farm done");
@@ -375,9 +458,8 @@ final class FarmMissions {
 
     private void say(FarmMission m, FarmMission.Step step, String how) {
         String line = m.name() + ": " + step.task() + " - " + how;
-        if (!line.equals(said)) {
+        if (!line.equals(said.put(m, line))) {
             LOG.info("[Mission] {}", line);
-            said = line;
         }
     }
 
@@ -394,5 +476,11 @@ final class FarmMissions {
             missions.putIfAbsent(m, step);
             LOG.info("[Mission] {} carried on from the register, at step {}", m.name(), step + 1);
         }));
+        // The tree chunk a mission made before the restart: its template's row done, the last of them.
+        treesMade = book.get().registers().objectives().stream()
+                .filter(row -> row.state() == io.github.jayessdeesea.minecraft.command.ObjectiveRecord.State.DONE)
+                .flatMap(row -> FarmMission.named(row.mission()).filter(m -> m.crop() == FarmMission.Crop.TREES
+                        && m.steps().get(row.step()).kind() == FarmMission.Kind.TREE_TEMPLATE).stream())
+                .map(m -> new TreeChunk(m.chunkX(), m.chunkZ(), m.level())).reduce((first, last) -> last);
     }
 }

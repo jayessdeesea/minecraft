@@ -26,6 +26,11 @@ tiers the force has outgrown.
   force now makes - wooden swords once stone is standard, stone once iron is - is cleared out; wooden tools burn as
   the smelter's fuel.
 - The first figures - the miner's third pickaxe, the stacks of 64 - refined from live wear.
+- **The hotbar by the task** (operator, 2026-11-22: the tools for the trade quickly accessible). Built: the sword,
+  pickaxe, shovel, axe, a stack of blocks, food and torches each in its slot whatever the task (`bot.supply.Hotbar`,
+  docs/military-doctrine.md § 11). Left: the fifth slot by the task - a hoe on a farm, a bucket for a water carrier -
+  and each routine taking its tool by selecting its slot, never a swap from the pack (the paver does, `Footing.hold`;
+  the wall's repointing still digs its dirt by hand).
 
 ## Done when
 - In the squad simulation a soldier short of a tool is issued the depot's spare and makes none.
