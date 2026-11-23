@@ -346,7 +346,39 @@ final class FarmMissions {
             out.set(k, step);
             held.add(k);
         }
+        if (plan.isPresent()) {
+            atTheFarms(out, statuses, held, farmSquad);
+        }
         return out;
+    }
+
+    /**
+     * By the plan, a squad with no mission's step is given a farm to keep, not the camp (operator, 2026-11-23: a reliable
+     * food source and a reliable wood source first): one squad to each farm built of the kind its standing work is - the
+     * wheat or the trees - at that farm's chunk; and with no such farm left to keep, it joins the first step under way,
+     * the farms' before the others' - more hands on what food and wood wait on. Live (field701), three squads given
+     * "keep the wheat farms" and "keep the tree farms" at the camp stood there: "no ground to farm by water within 8
+     * blocks", one squad on the tree farm's flatten.
+     */
+    private synchronized void atTheFarms(List<Objective> out, List<SquadStatus> statuses, Set<Integer> held, Optional<String> farmSquad) {
+        Optional<Objective> first = objectives().stream().findFirst();
+        Set<FarmMission> kept = new HashSet<>();
+        for (int i = 0; i < statuses.size(); i++) {
+            Objective standing = out.get(i);
+            FarmMission.Crop kind = standing.task() instanceof Objective.Task.Farm ? FarmMission.Crop.WHEAT
+                    : standing.task() instanceof Objective.Task.TreeFarm ? FarmMission.Crop.TREES : null;
+            if (held.contains(i) || kind == null || farmSquad.filter(statuses.get(i).squadName()::equals).isPresent()) {
+                continue;
+            }
+            Optional<FarmMission> farm = built.stream().filter(m -> m.crop() == kind && !kept.contains(m)).findFirst();
+            if (farm.isPresent()) {
+                FarmMission m = farm.get();
+                kept.add(m);
+                out.set(i, new Objective("Keep the " + m.what() + " at chunk (" + m.chunkX() + ", " + m.chunkZ() + ")", m.centre(m.steps().getLast()), standing.intent(), standing.task()));
+            } else if (first.isPresent()) {
+                out.set(i, first.get());
+            }
+        }
     }
 
     /**

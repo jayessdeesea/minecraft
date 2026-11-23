@@ -11,7 +11,9 @@ The platoon leader decides by standing rules, no model (operator, 2026-11-23: th
 orders - on one live build the model decided 19 times and was overridden 41; `minecraft.platoon-leader.decides-with:
 drills`, `command.DrillPlatoonLeader`). "model" is selectable for comparison. Either way the rules below this section
 stand over what's decided - the operator's missions, the shortfalls, the night - as they did over a model's draft. By
-rules, a squad with nothing else is given what's built to keep: the squads turn about between the wheat and the trees.
+rules, a squad with nothing else is given what's built to keep, the squads turn about between the wheat and the trees:
+one squad to each farm built of that kind, at the farm's chunk; with none left to keep it joins the first mission's step
+under way, the farms' first (`FarmMissions.atTheFarms`) - two squads on one flatten each take a share of it.
 The model is the one the operator talks to (`app.OperatorChat`); it's told what the platoon is told
 (`app.RulesPlatoonLeader`) and never asked to decide.
 

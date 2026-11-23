@@ -44,9 +44,14 @@ final class ObjectiveBook {
         // A mission's step, PLANNED when the mission was given: its own row under way, not a new one.
         Optional<ObjectiveRecord> planned = registers.get().objectives().stream().filter(r -> step(r, objective)
                 && r.state() != ObjectiveRecord.State.DONE && r.state() != ObjectiveRecord.State.UNDER_WAY).findFirst(); // relieved, it's taken up again
+        // A mission's step another squad has under way is joined, not written again: one row a step, its squad the first on it.
+        Optional<ObjectiveRecord> joined = planned.isPresent() ? Optional.empty() : registers.get().objectives().stream()
+                .filter(r -> step(r, objective) && r.state() == ObjectiveRecord.State.UNDER_WAY).findFirst();
         ObjectiveRecord row = planned.map(r -> r.now(ObjectiveRecord.State.UNDER_WAY, Optional.of(squad), Optional.empty(), now)).orElse(null);
         if (row != null) {
             registers.get().update(row);
+        } else if (joined.isPresent()) {
+            row = joined.get();
         } else {
             row = registers.get().add(new ObjectiveRecord(0, objective.mission(), 0, OrderTrace.taskName(objective.task()),
                     Math.floorDiv((int) Math.floor(objective.location().x()), 16), Math.floorDiv((int) Math.floor(objective.location().z()), 16),

@@ -496,4 +496,42 @@ class FarmMissionsTest {
         assertEquals("Keep the wheat farms", given.getFirst().mission(), "the farm squad tends what's built");
         assertTrue(given.subList(1, 3).stream().anyMatch(o -> o.mission().startsWith("a mineshaft at chunk (0, 2)")), "a squad on the plan's mission: " + given);
     }
+
+    /**
+     * By the plan a squad with no mission's step keeps a farm that's built, at that farm - not the camp - and with none of
+     * its kind built it joins the step under way (operator, 2026-11-23: a reliable food source and a reliable wood source
+     * first). Live (field701), three squads stood at the camp with "no ground to farm by water", one on the tree farm's
+     * flatten. And a step two squads work is one row in the register.
+     */
+    @Test
+    void aSquadWithNoStepKeepsABuiltFarmOrJoinsTheStepUnderWay() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMission wheat = FarmMission.atSeaLevel(1, 3), trees = new FarmMission(2, 3, 63, FarmMission.Crop.TREES);
+        for (FarmMission.Step step : wheat.steps()) {
+            registers.add(new ObjectiveRecord(0, wheat.name(), step.index(), step.task(), 1, 3, java.util.Optional.empty(), ObjectiveRecord.State.DONE, 0, java.util.Optional.empty()));
+        }
+        ObjectiveBook book = new ObjectiveBook(() -> registers);
+        FarmMissions missions = new FarmMissions(cause -> { });
+        missions.keptIn(book);
+        missions.give(trees, 1_000);
+        missions.works(io.github.jayessdeesea.minecraft.command.BasePlan.ROUND_THE_ORIGIN);
+        List<io.github.jayessdeesea.minecraft.command.SquadStatus> squads = List.of(squad("Alpha"), squad("Bravo"), squad("Charlie"));
+        io.github.jayessdeesea.minecraft.command.Position camp = new io.github.jayessdeesea.minecraft.command.Position(24.5, 67, 88.5);
+        List<io.github.jayessdeesea.minecraft.command.Objective> day = List.of(
+                new io.github.jayessdeesea.minecraft.command.Objective("Keep the wheat farms", camp, "Food for the force", new io.github.jayessdeesea.minecraft.command.Objective.Task.Farm()),
+                new io.github.jayessdeesea.minecraft.command.Objective("Keep the tree farms", camp, "Wood that grows back", new io.github.jayessdeesea.minecraft.command.Objective.Task.TreeFarm()),
+                new io.github.jayessdeesea.minecraft.command.Objective("Keep the wheat farms", camp, "Food for the force", new io.github.jayessdeesea.minecraft.command.Objective.Task.Farm()));
+
+        List<io.github.jayessdeesea.minecraft.command.Objective> given = missions.guarded(day, squads, java.util.Optional.empty());
+
+        String flatten = "a tree farm at chunk (2, 3) at y=63: flatten chunk (2, 3), x 32..47 z 48..63 to y=62";
+        assertEquals(List.of("Keep the wheat farm at chunk (1, 3)", flatten, flatten), given.stream().map(io.github.jayessdeesea.minecraft.command.Objective::mission).toList(),
+                "the wheat farm kept by one squad; the others on the tree farm's flatten - no tree farm stands to keep, and one wheat farm wants one squad");
+        assertEquals(wheat.centre(wheat.steps().getLast()), given.getFirst().location(), "at the farm's chunk, not the camp");
+
+        book.given("Bravo", given.get(1), 2_000);
+        book.given("Charlie", given.get(2), 2_000);
+        assertEquals(1, registers.objectives().stream().filter(r -> r.mission().equals(trees.name()) && r.step() == 0).count(), "one row for the step both work");
+        assertEquals(trees.steps().size(), registers.objectives().stream().filter(r -> !r.mission().equals(wheat.name())).count(), "and no row but the mission's own");
+    }
 }
