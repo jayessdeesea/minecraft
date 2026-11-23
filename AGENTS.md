@@ -47,6 +47,8 @@ Each points to its home, which has the reasons.
 - **No mutable global state: inject it.** State lives in objects passed in, never in statics or
   singletons, so tests run in parallel - each owns its clock, server, directory and log.
   [docs/conventions.md](docs/conventions.md#no-mutable-global-state)
+- **Work is named: nothing is "the" anything.** State about work hangs off its mission and step, never a
+  field for "the ground to flatten" or "the camp's mine" - so two can go on at once. [docs/conventions.md](docs/conventions.md#work-is-named-nothing-is-the-anything)
 - **Standard formats through standard libraries**, never hand-built strings. [docs/conventions.md](docs/conventions.md#standard-formats-go-through-standard-libraries)
 - **`docs/` is what's built; `backlog/` is what's planned. Each fact has one home.**
   [docs/conventions.md](docs/conventions.md#docs)

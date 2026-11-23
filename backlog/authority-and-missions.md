@@ -166,6 +166,17 @@ levels the depositor reads (`StockLevels`, `ProductionLevels`). To build:
   miner's stockpile trip and a chest counted alone are the suspects), reproduced in a test. Then the most at 4,096,
   counted over every chest known, on every path that puts either in a chest; what's over it thrown away where it's dug;
   and what's held past it taken out (the cleanout below).
+- **Depots half full, and more of them when they aren't** (operator, 2026-11-23: supply depots should be 50% full, both
+  overall and within a radius; if not, we probably need more supply depots). A measure, per depot and over the depots in
+  reach of each place of work: slots used of slots there. Over half, the platoon leader opens a supply point near that
+  work (the plan's next cluster's, backlog/base-of-influence.md) or has a row of chests added; a worker's nearest depot
+  full is a shortfall like food or wood. Live (field701) every chest by the camp was full and a paver walked 25 blocks
+  to one after every two blocks laid.
+- **A soldier's pack for its job** (operator, 2026-11-23: optimise Ivy's inventory). `PavingRateIT`: four soldiers with
+  only the job's load pave a chunk's slab in 1 minute; with every pack slot full, in 6 (and before 2026-11-23's fixes,
+  never). Left: what a soldier carries that its squad's task doesn't want - seeds and saplings on a paver, 11 chests -
+  put down at the nearest depot once, at the task's start, as part of taking the task; and thrown away if there is no
+  room for it. And a paver's cobblestone drawn as a full load before it's out, from the nearest chest holding some: today it draws at none left, and a draw asked for 32 took the chest's 627 (`Depositor.tickDraw`) - tried once with three stacks and it and the stores passed the load back and forth; wants its own eval.
 - **A stock policy the platoon leader gives**, by kind: keep up to so many, throw out past it - cobblestone and dirt
   past a few stacks a chest row, seeds past 1,024 (operator), and so on - computed from what the stores hold against
   what the missions ordered will use, said as an order and kept with its missions.

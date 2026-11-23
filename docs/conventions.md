@@ -107,6 +107,23 @@ tests. A static field is a constant. The one standing exception is the generated
 (`BlockClassRegistry`, `ItemClassRegistry`, `HostileMobRegistry`): data generated from the pinned
 server, filled once when their class loads and only read after, so they behave as constants.
 
+## Work is named: nothing is "the" anything
+
+Every piece of work is a named objective or mission, and what's known about it hangs off that name (operator,
+2026-11-23: there may be an objective to flatten something, but there is no global "what are we flattening" - that is
+the wrong abstraction; everything is named). A field that answers "the ground to flatten", "the camp's mine", "the
+tree chunk", "the farm squad" is one thing where the force has many: it makes a second one wait for the first, or be
+taken for it. Live, one ground to flatten held three missions behind a fourth, and a mineshaft near the camp was taken
+for the camp's mine and never cut. So:
+- State about work is kept by the work's name - its mission and step - and reached through it, never through a field
+  for "the current one". Two of anything can then go on at once: two flattens, two mines, two farms.
+- A squad's task says which named work it is on; what a soldier does is derived from that, not from where the squad
+  stands or which site is nearest.
+- The same holds for methods: one that needs state takes it from the named thing it's given, not from a static or a
+  singleton (the section above). A static method with no state - a pure function over its arguments - is fine
+  (operator, 2026-11-23: only static state).
+What stands against this today, to be brought to it: backlog/named-work.md.
+
 ## Tests run in parallel
 
 Every test class and method runs concurrently (`junit-platform.properties`, in `app` and `bot`),

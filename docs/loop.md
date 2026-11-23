@@ -42,6 +42,15 @@ build running is the one last deployed. A pass that finds the last one's work br
      isn't there, or reading differently at the echelon below. On the day this was written every platoon decision was
      dropped for an hour over one order 257 characters long, and nothing but the squads standing in the mine by day
      said so.
+   - **Transit against work.** `[Productivity]` says, for each spell of a routine, the blocks walked and the items moved,
+     and `[Errand]` sums them by routine every ten minutes. A routine walking more than it works - tens of blocks an
+     item, spells that move nothing - is dug into like a stall, whatever its mission's count is doing: the walking is
+     where the time went. The questions, each answered by an eval and not a guess (`PavingRateIT` is the pattern: the
+     same job, the squad set up two ways, minutes and blocks-an-item for each): is it the pack (what it carries that
+     the job doesn't want, what it lacks that it does), the stores (too far, full, the wrong thing in them), or the way
+     the job is done? On the day this was written a slab was paved at seven cells a minute by four soldiers, its
+     masons walking 140 blocks a block paved; the eval showed a squad with only the job's load paving it in a minute,
+     and one with full packs never - it had dumped the cobblestone the slab wanted.
    - **Anti-entropy, and why it ran.** Whenever a built site is put back to its template - a review reopening one, the
      conformance pass fixing a cell - the log says what was different and, where it can be told, who or what made it
      so (`[Place]` and `[Dig]` name the routine). A difference that comes back, or one the force itself made, is a

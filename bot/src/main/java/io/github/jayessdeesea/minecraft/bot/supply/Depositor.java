@@ -204,11 +204,17 @@ public final class Depositor {
                 LOG.info("{} stockpiled its load - the chest holds {} logs, {} cobblestone, {} rations, {} raw iron, {} raw copper", name,
                         seen.logs(), seen.stone(), seen.rations(), seen.rawIron(), seen.rawCopper());
                 stockpileSeen.accept(seen);
-                trips.worked(at);
                 full = Optional.empty();
                 if (inventory.summary().equals(carriedOut)) {
+                    // A trip that moved nothing is a try that failed at that chest (docs/conventions.md, "A retry changes
+                    // something"): the chest is left alone, longer each time, whatever is carried by then. Live (field701),
+                    // Ivy paved two blocks of a floor and walked 25 blocks to a full chest and back, each time - her load
+                    // two cobblestone lighter, so "the same load" never held.
                     futile = carriedOut;
-                    LOG.warn("{} put nothing in at {}: the trip isn't made again while it carries the same - {}", name, at, carriedOut);
+                    trips.failed(at, ticks, "put nothing in");
+                    LOG.warn("{} put nothing in at {}: the trip isn't made again while it carries the same, nor there for a while - {}", name, at, carriedOut);
+                } else {
+                    trips.worked(at);
                 }
                 finish();
             }

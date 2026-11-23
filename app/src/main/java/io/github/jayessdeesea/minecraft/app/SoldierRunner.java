@@ -2044,7 +2044,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 && Lighting.dark(world, campGround, SECURE_RADIUS) <= NIGHT_UPKEEP_DARK;
         // Not a squad sent to its patrol base for the night: its place is inside.
         boolean sheltering = !daylight && taskOf(squad, Objective.Task.PatrolBase.class).isPresent();
-        if (campGround == null || !daylight && !litCamp || contact || sheltering) {
+        if (campGround == null || !daylight && !litCamp || contact || sheltering || chainOfCommand.farmMissions.on(objectiveOf(squad))) { // nor on a mission's step: its work is the step's (field701: Ivy, paving, was handed the camp's dig 62 times)
             statuses.forEach(s -> {
                 stopUpkeep(s.name());
             });
@@ -7336,7 +7336,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 java.util.function.Predicate<Position> notFull = c -> !fullChests.contains(BlockPos.containing(c.x(), c.y(), c.z()));
                 Optional<Position> deposit = (keepState.hands.contains(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile)
                         : dutyBook.dump(name, world).or(() -> stockpile)).filter(notFull);
-                Set<ItemClass> surplus = keepState.hands.contains(name) && !depositor.active() || depositor.dumping() ? surplusKinds(chestsSeen.values(), deposit) : Set.of();
+                Set<ItemClass> surplus = (keepState.hands.contains(name) && !depositor.active() || depositor.dumping()) && !chainOfCommand.farmMissions.on(objectiveOf(unitOf(name, definition.squad()))) ? surplusKinds(chestsSeen.values(), deposit) : Set.of(); // on a mission its cobblestone and dirt are the slab's and the ground's, never surplus (PavingRateIT: a squad with full packs dumped the cobblestone its slab wanted and stood)
                 boolean dumpNow = fullLoad && surplus.stream().anyMatch(c -> inventory.count(c) > Depositor.KEEP);
                 if (bakes && tickNow % 1200 == 0) LOG.info("[Baker] {}: {} wheat carried, a chest holding wheat {}, hands {}, free {}, threatened {}, fortifying {}, drawing {}", name, inventory.count(ItemClass.WHEAT), chestHolding(ItemClass.WHEAT, status.position()).map(Object::toString).orElse("none known"), handsHeld.get(name), free, threatened, fort != null, depositor.active()); // field640-655: no baker drew wheat
                 if (depositor.dumping() || dumpNow && !depositor.active()) {
@@ -7403,7 +7403,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     boolean surplusTrip = upgradeAllowed.getOrDefault(name, false) && plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
                     // The depot's kinds past what the pack keeps go in with it while the depot's under its
                     // most (StockLevels) - not into a mine's stash - and a reserve run short is a trip of its own.
-                    Map<ItemClass, Integer> packKept = planting.containsKey(name) ? SoldierErrands.PLANTER_CARRIED : keepState.hands.contains(name) ? KEEP_PACK
+                    Map<ItemClass, Integer> packKept = planting.containsKey(name) ? SoldierErrands.PLANTER_CARRIED : keepState.hands.contains(name) || paving.containsKey(name) ? KEEP_PACK
                             : cutting.containsKey(name) ? MINE_CARRIED
                             : dutyBook.is(name, DutyOrder.Duty.HARVESTER) ? HARVESTER_CARRIED : CARRIED;
                     boolean toDepot = deposit.flatMap(this::mineOfChest).isEmpty();
@@ -7429,7 +7429,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                 if (toDepot) {
                                     StockLevels.toStore(inv, packKept, k -> stockedAt(k, deposit)).stream().filter(s -> !slots.contains(s)).forEach(slots::add);
                                 }
-                                return slots;
+                                return paving.containsKey(name) ? slots.stream().filter(sl -> ItemClassRegistry.classOf(inv.itemAt(sl)).filter(ItemClass.COBBLESTONE::equals).isEmpty()).toList() : slots; // a paver's cobblestone is its work's: never put in (in the squad simulation one drew a chest's 627 and put 625 back, round and round)
                             });
                 }
             }));

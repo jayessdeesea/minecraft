@@ -493,7 +493,7 @@ class FarmMissionsTest {
         assertEquals(java.util.Set.of("a mineshaft at chunk (0, 2) at y=63", "a supply point at chunk (1, 2) at y=63"), java.util.Set.copyOf(open),
                 "the wheat farm's cluster: its mineshaft, then the supply point beside it; two open for the two squads but the farm's, and no third");
         List<io.github.jayessdeesea.minecraft.command.Objective> given = missions.guarded(day, squads, java.util.Optional.of("Alpha"));
-        assertEquals("Keep the wheat farms", given.getFirst().mission(), "the farm squad tends what's built");
+        assertEquals("Keep the wheat farm at chunk (1, 3)", given.getFirst().mission(), "the farm squad tends what's built, by name");
         assertTrue(given.subList(1, 3).stream().anyMatch(o -> o.mission().startsWith("a mineshaft at chunk (0, 2)")), "a squad on the plan's mission: " + given);
     }
 
@@ -528,6 +528,10 @@ class FarmMissionsTest {
         assertEquals(List.of("Keep the wheat farm at chunk (1, 3)", flatten, flatten), given.stream().map(io.github.jayessdeesea.minecraft.command.Objective::mission).toList(),
                 "the wheat farm kept by one squad; the others on the tree farm's flatten - no tree farm stands to keep, and one wheat farm wants one squad");
         assertEquals(wheat.centre(wheat.steps().getLast()), given.getFirst().location(), "at the farm's chunk, not the camp");
+
+        // With a farm squad, the wheat is its - whatever standing work it was dealt - and the others join the step.
+        List<io.github.jayessdeesea.minecraft.command.Objective> withFarmSquad = missions.guarded(day, squads, java.util.Optional.of("Bravo"));
+        assertEquals(List.of(flatten, "Keep the wheat farm at chunk (1, 3)", flatten), withFarmSquad.stream().map(io.github.jayessdeesea.minecraft.command.Objective::mission).toList());
 
         book.given("Bravo", given.get(1), 2_000);
         book.given("Charlie", given.get(2), 2_000);

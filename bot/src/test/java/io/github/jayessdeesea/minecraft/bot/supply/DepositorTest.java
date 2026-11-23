@@ -175,6 +175,13 @@ class DepositorTest {
         assertFalse(depositor.active(), "not set off again");
         assertEquals(opened, seen.size(), "nor the chest opened again");
 
+        // Nor at once with a load that differs by what it has used since - a log fewer (field701, Ivy: two cobblestone
+        // lighter each time, and back to the full chest): the chest that took nothing is left alone a while.
+        server.inventory.setSlot(12, new int[]{itemOf(ItemClass.LOG), 2});
+        run(Depositor.COOLDOWN_TICKS / 2, BESIDE, true);
+        assertFalse(depositor.active(), "not back to that chest straight away");
+        assertEquals(opened, seen.size());
+
         server.inventory.setSlot(10, new int[]{itemOf(ItemClass.COBBLESTONE), Gatherer.CARRY_STONE});
         for (int i = 0; i < 400 && !depositor.active(); i++) {
             run(1, FAR, true);

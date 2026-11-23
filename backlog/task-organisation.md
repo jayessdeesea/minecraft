@@ -40,6 +40,22 @@ Each a squad-simulation scenario, then seen live:
   one, and then wants its own `PlatoonLeaderScenarioIT` situation: a system-prompt line telling it that it can
   took that eval from 71/72 to 67/72 (sheltering by day, pulling a squad from its base).
 
+### A soldier in a worker's way is asked to move, through the chain (operator, 2026-11-23)
+"If an idle soldier is blocking a working soldier, like the worker can't place a block: maybe the soldier asks the squad
+leader for help and the squad leader tells them to move. If it's for a different squad, maybe it has to go through the
+platoon leader. This would be a temporary order, as the situation might be stale, and we wouldn't want to take them off
+important work, like cutting a tunnel."
+- The worker reports it: a placement or a dig refused because a soldier stands in the cell (or on its stand) is a
+  request up - who, where, for what - not a retry.
+- Its squad leader answers if the one in the way is its own; else the request goes up to the platoon leader and down to
+  the other squad's leader. The answer is an order to step clear: a move of a few blocks, with a time to live of
+  seconds, dropped unread if by then the cell is clear or the worker has gone on.
+- It never takes a soldier off work it's at - a tunnel's cut, a fight: the one in the way steps aside only if idle or
+  walking, and otherwise the worker is told to work round (another cell of its strip, and back).
+- Counted: requests made, answered, and how long a worker waited - a soldier often in the way is a tasking fault.
+- The eval: two soldiers of one squad, one idle in the other's next cell; then of two squads; the block goes in, and
+  the one asked goes back to what it was doing.
+
 ## Done when
 - Each bullet above passes as a squad-simulation scenario and is seen live.
 

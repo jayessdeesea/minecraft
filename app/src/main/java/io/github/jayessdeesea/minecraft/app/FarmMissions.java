@@ -363,11 +363,18 @@ final class FarmMissions {
     private synchronized void atTheFarms(List<Objective> out, List<SquadStatus> statuses, Set<Integer> held, Optional<String> farmSquad) {
         Optional<Objective> first = objectives().stream().findFirst();
         Set<FarmMission> kept = new HashSet<>();
+        // The farm squad first, and the wheat is its: live (field702), it stood at the camp with "keep the tree farms"
+        // while another squad kept the wheat farm.
+        List<Integer> order = new ArrayList<>();
         for (int i = 0; i < statuses.size(); i++) {
+            order.add(farmSquad.filter(statuses.get(i).squadName()::equals).isPresent() ? 0 : order.size(), i);
+        }
+        for (int i : order) {
             Objective standing = out.get(i);
-            FarmMission.Crop kind = standing.task() instanceof Objective.Task.Farm ? FarmMission.Crop.WHEAT
+            boolean farms = farmSquad.filter(statuses.get(i).squadName()::equals).isPresent();
+            FarmMission.Crop kind = farms || standing.task() instanceof Objective.Task.Farm ? FarmMission.Crop.WHEAT
                     : standing.task() instanceof Objective.Task.TreeFarm ? FarmMission.Crop.TREES : null;
-            if (held.contains(i) || kind == null || farmSquad.filter(statuses.get(i).squadName()::equals).isPresent()) {
+            if (held.contains(i) || kind == null) {
                 continue;
             }
             Optional<FarmMission> farm = built.stream().filter(m -> m.crop() == kind && !kept.contains(m)).findFirst();
