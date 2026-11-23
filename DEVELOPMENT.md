@@ -46,8 +46,9 @@ container). `ChainScenarioLiveIT` reads it there and fails on a command the serv
 waiting for night. In Git Bash, prefix any command that passes container paths with
 `MSYS_NO_PATHCONV=1`, or the paths get rewritten to Windows ones.
 
-**Choosing the model.** The squad leaders decide by standing rules, `minecraft.squad-leader.decides-with:
-drills`; set it to `model` to put them on a model instead. Each echelon on a model picks its own
+**Choosing the model.** The platoon leader and the squad leaders decide by standing rules,
+`minecraft.platoon-leader.decides-with: drills` and `minecraft.squad-leader.decides-with: drills`; set either to
+`model` to put that echelon on a model instead. The operator's chat is always a model: the platoon leader's. Each echelon on a model picks its own
 provider in `app/src/main/resources/application.yml`: `minecraft.platoon-leader.chat-model` and
 `minecraft.squad-leader.chat-model`, each `ollama` or `anthropic`. Both default to `ollama` (`qwen3:14b`, thinking off), so nothing needs an API key. To put the platoon leader
 on a frontier model, as the project intends, set `ANTHROPIC_API_KEY` and run with
@@ -214,10 +215,13 @@ time of day is it?", "list the missions", "what tasks are open for Charlie?", "w
 plain words can give or cancel a farm mission or a tree farm mission ("a tree farm at x=20 z=70"), replace the platoon's mission, escort or set the ground to flatten, said on
 the net as from game chat; what each command did is shown under its reply. The strip at the top is the Minecraft time and the time to the next dusk and dawn.
 Beside the conversation is the garrison's status, fetched every second (`GET /status`, `app.StatusBoard`): each squad's
-objective, and a row a soldier present - what it's doing (a fight, a recovery, its task on the squad's register or
-none) and for how long, the routine that has its hands, its order, its report and where it stands, its health and food,
-and how often its activity has changed since it joined, with those that were returns to the one just left in
-brackets. The page holds the
+objective, and a row a soldier present - where it stands (red when over 256 blocks from the middle of the force, the
+median of every soldier's x, y and z), its health and food, what it's doing (a fight, a recovery, its task on the
+squad's register or none) and for how long, the routine that has its hands, its order, its report, how often its
+activity has changed since it joined, with those that were returns to the one just left in brackets, and what it
+carries. Columns are fixed widths and a cell one line, so rows hold still; a cell's whole text, and what a column
+means, is its hover. On the clock's row, right, is what the force has at hand: each resource as carried by its soldiers
+plus held in every chest known. The page holds the
 conversation: reloading it starts a new one. Its parts: [docs/echelons/platoon-leader/decisions.md](docs/echelons/platoon-leader/decisions.md#talking-with-the-operator).
 
 Each order is followed down the chain and reported back on the net as it goes, under an id from

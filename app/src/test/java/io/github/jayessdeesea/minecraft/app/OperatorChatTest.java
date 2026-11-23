@@ -101,7 +101,7 @@ class OperatorChatTest {
     private final SpringAiPlatoonLeader platoonLeader = new SpringAiPlatoonLeader(client, PLATOON_LEADER, "Make camp at x=0 z=0", "");
     private final ChainOfCommand chain = new ChainOfCommand(platoonLeader, ChatClient.create((ChatModel) prompt -> {
         throw new AssertionError("no squad leader's model call expected");
-    }), new SquadLeaderPrompts("", ""), new Roster("Alpha:Alice"), true, "drills");
+    }), new SquadLeaderPrompts("", ""), new Roster("Alpha:Alice"), true, "drills", "model");
     private final List<String> radio = new CopyOnWriteArrayList<>();
     private final OperatorChat endpoint = new OperatorChat(new PlatoonLeaderChat(client, PROMPTS, platoonLeader, new ChatRegisters(chain),
             new ChatCommands(chain)), chain, new StatusBoard(() -> STATUS), 0);

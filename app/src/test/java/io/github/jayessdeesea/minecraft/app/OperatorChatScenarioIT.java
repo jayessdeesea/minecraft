@@ -69,7 +69,7 @@ class OperatorChatScenarioIT {
                 new ClassPathResource("prompts/platoon-leader-squad-prompt.md")), "Make camp at x=24 z=88", "");
         ChainOfCommand chain = new ChainOfCommand(platoonLeader, ChatClient.create((ChatModel) prompt -> {
             throw new AssertionError("no squad leader's model call expected");
-        }), new SquadLeaderPrompts("", ""), new Roster("Alpha:Alice;Charlie:Ivy"), true, "drills");
+        }), new SquadLeaderPrompts("", ""), new Roster("Alpha:Alice;Charlie:Ivy"), true, "drills", "model");
         Registers registers = new Registers(state.resolve("registers"));
         chain.keepObjectives(new ObjectiveBook(() -> registers));
         chain.onOperatorFarm("Pat", FarmMission.atSeaLevel(1, 3));

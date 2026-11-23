@@ -23,6 +23,9 @@ logging:
 
 minecraft:
   platoon-leader:
+    # How the platoon leader decides: "drills", by standing rules and no model (command.DrillPlatoonLeader), or
+    # "model", with the model below. By drills the model is still the one the operator talks to (app.OperatorChat).
+    decides-with: drills
     # The model the platoon leader thinks with: "anthropic" (a frontier model; needs ANTHROPIC_API_KEY)
     # or "ollama" (the local open-weight model, see compose.yaml).
     chat-model: ollama

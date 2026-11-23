@@ -113,6 +113,14 @@ final class FarmMissions {
                 || kind == FarmMission.Kind.MINE_HEAD || kind == FarmMission.Kind.MINE;
     }
 
+    /**
+     * Whether {@code m}, at {@code step}, has ground standing over its slab: a template going up, or its level being paved
+     * - a block over what its flatten cut to. Measured against the flatten then, that ground reads as uncut.
+     */
+    private static boolean overItsSlab(FarmMission m, FarmMission.Step step) {
+        return template(step.kind()) || step.level() > m.steps().getFirst().level();
+    }
+
     /** The chunks - by ChunkFarm#key - whose farmland is given up: each mission's worked, while it's flattened and floored. */
     synchronized Set<Long> farmlandGivenUp() {
         return worked().stream().filter(e -> !template(e.getValue().kind()))
@@ -132,7 +140,11 @@ final class FarmMissions {
     synchronized List<Map.Entry<FarmMission, FarmMission.Step>> worked() {
         List<Map.Entry<FarmMission, FarmMission.Step>> worked = new ArrayList<>();
         boolean flattening = false;
-        for (Map.Entry<FarmMission, Integer> e : missions.entrySet()) {
+        // The farms' steps before the others', each in the order given: food and wood are what the rest is built on
+        // (operator, 2026-11-23), so with squads short it's a supply point or a mineshaft that waits.
+        List<Map.Entry<FarmMission, Integer>> farmsFirst = missions.entrySet().stream()
+                .sorted(java.util.Comparator.comparingInt(e -> e.getKey().crop() == FarmMission.Crop.WHEAT || e.getKey().crop() == FarmMission.Crop.TREES ? 0 : 1)).toList();
+        for (Map.Entry<FarmMission, Integer> e : farmsFirst) {
             FarmMission.Step step = e.getKey().steps().get(e.getValue());
             if (step.kind() == FarmMission.Kind.FLATTEN) {
                 if (flattening) {
@@ -172,7 +184,11 @@ final class FarmMissions {
 
     /** Whether {@code objective} is a mission's step worked now: its squad is on the operator's mission. */
     boolean on(Optional<Objective> objective) {
-        return objective.filter(objectives()::contains).isPresent();
+        // By its mission, not the whole objective: one given to a squad has its place put on the ground it stands on, and
+        // is no longer the one made here. Live (field700), a supply point's flatten and a tree farm's template weren't
+        // known as missions' at dusk, and their squads were sent down the camp's mine each night.
+        List<String> steps = objectives().stream().map(Objective::mission).toList();
+        return objective.filter(o -> steps.contains(o.mission())).isPresent();
     }
 
     /** The chunk farm whose template {@code objective} is - a wheat farm mission's last step, worked now - if it is one. */
@@ -201,6 +217,48 @@ final class FarmMissions {
     /** The mine whose head is at block ({@code x}, {@code z}) is dry: a mineshaft mission on that chunk is done at its next measure. */
     synchronized void mineDry(int x, int z) {
         dry.add(ChunkFarm.key(Math.floorDiv(x, 16), Math.floorDiv(z, 16)));
+    }
+
+    /** Whether a mineshaft mission's shaft is being worked under chunk ({@code chunkX}, {@code chunkZ}): the one templated chunk a well is sited in. */
+    synchronized boolean mineAt(int chunkX, int chunkZ) {
+        return missions.entrySet().stream().anyMatch(e -> e.getKey().chunkX() == chunkX && e.getKey().chunkZ() == chunkZ
+                && e.getKey().steps().get(e.getValue()).kind() == FarmMission.Kind.MINE);
+    }
+
+    /** The base the platoon builds without being told each chunk, if it has one: {@link #works}. */
+    private volatile Optional<io.github.jayessdeesea.minecraft.command.BasePlan> plan = Optional.empty();
+
+    /** From now on the missions of {@code base} are given by rule, as squads come free: the platoon leader's strategy (operator, 2026-11-23). */
+    void works(io.github.jayessdeesea.minecraft.command.BasePlan base) {
+        plan = Optional.of(base);
+    }
+
+    /**
+     * The plan's next mission given, if there's a squad for it: never more missions open than {@code squads} to work them -
+     * the farm squad not among them, it tends what's built - so the force isn't over-extended (operator, 2026-11-23). One a
+     * decision. A chunk with a mission already - the operator's, open or built, whatever its template - is left as it is.
+     */
+    private synchronized void fromThePlan(int squads) {
+        if (plan.isEmpty() || book.isEmpty()) {
+            return;
+        }
+        load();
+        if (missions.size() >= squads) {
+            return;
+        }
+        Set<Long> taken = new HashSet<>();
+        Set<FarmMission.Crop> had = new HashSet<>(), standing = new HashSet<>();
+        java.util.stream.Stream.concat(java.util.stream.Stream.concat(missions.keySet().stream(), built.stream()),
+                book.get().registers().objectives().stream().flatMap(r -> FarmMission.named(r.mission()).stream())).forEach(m -> {
+            taken.add(io.github.jayessdeesea.minecraft.command.BasePlan.key(m.chunkX(), m.chunkZ()));
+            had.add(m.crop());
+        });
+        built.forEach(m -> standing.add(m.crop()));
+        // Food and wood first: nothing else is begun until a wheat farm and a tree farm stand (BasePlan.next).
+        plan.get().next(taken, had, standing).ifPresent(next -> {
+            LOG.info("[Plan] the base's next: {} - {} mission(s) open, {} squad(s) to work them", next.name(), missions.size(), squads);
+            give(next, measuredAt);
+        });
     }
 
     /** The tree chunk whose template {@code objective} is - a tree farm mission's last step, worked now - if it is one. */
@@ -262,6 +320,7 @@ final class FarmMissions {
      * said.
      */
     List<Objective> guarded(List<Objective> day, List<SquadStatus> statuses, Optional<String> farmSquad) {
+        fromThePlan(statuses.size() - (farmSquad.isPresent() ? 1 : 0));
         List<Objective> out = new ArrayList<>(day);
         Set<Integer> held = new HashSet<>();
         for (Objective step : objectives()) {
@@ -456,6 +515,12 @@ final class FarmMissions {
                     say(m, step, "not all of it in sight");
                     yield Optional.empty();
                 }
+                // Its trees' dirt first: each tree's cell of the paving dug out and dirt laid in it, the squad's (TemplateGround.treeOrders).
+                int toDig = chunk.soilToDig(world).size(), toLay = chunk.soilToLay(world).size();
+                if (toDig + toLay > 0) {
+                    say(m, step, "GROUND - of its " + chunk.soil().size() + " trees' cells, " + toDig + " to dig out of the paving and " + toLay + " to lay in dirt");
+                    yield Optional.empty();
+                }
                 // Planted, its chest in and lit: the fence is the grid's, not this mission's. A trunk with no soil under it
                 // is said, since the stage stands at GROUND while one lacks it and the planters pass it over.
                 TreeChunk.Stage stage = chunk.stage(world);
@@ -543,10 +608,10 @@ final class FarmMissions {
             rechecked = true;
             return;
         }
-        // Not once its template is going on: the template's own ground and fence stand over the flatten's level, and read as
-        // uncut. Live (field693), a wheat farm restarted at its template went back to its flatten, to dig up the ground laid,
-        // and - one flatten at a time - held the tree farm's flatten behind it.
-        if (template(under.get().getValue().kind())) {
+        // Not once its template is going on, or its level's paving: the template's own ground and fence, and the paving, stand
+        // over the flatten's level, and read as uncut. Live (field693), a wheat farm restarted at its template went back to
+        // its flatten, to dig up the ground laid, and - one flatten at a time - held the tree farm's flatten behind it.
+        if (overItsSlab(under.get().getKey(), under.get().getValue())) {
             rechecked = true;
             return;
         }
@@ -648,7 +713,7 @@ final class FarmMissions {
         // tree farm's flatten counted the posts of the mineshaft's head south of it among its columns to cut.
         built.forEach(m -> all.add(ChunkFarm.key(m.chunkX(), m.chunkZ())));
         missions.forEach((m, at) -> {
-            if (template(m.steps().get(at).kind())) {
+            if (overItsSlab(m, m.steps().get(at))) {
                 all.add(ChunkFarm.key(m.chunkX(), m.chunkZ()));
             }
         });
@@ -699,11 +764,38 @@ final class FarmMissions {
      * The missions open in the register before a restart, each at its first step not done: once, at the first measure or
      * mission given - not before, so the register is opened where the garrison's configured it, not at its default.
      */
+    /**
+     * A mission the register holds in an older shape - fewer steps than it has now - given the steps it has now, from
+     * its first: each of its rows the step that now has its place, PLANNED, and the ones it lacks added. A tree farm was
+     * a flatten and a template; it's a flatten one lower, a slab and a template (operator, 2026-11-23), so one open or
+     * built before is worked again from its flatten - what's done already measures done at once.
+     */
+    private static void reshape(ObjectiveBook book) {
+        Map<String, List<io.github.jayessdeesea.minecraft.command.ObjectiveRecord>> rows = book.registers().objectives().stream()
+                .filter(r -> r.state() != io.github.jayessdeesea.minecraft.command.ObjectiveRecord.State.SUPERSEDED)
+                .collect(Collectors.groupingBy(io.github.jayessdeesea.minecraft.command.ObjectiveRecord::mission, LinkedHashMap::new, Collectors.toList()));
+        rows.forEach((name, had) -> FarmMission.named(name).filter(m -> had.size() < m.steps().size()).ifPresent(m -> {
+            String why = "its steps are now " + m.steps().stream().map(FarmMission.Step::task).toList();
+            for (FarmMission.Step step : m.steps()) {
+                Optional<io.github.jayessdeesea.minecraft.command.ObjectiveRecord> row = had.stream().filter(r -> r.step() == step.index()).findFirst();
+                if (row.isPresent()) {
+                    book.registers().retask(new io.github.jayessdeesea.minecraft.command.ObjectiveRecord(row.get().id(), name, step.index(), step.task(), m.chunkX(), m.chunkZ(),
+                            Optional.empty(), io.github.jayessdeesea.minecraft.command.ObjectiveRecord.State.PLANNED, row.get().changedAt(), Optional.of(why)));
+                } else {
+                    book.registers().add(new io.github.jayessdeesea.minecraft.command.ObjectiveRecord(0, name, step.index(), step.task(), m.chunkX(), m.chunkZ(),
+                            Optional.empty(), io.github.jayessdeesea.minecraft.command.ObjectiveRecord.State.PLANNED, had.getFirst().changedAt(), Optional.empty()));
+                }
+            }
+            LOG.info("[Mission] {} given the steps it has now, from its first - it had {} of {}", name, had.size(), m.steps().size());
+        }));
+    }
+
     private void load() {
         if (loaded || book.isEmpty()) {
             return;
         }
         loaded = true;
+        reshape(book.get());
         book.get().openMissions().forEach((name, step) -> FarmMission.named(name).ifPresent(m -> {
             missions.putIfAbsent(m, step);
             LOG.info("[Mission] {} carried on from the register, at step {}", m.name(), step + 1);

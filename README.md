@@ -2,20 +2,23 @@
 
 ## What it is
 
-A chain of command of AI agents, fighting and working in a Minecraft world:
+A chain of command, fighting and working in a Minecraft world, that an operator directs by talking to a model:
 
-- **The platoon leader** is a frontier model. It holds the mission, reads what each squad reports, and gives
+- **The operator** talks to a model - the chat - which turns their words into missions and answers from the
+  force's registers. It is the only model at run time.
+- **The platoon leader** decides by standing rules - drills, no model. It carries out a strategy - build a base,
+  chunk by chunk, from a plan, the farms and stores first - and the operator's missions above that, and gives
   each squad an objective with its intent.
-- **Squad leaders**, one per squad, decide by standing rules - drills, no model. Each turns the platoon
+- **Squad leaders**, one per squad, decide by standing rules too. Each turns the platoon
   leader's objective into orders for its soldiers: where to go, in what formation, at what interval.
 - **Soldiers** are Minecraft player bots: deterministic Java that calls no model. Each runs every
   game tick (50 ms). It moves, fights, gathers, builds and crafts on its own initiative, within its
   last order.
 
-Four squads of four are in the field. Out of the box the platoon leader runs on the local model
-(Ollama), so the project runs without an API key. To put the platoon leader on a frontier model, set
-one key, `minecraft.platoon-leader.chat-model: anthropic`; `minecraft.squad-leader.decides-with: model`
-puts the squad leaders back on a model, for comparison
+Four squads of four are in the field. Out of the box the chat runs on the local model
+(Ollama), so the project runs without an API key. To put it on a frontier model, set
+one key, `minecraft.platoon-leader.chat-model: anthropic`; `minecraft.platoon-leader.decides-with: model` and
+`minecraft.squad-leader.decides-with: model` put the platoon leader and the squad leaders back on a model, for comparison
 ([DEVELOPMENT.md](DEVELOPMENT.md#1-start-the-dev-server-and-local-model)).
 
 ## Why it exists

@@ -100,6 +100,21 @@ final class Registers {
         }
     }
 
+    /**
+     * {@code objective}'s row given another task as well as its state: a mission's steps changed since it was kept
+     * ({@code FarmMissions}' reshape), the one case a row's task isn't what it was written with.
+     */
+    void retask(ObjectiveRecord objective) {
+        int changed = update("UPDATE objective SET task = ? WHERE id = ?", s -> {
+            s.setString(1, objective.task());
+            s.setLong(2, objective.id());
+        });
+        if (changed != 1) {
+            throw new IllegalStateException("no objective " + objective.id() + " kept to give another task: " + objective);
+        }
+        update(objective);
+    }
+
     /** Every objective kept, by mission then step. */
     List<ObjectiveRecord> objectives() {
         return query("SELECT * FROM objective ORDER BY mission, step", s -> {

@@ -9,8 +9,13 @@ A Minecraft Java Edition client built from scratch - protocol implemented oursel
 client/server libraries - that hosts a fleet of bots that works (operator, 2026-11-14): a force
 that sustains itself and carries out the operator's missions.
 
-- **Platoon leader:** one instance, a model. Turns the operator's missions into objectives and intent,
-  chooses among missions already costed, and sets priorities. The one place judgement is needed.
+- **Operator:** the one place judgement is needed, and the only one a model serves at run time: the
+  operator talks to a model (the chat), which turns their words into missions and answers from the
+  registers. It gives no order of its own.
+- **Platoon leader:** one instance. Decides by standing rules (`command.DrillPlatoonLeader`), no model
+  (operator, 2026-11-23); a model is selectable for comparison. Carries out a strategy: expand influence
+  - build the base chunk by chunk from a plan (`command.BasePlan`), the renewables first, never more
+  missions open than squads to work them - and the operator's missions above that.
 - **Squad leader:** one per squad. Decides by standing rules (`command.DrillSquadLeader`), no
   model; a model is selectable for comparison. Not a Minecraft entity or connection: a role only.
 - **Soldier:** a player bot with its own connection, in the world. Executes its squad leader's
@@ -20,7 +25,8 @@ The Minecraft client is the substrate; the subject is a force that works. Make t
 the command layer legible, not ones that chase Minecraft feature completeness. The force is
 organised and talks as an infantry platoon does (mission command, WILCO/CANTCO, SITREP,
 OPORD/FRAGO), so the doctrine for each job comes from the manual for that job, and a model is shown
-computed state, never asked to work it out.
+computed state, never asked to work it out. At development time a model also watches the running
+garrison (docs/loop.md).
 
 ## Rules every change needs
 Each points to its home, which has the reasons.

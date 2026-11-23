@@ -23,15 +23,21 @@ class FarmMissionTest {
         assertEquals(List.of(69, 69, 70), new FarmMission(1, 3, 70).steps().stream().map(FarmMission.Step::level).toList(), "at any height");
     }
 
-    /** A tree farm at chunk (1, 4) at sea level: flatten to 63 - its ground left, saplings want soil - then the tree template at 63. */
+    /**
+     * A tree farm at chunk (1, 4) at sea level (operator, 2026-11-23: all the templates have cobblestone one under the
+     * target level, and at the level unless it can't be): flatten to 62, a slab there, 63 paved, then the tree template -
+     * which puts the dirt under its trees.
+     */
     @Test
-    void aTreeFarmIsAFlattenToItsLevelAndTheTreeTemplateOnIt() {
+    void aTreeFarmIsAFlattenASlabOneUnderItsLevelItsLevelPavedAndTheTreeTemplateOnIt() {
         FarmMission trees = FarmMission.parse("20 70", FarmMission.Crop.TREES).orElseThrow();
         assertEquals(new FarmMission(1, 4, 63, FarmMission.Crop.TREES), trees);
         assertEquals("a tree farm at chunk (1, 4) at y=63", trees.name());
-        assertEquals(List.of(FarmMission.Kind.FLATTEN, FarmMission.Kind.TREE_TEMPLATE), trees.steps().stream().map(FarmMission.Step::kind).toList());
-        assertEquals(List.of(63, 63), trees.steps().stream().map(FarmMission.Step::level).toList());
-        assertEquals("flatten chunk (1, 4), x 16..31 z 64..79 to y=63", trees.steps().getFirst().task());
+        assertEquals(List.of(FarmMission.Kind.FLATTEN, FarmMission.Kind.FLOOR, FarmMission.Kind.FLOOR, FarmMission.Kind.TREE_TEMPLATE), trees.steps().stream().map(FarmMission.Step::kind).toList());
+        assertEquals(List.of(62, 62, 63, 63), trees.steps().stream().map(FarmMission.Step::level).toList());
+        FarmMission stores = new FarmMission(1, 4, 63, FarmMission.Crop.STORES);
+        assertEquals(List.of(62, 62, 63, 63), stores.steps().stream().map(FarmMission.Step::level).toList(), "a supply point's ground the same: the slab, then its level paved");
+        assertEquals("flatten chunk (1, 4), x 16..31 z 64..79 to y=62", trees.steps().getFirst().task());
         assertEquals(java.util.Optional.of(trees), FarmMission.named(trees.name()), "read back from its name, as the register keeps it");
         assertEquals(java.util.Optional.of(FarmMission.atSeaLevel(1, 3)), FarmMission.named("a farm at chunk (1, 3) at y=63"), "a wheat farm's name still a wheat farm");
     }

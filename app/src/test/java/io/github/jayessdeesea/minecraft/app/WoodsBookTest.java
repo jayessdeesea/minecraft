@@ -29,7 +29,7 @@ class WoodsBookTest {
                             new Class<?>[]{io.github.jayessdeesea.minecraft.command.PlatoonLeader.class}, (proxy, method, args) -> null),
                     ChatClient.create((ChatModel) prompt -> {
                         throw new AssertionError("no model call expected");
-                    }), new SquadLeaderPrompts("", ""), new Roster("Alpha:Alice"), true, "model");
+                    }), new SquadLeaderPrompts("", ""), new Roster("Alpha:Alice"), true, "model", "model");
         }
 
         @Override

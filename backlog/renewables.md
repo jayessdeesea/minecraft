@@ -62,6 +62,17 @@ One cycle for wheat chunks, tree chunks and the supply point; only the template 
   crop at (-12, 63, 87) was started three times and never done - a routine walking it out and back.
 
 ### Trees
+- **Every template's ground, one rule** (operator, 2026-11-23): cobblestone one under the level, all of it; and
+  cobblestone at the level too, except where it can't be - a wheat farm's field cells are dirt, but not under its fence
+  or its torches; a tree farm's are dirt under its sixteen trees and nowhere else. Built: the slab under a wheat farm, a
+  tree farm and a supply point; a supply point's level paved; a tree farm's level paved but for the dirt under its
+  trees. Left: a wheat farm's fence line and torch cells in cobblestone at the level (its template lays dirt over all of
+  it today, and the one built is that way); a mineshaft's head given its slab and its level paved round the shaft. Both
+  are a template saying what stands at each cell - the conformance pass below - and the built wheat farm is put right
+  by it.
+- **Birch first** (operator, 2026-11-23: wood that grows predictably): a planter takes birch if it carries any, then
+  spruce, then any other (docs/military-doctrine.md § 12). Left: a tree template never planted with oak or acacia
+  while a birch or spruce sapling is in the squad or the stores.
 - **The rotation** (operator, 2026-11-14 and 2026-11-21): one pass fells every tree of an area whole and replants
   each stump at once, under its own decaying leaves (`TreeFarm.plantable` lets them be); then back a couple of minutes
   on - most leaves decayed, inside the 5 minutes a drop lies - to sweep up the saplings and sticks. Dropped saplings
@@ -129,6 +140,17 @@ and each repair kept in the chunk's history.
 template: remove the extra chests, get rid of the cobblestone on the fences, hoe the field." One pass, not a rule a
 fault: every cell of the template's box compared with what its layout says is there, and the differences - what's
 extra, what's missing, what's the wrong block - worked by whoever is sent to the site, before its crop.
+- **Why it was needed, each time** (operator, 2026-11-23: when we have to run the anti-entropy we should know why,
+  and see if there is an underlying defect): each difference found is logged with what stood there, what the layout
+  has, and what last changed that cell where the force did it (the placement and digging audits name the routine and
+  the soldier). Differences are counted by cause; one that comes back after being put right, or that the force's own
+  routine made - a depot's chest sited in a field, a step left on a fence line, a torch a block low - is a defect to fix
+  in that routine. The repair is the net, not the cure (docs/loop.md, "Anti-entropy, and why it ran").
+- **Every template, one mechanism** (operator, 2026-11-23: this should apply to all templates): the wheat farm, the tree
+  farm, the supply point and the mineshaft's head each say, cell by cell over their box and the slab under it, what
+  stands there (`ChunkFarm`, `TreeChunk`, `StoresChunk`, `MineHead` - one "what the layout has at this cell" each), and
+  one comparison yields the differences. A soldier sent to work a built site runs it first, and the review runs the same
+  comparison, so "DONE" means matches the template. Next to build after the mineshaft's own shaft.
 - **What isn't a violation** (operator): on a tree farm a sapling at a trunk, or the tree it has grown into, leaves
   and all; on a wheat farm tilled ground, bare or sown or with wheat at any growth. **What is**: ground at a field's
   cell not tilled; ground missing; a block that isn't the layout's - a chest but the farm's own, cobblestone where a
@@ -137,7 +159,7 @@ extra, what's missing, what's the wrong block - worked by whoever is sent to the
 - Wanted of the world model first: what a block is, cell by cell - a fence told from any other solid block
   (`WorldView` says only "solid here"); today cobblestone on the fence's line counts as its post.
 - Built towards it: missing ground laid and what stands in a wheat template's way dug by its squad (`TemplateGround`);
-  a torch where ground goes taken up (`Builder`); a tree template's trunks with nothing under them filled; the review
+  a torch where ground goes taken up (`Builder`); a tree template's ground laid in dirt on its slab; the review
   that reopens a built template (`FarmMissions.review`).
 
 ### A template cleared of what isn't its own: what's left (operator, 2026-11-22)

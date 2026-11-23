@@ -126,10 +126,14 @@ class FarmMissionsTest {
         assertEquals(List.of(FarmMission.Kind.FLOOR, FarmMission.Kind.FLATTEN), missions.worked().stream().map(e -> e.getValue().kind()).toList(),
                 "the wheat's floor and the trees' flatten; the later farm's flatten waits");
         assertEquals(List.of(wheat, trees), missions.worked().stream().map(java.util.Map.Entry::getKey).toList());
-        assertEquals(new io.github.jayessdeesea.minecraft.command.Flatten(16, 64, 31, 79, 63), missions.flatten().orElseThrow(), "the ground to flatten is the trees' chunk, to its level");
+        assertEquals(new io.github.jayessdeesea.minecraft.command.Flatten(16, 64, 31, 79, 62), missions.flatten().orElseThrow(), "the ground to flatten is the trees' chunk, to one under its level: its slab's");
         List<io.github.jayessdeesea.minecraft.command.Objective> steps = missions.objectives();
+        // A step as its squad holds it - its place put on the ground the squad stands on - is still the mission's: worked by night.
+        io.github.jayessdeesea.minecraft.command.Objective held = steps.getLast();
+        assertTrue(missions.on(java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Objective(held.mission(),
+                new io.github.jayessdeesea.minecraft.command.Position(held.location().x(), held.location().y() + 4, held.location().z()), held.intent(), held.task()))), "known by its mission");
         assertEquals(List.of("a farm at chunk (1, 3) at y=63: floor chunk (1, 3), x 16..31 z 48..63 in cobblestone at y=62",
-                "a tree farm at chunk (1, 4) at y=63: flatten chunk (1, 4), x 16..31 z 64..79 to y=63"),
+                "a tree farm at chunk (1, 4) at y=63: flatten chunk (1, 4), x 16..31 z 64..79 to y=62"),
                 steps.stream().map(io.github.jayessdeesea.minecraft.command.Objective::mission).toList());
 
         // A squad to each: Alpha already on the floor keeps it, and another is put on the trees' flatten.
@@ -234,7 +238,7 @@ class FarmMissionsTest {
         assertEquals(List.of(), restarted.worked(), "not looked over again before the review is due");
         restarted.measure(world, null, null, campTrees, 5_000 + FarmMissions.REVIEW_MILLIS);
         assertEquals(List.of(FarmMission.Kind.TREE_TEMPLATE), restarted.worked().stream().map(e -> e.getValue().kind()).toList(), "its template worked again");
-        ObjectiveRecord template = registers.objectives().stream().filter(r -> r.step() == 1).findFirst().orElseThrow();
+        ObjectiveRecord template = registers.objectives().stream().filter(r -> r.step() == 3).findFirst().orElseThrow();
         assertEquals(ObjectiveRecord.State.PLANNED, template.state(), "open again in the register: " + template);
         assertTrue(template.why().orElse("").startsWith("reviewed: its chest is gone; 9 of its 9 torches gone"), "with what was found: " + template);
     }
@@ -248,8 +252,10 @@ class FarmMissionsTest {
     }
 
     /**
-     * A mineshaft's mission: its head, then its shaft - a MINE at the chunk's middle, its y the depth to cut to - done when
-     * whoever works it says the mine there is dry (operator, 2026-11-22: a squad goes down one and mines it till dry).
+     * A mineshaft's mission: its ground as every template's - flattened, a slab one under its level, its level paved
+     * (operator, 2026-11-23) - then its head, then its shaft - a MINE at the chunk's middle, its y the depth to cut to -
+     * done when whoever works it says the mine there is dry (operator, 2026-11-22: a squad goes down one and mines it
+     * till dry).
      */
     @Test
     void aMineshaftsShaftIsDoneWhenItsMineIsDry() {
@@ -257,9 +263,12 @@ class FarmMissionsTest {
         FarmMission shaft = new FarmMission(2, 4, 63, FarmMission.Crop.MINE);
         assertEquals("a mineshaft at chunk (2, 4) at y=63", shaft.name());
         assertEquals(java.util.Optional.of(shaft), FarmMission.named(shaft.name()));
+        assertEquals(List.of(FarmMission.Kind.FLATTEN, FarmMission.Kind.FLOOR, FarmMission.Kind.FLOOR, FarmMission.Kind.MINE_HEAD, FarmMission.Kind.MINE),
+                shaft.steps().stream().map(FarmMission.Step::kind).toList());
+        assertEquals(List.of(62, 62, 63, 63, 63), shaft.steps().stream().map(FarmMission.Step::level).toList());
         for (FarmMission.Step step : shaft.steps()) {
             registers.add(new ObjectiveRecord(0, shaft.name(), step.index(), step.task(), 2, 4, java.util.Optional.empty(),
-                    step.index() == 0 ? ObjectiveRecord.State.DONE : ObjectiveRecord.State.PLANNED, 0, java.util.Optional.empty()));
+                    step.index() < 4 ? ObjectiveRecord.State.DONE : ObjectiveRecord.State.PLANNED, 0, java.util.Optional.empty()));
         }
         FarmMissions missions = new FarmMissions(cause -> { });
         missions.keptIn(new ObjectiveBook(() -> registers));
@@ -288,7 +297,7 @@ class FarmMissionsTest {
         missions.mineDry(40, 72);
         missions.measure(world, null, null, null, 6_000);
         assertEquals(List.of(), missions.worked(), "dry: the mission done");
-        assertEquals(ObjectiveRecord.State.DONE, registers.objectives().stream().filter(r -> r.step() == 1).findFirst().orElseThrow().state());
+        assertEquals(ObjectiveRecord.State.DONE, registers.objectives().stream().filter(r -> r.step() == 4).findFirst().orElseThrow().state());
     }
 
     /**
@@ -303,11 +312,11 @@ class FarmMissionsTest {
         missions.keptIn(new ObjectiveBook(() -> registers));
         FarmMission trees = new FarmMission(2, 3, 63, FarmMission.Crop.TREES);
         missions.give(trees, 0);
-        // Flat at the level but for one column ten out south-east of the chunk, a block over its slope's line there.
+        // Flat at its slab's level but for one column ten out south-east of the chunk, a block over its slope's line there.
         io.github.jayessdeesea.minecraft.bot.world.WorldView world = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
-                return y <= 63 || x == 57 && z == 73 && y <= 74;
+                return y <= 62 || x == 57 && z == 73 && y <= 73;
             }
 
             @Override
@@ -327,10 +336,10 @@ class FarmMissionsTest {
         assertEquals(java.util.Set.of(), missions.stalled(), "not yet said as stalled");
 
         missions.measure(world, null, null, null, 1_000 + FarmMissions.SLOPE_PATIENCE_MILLIS);
-        assertEquals(List.of(FarmMission.Kind.TREE_TEMPLATE), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "left, and its template begun");
+        assertEquals(List.of(FarmMission.Kind.FLOOR), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "left, and its slab begun");
         ObjectiveRecord flatten = registers.objectives().stream().filter(r -> r.step() == 0).findFirst().orElseThrow();
         assertEquals(ObjectiveRecord.State.DONE, flatten.state());
-        assertTrue(flatten.why().orElse("").contains("1 column(s) out on its slopes left as they are") && flatten.why().orElse("").contains("57,73 at y=74"), "said, with which: " + flatten);
+        assertTrue(flatten.why().orElse("").contains("1 column(s) out on its slopes left as they are") && flatten.why().orElse("").contains("57,73 at y=73"), "said, with which: " + flatten);
     }
 
     /**
@@ -377,5 +386,114 @@ class FarmMissionsTest {
         assertEquals(List.of("a mission making no progress"), woken, "and the platoon leader woken, once");
         missions.measure(world, null, farms, null, 1_000 + 2 * FarmMissions.STALL_MILLIS);
         assertEquals(1, woken.size(), "not said again while nothing moves");
+    }
+
+    /**
+     * A tree farm the register holds as it was - a flatten at its level and a template - is given the steps it has now
+     * (operator, 2026-11-23: all the templates have cobblestone one under the target level, and at the level unless it
+     * can't be): a flatten one lower, a slab, its level paved, the template - worked from the flatten. And its template
+     * isn't done while its trees' cells are paving: each is dug out and laid in dirt.
+     */
+    @Test
+    void aTreeFarmFromBeforeItsSlabIsWorkedAgainFromItsFlattenAndItsTreesGivenDirt() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMission trees = new FarmMission(2, 3, 63, FarmMission.Crop.TREES);
+        registers.add(new ObjectiveRecord(0, trees.name(), 0, "flatten chunk (2, 3), x 32..47 z 48..63 to y=63", 2, 3, java.util.Optional.of("Charlie"),
+                ObjectiveRecord.State.DONE, 0, java.util.Optional.empty()));
+        registers.add(new ObjectiveRecord(0, trees.name(), 1, "the tree farm template on chunk (2, 3), x 32..47 z 48..63 at y=63", 2, 3, java.util.Optional.of("Charlie"),
+                ObjectiveRecord.State.UNDER_WAY, 0, java.util.Optional.empty()));
+        FarmMissions missions = new FarmMissions(cause -> { });
+        missions.keptIn(new ObjectiveBook(() -> registers));
+        io.github.jayessdeesea.minecraft.bot.farm.TreeChunk chunk = new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(2, 3, 63);
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> soil = java.util.Set.copyOf(chunk.soil());
+
+        // The ground as it lies (0); cut, its slab in (1); its level paved (2); its trees' cells dug out (3); dirt in them (4).
+        int[] stage = {0};
+        io.github.jayessdeesea.minecraft.bot.world.WorldView world = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            private boolean tree(int x, int y, int z) {
+                return soil.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 62 || y == 63 && (stage[0] == 0 || stage[0] == 2 || stage[0] == 3 && !tree(x, y, z) || stage[0] == 4);
+            }
+
+            @Override
+            public boolean isCobblestone(int x, int y, int z) {
+                return stage[0] >= 1 && (y == 62 || y == 63 && stage[0] >= 2 && !(stage[0] >= 3 && tree(x, y, z)));
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return stage[0] == 4 && tree(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return List.of();
+            }
+        };
+        missions.measure(world, null, null, null, 500);
+        assertEquals(List.of(FarmMission.Kind.FLATTEN), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "from its flatten");
+        assertEquals(trees.steps().stream().map(FarmMission.Step::task).toList(), registers.objectives().stream().map(ObjectiveRecord::task).toList(), "its rows the steps it has now");
+        assertEquals(java.util.Collections.nCopies(4, ObjectiveRecord.State.PLANNED), registers.objectives().stream().map(ObjectiveRecord::state).toList());
+
+        stage[0] = 1;
+        for (int i2 = 1; i2 <= 3; i2++) {
+            missions.measure(world, null, null, null, i2 * 1_000L);
+        }
+        assertEquals(List.of(63), missions.worked().stream().map(e -> e.getValue().level()).toList(), "its flatten and slab done as measured, its level to pave");
+        stage[0] = 2;
+        missions.measure(world, null, null, null, 4_000);
+        missions.measure(world, null, null, null, 5_000);
+        assertEquals(List.of(FarmMission.Kind.TREE_TEMPLATE), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "and paved, its template");
+        assertEquals(java.util.Optional.of(chunk), missions.trees(missions.objectives().stream().findFirst()), "its squad's to give its trees dirt");
+        assertEquals(List.of(16, 0), List.of(chunk.soilToDig(world).size(), chunk.soilToLay(world).size()), "every tree's cell paving, to dig out");
+        stage[0] = 3;
+        assertEquals(List.of(0, 16), List.of(chunk.soilToDig(world).size(), chunk.soilToLay(world).size()), "dug out, to lay in dirt");
+        stage[0] = 4;
+        assertEquals(List.of(0, 0), List.of(chunk.soilToDig(world).size(), chunk.soilToLay(world).size()), "dirt under each tree");
+    }
+
+    /**
+     * The base's missions are given by rule, as squads come free (operator, 2026-11-23: a strategy of expanding influence,
+     * never over-extended): never more open than squads to work them, the farm squad left to tend what's built; the
+     * cluster begun finished from its mineshaft; and a chunk with a mission already is left as it is.
+     */
+    @Test
+    void theBasesNextMissionIsGivenWhenASquadIsFreeForIt() {
+        Registers registers = new Registers(state.resolve("registers"));
+        // The wheat farm and the tree farm that stand, built: food and wood, before anything else is begun.
+        for (FarmMission standing : List.of(FarmMission.atSeaLevel(1, 3), new FarmMission(2, 3, 63, FarmMission.Crop.TREES))) {
+            for (FarmMission.Step step : standing.steps()) {
+                registers.add(new ObjectiveRecord(0, standing.name(), step.index(), step.task(), standing.chunkX(), standing.chunkZ(), java.util.Optional.empty(),
+                        ObjectiveRecord.State.DONE, 0, java.util.Optional.empty()));
+            }
+        }
+        FarmMissions missions = new FarmMissions(cause -> { });
+        missions.keptIn(new ObjectiveBook(() -> registers));
+        List<io.github.jayessdeesea.minecraft.command.SquadStatus> squads = List.of(squad("Alpha"), squad("Bravo"), squad("Charlie"));
+        List<io.github.jayessdeesea.minecraft.command.Objective> day = squads.stream().map(s -> new io.github.jayessdeesea.minecraft.command.Objective("Keep the wheat farms",
+                new io.github.jayessdeesea.minecraft.command.Position(0.5, 64, 0.5), "Food for the force", new io.github.jayessdeesea.minecraft.command.Objective.Task.Farm())).toList();
+
+        missions.guarded(day, squads, java.util.Optional.of("Alpha"));
+        assertEquals(List.of(), missions.worked(), "no plan: nothing given unasked");
+
+        missions.works(io.github.jayessdeesea.minecraft.command.BasePlan.ROUND_THE_ORIGIN);
+        missions.guarded(day, squads, java.util.Optional.of("Alpha"));
+        missions.guarded(day, squads, java.util.Optional.of("Alpha"));
+        missions.guarded(day, squads, java.util.Optional.of("Alpha"));
+        List<String> open = registers.objectives().stream().filter(r -> r.state() != ObjectiveRecord.State.DONE).map(ObjectiveRecord::mission).distinct().toList();
+        assertEquals(java.util.Set.of("a mineshaft at chunk (0, 2) at y=63", "a supply point at chunk (1, 2) at y=63"), java.util.Set.copyOf(open),
+                "the wheat farm's cluster: its mineshaft, then the supply point beside it; two open for the two squads but the farm's, and no third");
+        List<io.github.jayessdeesea.minecraft.command.Objective> given = missions.guarded(day, squads, java.util.Optional.of("Alpha"));
+        assertEquals("Keep the wheat farms", given.getFirst().mission(), "the farm squad tends what's built");
+        assertTrue(given.subList(1, 3).stream().anyMatch(o -> o.mission().startsWith("a mineshaft at chunk (0, 2)")), "a squad on the plan's mission: " + given);
     }
 }

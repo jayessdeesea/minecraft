@@ -33,6 +33,19 @@ build running is the one last deployed. A pass that finds the last one's work br
      doubling: `bot.supply.Setbacks`), `[Outcome] loop` (four trips running that moved nothing: `app.ErrandLedger`),
      `[Verify]` (a task's count not falling), `couldn't` and `gives up` lines, crowding alerts. Each is somebody not
      accomplishing what it was sent to do: dug into from its count and its reason, not waited on.
+   - **Orders, followed or not.** An order is followed down the chain: what was given (`[PL -> squad]`, the squad
+     leader's FRAGO, a soldier's `[Register] ... on <task>`), whether it was taken (WILCO, CANTCO, "no decision -
+     keeping the current objectives", a `[Guardrail]` putting a squad on something else), and how long from given to
+     worked. Three things are dug into, each as a blocker is: an order **not followed** - given and never worked, or
+     overridden every cycle; one that **takes too long** - given at dawn and its squad on it an hour later, a mission
+     opened and nobody on it; and one **mangled or unclear** - cut short, over-long, naming a place or a thing that
+     isn't there, or reading differently at the echelon below. On the day this was written every platoon decision was
+     dropped for an hour over one order 257 characters long, and nothing but the squads standing in the mine by day
+     said so.
+   - **Anti-entropy, and why it ran.** Whenever a built site is put back to its template - a review reopening one, the
+     conformance pass fixing a cell - the log says what was different and, where it can be told, who or what made it
+     so (`[Place]` and `[Dig]` name the routine). A difference that comes back, or one the force itself made, is a
+     defect upstream of the repair: found and fixed there, not left to the repair to keep mending.
    - **Faults** (`[Fault]`), STALLED and CANTCO soldiers, squads with no task, the night's ore.
 2. **The biggest blocker to the goals, one.** Found from the stats, not from a list of ideas. What doesn't serve the
    goals goes to `backlog/`, not into code.

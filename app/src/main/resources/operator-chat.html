@@ -16,6 +16,8 @@
   #clock div span { color: var(--muted); font-size: 12px; display: block; text-transform: uppercase; letter-spacing: .05em; }
   #clock b { font-size: 18px; font-weight: 600; }
   #clock .night { color: var(--night); }
+  #athand { margin-left: auto; display: flex; gap: 18px; flex-wrap: wrap; justify-content: flex-end; }
+  #athand b { font-size: 15px; }
   #log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
   .turn { max-width: 760px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; white-space: pre-wrap; }
   .operator { align-self: flex-end; background: var(--op); }
@@ -32,7 +34,12 @@
   #status h2 { font-size: 15px; margin: 14px 0 2px; }
   #status h2:first-child { margin-top: 0; }
   #status .objective { color: var(--muted); margin: 0 0 6px; }
-  #status table { border-collapse: collapse; width: 100%; }
+  #status table { border-collapse: collapse; width: 100%; min-width: 1500px; table-layout: fixed; }
+  #status td, #status th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* What a soldier is doing, its order and its report are read whole: two lines each, every row two lines high, so rows hold still. */
+  #status td { height: 3.3em; }
+  #status td.words { white-space: normal; }
+  #status td.words div { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   #status th { text-align: left; color: var(--muted); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
   #status th, #status td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
   #status td.activity, #status td.nowrap { white-space: nowrap; }
@@ -47,6 +54,7 @@
   <div><span>Minecraft time</span><b id="time">-</b></div>
   <div><span>Next dusk in</span><b id="dusk">-</b></div>
   <div><span>Next dawn in</span><b id="dawn">-</b></div>
+  <div id="athand" title="What the force has at hand: carried by its soldiers plus held in every chest known"></div>
 </div>
 <div id="main">
   <div id="talk">
@@ -153,17 +161,62 @@ box.addEventListener("keydown", (event) => {
 });
 
 // The garrison's status (GET /status), fetched every second and drawn afresh: a squad a table, a soldier a row -
-// what it's doing (a fight, a recovery, its task or none) and for how long, the routine that has its hands, its order, its report, its health and food,
-// and how often its activity has changed (those that were returns to the one just left, in brackets).
+// where it stands (red when far from the rest), its health and food, what it's doing (a fight, a recovery, its task or
+// none) and for how long, the routine that has its hands, its order, its report, how often its activity has changed
+// (those that were returns to the one just left, in brackets) and what it carries. Columns are fixed widths and a cell
+// one line, so rows don't move as their words change; a cell's whole text is its hover.
 const STATUS_EVERY_MS = 1000;
 const statusBox = document.getElementById("status");
 
 function cell(row, text, cls) {
-  const td = document.createElement("td");
-  td.textContent = text === null || text === undefined ? "-" : text;
+  const td = document.createElement("td"), said = text === null || text === undefined ? "-" : String(text);
+  if (cls && cls.split(" ").includes("words")) {
+    const lines = document.createElement("div"); // up to two lines of it shown (#status td.words div)
+    lines.textContent = said;
+    td.appendChild(lines);
+  } else {
+    td.textContent = said;
+  }
+  td.title = said; // cut short where it's long: the whole of it on hover
   if (cls) td.className = cls;
   row.appendChild(td);
   return td;
+}
+
+// What the force has at hand, at a glance: each resource as its soldiers carry it (a soldier's "carries", by item) plus
+// what every chest known holds (the status's "stores") - the two named differently, so paired here.
+const AT_HAND = [
+  ["Logs", "log", "logs"], ["Stone", "cobblestone", "stone"], ["Iron", "iron_ingot", "ironIngots"], ["Raw iron", "raw_iron", "rawIron"],
+  ["Copper", "copper_ingot", "copperIngots"], ["Food", "food", "rations"], ["Wheat", "wheat", "wheat"], ["Seeds", "seeds", "seeds"],
+  ["Saplings", "sapling", "saplings"], ["Dirt", "dirt", "dirt"], ["Torches", "torch", null], ["Coal", "coal", null]
+];
+
+function showAtHand(status) {
+  const box = document.getElementById("athand"), carried = {};
+  for (const squad of status.squads) {
+    for (const s of squad.soldiers) {
+      for (const [what, count] of Object.entries(s.carries || {})) carried[what] = (carried[what] || 0) + count;
+    }
+  }
+  box.replaceChildren();
+  for (const [title, item, store] of AT_HAND) {
+    const onSoldiers = carried[item] || 0, inChests = store === null ? 0 : (status.stores || {})[store] || 0;
+    const div = document.createElement("div"), label = document.createElement("span"), count = document.createElement("b");
+    label.textContent = title;
+    count.textContent = (onSoldiers + inChests).toLocaleString("en-US");
+    div.title = title + ": " + onSoldiers + " carried" + (store === null ? "; not counted in chests" : ", " + inChests + " in chests");
+    div.append(label, count);
+    box.appendChild(div);
+  }
+}
+
+// The middle of the force - the median of its soldiers' x, y and z, each on its own - and how far a soldier may be
+// from it before its place is shown as too far out.
+const SPREAD_BLOCKS = 256;
+
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b), mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 function held(seconds) {
@@ -180,13 +233,9 @@ function showStatus(status) {
     statusBox.appendChild(p);
     return;
   }
-  const held = Object.entries(status.stores || {});
-  if (held.length) {
-    const stores = document.createElement("p");
-    stores.className = "objective";
-    stores.textContent = "Stores, every chest known: " + held.map(([what, count]) => what.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase() + " " + count).join(", ");
-    statusBox.appendChild(stores);
-  }
+  showAtHand(status);
+  const everyone = status.squads.flatMap(squad => squad.soldiers);
+  const middle = { x: median(everyone.map(s => s.x)), y: median(everyone.map(s => s.y)), z: median(everyone.map(s => s.z)) };
   for (const squad of status.squads) {
     const h = document.createElement("h2");
     h.textContent = squad.name;
@@ -203,24 +252,36 @@ function showStatus(status) {
       statusBox.appendChild(task);
     }
     const table = document.createElement("table"), head = table.insertRow();
-    for (const title of ["Soldier", "Doing", "For", "Hands", "Order", "Report", "Health", "Food", "Changes", "Carries"]) {
+    // The columns that hold still first, each a fixed width, then the ones whose words change: a row keeps its place and its height.
+    const columns = [["Soldier", "6%", ""], ["Location", "8%", "Where it stands. Red: over " + SPREAD_BLOCKS + " blocks from the middle of the force (the median of every soldier's x, y and z)."],
+      ["Health", "4%", "Out of 20."], ["Food", "4%", "Out of 20."], ["Doing", "13%", "Its activity: a fight, a recovery, its task, or none."], ["For", "6%", "How long it has been doing that."],
+      ["Hands", "7%", "The routine that has its hands - what it's physically doing this tick - or free."], ["Order", "13%", "Its squad leader's order."],
+      ["Report", "18%", "What it last reported up."],
+      ["Changes", "5%", "How many times its activity has changed since it joined; in brackets, how many of those went straight back to what it had just left. A high count in brackets is a soldier flipping between two things."],
+      ["Carries", "16%", "What's in its pack."]];
+    for (const [title, width, tip] of columns) {
       const th = document.createElement("th");
       th.textContent = title;
+      th.style.width = width;
+      th.title = tip;
       head.appendChild(th);
     }
     for (const s of squad.soldiers) {
       const row = table.insertRow();
       cell(row, s.unit === squad.name ? s.name : s.name + " (" + s.unit + ")");
-      const stuck = s.taskState === "STALLED" || s.taskState === "CANTCO";
-      cell(row, s.activity === null ? null : s.activity + (stuck ? " [" + s.taskState + "]" : ""), "activity" + (stuck ? " warn" : ""));
-      cell(row, held(s.seconds), "nowrap");
-      cell(row, s.hands === null ? "free" : s.hands, s.hands === null ? "muted nowrap" : "nowrap");
-      cell(row, s.order, "nowrap");
-      cell(row, s.report + " at (" + s.x + ", " + s.y + ", " + s.z + ")");
+      const out = Math.round(Math.hypot(s.x - middle.x, s.y - middle.y, s.z - middle.z));
+      cell(row, s.x + ", " + s.y + ", " + s.z, out > SPREAD_BLOCKS ? "warn" : "").title = out + " blocks from the middle of the force, at ("
+        + Math.round(middle.x) + ", " + Math.round(middle.y) + ", " + Math.round(middle.z) + ")";
       cell(row, s.health === null ? null : Math.round(s.health), s.health !== null && s.health <= 8 ? "warn" : "");
       cell(row, s.food, s.food !== null && s.food <= 6 ? "warn" : "");
+      const stuck = s.taskState === "STALLED" || s.taskState === "CANTCO";
+      cell(row, s.activity === null ? null : s.activity + (stuck ? " [" + s.taskState + "]" : ""), "words activity" + (stuck ? " warn" : ""));
+      cell(row, held(s.seconds));
+      cell(row, s.hands === null ? "free" : s.hands, s.hands === null ? "muted" : "");
+      cell(row, s.order, "words");
+      cell(row, s.report, "words");
       cell(row, s.changes === null ? null : s.changes + " (" + s.returns + ")", "muted");
-      cell(row, Object.entries(s.carries || {}).map(([what, count]) => what.replace(/_/g, " ") + " " + count).join(", "), "muted");
+      cell(row, Object.entries(s.carries || {}).map(([what, count]) => what.replace(/_/g, " ") + " " + count).join(", "), "words muted");
     }
     statusBox.appendChild(table);
   }

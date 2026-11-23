@@ -31,37 +31,40 @@ final class TemplateGround {
     private TemplateGround() {
     }
 
-    /** How far down under a trunk ground is looked for to build up from. */
-    static final int TRUNK_FILL_DEPTH = 12;
-
     /**
-     * {@code squad}'s orders on a tree farm's template whose trunks have no ground under them (operator, 2026-11-23: the
-     * soldiers don't build the base out where there's free space under): a tree farm's flatten only cuts down, and a
-     * sapling wants soil under it, so a trunk over a pit was never planted and its template never done. Each such trunk's
-     * column is filled in dirt from the ground under it up to the farm's level - lowest first, each block on the one
-     * below - by the squad between them, as a wheat template's ground is. None once every trunk has ground.
+     * {@code squad}'s orders on a tree farm's template whose trees have no dirt under them yet (operator, 2026-11-23:
+     * cobblestone at the level unless it can't be - dirt under the trees, cobblestone everywhere else): its level is paved
+     * like any template's, so each tree's cell has its cobblestone dug out by the one of the squad nearest, and dirt laid
+     * in it by the rest. None once all sixteen are dirt. Before the slab, a trunk over a pit was never planted.
      */
     static Map<String, Order> treeOrders(WorldView world, io.github.jayessdeesea.minecraft.bot.farm.TreeChunk trees, List<SoldierStatus> squad,
                                          Predicate<SoldierStatus> dirtInAChest, Set<String> fetching) {
-        List<BlockPos> missing = new java.util.ArrayList<>();
-        for (BlockPos trunk : trees.trunks()) {
-            for (int y = trunk.y() - 1; y > trunk.y() - 1 - TRUNK_FILL_DEPTH && !world.isSolid(trunk.x(), y, trunk.z()); y--) {
-                missing.add(new BlockPos(trunk.x(), y, trunk.z()));
-            }
+        List<BlockPos> paved = trees.soilToDig(world);
+        Map<String, Order> digging = new java.util.HashMap<>();
+        if (!paved.isEmpty() && !squad.isEmpty()) {
+            BlockPos first = paved.getFirst();
+            SoldierStatus nearest = squad.stream().min(java.util.Comparator.comparingDouble(s -> Math.hypot(s.position().x() - first.x(), s.position().z() - first.z()))).orElseThrow();
+            digging.put(nearest.name(), Order.Dig.of(paved.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList()));
+            squad = squad.stream().filter(s -> s != nearest).toList();
         }
+        List<BlockPos> missing = trees.soilToLay(world);
         if (missing.isEmpty() || squad.isEmpty()) {
-            return Map.of();
+            return digging;
         }
+        // Dirt in its trees' cells only: nothing else of its ground is filled with it, whatever is open there.
+        Set<BlockPos> soil = Set.copyOf(trees.soil());
+        Set<Cell> notSoil = trees.ground().stream().filter(c -> !soil.contains(c)).map(c -> new Cell(c.x(), c.y(), c.z())).collect(Collectors.toSet());
         List<Tasking.Hand> hands = squad.stream().map(s -> new Tasking.Hand(s.name(), dirtInAChest.test(s) ? Tasking.LOAD
                 : s.condition().flatMap(Condition::kit).map(Kit::dirt).orElse(0))).toList();
         Flatten chunk = new Flatten(trees.chunkX() * 16, trees.chunkZ() * 16, trees.chunkX() * 16 + 15, trees.chunkZ() * 16 + 15, trees.level());
-        Map<String, Order> orders = Tasking.soil(hands, SiteGeometry.bounds(missing), SiteGeometry.soilBorrow(chunk), Set.of(), fetching);
+        Map<String, Order> orders = new java.util.HashMap<>(Tasking.soil(hands, SiteGeometry.bounds(missing), SiteGeometry.soilBorrow(chunk), notSoil, fetching));
         fetching.clear();
         orders.forEach((soldier, order) -> {
             if (order instanceof Order.Gather) {
                 fetching.add(soldier);
             }
         });
+        orders.putAll(digging);
         return orders;
     }
 

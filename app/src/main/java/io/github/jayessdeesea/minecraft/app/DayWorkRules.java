@@ -168,6 +168,19 @@ final class DayWorkRules {
         return "(" + Math.round(p.x()) + ", " + Math.round(p.y()) + ", " + Math.round(p.z()) + ")";
     }
 
+    /**
+     * Who decides for the platoon, by {@code decidesWith} (minecraft.platoon-leader.decides-with): "drills", standing
+     * rules and no model ({@link RulesPlatoonLeader}; operator, 2026-11-23), or "model", {@code model} itself -
+     * anything else fails at the start, loudly.
+     */
+    static io.github.jayessdeesea.minecraft.command.PlatoonLeader platoonLeader(String decidesWith, io.github.jayessdeesea.minecraft.command.PlatoonLeader model) {
+        return switch (decidesWith) {
+            case "drills" -> new RulesPlatoonLeader(model);
+            case "model" -> model;
+            default -> throw new IllegalArgumentException("minecraft.platoon-leader.decides-with is \"" + decidesWith + "\": \"drills\" or \"model\"");
+        };
+    }
+
     /** What each squad leader is made as, by {@code decidesWith}: "drills" or "model". */
     static java.util.function.Function<String, SquadLeader> squadLeaders(String decidesWith, ChatClient client, SquadLeaderPrompts prompts) {
         return switch (decidesWith) {

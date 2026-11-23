@@ -1,8 +1,33 @@
 # Platoon leader: what it decides
 
-One instance, the slowest-thinking echelon. A model call (`command.ai.SpringAiPlatoonLeader`, any Spring
-AI `ChatModel`) gives each squad one objective. The operator's standing rules then apply on top,
-loudly ([operator-rules.md](operator-rules.md)).
+One instance, the slowest-thinking echelon. Each squad is given one objective - by standing rules
+(`command.DrillPlatoonLeader`), or, selected for comparison, by a model call (`command.ai.SpringAiPlatoonLeader`,
+any Spring AI `ChatModel`). The operator's standing rules then apply on top, loudly
+([operator-rules.md](operator-rules.md)).
+
+
+## Who decides: rules, and the base's plan
+The platoon leader decides by standing rules, no model (operator, 2026-11-23: the model and the rules gave conflicting
+orders - on one live build the model decided 19 times and was overridden 41; `minecraft.platoon-leader.decides-with:
+drills`, `command.DrillPlatoonLeader`). "model" is selectable for comparison. Either way the rules below this section
+stand over what's decided - the operator's missions, the shortfalls, the night - as they did over a model's draft. By
+rules, a squad with nothing else is given what's built to keep: the squads turn about between the wheat and the trees.
+The model is the one the operator talks to (`app.OperatorChat`); it's told what the platoon is told
+(`app.RulesPlatoonLeader`) and never asked to decide.
+
+Its strategy is to expand influence (operator, 2026-11-23): a base over x and z -64..63 at sea level, a template on each
+chunk, built without over-extending - never the whole square flattened first. `command.BasePlan` is that base, in
+clusters two chunks by two: a mineshaft where chunk x and z are both even, a supply point east of it, a tree farm south
+of it, a wheat farm across the corner (the camp's own chunk left as it is). `FarmMissions.fromThePlan` gives its next
+mission at a decision while fewer are open than there are squads but the farm squad. A cluster begun is finished before
+another is, in its order - the mineshaft, which its squad then works; the supply point beside it, so nobody walks far;
+the wheat farm; the tree farm - the one nearest the origin first; then the cluster beside what's built that's nearest
+the origin, so the centre of mass shifts to the middle a step at a time. A chunk with a mission already, the operator's
+or the plan's, keeps it. **Food and wood first** (operator, 2026-11-23: start with something easy, a reliable food source
+and a reliable wood source, and bootstrap from it): with no wheat farm the plan's next is a wheat farm, with no tree farm
+a tree farm, and until one of each is built it begins nothing else (`BasePlan.next`); and the farms' steps are dealt
+squads before a supply point's or a mineshaft's (`FarmMissions.worked`). Where to expand, where to hold and where a risk
+is safe is the experiment. What's left: backlog/base-of-influence.md.
 
 ## Terms
 The force's words for what it's given and does, as the Army uses them (ADP 1-02, FM 6-0) - this is their one home; the
@@ -117,21 +142,26 @@ platoon leader's decision prompt isn't shown them yet.
 (`!farm`, DEVELOPMENT.md; or the chat's `giveFarmMission`, below) and the platoon leader carries it out by doctrine,
 computed, never the model's (`command.FarmMission`, `app.FarmMissions`): an operation of three phases, each a task, each
 started when the one before is measured done. "A tree farm at chunk (x, z)" (operator, 2026-11-22; the chat's
-`giveTreeFarmMission`) is the same mission with trees for its crop, in two phases: the chunk flattened to its level, its
-ground left since saplings want soil, then the tree chunk's template on it - done when its sixteen saplings, its chest and
-its nine torches are in (`TreeChunk.Stage`); its chunk is the camp's tree chunk from then on, whatever the siting rule
+`giveTreeFarmMission`) is the same mission with trees for its crop, in four phases. Every template's ground is one rule
+(operator, 2026-11-23): cobblestone one under the level, and cobblestone at the level too unless it can't be - under a
+tree it's dirt. So: the chunk flattened a block under its level, a cobblestone slab laid there, its level paved in
+cobblestone, then the tree chunk's template on it - each tree's cell of the paving dug out and laid in dirt by its squad
+(`TemplateGround.treeOrders`, `TreeChunk.soil`), and done when its sixteen saplings, its chest and its nine torches are in (`TreeChunk.Stage`); its chunk is the camp's tree chunk from then on, whatever the siting rule
 would have chosen (`CampTrees.take`), and after a restart too, read back from its template's row. "A supply point at
-chunk (x, z)" (operator, 2026-11-22; the chat's `giveSupplyPointMission`) is the same again, in three phases: the chunk
-flattened to its level, that ground paved in cobblestone, then the supply point's template on it (`bot.farm.StoresChunk`:
+chunk (x, z)" (operator, 2026-11-22; the chat's `giveSupplyPointMission`) is the same again, in four phases: the chunk
+flattened a block under its level, a cobblestone slab laid there as under every template, its level paved in cobblestone
+over that (operator, 2026-11-23: stone at the level where a farm has dirt), then the supply point's template on it (`bot.farm.StoresChunk`:
 the chunk farms' fence and gates, nine torches, a workshop of a table and four furnaces, four rows of six double chests
 by class of supply) - each fixture made and put in the cell the layout names by the squad on its `STORES` task
 (`bot.supply.Fixtures`), done when it's fenced and lit, its workshop in and its first two rows up, food and Class IV
 (`StoresChunk.stocked`). "A mineshaft at chunk (x, z)" (operator, 2026-11-22; the chat's `giveMineshaftMission`) has
-no flatten - a shaft goes down from the ground as it lies - and two phases: its head (`bot.farm.MineHead`: the chunk
+its ground made as every template's - flattened a block under its level, a slab there, its level paved (operator,
+2026-11-23) - then two phases more: its head (`bot.farm.MineHead`: the chunk
 farms' fence and gates, four torches, four chests along its south side for ore and what's worth keeping, its middle
 left clear), put up as a supply point's fixtures are; then its shaft, a `MINE` at the chunk's middle for the one squad
 on the mission, worked day and night, done when that mine is dried up - every level cut (`FarmMissions.mineDry`, told
-by the runner). Where the mineshafts are is kept with the missions, in the task register's rows. Each open mission's
+by the runner; a chunk no well can be sited in isn't dry, and its mission holds). Its well is sited in its own chunk,
+templated as it is (`FarmMissions.mineAt`). Where the mineshafts are is kept with the missions, in the task register's rows. Each open mission's
 phase under way is worked at once, a squad each - a wheat farm's floor and a tree farm's flatten together - but one
 flatten at a time, the first given, since the squads flatten one ground (`FarmMissions.worked`). A mission carried on at
 its template isn't measured back to its flatten: the template's own ground stands over the flatten's level. The level is the operator's alone: the chat's `giveFarmMission` keeps a
@@ -168,9 +198,9 @@ minutes is said once as an outcome missed - "[Outcome] a farm at chunk (1, 3) at
 SHORT", with what it waits on - and the platoon leader woken (`FarmMissions.alarmStalled`). And **a flatten isn't held
 by slope nobody reaches**: its chunk cut and only columns out on its slopes left, their count unchanged a quarter of an
 hour, the step is done with them left and named (`SLOPE_PATIENCE_MILLIS`) - the chunk is what the template wants.
-**A tree template's trunks with nothing under them are given ground**: a tree farm's flatten only cuts down, so the
-squad fills each such trunk's column in dirt up to the farm's level, as a wheat template's ground is laid
-(`TemplateGround.treeOrders`); in the squad simulation a trunk over a pit was never planted, and its template never done.
+**A mission kept in an older shape is given the steps it has now**: a tree farm the register holds as a flatten and a
+template, a supply point as three steps - open, or built - has its rows made the steps it has now, PLANNED, and is worked again from its flatten; what
+is done already measures done at once (`FarmMissions.reshape`, `Registers.retask`).
 
 **What's built is reviewed** (operator, 2026-11-22: once the sites are built the construction might drift - who reviews
 and fixes it?): every five minutes each mission done, its chunk in sight, is measured against its layout again

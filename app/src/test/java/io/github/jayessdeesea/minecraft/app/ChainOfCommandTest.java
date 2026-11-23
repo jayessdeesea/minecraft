@@ -38,7 +38,7 @@ class ChainOfCommandTest {
             ChatClient.create((ChatModel) prompt -> {
                 throw new AssertionError("no model call expected");
             }), new SquadLeaderPrompts("", ""),
-            new Roster("Alpha:Alice"), true, "model");
+            new Roster("Alpha:Alice"), true, "model", "model");
 
     private static final Objective WALL = new Objective("Wall the camp in", new Position(10, 64, 10), "Nothing walks in",
             new Objective.Task.Fortify());
@@ -90,7 +90,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model", "model");
         assertTrue(Cohesion.distance(two.spread(new Position(0, 64, 0), "Alpha"), two.spread(new Position(0, 64, 0), "Bravo")) >= ChainOfCommand.SPREAD,
                 "Alpha's and Bravo's points apart");
         chain.onTime(TimeOfDay.of(18000, true));
@@ -109,7 +109,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model", "model");
         two.setKeepByDay(true);
         two.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -188,7 +188,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model", "model");
         three.setKeepByDay(true);
         three.restorePhase(Phase.CONSOLIDATION, 0);
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -219,7 +219,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model", "model");
         two.setKeepByDay(true);
         two.restorePhase(Phase.CONSOLIDATION, 0);
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -251,7 +251,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model", "model");
         two.setKeepByDay(true);
         two.restorePhase(Phase.CONSOLIDATION, 0);
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -278,7 +278,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model", "model");
         three.setKeepByDay(true);
         three.restorePhase(Phase.SEIZURE, 0); // no flatten dealt: the food rules alone
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -306,7 +306,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model", "model");
         three.setKeepByDay(true);
         three.restorePhase(Phase.SEIZURE, 0);
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -335,7 +335,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model", "model");
         three.setKeepByDay(true);
         three.restorePhase(Phase.SEIZURE, 0);
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -358,7 +358,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model", "model");
         three.setKeepByDay(true);
         three.restorePhase(Phase.SEIZURE, 0);
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -387,7 +387,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model", "model");
         three.setKeepByDay(true);
         three.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -424,7 +424,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model", "model");
         three.setKeepByDay(true);
         three.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -472,7 +472,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model", "model");
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
         two.onTime(TimeOfDay.of(18000, true));
         two.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
@@ -505,7 +505,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice"), true, "model");
+                new Roster("Alpha:Alice"), true, "model", "model");
         Position first = MineSites.KEEP_MINE;
         assertEquals(Optional.empty(), two.onMineDriedUp(100, 100), "another mine's drying up leaves the keep's where it is");
         assertEquals(first, two.keepMine());
@@ -559,7 +559,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model", "model");
         two.setKeepByDay(true);
         two.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -592,7 +592,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model", "model");
         two.setKeepByDay(true);
         two.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
@@ -621,7 +621,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model", "model");
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
         two.onTime(TimeOfDay.of(18000, true));
         two.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
@@ -644,7 +644,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model", "model");
         two.setKeepByDay(true);
         two.restorePhase(Phase.BUILDUP, 0);
         two.onTime(TimeOfDay.of(1000, true));
@@ -675,7 +675,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model", "model");
         two.onFoothold(new io.github.jayessdeesea.minecraft.command.Foothold(new Position(-49, 75, 44), List.of()));
         two.onTime(TimeOfDay.of(18000, true));
         java.util.function.Function<String, SquadStatus> squad = name -> new SquadStatus(name, new Report.InPosition(),
@@ -700,7 +700,7 @@ class ChainOfCommandTest {
                 (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
-                }), new SquadLeaderPrompts("", ""), new Roster("Alpha:Alice"), true, "model");
+                }), new SquadLeaderPrompts("", ""), new Roster("Alpha:Alice"), true, "model", "model");
         chain.setFlatten("-48 -16 -16 16 62");
         chain.onFoothold(new Foothold(new Position(24, 64, 88), List.of()));
         io.github.jayessdeesea.minecraft.command.Flatten camp = chain.flatten();

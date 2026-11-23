@@ -81,22 +81,33 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
     public List<Step> steps() {
         String chunk = String.format(Locale.ROOT, "chunk (%d, %d), x %d..%d z %d..%d", chunkX, chunkZ, minX(), minX() + 15, minZ(), minZ() + 15);
         if (crop == Crop.MINE) {
-            // No flatten: a shaft goes down from the ground as it lies. Its head first - fence, lights, chests - then the
-            // shaft worked till it's dry (operator, 2026-11-22: a squad goes down one and mines it till dry).
+            // Its ground as every template's (operator, 2026-11-23: the mineshaft head gets cobblestone at level minus one
+            // and at level), then its head - fence, lights, chests - then the shaft, cut down through the paving at the
+            // chunk's middle and worked till it's dry (operator, 2026-11-22: a squad goes down one and mines it till dry).
             return List.of(
-                    new Step(0, Kind.MINE_HEAD, level, "the mineshaft's head on " + chunk + " at y=" + level),
-                    new Step(1, Kind.MINE, level, "mine the shaft under " + chunk + " till it's dry"));
+                    new Step(0, Kind.FLATTEN, level - 1, "flatten " + chunk + " to y=" + (level - 1)),
+                    new Step(1, Kind.FLOOR, level - 1, "floor " + chunk + " in cobblestone at y=" + (level - 1)),
+                    new Step(2, Kind.FLOOR, level, "pave " + chunk + " in cobblestone at y=" + level),
+                    new Step(3, Kind.MINE_HEAD, level, "the mineshaft's head on " + chunk + " at y=" + level),
+                    new Step(4, Kind.MINE, level, "mine the shaft under " + chunk + " till it's dry"));
         }
         if (crop == Crop.STORES) {
+            // The slab one under its level as every template has, and cobblestone at the level too where a farm has dirt
+            // (operator, 2026-11-23): its chests, furnaces and table stand on stone.
             return List.of(
-                    new Step(0, Kind.FLATTEN, level, "flatten " + chunk + " to y=" + level),
-                    new Step(1, Kind.FLOOR, level, "floor " + chunk + " in cobblestone at y=" + level),
-                    new Step(2, Kind.STORES_TEMPLATE, level, "the supply point template on " + chunk + " at y=" + level));
+                    new Step(0, Kind.FLATTEN, level - 1, "flatten " + chunk + " to y=" + (level - 1)),
+                    new Step(1, Kind.FLOOR, level - 1, "floor " + chunk + " in cobblestone at y=" + (level - 1)),
+                    new Step(2, Kind.FLOOR, level, "pave " + chunk + " in cobblestone at y=" + level),
+                    new Step(3, Kind.STORES_TEMPLATE, level, "the supply point template on " + chunk + " at y=" + level));
         }
         if (crop == Crop.TREES) {
+            // Every template's ground (operator, 2026-11-23): cobblestone one under the level, and cobblestone at the level
+            // too but where it can't be - here, the dirt under each tree, which its template puts in.
             return List.of(
-                    new Step(0, Kind.FLATTEN, level, "flatten " + chunk + " to y=" + level),
-                    new Step(1, Kind.TREE_TEMPLATE, level, "the tree farm template on " + chunk + " at y=" + level));
+                    new Step(0, Kind.FLATTEN, level - 1, "flatten " + chunk + " to y=" + (level - 1)),
+                    new Step(1, Kind.FLOOR, level - 1, "floor " + chunk + " in cobblestone at y=" + (level - 1)),
+                    new Step(2, Kind.FLOOR, level, "pave " + chunk + " in cobblestone at y=" + level),
+                    new Step(3, Kind.TREE_TEMPLATE, level, "the tree farm template on " + chunk + " at y=" + level));
         }
         return List.of(
                 new Step(0, Kind.FLATTEN, level - 1, "flatten " + chunk + " to y=" + (level - 1)),

@@ -66,4 +66,17 @@ class RegistersTest {
         assertThrows(IllegalStateException.class, () -> registers.update(new ObjectiveRecord(99, "none", 0, "none", 0, 0, Optional.empty(),
                 ObjectiveRecord.State.DONE, 0, Optional.empty())));
     }
+
+    /**
+     * A mission in a model's words is kept however long it runs. Live (field700), one of 257 characters wasn't taken by a
+     * column of 256, and the platoon leader's whole decision went with it each cycle: the squads on the operator's
+     * missions held the night's mine through the day.
+     */
+    @Test
+    void aMissionSaidAtLengthIsKept() {
+        Registers registers = new Registers(state.resolve("registers"));
+        String mission = "Mine stone from the exposed deposits near x=64, y=12, z=48. ".repeat(20);
+        ObjectiveRecord kept = registers.add(new ObjectiveRecord(0, mission, 0, "MINE", 3, 4, Optional.of("Alpha"), ObjectiveRecord.State.UNDER_WAY, 1_000, Optional.empty()));
+        assertEquals(mission, registers.objectives().stream().filter(r -> r.id() == kept.id()).findFirst().orElseThrow().mission());
+    }
 }

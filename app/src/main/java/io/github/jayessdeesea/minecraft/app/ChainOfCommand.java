@@ -208,8 +208,9 @@ public class ChainOfCommand implements DisposableBean {
     public ChainOfCommand(PlatoonLeader platoonLeader, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient,
                           SquadLeaderPrompts squadLeaderPrompts, Roster roster,
                           @Value("${minecraft.platoon-leader.shelter-at-night}") boolean shelterAtNight,
-                          @Value("${minecraft.squad-leader.decides-with}") String decidesWith) {
-        this(platoonLeader, squadLeaders(decidesWith, squadLeaderClient, squadLeaderPrompts), roster, shelterAtNight, Clockwork.REAL);
+                          @Value("${minecraft.squad-leader.decides-with}") String decidesWith, @Value("${minecraft.platoon-leader.decides-with}") String platoonDecidesWith) {
+        this(DayWorkRules.platoonLeader(platoonDecidesWith, platoonLeader), squadLeaders(decidesWith, squadLeaderClient, squadLeaderPrompts), roster, shelterAtNight, Clockwork.REAL);
+        if (platoonDecidesWith.equals("drills")) farmMissions.works(io.github.jayessdeesea.minecraft.command.BasePlan.ROUND_THE_ORIGIN); // by drills, the platoon builds the base by rule
     }
 
     /** As the app's with the squad leader's model, on {@code clockwork}'s time and threads. */

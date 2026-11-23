@@ -142,8 +142,12 @@ class FarmMissionSimulationTest {
 
     /**
      * The eval: a chunk with a mound given the tree farm mission (operator, 2026-11-22: a command for the templated tree
-     * chunk). Nothing of the ground left over its level; a sapling at each of its sixteen trunks, its chest and its nine
-     * torches in; and its two steps in the objective register DONE, in order.
+     * chunk). Nothing of the ground left over its level; a cobblestone slab one under it, and its level cobblestone too
+     * but for the dirt under each tree (operator, 2026-11-23: cobblestone one under the level and at it unless it can't
+     * be - dirt under the trees, cobblestone everywhere else); a sapling at each of its sixteen trunks, its chest and its
+     * nine torches in; and its four steps in the objective register DONE, in order.
+     * A stack of saplings each: while the slab goes in, the squad's foresters plant the camp's own tree chunk and the
+     * keep's grove with what they carry, and the mission's sixteen come after.
      */
     @Test
     void aTreeFarmIsFlattenedPlantedLitAndItsChestPutUp() throws IOException {
@@ -160,9 +164,11 @@ class FarmMissionSimulationTest {
         runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
-                new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.itemNamedOrMinus("spruce_sapling"), 16},
-                new int[]{10, SimServer.itemNamedOrMinus("torch"), 16}, new int[]{11, SimServer.itemNamedOrMinus("chest"), 1}))).run();
-        clock.advance(45 * 60_000);
+                new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.itemNamedOrMinus("spruce_sapling"), 64},
+                new int[]{10, SimServer.itemNamedOrMinus("torch"), 16}, new int[]{11, SimServer.itemNamedOrMinus("chest"), 1},
+                new int[]{12, SimServer.ITEM_COBBLESTONE, 64}, new int[]{13, SimServer.ITEM_COBBLESTONE, 64},
+                new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_DIRT, 64}))).run();
+        clock.advance(120 * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aTreeFarmIsFlattenedPlantedLitAndItsChestPutUp.log"));
         String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]") || l.contains("[Trees]")).toList();
@@ -178,6 +184,13 @@ class FarmMissionSimulationTest {
         assertEquals(List.of(), over, "nothing of the ground over the tree farm's level" + missionLines);
 
         io.github.jayessdeesea.minecraft.bot.farm.TreeChunk template = new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(TREES.chunkX(), TREES.chunkZ(), GROUND);
+        assertEquals(List.of(), template.ground().stream().filter(c -> server.block(c.x(), c.y() - 1, c.z()) != SimServer.COBBLESTONE).toList(),
+                "its slab cobblestone, one under its level" + missionLines);
+        java.util.Set<BlockPos> soil = java.util.Set.copyOf(template.soil());
+        assertEquals(List.of(), template.ground().stream().filter(c -> !soil.contains(c) && server.block(c.x(), c.y(), c.z()) != SimServer.COBBLESTONE).toList(),
+                "its level cobblestone, but under its trees" + missionLines);
+        assertEquals(List.of(), template.soil().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.AIR || server.block(c.x(), c.y(), c.z()) == SimServer.COBBLESTONE).toList(),
+                "dirt under each tree" + missionLines);
         // A sapling, or the tree it has grown into since: in the simulation a sapling grows in minutes.
         long planted = template.trunks().stream().filter(t -> server.block(t.x(), t.y(), t.z()) == SimServer.SPRUCE_SAPLING
                 || server.block(t.x(), t.y(), t.z()) == SimServer.SPRUCE_LOG).count();
@@ -186,7 +199,7 @@ class FarmMissionSimulationTest {
         assertEquals(SimServer.CHEST, server.block(template.chest().x(), template.chest().y(), template.chest().z()), "its chest" + missionLines);
 
         List<ObjectiveRecord> rows = new Registers(state.resolve("registers")).objectives().stream().filter(r -> r.mission().equals(TREES.name())).toList();
-        assertEquals(List.of(0, 1), rows.stream().map(ObjectiveRecord::step).toList(), "the mission's two steps: " + rows);
+        assertEquals(List.of(0, 1, 2, 3), rows.stream().map(ObjectiveRecord::step).toList(), "the mission's four steps: " + rows);
         assertTrue(rows.stream().allMatch(r -> r.state() == ObjectiveRecord.State.DONE), "each DONE: " + rows + missionLines);
     }
 
@@ -256,7 +269,7 @@ class FarmMissionSimulationTest {
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{40, SimServer.ITEM_BREAD, 64},
                 new int[]{9, SimServer.ITEM_COBBLESTONE, 64}, new int[]{10, SimServer.ITEM_COBBLESTONE, 64}, new int[]{11, SimServer.ITEM_OAK_LOG, 64},
-                new int[]{12, SimServer.ITEM_TORCH, 16}), 60);
+                new int[]{12, SimServer.ITEM_TORCH, 16}, new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_COBBLESTONE, 64}), 100);
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aFloorIsLaidOutOverAPit.log"));
         String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]")).toList();
         io.github.jayessdeesea.minecraft.bot.farm.StoresChunk template = new io.github.jayessdeesea.minecraft.bot.farm.StoresChunk(STORES.chunkX(), STORES.chunkZ(), GROUND);
@@ -265,21 +278,24 @@ class FarmMissionSimulationTest {
     }
 
     /**
-     * The eval: a tree farm given on a chunk with a pit under one of its trunks. A sapling wants soil under it, so the
-     * pit is filled there: a sapling, or its tree, at each of its sixteen trunks - the one over the pit among them.
+     * The eval: a tree farm given on a chunk with a pit under one of its trunks. Its slab and its paving are laid across
+     * the pit and dirt put under each tree, so a sapling, or its tree, stands at each of its sixteen trunks - the one over
+     * the pit among them.
      */
     @Test
     void aTreeFarmsTrunkOverAPitIsGivenGroundAndPlanted() throws IOException {
         SimServer server = overAPit(TREES, List.of(
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
-                new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.itemNamedOrMinus("spruce_sapling"), 16},
+                new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.itemNamedOrMinus("spruce_sapling"), 64},
                 new int[]{10, SimServer.itemNamedOrMinus("torch"), 16}, new int[]{11, SimServer.itemNamedOrMinus("chest"), 1},
-                new int[]{12, SimServer.ITEM_DIRT, 64}), 45);
+                new int[]{12, SimServer.ITEM_DIRT, 64}, new int[]{13, SimServer.ITEM_COBBLESTONE, 64},
+                new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_COBBLESTONE, 64}), 120);
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aTreeFarmsTrunkOverAPitIsGivenGroundAndPlanted.log"));
         String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]") || l.contains("[Trees]")).toList();
         io.github.jayessdeesea.minecraft.bot.farm.TreeChunk template = new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(TREES.chunkX(), TREES.chunkZ(), GROUND);
-        assertTrue(server.block(38, GROUND, 6) != SimServer.AIR, "ground put under the trunk over the pit" + missionLines);
+        assertEquals(SimServer.COBBLESTONE, server.block(38, GROUND - 1, 6), "the slab under the trunk over the pit" + missionLines);
+        assertTrue(server.block(38, GROUND, 6) != SimServer.AIR && server.block(38, GROUND, 6) != SimServer.COBBLESTONE, "and dirt on it, under the tree" + missionLines);
         long planted = template.trunks().stream().filter(t -> server.block(t.x(), t.y(), t.z()) == SimServer.SPRUCE_SAPLING
                 || server.block(t.x(), t.y(), t.z()) == SimServer.SPRUCE_LOG).count();
         assertEquals(16, planted, "a sapling or its tree at each trunk, the one over the pit too" + missionLines);
@@ -311,8 +327,9 @@ class FarmMissionSimulationTest {
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
                 new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.ITEM_COBBLESTONE, 64},
-                new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 32}))).run();
-        clock.advance(40 * 60_000);
+                new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 32},
+                new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_COBBLESTONE, 64}))).run();
+        clock.advance(120 * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aMineshaftsHeadIsPutUpAndItsSquadGoesDownIt.log"));
         String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]")).toList();
@@ -321,8 +338,22 @@ class FarmMissionSimulationTest {
         assertEquals(4, head.chests().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.CHEST).count(), "its head's four chests" + missionLines);
         assertEquals(List.of(), head.grid().gates().stream().filter(g -> server.block(g.x(), g.y(), g.z()) == SimItems.GATE_OPEN).toList(), "no gate left open" + missionLines);
         List<ObjectiveRecord> rows = new Registers(state.resolve("registers")).objectives().stream().filter(r -> r.mission().equals(MINESHAFT.name())).toList();
-        assertEquals(ObjectiveRecord.State.DONE, rows.stream().filter(r -> r.step() == 0).findFirst().orElseThrow().state(), "its head done: " + rows + missionLines);
-        assertEquals(ObjectiveRecord.State.UNDER_WAY, rows.stream().filter(r -> r.step() == 1).findFirst().orElseThrow().state(), "its shaft under way: " + rows + missionLines);
+        // Its ground as every template's (operator, 2026-11-23): cobblestone one under its level, all of it, and at its level
+        // but where the shaft has since been cut down through it.
+        for (int y : new int[]{GROUND - 1, GROUND}) {
+            List<String> open = new ArrayList<>();
+            for (int x = MINESHAFT.minX(); x <= MINESHAFT.minX() + 15; x++) {
+                for (int z = MINESHAFT.minZ(); z <= MINESHAFT.minZ() + 15; z++) {
+                    if (server.block(x, y, z) != SimServer.COBBLESTONE && Math.max(Math.abs(x - head.shaft().x()), Math.abs(z - head.shaft().z())) > 3) {
+                        open.add(x + "," + z);
+                    }
+                }
+            }
+            assertEquals(List.of(), open, "cobblestone at y=" + y + ", clear of the shaft" + missionLines);
+        }
+        assertEquals(List.of(ObjectiveRecord.State.DONE, ObjectiveRecord.State.DONE, ObjectiveRecord.State.DONE, ObjectiveRecord.State.DONE),
+                rows.stream().filter(r -> r.step() < 4).map(ObjectiveRecord::state).toList(), "its ground and its head done: " + rows + missionLines);
+        assertEquals(ObjectiveRecord.State.UNDER_WAY, rows.stream().filter(r -> r.step() == 4).findFirst().orElseThrow().state(), "its shaft under way: " + rows + missionLines);
         long below = 0;
         for (int x = MINESHAFT.minX(); x <= MINESHAFT.minX() + 15; x++) {
             for (int z = MINESHAFT.minZ(); z <= MINESHAFT.minZ() + 15; z++) {
@@ -361,8 +392,9 @@ class FarmMissionSimulationTest {
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
                 new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.ITEM_COBBLESTONE, 64}, new int[]{10, SimServer.ITEM_COBBLESTONE, 64},
-                new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 16}))).run();
-        clock.advance(90 * 60_000);
+                new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 16},
+                new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_COBBLESTONE, 64}))).run();
+        clock.advance(120 * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aSupplyPointIsFlattenedPavedLitAndItsFirstRowsPutUp.log"));
         String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]")).toList();
@@ -370,6 +402,9 @@ class FarmMissionSimulationTest {
         io.github.jayessdeesea.minecraft.bot.farm.StoresChunk template = new io.github.jayessdeesea.minecraft.bot.farm.StoresChunk(STORES.chunkX(), STORES.chunkZ(), GROUND);
         long paved = template.ground().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.COBBLESTONE).count();
         assertEquals(256, paved, "its ground cobblestone" + missionLines);
+        // And the slab one under it, as every template has (operator, 2026-11-23).
+        assertEquals(List.of(), template.ground().stream().filter(c -> server.block(c.x(), c.y() - 1, c.z()) != SimServer.COBBLESTONE).toList(),
+                "its slab cobblestone, one under its level" + missionLines);
         assertEquals(9, template.torches().stream().filter(t -> server.block(t.x(), t.y(), t.z()) == SimServer.TORCH).count(), "its nine torches" + missionLines);
         assertEquals(SimServer.CRAFTING_TABLE, server.block(template.table().x(), template.table().y(), template.table().z()), "its table" + missionLines);
         assertEquals(4, template.furnaces().stream().filter(f -> server.block(f.x(), f.y(), f.z()) == SimServer.FURNACE).count(), "its four furnaces" + missionLines);
@@ -381,7 +416,7 @@ class FarmMissionSimulationTest {
         assertEquals(List.of(), template.grid().gates().stream().filter(g -> server.block(g.x(), g.y(), g.z()) == SimItems.GATE_OPEN).toList(), "no gate left open" + missionLines);
 
         List<ObjectiveRecord> rows = new Registers(state.resolve("registers")).objectives().stream().filter(r -> r.mission().equals(STORES.name())).toList();
-        assertEquals(List.of(0, 1, 2), rows.stream().map(ObjectiveRecord::step).toList(), "the mission's three steps: " + rows);
+        assertEquals(List.of(0, 1, 2, 3), rows.stream().map(ObjectiveRecord::step).toList(), "the mission's four steps: " + rows);
         assertTrue(rows.stream().allMatch(r -> r.state() == ObjectiveRecord.State.DONE), "each DONE: " + rows + missionLines);
 
         // The review (operator, 2026-11-22: who reviews what's built, and fixes it?): a chest and a torch gone from the built
@@ -607,5 +642,47 @@ class FarmMissionSimulationTest {
             }
         }
         return -1;
+    }
+
+    /**
+     * The eval: a platoon deciding by rules, with nothing but the base's plan (operator, 2026-11-23: soldier, squad leader
+     * and platoon leader deterministic - no model in the chain of command; a strategy of expanding influence, the base
+     * built a cluster at a time, never over-extended). Nobody orders anything. The plan's first mission is given unasked -
+     * a wheat farm, food first, in the cluster nearest the origin - a squad is put on it and its ground is cut; and the model
+     * the operator talks to is told what the platoon is told and never asked to decide.
+     */
+    @Test
+    void aPlatoonDecidingByRulesBeginsTheBaseUnasked() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FarmMissionSimulationTest::hills, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob;Bravo:Carl,Dana");
+        java.util.concurrent.atomic.AtomicInteger asked = new java.util.concurrent.atomic.AtomicInteger();
+        io.github.jayessdeesea.minecraft.command.PlatoonLeader model = SquadSimulationTest.scripted(s -> {
+            asked.incrementAndGet();
+            return new Objective("Mine stone", new Position(0.5, GROUND + 1, 0.5), "a model's order", new Objective.Task.Mine());
+        });
+        io.github.jayessdeesea.minecraft.command.BasePlan base = new io.github.jayessdeesea.minecraft.command.BasePlan(-4, 3, GROUND);
+        FarmMission first = base.next(Set.of(), Set.of(), Set.of()).orElseThrow();
+        assertEquals(new FarmMission(-1, -1, GROUND, FarmMission.Crop.WHEAT), first);
+        ChainOfCommand chain = new ChainOfCommand(new RulesPlatoonLeader(model), SquadSimulationTest.squadLeader(first.centre(first.steps().getFirst())),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        chain.farmMissions.works(base);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
+        runner.simulated(clock, server.connector(new PlayerPosition(4.5, GROUND + 1, 4.5), List.of(
+                new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{40, SimServer.ITEM_BREAD, 64}))).run();
+        clock.advance(20 * 60_000);
+        List<String> log = Files.readAllLines(Path.of("target", "sim", "aPlatoonDecidingByRulesBeginsTheBaseUnasked.log"));
+        String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]") || l.contains("[Plan]")).limit(40).toList();
+
+        assertEquals(0, asked.get(), "the model never asked to decide");
+        assertTrue(log.stream().anyMatch(l -> l.contains("[Plan] the base's next: " + first.name())), "the plan's first mission given unasked" + missionLines);
+        List<ObjectiveRecord> rows = new Registers(state.resolve("registers")).objectives().stream().filter(r -> r.mission().equals(first.name())).toList();
+        assertEquals(List.of(0, 1, 2), rows.stream().map(ObjectiveRecord::step).toList(), "its steps kept: " + rows + missionLines);
+        assertTrue(rows.getFirst().state() != ObjectiveRecord.State.PLANNED, "its flatten begun: " + rows + missionLines);
+        assertTrue(server.log.stream().anyMatch(l -> l.contains(" dug ")), "and its ground being cut" + missionLines);
+        assertTrue(new Registers(state.resolve("registers")).objectives().stream().map(ObjectiveRecord::mission).distinct().count() <= 3,
+                "not over-extended: no more missions than squads" + missionLines);
     }
 }

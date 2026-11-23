@@ -15,6 +15,20 @@ stops there, and a mine's base has one furnace and nothing to re-arm a respawn w
 diamonds near y=-55, in veins a few blocks off any one shaft.
 
 ## What's left
+**A mineshaft mission's shaft isn't its own yet - P1, found live 2026-11-23 (field699-700).** "A mineshaft at chunk
+(2, 4)" had its head built, and then:
+- Its squad never cut a shaft under its chunk. A mine ordered near the camp is taken for the camp's (`SoldierRunner`'s
+  staircase lookup, `nearCamp`): Alpha went down the camp's staircase at (73, 46, 56) and worked its levels - "the
+  stairs 48 of 48 steps down" was the camp's mine.
+- After a restart the site was looked at afresh, no well could be sited ("no floor under step 4 at (38, 63, 71) - an
+  open cave below"), and a site no well can go down is told as dried up (`mineDriedUp`, "no well, no head: the site
+  ordered") - which `FarmMissions.mineDry` took as the mission's shaft mined dry: DONE a minute after the restart.
+- Its step isn't in the stall alarm (`FarmMissions.alarmStalled` leaves a shaft out: its measure says nothing of progress).
+Wanted: a mission's shaft sited in its own chunk whatever the camp's is, kept on disk by its chunk and cut on after a
+restart; dry only when its levels are worked out, an unsiteable chunk said as that and the mission held, not done; a
+measure of its progress (levels cut of those to cut) so it's alarmed when it stalls; the eval - a mineshaft mission
+beside a camp with a mine, restarted half way - and the live mission at chunk (2, 4) opened again.
+
 **The strip mine as agreed** (operator, 2026-11-22). Built already: levels at y % 4 == 0, tunnels three high, a strip
 every third block of the tunnel it comes off, ore taken in reach and its hole put back in the wall, the pickaxe for the job
 and ore beyond it left and noted (docs/military-doctrine.md § 16). To build, in this order:

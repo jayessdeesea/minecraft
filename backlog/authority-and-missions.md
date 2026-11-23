@@ -159,6 +159,13 @@ the soldiers what to throw out and what to keep." Live (field698): 33,479 cobble
 logs, 490 copper ingots, 215 iron ingots - and every chest by the camp full, soldiers failing to put loads in and
 going round each other. Built: the counts (`GarrisonStatus.stores`, the chat's `stores` tool), and most-and-least
 levels the depositor reads (`StockLevels`, `ProductionLevels`). To build:
+- **Cobblestone and dirt capped at 4,096 each - next to build** (operator, 2026-11-23: way too much cobblestone; a max of
+  4,096 for both; miners keep a bit extra on them for backfilling veins, the stockpiles don't need so much). A most
+  exists already - `bot.supply.StockLevels.DEPOT`, 256 of each - and didn't hold: the chests have 34,696 cobblestone.
+  First, why: which deposits pass it by (`SoldierErrands.surplusKinds` covers a flatten builder's load at a dump; a
+  miner's stockpile trip and a chest counted alone are the suspects), reproduced in a test. Then the most at 4,096,
+  counted over every chest known, on every path that puts either in a chest; what's over it thrown away where it's dug;
+  and what's held past it taken out (the cleanout below).
 - **A stock policy the platoon leader gives**, by kind: keep up to so many, throw out past it - cobblestone and dirt
   past a few stacks a chest row, seeds past 1,024 (operator), and so on - computed from what the stores hold against
   what the missions ordered will use, said as an order and kept with its missions.

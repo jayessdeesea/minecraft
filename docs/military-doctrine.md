@@ -2219,8 +2219,9 @@ who fight. Where a rule of a clearing below meets the standard, it says which pa
 
 **A farm mission's chunk** (operator, 2026-11-21; `command.FarmMission`, docs/echelons/platoon-leader/decisions.md) is
 brought to the base's layers one step at a time, each started when the one before is measured done. A tree farm's
-(2026-11-22) has two - flattened to its own level, not a block below, its ground left for the saplings' soil; then the
-tree chunk's template (§ 12), a trunk cell with no soil under it said and passed over. A wheat farm's:
+(2026-11-22) has four: flattened a block under its level, a cobblestone slab there, its level paved in cobblestone, then the tree
+chunk's template (§ 12), which puts dirt under each tree - cobblestone at the level wherever it can be (operator,
+2026-11-23). A wheat farm's:
 - **Flattened a block below the farm's level** as any site is, its ground the chunk, but its edge the slope of
   `command.FlattenPlan` in place of the bench: each column of the chunk and of a ring twelve out cut to the level,
   the ring's row d out to d over it - the bench's 1:1 - on each side sloped (`command.Slopes`), a side beside a

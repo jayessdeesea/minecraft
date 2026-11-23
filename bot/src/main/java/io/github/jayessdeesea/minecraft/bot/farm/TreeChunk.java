@@ -47,6 +47,36 @@ public record TreeChunk(int chunkX, int chunkZ, int level) {
         return cells;
     }
 
+    /**
+     * Its ground: every cell of the chunk at its level, on the cobblestone slab one under it - cobblestone too, but for
+     * the dirt under each tree ({@link #soil}) (operator, 2026-11-23: cobblestone at the level unless it can't be; dirt
+     * under the trees, cobblestone everywhere else). The saplings, the torches and the chest stand on it.
+     */
+    public List<BlockPos> ground() {
+        List<BlockPos> cells = new ArrayList<>();
+        for (int x = 0; x < ChunkFarm.SIDE; x++) {
+            for (int z = 0; z < ChunkFarm.SIDE; z++) {
+                cells.add(new BlockPos(x0() + x, level, z0() + z));
+            }
+        }
+        return cells;
+    }
+
+    /** The sixteen cells of its ground a tree stands on: dirt, the one thing its ground has that isn't cobblestone. */
+    public List<BlockPos> soil() {
+        return trunks().stream().map(t -> new BlockPos(t.x(), level, t.z())).toList();
+    }
+
+    /** Its soil cells with something other than soil in them as the world stands - its paving's cobblestone: to dig out. */
+    public List<BlockPos> soilToDig(WorldView world) {
+        return soil().stream().filter(c -> world.isSolid(c.x(), c.y(), c.z()) && !world.isSoil(c.x(), c.y(), c.z())).toList();
+    }
+
+    /** Its soil cells with nothing in them as the world stands: the dirt still to lay. */
+    public List<BlockPos> soilToLay(WorldView world) {
+        return soil().stream().filter(c -> !world.isSolid(c.x(), c.y(), c.z())).toList();
+    }
+
     /** Its trunk cells that take a sapling as the world stands - or have one: the cells to plant, none buried or overhung. */
     public List<BlockPos> plantable(WorldView world) {
         return trunks().stream().filter(t -> TreeFarm.plantable(world, t)).toList();

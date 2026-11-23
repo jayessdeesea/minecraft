@@ -4031,8 +4031,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private volatile boolean wasDark = true;
     /** The mine at ({@code x}, {@code z}) - its head, or the site ordered with no well there - dried up: the keep's moves on if it's that one, the camp's if the camp's. */
-    private void mineDriedUp(int x, int z) {
-        chainOfCommand.onMineDriedUp(x, z).ifPresent(site -> mineSiteBook.keepKeepMine(chainOfCommand)); chainOfCommand.farmMissions.mineDry(x, z);
+    private void mineDriedUp(int x, int z, boolean workedOut) { // workedOut false: a site no well can go down - a mineshaft mission there isn't mined dry by that (field700: DONE a minute after a restart, no shaft cut)
+        chainOfCommand.onMineDriedUp(x, z).ifPresent(site -> mineSiteBook.keepKeepMine(chainOfCommand)); if (workedOut) chainOfCommand.farmMissions.mineDry(x, z);
         if (campStairs().filter(s -> s.head().x() == x && s.head().z() == z).isPresent()
                 || campMineSite().filter(s -> (int) Math.floor(s.x()) == x && (int) Math.floor(s.z()) == z).isPresent()) {
             campMineSpent();
@@ -4172,7 +4172,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (level != null && driedUp.add(level.head().offset(0, level.bottom(), 0))) {
                     LOG.warn("[Outcome] [{}] the mine at {} is dried up for its second level: every level cut down to y={} - SHORT",
                             squad, first.head(), level.bottom());
-                    mineDriedUp(state.stairs.head().x(), state.stairs.head().z()); // by its head, not the finder's order (field381)
+                    mineDriedUp(state.stairs.head().x(), state.stairs.head().z(), true); // by its head, not the finder's order (field381)
                 }
                 return level;
             }
@@ -5097,7 +5097,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         TreeFarm trees = taskOf(squadName, Objective.Task.TreeFarm.class).map(o -> {
             BlockPos at = TerrainSurveyor.groundAt(world, BlockPos.containing(o.location().x(), o.location().y(), o.location().z()));
             Optional<TreeFarm> camps = campTrees.farm(world); // the camp's tree chunk, wherever the order points (CampTrees.farm)
-            if (state.trees != null && camps.map(c -> c.centre().equals(state.trees.centre())).orElse(state.trees.centre().x() == at.x() && state.trees.centre().z() == at.z())) {
+            if (state.trees != null && camps.map(c -> c.centre().equals(state.trees.centre()) && c.plot().equals(state.trees.plot())).orElse(state.trees.centre().x() == at.x() && state.trees.centre().z() == at.z())) {
                 return state.trees;
             }
             TreeFarm sited = camps.or(() -> TreeFarm.site(world, at, TREE_FARM_RADIUS)).orElse(null);
@@ -5306,7 +5306,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     deadWell(state.stairs.head());
                     String why = blockedBy.get();
                     LOG.warn("[Outcome] the mine at {} is blocked at y={}: {} - SHORT", state.stairs.head(), state.stairs.bottom(), why);
-                    mineDriedUp(state.stairs.head().x(), state.stairs.head().z()); // by its head, not the finder's order (field381)
+                    mineDriedUp(state.stairs.head().x(), state.stairs.head().z(), true); // by its head, not the finder's order (field381)
                 }
                 // Settled by mine, not by squad: live, four squads on one mine each took the others' stale
                 // DONE for their own, and it ran on from 24 blocks to 96 in seconds with nothing cut.
@@ -5323,7 +5323,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         deadWell(state.stairs.head());
                         LOG.warn("[Outcome] the mine at {} is dried up: every level cut down to y={}, and ore still wanted - SHORT",
                                 state.stairs.head(), state.stairs.bottom());
-                        mineDriedUp(state.stairs.head().x(), state.stairs.head().z()); // by its head, not the finder's order (field381)
+                        mineDriedUp(state.stairs.head().x(), state.stairs.head().z(), true); // by its head, not the finder's order (field381)
                     }
                     if (longer.isPresent()) {
                         mineExtendedAt.put(state.stairs.head(), now);
@@ -5424,7 +5424,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             int nearY = surfaceY.getAsInt();
             // To the standard: a 4x4 well centred in the chunk (Staircase.well; operator, 2026-11-15).
-            Optional<Staircase> sited = Staircase.siteWell(world, x, z, nearY, depth, h -> deadWells.contains(h) || chainOfCommand.templated(Math.floorDiv(h.x(), 16), Math.floorDiv(h.z(), 16)));
+            Optional<Staircase> sited = Staircase.siteWell(world, x, z, nearY, depth, h -> deadWells.contains(h) || chainOfCommand.templated(Math.floorDiv(h.x(), 16), Math.floorDiv(h.z(), 16)) && !chainOfCommand.farmMissions.mineAt(Math.floorDiv(h.x(), 16), Math.floorDiv(h.z(), 16))); // a mineshaft mission's shaft goes down in its own chunk, templated as it is
             if (sited.isEmpty()) {
                 if (!failedHere) {
                     LOG.warn("[{}] MINE: no chunk at or round x={} z={} a well can be cut down clear of water and lava - there itself, {}",
@@ -5440,7 +5440,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                     if (seen) {
                         LOG.warn("[Outcome] no well can be sited at or round x={} z={} - SHORT", x, z);
-                        mineDriedUp(x, z); // no well, no head: the site ordered
+                        mineDriedUp(x, z, false); // no well, no head: the site ordered
                     }
                 }
                 state.stairsFor = new int[]{x, z};
@@ -6948,8 +6948,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean darkNow = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
             boolean stashOre = darkNow && working != null && mineOfChest(chestCentre(working)).isPresent()
                     && STASHED.stream().mapToInt(inventory::count).sum() >= STASH_ORE;
-            Optional<Unstash> unstash = onMission ? Optional.empty() : unstashFor(status.position(), inventory, darkNow)
-                    .or(() -> salvageFor(name, status.position(), inventory, darkNow, depositor::barred));
+            Optional<Unstash> unstash = (onMission ? Optional.<Unstash>empty() : unstashFor(status.position(), inventory, darkNow))
+                    .or(() -> salvageFor(name, status.position(), inventory, darkNow, depositor::barred)); // a chest on the ground to flatten is the mission's own work, on it or not
             // Bare-handed - or short of a stone sword, the phase's arms, with its own work CANTCO'd - its weapon is its own upkeep
             // (docs/echelons/tenets.md): live (field536), Eli stuck in his mine with a wooden sword held the seizure a day.
             armourer.digsItsMakings(inventory.meleeWeapons() == 0 || status.report() instanceof Report.Cantco
