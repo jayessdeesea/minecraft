@@ -35,6 +35,8 @@ public final class Hands {
         ARMOURER,
         /** Walling in a patrol base. */
         BUILDER,
+        /** Putting up a template's fixtures - a supply point's fence, torches, workshop and chests. */
+        FIXTURES,
         /** Building a structure laid out for it: {@code Order.Place}. */
         PLACING,
         /** Taking a full load to the stockpile. */

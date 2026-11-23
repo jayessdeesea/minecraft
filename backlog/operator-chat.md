@@ -22,3 +22,6 @@ operator) measures its capability and shows what it was shown (operator, 2026-11
   `lastDecision` tool (`command.ai.PlatoonLeaderTools`) returns the prompt the platoon leader was shown, not its reply.
 - The transcript doesn't wait on that: `app.OperatorChat` takes the earlier turns from the page with each request
   (`ChatRequest.turns`) and writes none of them down.
+- **A wheat farm's mission is named "a farm at chunk ..."** and the operator reads it as no kind of farm (2026-11-22). Its
+  intent says "wheat farm" now (`FarmMission.what`); the name is the key its register rows are kept under, quoted in
+  the chat's prompt, its tools and thirty tests - renamed with a register migration, in one change.

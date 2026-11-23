@@ -72,7 +72,7 @@ public final class Farmer {
     /** The hole it's filling. */
     private BlockPos watering;
     /** What a chunk farm's put up with, in the order it's put up: its fence, its gates, its chest. */
-    static final List<ItemClass> FIXTURES = List.of(ItemClass.FENCE, ItemClass.FENCE_GATE, ItemClass.CHEST, ItemClass.TORCH);
+    static final List<ItemClass> FIXTURES = List.of(ItemClass.TORCH, ItemClass.FENCE, ItemClass.FENCE_GATE, ItemClass.CHEST);
     /** Puts up each kind of fixture. */
     private final Map<ItemClass, Builder> builders = new EnumMap<>(ItemClass.class);
     /** What lays a water hole's floor, of the cobblestone or dirt it carries. */

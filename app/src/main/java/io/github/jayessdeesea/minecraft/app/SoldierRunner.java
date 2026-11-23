@@ -873,7 +873,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The camp's farm ground by water, as the foothold last measured it: kept by squads short of food. */
     private volatile FarmPlan campFarm;
     /** The camp's tree chunk, within 64 blocks: its grove (operator, 2026-11-21: the renewables close by). */
-    private final CampTrees campTrees = new CampTrees();
+    private final CampTrees campTrees = new CampTrees(); private final TemplateFixtures templateFixtures = new TemplateFixtures();
     /** The platoon leader's chunk register, measured each foothold check (ChunkLedger); its file the state directory's, the garrison's from config. */
     private final ChunkLedger chunkLedger;
     /** The camp's farm, sited, grown and kept. */
@@ -3951,6 +3951,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             case FARMER -> Optional.ofNullable(farmers.get(soldier)).flatMap(Farmer::standAt);
             case GATHERER -> Optional.ofNullable(gatherers.get(soldier)).flatMap(Gatherer::standAt);
             case HUNTER -> Optional.ofNullable(hunters.get(soldier)).flatMap(Hunter::standAt);
+            case FIXTURES -> templateFixtures.standAt(soldier);
             default -> Optional.empty();
         };
     }
@@ -5575,8 +5576,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
                     .or(() -> Optional.ofNullable(acrossSquads.get(soldierName)))
                     .ifPresentOrElse(t -> deliveries.put(soldierName, t), () -> deliveries.remove(soldierName));
-            // The weapon or the pickaxe it has none of is the soldier's own to make, out of contact; the kit ladder
-            // beyond it is the squad leader's leave (SquadOrder.rearm: a squad holding, with no task).
+            // The weapon or pickaxe it has none of is its own to make, out of contact; the ladder past it is the squad leader's leave (SquadOrder.rearm).
             rearmAllowed.put(soldierName, !squadInContact);
             upgradeAllowed.put(soldierName, order.rearm() && !squadInContact && !baseOrdered);
             stoneSetAside.put(soldierName, stoneShare);
@@ -6861,8 +6861,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // dig): a weapon if bare-handed and allowed to rearm, more only if allowed to upgrade.
             // Not while the armourer is at the last one: its own claim on the ore it's digging hides
             // that ore from the look for more, and the rung would read as out of reach mid-job.
-            // And at once when a run ends: the rung it made is held now, and asked again it would be
-            // made again - a request is for one more than carried.
+            // And at once when a run ends: the rung it made is held now, and asked again it would be made again - a request is for one more than carried.
             boolean armourerActive = armourer.active();
             if ((ladderTicks.getAndIncrement() % 20 == 0 || armourerWas.getAndSet(armourerActive)) && !armourerActive) {
                 ladderStep.set(nextRung(name, inventory, status.position()));
@@ -6962,6 +6961,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             dutyBook.sample(definition.squad(), name, afterActionReview.errands, () -> bakes ? chainOfCommand.stores().map(st -> st.wheat()).orElse(0) + inventory.count(ItemClass.WHEAT)
                     : field != null ? Farmer.ripe(world, field) : dutyBook.plantsNothing(name, planting.get(name), world) ? 0 : 1, bakes ? armourer.failure() : farmer.failure(), clockwork.millis());
             Optional.ofNullable(planting.get(name)).ifPresent(g -> tools.addAll(Forester.wants(world, g, inventory))); // its tree chunk's chest, torches
+            Optional<io.github.jayessdeesea.minecraft.bot.farm.StoresChunk> stores = chainOfCommand.farmMissions.stores(objectiveOf(unitOf(name, definition.squad()))); tools.addAll(templateFixtures.wants(world, stores, inventory)); // a supply point's fixtures
             if (field != null) { // its hoe, a bucket for its farm's water holes, its chunk farm's fixtures (Farmer.wants)
                 tools.addAll(Farmer.wants(world, field, inventory));
                 bucketOnFarm |= inventory.count(ItemClass.BUCKET) + inventory.count(ItemClass.WATER_BUCKET) > 0;
@@ -7267,6 +7267,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     builder.stop();
                 }
             }));
+            turns.put(Hands.Routine.FIXTURES, templateFixtures.turn(name, session, inventory, status.position(), world, stores, threatened, soldier::lookAt));
             turns.put(Hands.Routine.PLACING, turn(() -> placing.containsKey(name)
                     && (placeProgress.get(name) == null || placeProgress.get(name) instanceof Builder.Progress.Working), free -> {
                 List<BlockPos> cells = placing.get(name);
@@ -7971,8 +7972,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig,
                 upgradeAllowed.getOrDefault(name, false) ? highest : Math.min(highest, Ladder.BASIC_LOAD),
                 camp == null ? Optional.empty() : Optional.of(campLevel), r -> (cutting.containsKey(name) ? LoadPlan.MINING : LoadPlan.FLATTENING).putsAway(r, inventory)); // nor what its load puts away
-        Optional<Recipe> made = upgradeAllowed.getOrDefault(name, false) ? next
-                : next.filter(r -> SoldierErrands.madeOnMission(r.makes(), inventory.meleeWeapons(), inventory.count(ItemClass.PICKAXE)));
+        Optional<Recipe> made = upgradeAllowed.getOrDefault(name, false) ? next : next.filter(r -> SoldierErrands.madeOnMission(r.makes(), inventory.meleeWeapons(), inventory.count(ItemClass.PICKAXE)));
         made.ifPresentOrElse(r -> rungsWanted.put(name, Ladder.rungOf(r)), () -> rungsWanted.remove(name));
         return made;
     }

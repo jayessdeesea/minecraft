@@ -33,6 +33,11 @@ public class ChatCommands implements OperatorCommands {
         return give(x, z, level, FarmMission.Crop.TREES);
     }
 
+    @Override
+    public String giveSupplyPointMission(int x, int z, OptionalInt level) {
+        return give(x, z, level, FarmMission.Crop.STORES);
+    }
+
     private String give(int x, int z, OptionalInt level, FarmMission.Crop crop) {
         String order = x + " " + z + (level.isPresent() ? " " + level.getAsInt() : "");
         FarmMission farm = FarmMission.parse(order, crop).orElseThrow(() -> new IllegalArgumentException(

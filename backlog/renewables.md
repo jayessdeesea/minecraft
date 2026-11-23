@@ -94,14 +94,11 @@ one chest (`Foothold.dump`).
   fenced and lit, its workshop in - a table and four furnaces - and the food and Class IV rows up, a later row a
   follow-on order; what has no row of its own (diamonds, minerals, buckets, string, beds) in the Classes II and IX row;
   the old chests emptied into it by a haul order of its own, after.
-- **Built**: its layout and its stage read from the world (`bot.farm.StoresChunk`, `StoresChunkTest`) - rows, aisles,
-  torches, table and furnaces, the row a thing is kept in. **Next, in order**: (1) one routine that makes and places a
-  template's fixtures from a list of cell and item - chest, table, furnace, fence, gate, torch - which the wheat and
-  tree templates' repairs and the mineshaft's head use too (today `Farmer` places a farm's fence and gates, `Fitter` a
-  workshop's table, furnace and chests round its stand, `Lamplighter` torches: three routines, none taking a layout);
-  (2) the mission - `FarmMission` with stores as its crop: flatten to the level, floor it in cobblestone, the template
-  - its chat command and its measure; (3) loads put in by class, a row a class (`StoresChunk.Row.of`), and drawn from
-  there; (4) the haul order that empties the old chests into it.
+- **Built** (docs/echelons/platoon-leader/decisions.md, the operator's farm mission): its mission - flatten, floor,
+  template - its chat command, its layout, and the routine that makes and places a template's fixtures from a layout
+  (`bot.supply.Fixtures`). **Left**: loads put in by class, a row a class (`StoresChunk.Row.of`), and drawn from there -
+  today its chests are only chests; the haul order that empties the old chests into it; its later rows, a follow-on
+  order; and the camp's stockpile and workshop pointed at it.
 - **Chests by class of supply**: rows of double chests along x, six to a half-row, a cross-aisle at local x=8, two
   aisles between rows, each chest reached from both sides - local z=3 Class I (food), z=6 Class IV (cobblestone, dirt,
   logs, planks), z=9 Classes II and IX (tools, armour, ore, ingots), z=12 Classes III and V (coal, torches, arrows);
@@ -121,15 +118,11 @@ one chest (`Foothold.dump`).
   first, then the old one run down - its crop or trees harvested and not replanted, its chest's contents hauled, its
   fixtures taken up, its ground given back to the flatten. Ordered like a build, by bids, the run-down costed in.
 
-### Upkeep: a template that drifts is ordered back (operator, 2026-11-22)
-Who fixes a wheat farm whose ground has gone untilled, a block of dirt missing, a fence down? While its mission is at
-its template step, the mission's squad: the template is measured against the world each look (`FarmMissions.measure`,
-"Work[dig, fill, pours, till, sow, torches, posts, gates]") and the squad works what's left. Once the mission is done,
-only its tender, and only what a farmer does - till, sow, a fixture from what it carries; ground gone is nobody's, and
-nobody is told: the chunk register (`ChunkLedger`) keeps the stage and says it. To build: the platoon leader keeps
-measuring every template it has built - wheat, trees, the supply point - and a count of work left past the crop's own
-cycle (ground, water, fence, gates, torches, chests) reopens the template step as a repair task for a squad, said with
-what's missing; the chunk's history keeps each repair.
+### Upkeep left (operator, 2026-11-22)
+Built: the review that reopens a built template whose structure has gone (docs/echelons/platoon-leader/decisions.md).
+Left: a wheat farm's fence, gates and torches gone after its mission is done are its tender's alone, and only with a
+squad on its farm - they should count as drift, once the template's own done-measure counts them; a mineshaft's head;
+and each repair kept in the chunk's history.
 
 ### Other farms
 - Nether wart and animal pens - a chicken pen first: feathers are the one part of an arrow with no other source but

@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The operator's farm missions as orders: the latest for a chunk is the one worked. */
 class FarmMissionsTest {
@@ -193,10 +194,21 @@ class FarmMissionsTest {
         restarted.keptIn(new ObjectiveBook(() -> registers));
         CampTrees campTrees = new CampTrees();
 
-        restarted.measure(new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+        boolean[] standing = {true}; // its chest and its torches, as built
+        io.github.jayessdeesea.minecraft.bot.world.WorldView world = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
                 return y <= 63;
+            }
+
+            @Override
+            public boolean isChest(int x, int y, int z) {
+                return standing[0];
+            }
+
+            @Override
+            public boolean isTorch(int x, int y, int z) {
+                return standing[0];
             }
 
             @Override
@@ -208,11 +220,25 @@ class FarmMissionsTest {
             public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
                 return List.of();
             }
-        }, null, null, campTrees, 5_000);
+        };
+        restarted.measure(world, null, null, campTrees, 5_000);
 
         assertEquals(java.util.Optional.of(new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(1, 4, 63)), campTrees.chunk());
         assertEquals(List.of(), restarted.worked(), "the mission itself done: nothing worked");
+        assertEquals(java.util.Set.of(trees), restarted.built(), "and read back as built, for the review");
+
+        // The review (operator, 2026-11-22: once built, the construction might drift - who reviews and fixes it?): its chest and
+        // torches gone, looked at again - not before the review's due - its template is opened again, and kept so.
+        standing[0] = false;
+        restarted.measure(world, null, null, campTrees, 5_000 + FarmMissions.REVIEW_MILLIS - 1);
+        assertEquals(List.of(), restarted.worked(), "not looked over again before the review is due");
+        restarted.measure(world, null, null, campTrees, 5_000 + FarmMissions.REVIEW_MILLIS);
+        assertEquals(List.of(FarmMission.Kind.TREE_TEMPLATE), restarted.worked().stream().map(e -> e.getValue().kind()).toList(), "its template worked again");
+        ObjectiveRecord template = registers.objectives().stream().filter(r -> r.step() == 1).findFirst().orElseThrow();
+        assertEquals(ObjectiveRecord.State.PLANNED, template.state(), "open again in the register: " + template);
+        assertTrue(template.why().orElse("").startsWith("reviewed: its chest is gone; 9 of its 9 torches gone"), "with what was found: " + template);
     }
+
 
     private static io.github.jayessdeesea.minecraft.command.SquadStatus squad(String name) {
         return new io.github.jayessdeesea.minecraft.command.SquadStatus(name, new io.github.jayessdeesea.minecraft.command.Report.InPosition(), List.of(), List.of(), java.util.Optional.empty(), false);

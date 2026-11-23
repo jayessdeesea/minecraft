@@ -190,6 +190,69 @@ class FarmMissionSimulationTest {
         assertTrue(rows.stream().allMatch(r -> r.state() == ObjectiveRecord.State.DONE), "each DONE: " + rows + missionLines);
     }
 
+    /** The supply point's chunk: (2, 0) too, its ground at sea level. */
+    static final FarmMission STORES = new FarmMission(2, 0, GROUND, FarmMission.Crop.STORES);
+
+    /**
+     * The eval: a chunk with a mound given the supply point mission (operator, 2026-11-22: a supply dump near the farms).
+     * Its ground cobblestone at its level, nothing over it but what's put there; its nine torches, its table and four
+     * furnaces, and the twenty-four chests of its first two rows, each in the cell the layout names; no soldier walking
+     * trip after trip for nothing; and its three steps in the objective register DONE, in order.
+     */
+    @Test
+    void aSupplyPointIsFlattenedPavedLitAndItsFirstRowsPutUp() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FarmMissionSimulationTest::hills, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
+        Position chunk = STORES.centre(STORES.steps().getFirst());
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
+        chain.onOperatorFarm("Pat", STORES);
+        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
+                new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
+                new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.ITEM_COBBLESTONE, 64}, new int[]{10, SimServer.ITEM_COBBLESTONE, 64},
+                new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 16}))).run();
+        clock.advance(90 * 60_000);
+        server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
+        List<String> log = Files.readAllLines(Path.of("target", "sim", "aSupplyPointIsFlattenedPavedLitAndItsFirstRowsPutUp.log"));
+        String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]")).toList();
+
+        io.github.jayessdeesea.minecraft.bot.farm.StoresChunk template = new io.github.jayessdeesea.minecraft.bot.farm.StoresChunk(STORES.chunkX(), STORES.chunkZ(), GROUND);
+        long paved = template.ground().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.COBBLESTONE).count();
+        assertEquals(256, paved, "its ground cobblestone" + missionLines);
+        assertEquals(9, template.torches().stream().filter(t -> server.block(t.x(), t.y(), t.z()) == SimServer.TORCH).count(), "its nine torches" + missionLines);
+        assertEquals(SimServer.CRAFTING_TABLE, server.block(template.table().x(), template.table().y(), template.table().z()), "its table" + missionLines);
+        assertEquals(4, template.furnaces().stream().filter(f -> server.block(f.x(), f.y(), f.z()) == SimServer.FURNACE).count(), "its four furnaces" + missionLines);
+        long chests = io.github.jayessdeesea.minecraft.bot.farm.StoresChunk.FIRST_ROWS.stream().flatMap(row -> template.chests(row).stream())
+                .filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.CHEST).count();
+        assertEquals(24, chests, "the chests of its food and building rows" + missionLines);
+        assertEquals(0, runner.afterActionReview.errands.loops(), "no soldier walking trip after trip for nothing");
+
+        List<ObjectiveRecord> rows = new Registers(state.resolve("registers")).objectives().stream().filter(r -> r.mission().equals(STORES.name())).toList();
+        assertEquals(List.of(0, 1, 2), rows.stream().map(ObjectiveRecord::step).toList(), "the mission's three steps: " + rows);
+        assertTrue(rows.stream().allMatch(r -> r.state() == ObjectiveRecord.State.DONE), "each DONE: " + rows + missionLines);
+
+        // The review (operator, 2026-11-22: who reviews what's built, and fixes it?): a chest and a torch gone from the built
+        // supply point - its template is opened again, and they're put back.
+        BlockPos chest = template.chests(io.github.jayessdeesea.minecraft.bot.farm.StoresChunk.Row.FOOD).get(4);
+        BlockPos torch = template.torches().get(4);
+        server.set(chest.x(), chest.y(), chest.z(), SimServer.AIR);
+        server.set(torch.x(), torch.y(), torch.z(), SimServer.AIR);
+        clock.advance(30 * 60_000);
+        server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
+        List<String> after = Files.readAllLines(Path.of("target", "sim", "aSupplyPointIsFlattenedPavedLitAndItsFirstRowsPutUp.log")).stream()
+                .filter(l -> l.contains("[Mission]") && (l.contains("reviewed") || l.contains("DONE") || l.contains("done"))).toList();
+        assertTrue(after.stream().anyMatch(l -> l.contains("reviewed - back at")), "the review found it: " + after);
+        assertEquals(SimServer.CHEST, server.block(chest.x(), chest.y(), chest.z()), "the chest put back: " + after);
+        assertEquals(SimServer.TORCH, server.block(torch.x(), torch.y(), torch.z()), "the torch put back: " + after);
+        assertTrue(new Registers(state.resolve("registers")).objectives().stream().filter(r -> r.mission().equals(STORES.name()))
+                .allMatch(r -> r.state() == ObjectiveRecord.State.DONE), "and its template done again: " + after);
+    }
+
     /** The highest of the ground's own blocks - soil, stone, cobblestone - at a column: no fence, torch or crop. */
     static int groundTop(SimServer server, int x, int z) {
         for (int y = GROUND + 12; y > GROUND - 8; y--) {

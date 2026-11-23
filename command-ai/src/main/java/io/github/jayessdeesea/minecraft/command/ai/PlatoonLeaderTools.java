@@ -133,6 +133,21 @@ final class PlatoonLeaderTools {
         return command("giveTreeFarmMission " + x + " " + z + (y == null ? "" : " " + y), () -> commands.giveTreeFarmMission(x, z, level));
     }
 
+    @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "giveSupplyPointMission", description = "A command - only when the operator asks for it in this turn. Gives the "
+            + "mission 'a supply point at' the chunk a block is in - the force's stores, also called a supply dump - carried out in three phases: "
+            + "the chunk flattened to the level, that ground paved in cobblestone, then the supply point template on it: its fence and gates, "
+            + "nine torches, a workshop of a crafting table and four furnaces, and its first two rows of double chests, food and building "
+            + "materials. It's worked alongside the farms' missions, a squad each. Quote its result.")
+    String giveSupplyPointMission(@ToolParam(description = "a block's x in the chunk") int x, @ToolParam(description = "a block's z in the chunk") int z,
+                                  @ToolParam(required = false, description = "its ground's level, only if the operator said one; leave it out for sea level")
+                                  Integer y) {
+        OptionalInt level = levelAsSaid(y, message);
+        if (y != null && level.isEmpty()) {
+            LOG.warn("[Chat] the platoon leader's supply point at y={} read as sea level: the operator said no level", y);
+        }
+        return command("giveSupplyPointMission " + x + " " + z + (y == null ? "" : " " + y), () -> commands.giveSupplyPointMission(x, z, level));
+    }
+
     @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "cancelMission", description = "A command - only when the operator asks for it in this turn. Cancels the farm "
             + "or tree farm mission open on a chunk: its phases not done are closed SUPERSEDED with the operator's reason kept, none deleted, and it "
             + "isn't taken up again. Quote its result.")

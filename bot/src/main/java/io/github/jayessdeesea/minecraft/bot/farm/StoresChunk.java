@@ -139,6 +139,23 @@ public record StoresChunk(int chunkX, int chunkZ, int level) {
         return cells;
     }
 
+    /**
+     * What its mission puts up, and where, in the order it's built: the fence and its gates, the torches, the workshop's
+     * table and furnaces, then its first rows' chests.
+     */
+    public java.util.Map<ItemClass, List<BlockPos>> fixtures() {
+        java.util.Map<ItemClass, List<BlockPos>> layout = new java.util.LinkedHashMap<>();
+        layout.put(ItemClass.FENCE, grid().fence());
+        layout.put(ItemClass.FENCE_GATE, grid().gates());
+        layout.put(ItemClass.TORCH, torches());
+        layout.put(ItemClass.CRAFTING_TABLE, List.of(table()));
+        layout.put(ItemClass.FURNACE, furnaces());
+        List<BlockPos> chests = new ArrayList<>();
+        FIRST_ROWS.forEach(row -> chests.addAll(chests(row)));
+        layout.put(ItemClass.CHEST, chests);
+        return layout;
+    }
+
     private static boolean chestsUp(WorldView world, List<BlockPos> cells) {
         return cells.stream().allMatch(c -> world.isChest(c.x(), c.y(), c.z()));
     }
@@ -148,8 +165,9 @@ public record StoresChunk(int chunkX, int chunkZ, int level) {
         if (!ground().stream().allMatch(c -> world.isCobblestone(c.x(), c.y(), c.z()))) {
             return Stage.GROUND;
         }
+        // A gate's cell the ground stands in - a slope's foot on the chunk's line - is the ground's: it bars the way itself.
         if (!grid().fence().stream().allMatch(f -> world.solidHere(f.x(), f.y(), f.z()))
-                || !grid().gates().stream().allMatch(g -> world.isGate(g.x(), g.y(), g.z()))
+                || !grid().gates().stream().allMatch(g -> world.isGate(g.x(), g.y(), g.z()) || world.solidHere(g.x(), g.y(), g.z()))
                 || !torches().stream().allMatch(t -> world.isTorch(t.x(), t.y(), t.z()))) {
             return Stage.FENCED;
         }

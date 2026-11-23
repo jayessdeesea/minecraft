@@ -120,7 +120,13 @@ started when the one before is measured done. "A tree farm at chunk (x, z)" (ope
 `giveTreeFarmMission`) is the same mission with trees for its crop, in two phases: the chunk flattened to its level, its
 ground left since saplings want soil, then the tree chunk's template on it - done when its sixteen saplings, its chest and
 its nine torches are in (`TreeChunk.Stage`); its chunk is the camp's tree chunk from then on, whatever the siting rule
-would have chosen (`CampTrees.take`), and after a restart too, read back from its template's row. Each open mission's
+would have chosen (`CampTrees.take`), and after a restart too, read back from its template's row. "A supply point at
+chunk (x, z)" (operator, 2026-11-22; the chat's `giveSupplyPointMission`) is the same again, in three phases: the chunk
+flattened to its level, that ground paved in cobblestone, then the supply point's template on it (`bot.farm.StoresChunk`:
+the chunk farms' fence and gates, nine torches, a workshop of a table and four furnaces, four rows of six double chests
+by class of supply) - each fixture made and put in the cell the layout names by the squad on its `STORES` task
+(`bot.supply.Fixtures`), done when it's fenced and lit, its workshop in and its first two rows up, food and Class IV
+(`StoresChunk.stocked`). Each open mission's
 phase under way is worked at once, a squad each - a wheat farm's floor and a tree farm's flatten together - but one
 flatten at a time, the first given, since the squads flatten one ground (`FarmMissions.worked`). A mission carried on at
 its template isn't measured back to its flatten: the template's own ground stands over the flatten's level. The level is the operator's alone: the chat's `giveFarmMission` keeps a
@@ -141,6 +147,14 @@ chunk 640 columns uncut).
    § 17](../../military-doctrine.md#17-the-lodgment)). Done when every cell of it is cobblestone.
 3. **The template**: the chunk farm on the floor at the farm's level, taken into the camp's farm (`CampFarm.take`) and
    worked by a squad on `FARM` at the chunk. Done when its ground is laid - its `FarmSite` stage past SURVEYED.
+
+**What's built is reviewed** (operator, 2026-11-22: once the sites are built the construction might drift - who reviews
+and fixes it?): every five minutes each mission done, its chunk in sight, is measured against its layout again
+(`FarmMissions.review`), and one whose structure has gone has its template phase opened again - a repair, a squad's task
+as the build was, the register's row saying what was found ("reviewed: back at FENCED - to put up again: 1 torch, 1
+chest"). Structure, not the crop's own cycle (`FarmMissions.drifted`): a wheat farm's ground - its tilling, sowing and
+fixtures are its tender's; a tree chunk's chest and torches - felling and planting are its foresters'; a supply point's
+fence, lights, workshop and first rows.
 
 The step under way has one squad on it, by a guardrail after the platoon leader's decision and the day's own
 (`FarmMissions.guarded`): the squad already on it, else one given its task already (the flatten's squad, say), else

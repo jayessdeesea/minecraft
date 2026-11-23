@@ -3,7 +3,9 @@ package io.github.jayessdeesea.minecraft.app;
 import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmSite;
+import io.github.jayessdeesea.minecraft.bot.farm.StoresChunk;
 import io.github.jayessdeesea.minecraft.bot.farm.TreeChunk;
+import io.github.jayessdeesea.minecraft.bot.supply.Fixtures;
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.supply.Clearer;
@@ -77,6 +79,7 @@ final class FarmMissions {
             book.ifPresent(b -> b.relieved(old, "superseded by " + mission.name(), now));
             LOG.info("[Mission] {} superseded by {}", old.name(), mission.name());
         }
+        built.removeIf(m -> m.chunkX() == mission.chunkX() && m.chunkZ() == mission.chunkZ());
         if (missions.containsKey(mission)) {
             LOG.info("[Mission] {} is open already, at step {}", mission.name(), missions.get(mission) + 1);
             return;
@@ -106,7 +109,7 @@ final class FarmMissions {
 
     /** Whether a step of {@code kind} lays a template on ground already made, digging and paving nothing. */
     private static boolean template(FarmMission.Kind kind) {
-        return kind == FarmMission.Kind.FARM_TEMPLATE || kind == FarmMission.Kind.TREE_TEMPLATE;
+        return kind == FarmMission.Kind.FARM_TEMPLATE || kind == FarmMission.Kind.TREE_TEMPLATE || kind == FarmMission.Kind.STORES_TEMPLATE;
     }
 
     /** The chunks - by ChunkFarm#key - whose farmland is given up: each mission's worked, while it's flattened and floored. */
@@ -156,8 +159,9 @@ final class FarmMissions {
                 case FLOOR -> new Objective.Task.Floor(m.layer(step.level()));
                 case FARM_TEMPLATE -> new Objective.Task.Farm();
                 case TREE_TEMPLATE -> new Objective.Task.TreeFarm();
+                case STORES_TEMPLATE -> new Objective.Task.Stores();
             };
-            return new Objective(m.said(step), m.centre(step), "The operator's " + (m.crop() == FarmMission.Crop.TREES ? "tree farm" : "farm")
+            return new Objective(m.said(step), m.centre(step), "The operator's " + m.what()
                     + ", step " + (step.index() + 1) + " of " + m.steps().size() + ": " + step.task(), task);
         }).toList();
     }
@@ -172,6 +176,13 @@ final class FarmMissions {
         return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.FARM_TEMPLATE
                         && objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent())
                 .map(c -> new ChunkFarm(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level())).findFirst();
+    }
+
+    /** The supply point whose template {@code objective} is - its mission's last step, worked now - if it is one. */
+    Optional<StoresChunk> stores(Optional<Objective> objective) {
+        return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.STORES_TEMPLATE
+                        && objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent())
+                .map(c -> new StoresChunk(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level())).findFirst();
     }
 
     /** The mission whose flatten is under way, and that step. */
@@ -276,6 +287,72 @@ final class FarmMissions {
         for (Map.Entry<FarmMission, FarmMission.Step> under : worked()) {
             measure(world, campFarm, farms, now, under.getKey(), under.getValue());
         }
+        review(world, now);
+    }
+
+    /** The missions done, their templates standing: what the review looks over. */
+    private final Set<FarmMission> built = new java.util.LinkedHashSet<>();
+    /** How often what's built is looked over. */
+    static final long REVIEW_MILLIS = 5 * 60_000;
+    private long reviewedAt = Long.MIN_VALUE;
+
+    /** The templates built and not open again, for whoever asks what stands. */
+    synchronized Set<FarmMission> built() {
+        return Set.copyOf(built);
+    }
+
+    /**
+     * What of {@code m}'s template has gone since it was built, as {@code world} stands - its structure, not its crop:
+     * wheat's ground (tilling, sowing and its fixtures are its tender's), a tree chunk's chest and torches (felling and
+     * planting are its foresters'), a supply point's fence, lights, workshop and first rows. Empty while it stands.
+     */
+    static Optional<String> drifted(WorldView world, FarmMission m) {
+        return switch (m.crop()) {
+            case WHEAT -> {
+                FarmSite.Work work = FarmSite.work(world, new ChunkFarm(m.chunkX(), m.chunkZ(), m.level()));
+                yield work.stage() == FarmSite.Stage.SURVEYED ? Optional.of("its ground is gone in places - " + work) : Optional.empty();
+            }
+            case TREES -> {
+                TreeChunk chunk = new TreeChunk(m.chunkX(), m.chunkZ(), m.level());
+                long dark = chunk.torches().stream().filter(t -> !world.isTorch(t.x(), t.y(), t.z())).count();
+                boolean chest = world.isChest(chunk.chest().x(), chunk.chest().y(), chunk.chest().z());
+                yield dark == 0 && chest ? Optional.empty() : Optional.of((chest ? "" : "its chest is gone; ") + dark + " of its " + chunk.torches().size() + " torches gone");
+            }
+            case STORES -> {
+                StoresChunk stores = new StoresChunk(m.chunkX(), m.chunkZ(), m.level());
+                yield stores.stocked(world) ? Optional.empty() : Optional.of("back at " + stores.stage(world) + " - to put up again: "
+                        + Fixtures.left(world, stores.fixtures()).entrySet().stream().map(e -> e.getValue().size() + " " + e.getKey().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' '))
+                        .collect(Collectors.joining(", ")));
+            }
+        };
+    }
+
+    /**
+     * The review (operator, 2026-11-22: once the sites are built the construction might drift - who reviews and fixes
+     * it?): every {@link #REVIEW_MILLIS} each template built and in sight is measured against its layout again, and one
+     * whose structure has gone ({@link #drifted}) has its template step opened again - a repair, a squad's task as the
+     * build was, kept in the register with what was found.
+     */
+    private void review(WorldView world, long now) {
+        if (reviewedAt != Long.MIN_VALUE && now - reviewedAt < REVIEW_MILLIS) {
+            return;
+        }
+        reviewedAt = now;
+        for (FarmMission m : List.copyOf(built)) {
+            if (!world.isLoaded(m.minX(), m.minZ()) || !world.isLoaded(m.minX() + 15, m.minZ() + 15)) {
+                continue; // not in sight: looked at next time
+            }
+            Optional<String> gone = drifted(world, m);
+            if (gone.isEmpty()) {
+                continue;
+            }
+            FarmMission.Step last = m.steps().getLast();
+            built.remove(m);
+            missions.put(m, last.index());
+            book.ifPresent(b -> b.reopen(m, last, "reviewed: " + gone.get(), now));
+            LOG.warn("[Mission] {} reviewed - {}; its template worked again", m.name(), gone.get());
+            wake.accept("a template built wants repair");
+        }
     }
 
     /**
@@ -341,6 +418,19 @@ final class FarmMissions {
                 yield stage.compareTo(TreeChunk.Stage.PRODUCING) >= 0 ? Optional.of("its " + chunk.trunks().size()
                         + " saplings in, its chest and its " + chunk.torches().size() + " torches - " + stage) : Optional.empty();
             }
+            case STORES_TEMPLATE -> {
+                StoresChunk stores = new StoresChunk(m.chunkX(), m.chunkZ(), step.level());
+                if (stores.ground().stream().anyMatch(c -> !world.isLoaded(c.x(), c.z()))) {
+                    say(m, step, "not all of it in sight");
+                    yield Optional.empty();
+                }
+                // Stocked - fenced and lit, its workshop in, its first rows up: the rows after are a follow-on order.
+                Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> left = Fixtures.left(world, stores.fixtures());
+                say(m, step, stores.stage(world) + " - to put up: " + (left.isEmpty() ? "nothing" : left.entrySet().stream()
+                        .map(e -> e.getValue().size() + " " + e.getKey().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' ')).collect(Collectors.joining(", "))));
+                yield stores.stocked(world) ? Optional.of("fenced and lit, its workshop in and its "
+                        + StoresChunk.FIRST_ROWS.size() * 6 + " double chests up") : Optional.empty();
+            }
         };
         if (done.isEmpty()) {
             return;
@@ -363,6 +453,7 @@ final class FarmMissions {
         } else {
             missions.remove(m);
             said.remove(m);
+            built.add(m);
             if (step.kind() == FarmMission.Kind.TREE_TEMPLATE) {
                 treesMade = Optional.of(new TreeChunk(m.chunkX(), m.chunkZ(), step.level()));
             }
@@ -494,6 +585,14 @@ final class FarmMissions {
         book.get().openMissions().forEach((name, step) -> FarmMission.named(name).ifPresent(m -> {
             missions.putIfAbsent(m, step);
             LOG.info("[Mission] {} carried on from the register, at step {}", m.name(), step + 1);
+        }));
+        // What was built before the restart: each mission the register holds with every step done.
+        Map<String, List<io.github.jayessdeesea.minecraft.command.ObjectiveRecord>> rows = book.get().registers().objectives().stream()
+                .collect(Collectors.groupingBy(io.github.jayessdeesea.minecraft.command.ObjectiveRecord::mission, LinkedHashMap::new, Collectors.toList()));
+        rows.forEach((name, steps) -> FarmMission.named(name).filter(m -> !missions.containsKey(m) && steps.size() >= m.steps().size()
+                && steps.stream().allMatch(r -> r.state() == io.github.jayessdeesea.minecraft.command.ObjectiveRecord.State.DONE)).ifPresent(m -> {
+            built.removeIf(old -> old.chunkX() == m.chunkX() && old.chunkZ() == m.chunkZ());
+            built.add(m);
         }));
         // The tree chunk a mission made before the restart: its template's row done, the last of them.
         treesMade = book.get().registers().objectives().stream()

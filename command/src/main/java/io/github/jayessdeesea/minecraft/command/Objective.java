@@ -74,6 +74,14 @@ public record Objective(String mission, Position location, String intent, Task t
         }
 
         /**
+         * Build the supply point's template on the chunk there (operator, 2026-11-22): its fence and gates, its torches,
+         * its workshop and its first rows of chests, each made and put in the cell its layout names. The platoon leader's
+         * mission gives it ({@link FarmMission}), never the model.
+         */
+        record Stores() implements Task {
+        }
+
+        /**
          * Pave {@code layer} - one block high - in cobblestone, cell by cell (operator, 2026-11-21: a farm's floor at a
          * level below it, natural stone included): a solid cell not cobblestone dug out and its cobblestone put back in
          * the one step, so no hole stands open; an open one built. Done when every cell is cobblestone. The platoon
