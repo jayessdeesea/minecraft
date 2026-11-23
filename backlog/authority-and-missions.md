@@ -159,13 +159,11 @@ the soldiers what to throw out and what to keep." Live (field698): 33,479 cobble
 logs, 490 copper ingots, 215 iron ingots - and every chest by the camp full, soldiers failing to put loads in and
 going round each other. Built: the counts (`GarrisonStatus.stores`, the chat's `stores` tool), and most-and-least
 levels the depositor reads (`StockLevels`, `ProductionLevels`). To build:
-- **Cobblestone and dirt capped at 4,096 each - next to build** (operator, 2026-11-23: way too much cobblestone; a max of
-  4,096 for both; miners keep a bit extra on them for backfilling veins, the stockpiles don't need so much). A most
-  exists already - `bot.supply.StockLevels.DEPOT`, 256 of each - and didn't hold: the chests have 34,696 cobblestone.
-  First, why: which deposits pass it by (`SoldierErrands.surplusKinds` covers a flatten builder's load at a dump; a
-  miner's stockpile trip and a chest counted alone are the suspects), reproduced in a test. Then the most at 4,096,
-  counted over every chest known, on every path that puts either in a chest; what's over it thrown away where it's dug;
-  and what's held past it taken out (the cleanout below).
+- **Cobblestone and dirt capped at 4,096 each: what's left** (operator, 2026-11-23). Built: with the stores at 4,096 of
+  either, none of it is put in (`SoldierErrands.capped`, `Depositor.keepsStone`); a pack keeps its own amount and throws
+  away the rest (`Pack`). Left: the chests cleaned out to the cap - 33,342 cobblestone stands in them, every chest by
+  the camp full of it - as an ordered task, taken out and thrown at a dump; and the cap counted where a chest hasn't
+  been opened lately (the stores are what was last seen).
 - **Depots half full, and more of them when they aren't** (operator, 2026-11-23: supply depots should be 50% full, both
   overall and within a radius; if not, we probably need more supply depots). A measure, per depot and over the depots in
   reach of each place of work: slots used of slots there. Over half, the platoon leader opens a supply point near that

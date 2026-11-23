@@ -76,4 +76,21 @@ class SoldierErrandsTest {
         org.junit.jupiter.api.Assertions.assertFalse(SoldierErrands.standTaken(cell, me, java.util.List.of(me,
                 new io.github.jayessdeesea.minecraft.command.Position(38.5, 70, 86.5))), "Bob on the level above");
     }
+
+    /**
+     * The stores hold no more than 4,096 cobblestone and 4,096 dirt between every chest (operator, 2026-11-23: way too
+     * much cobblestone; a max of 4,096 for both). Live, 33,342: the most of 256 was a chest's, not the stores'.
+     */
+    @Test
+    void theStoresAreCappedInCobblestoneAndDirt() {
+        io.github.jayessdeesea.minecraft.command.Stockpile under = new io.github.jayessdeesea.minecraft.command.Stockpile(0, 4095, 0, 0, 0, 4095);
+        io.github.jayessdeesea.minecraft.command.Stockpile at = new io.github.jayessdeesea.minecraft.command.Stockpile(9999, 4096, 0, 0, 0, 4096);
+
+        org.junit.jupiter.api.Assertions.assertFalse(SoldierErrands.capped(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.COBBLESTONE, java.util.Optional.of(under)));
+        org.junit.jupiter.api.Assertions.assertFalse(SoldierErrands.capped(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.DIRT, java.util.Optional.of(under)));
+        org.junit.jupiter.api.Assertions.assertTrue(SoldierErrands.capped(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.COBBLESTONE, java.util.Optional.of(at)));
+        org.junit.jupiter.api.Assertions.assertTrue(SoldierErrands.capped(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.DIRT, java.util.Optional.of(at)));
+        org.junit.jupiter.api.Assertions.assertFalse(SoldierErrands.capped(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.LOG, java.util.Optional.of(at)), "logs aren't capped here");
+        org.junit.jupiter.api.Assertions.assertFalse(SoldierErrands.capped(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.COBBLESTONE, java.util.Optional.empty()), "no stores seen: nothing known to be full");
+    }
 }

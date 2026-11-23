@@ -270,6 +270,15 @@ final class SoldierErrands {
         return Math.max(0, wanted * perWool - inventory.count(ItemClass.STRING));
     }
 
+    /** The most cobblestone, and the most dirt, the stores hold between every chest known (operator, 2026-11-23: way too much cobblestone - a max of 4,096 for both). */
+    static final int STORES_CAP = 4096;
+
+    /** Whether the stores hold their most of {@code kind} between them: cobblestone or dirt at {@link #STORES_CAP}. Nothing else is capped here. */
+    static boolean capped(ItemClassRegistry.ItemClass kind, Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stores) {
+        return stores.filter(s -> kind == ItemClassRegistry.ItemClass.COBBLESTONE && s.stone() >= STORES_CAP
+                || kind == ItemClassRegistry.ItemClass.DIRT && s.dirt() >= STORES_CAP).isPresent();
+    }
+
     /**
      * What a flatten builder's load leaves at a dump: cobblestone or dirt past its most ({@link StockLevels})
      * across the surface chests, or either once every chest it could go to is full.

@@ -6056,7 +6056,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (stand.isEmpty() && depositors.containsKey(soldierName)) {
                 SoldierStatus self = statuses.get(i);
                 Depositor own = depositors.get(soldierName);
-                stand = own.dumping() ? own.standAt() : own.standAt().map(chest -> chestStand(self.position(), chest).orElseGet(() -> noStandFor(chest)));
+                stand = own.dumping() ? own.standAt() : own.standAt().map(chest -> chestStand(self.position(), chest).orElseGet(() -> Depositor.withinReach(self.position(), chest) ? self.position() : noStandFor(chest))); // in reach where it stands - in leaves, on a heap, no stand found from there - it stands: live (field704-705), soldiers a block from a chest were ordered into its cell for hours
             }
             if (stand.isEmpty()) {
                 stand = storeWalks.getOrDefault(soldierName, Optional.empty());
@@ -6116,7 +6116,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         Optional<Position> here = statuses.stream().filter(s -> s.name().equals(soldier)).findFirst().map(SoldierStatus::position);
         Depositor own = depositors.get(soldier);
-        return own.dumping() ? own.standAt() : own.standAt().map(chest -> here.flatMap(h -> chestStand(h, chest)).orElseGet(() -> noStandFor(chest)));
+        return own.dumping() ? own.standAt() : own.standAt().map(chest -> here.flatMap(h -> chestStand(h, chest)).orElseGet(() -> here.filter(h -> Depositor.withinReach(h, chest)).orElseGet(() -> noStandFor(chest))));
     }
 
     /**
@@ -7418,7 +7418,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     Integer nightFloor = nightBelow.get(unitOf(name, definition.squad()));
                     boolean downForTheNight = nightFloor != null && status.position().y() < nightFloor - MINE_BELOW && !stashOre;
                     boolean breadWanted = toDepot && !StockLevels.atMost(ItemClass.FOOD, k -> stockedAt(k, Optional.empty()));
-                    depositor.storesFood(breadWanted); depositor.keepsStone(paving.containsKey(name)); depositor.keepsFood(bakes ? Subsistence.BASIC_LOAD : Subsistence.CARRY_MOST); // a baker's bread the stores' past its own load (field664: 162 carried, none stored)
+                    depositor.storesFood(breadWanted); depositor.keepsStone(paving.containsKey(name) || SoldierErrands.capped(ItemClass.COBBLESTONE, chainOfCommand.stores())); // nor past the stores' cap: kept, and the pack throws away what's over its own (field704: 33,342 held; a chest's most of 256 was by chest, and the depositor's own cobblestone load asked nobody) depositor.keepsFood(bakes ? Subsistence.BASIC_LOAD : Subsistence.CARRY_MOST); // a baker's bread the stores' past its own load (field664: 162 carried, none stored)
                     // Not while the recovery drill has it: its way out is its work, as for the supply run. Live
                     // (field424), Eli on his stair up from y=-43 set off for the depot 49 times in ten minutes, each
                     // trip taking his hands from the stair and dropped as no longer wanted.
@@ -7427,7 +7427,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             inv -> {
                                 List<Integer> slots = SoldierErrands.tripSlots(keepState.hands.contains(name), inv, plan.map(p -> p.surplus(inv)).orElse(List.of()));
                                 if (toDepot) {
-                                    StockLevels.toStore(inv, packKept, k -> stockedAt(k, deposit)).stream().filter(s -> !slots.contains(s)).forEach(slots::add);
+                                    StockLevels.toStore(inv, packKept, k -> SoldierErrands.capped(k, chainOfCommand.stores()) ? Integer.MAX_VALUE : stockedAt(k, deposit)).stream().filter(s -> !slots.contains(s)).forEach(slots::add);
                                 }
                                 return paving.containsKey(name) ? slots.stream().filter(sl -> ItemClassRegistry.classOf(inv.itemAt(sl)).filter(ItemClass.COBBLESTONE::equals).isEmpty()).toList() : slots; // a paver's cobblestone is its work's: never put in (in the squad simulation one drew a chest's 627 and put 625 back, round and round)
                             });
