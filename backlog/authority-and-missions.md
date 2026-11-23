@@ -139,8 +139,8 @@ out of a hole or out of water, and say what it can't do or is short of. Built: t
 the squad leader's leave (`SquadOrder.rearm`, a squad holding); a trip that moved nothing isn't made again. Each of the
 rest becomes a report up and a task down - the soldier short of a thing says so, its squad leader gives the draw, the
 haul or the making to somebody as a task - or goes:
-- **`DEPOSITOR`'s own trips** (`SoldierRunner`, the depositor's turn): a reserve run short at the depot (`stockTrip`),
-  bread past its load, ore to pool, a full pack; and its draws - food, seeds, dirt, logs, cobblestone, metal, string
+- **`DEPOSITOR`'s own trips** (`SoldierRunner`, the depositor's turn): ore to pool, a full pack (stock trips are
+  the squad leader's leave's or a duty's now, `SoldierErrands.stocks`); and its draws - food, seeds, dirt, logs, cobblestone, metal, string
   for a bed, a mine's stash hauled up. A full pack is "can't go on" and stays; the rest are logistics, the squad
   leader's or the platoon sergeant's to order.
 - **`ARMOURER`'s walks**: to quarry stone, to dig ore, to a workshop 40 blocks off for one sword. With leave it still
@@ -154,6 +154,20 @@ haul or the making to somebody as a task - or goes:
 - An idle soldier is then the signal: its echelon above gave it nothing.
 
 ## Left from the flatten work (2026-11-22)
+- **A flatten's crew, what's left** (field696, the tree farm at chunk (2, 3): nine Minecraft days, its flatten not
+  done). Built: a mission's step worked by night, and its squad's detachments called in. Left: a mission's squad made up
+  to strength from squads with no mission; a soldier with no route to its squad's work (Hal, on the old hill's top, 80
+  blocks off) said up and fetched; a soldier taken off a stalled task given other work at once; a site's cost in
+  blocks - this one at a hill's foot, its slopes cut 10 levels up and 11 out - said before it's ordered; and what a
+  squad working the surface by night needs: light over the work, a watch.
+- **A digger's pack, the rest of it** (operator, 2026-11-22): with room in its pack it digs on, and its trip takes what's
+  no part of digging (built). Left: dirt thrown out at the site when the force has enough - today it's dumped only at a
+  depot's dump, and only once every chest is full or the stores are at their most; a chest put up by the dig when the
+  nearest is far (a mission's depot is its chunk's west or north edge, never nearer); and the squad's point not sent
+  into a pit of the ground it's flattening (field696: Bravo's point at y=59 in the tree farm's chunk, Fran "no route").
+- **Depot chests standing in a template's ground**: outposts sited there before the template was (the chest at
+  (17, 64, 56) in the wheat farm) aren't taken up; no new one is sited on a template's ground (`FarmMissions.templateAt`).
+  The review counts what's missing, not what's extra.
 - **Water in the dig beyond one source.** A source in the dig is filled, then dug (docs/military-doctrine.md § 17,
   `FlattenTopsSimulationTest`). Not yet a case: a pond's worth, where the fill of one cell is flowed into from the
   next; water the flatten's own cut lets in from beside the site; and the old farm's holes at chunk (1, 3) live.

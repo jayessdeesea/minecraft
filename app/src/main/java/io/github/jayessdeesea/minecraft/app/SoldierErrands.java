@@ -13,6 +13,7 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Stockpile;
 import io.github.jayessdeesea.minecraft.command.Subsistence;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -113,6 +114,17 @@ final class SoldierErrands {
         };
     }
 
+    /**
+     * Whether a soldier makes a trip of its own to stock the depot - a reserve run short there, bread past its load: only
+     * with its squad leader's leave to rearm (a squad holding), or on a duty whose yield is the depot's - a harvester's, a
+     * baker's (operator, 2026-11-22: soldiers do nothing without a command). A full pack still goes in, and its stock with
+     * it. Live (field696), a tree farm's one digger made 33 trips in a quarter of an hour to a chest 40 blocks off for the
+     * seeds it carried, putting in nothing: 62% of its ticks the depositor's, 20% the dig's.
+     */
+    static boolean stocks(boolean leave, boolean onDuty) {
+        return leave || onDuty;
+    }
+
     /** How far across, and how far up or down, a chest is still in reach of a soldier on a mission's task. */
     static final double MISSION_REACH = 48, MISSION_REACH_UP = 12;
 
@@ -152,10 +164,33 @@ final class SoldierErrands {
      */
     static final Map<ItemClassRegistry.ItemClass, Integer> KEEP_PACK = keepPack();
 
+    /** What's no part of a digger's work: a farm's and a grove's makings and fixtures (operator, 2026-11-22: she doesn't need saplings or seeds when she's digging). */
+    static final java.util.Set<ItemClassRegistry.ItemClass> NOT_A_DIGGERS = java.util.EnumSet.of(ItemClassRegistry.ItemClass.SEEDS,
+            ItemClassRegistry.ItemClass.SAPLING, ItemClassRegistry.ItemClass.WHEAT, ItemClassRegistry.ItemClass.HOE, ItemClassRegistry.ItemClass.FENCE,
+            ItemClassRegistry.ItemClass.FENCE_GATE);
+
+    /**
+     * The slots a soldier's trip to the chest puts in past its load's {@code surplus}: for a {@code digger}, every slot
+     * of what's no part of digging ({@link #NOT_A_DIGGERS}) - whatever the depot holds of it already, since it's the
+     * room in the pack that's wanted. Live (field696), a flatten's digger carried 147 seeds, 31 saplings, wheat and a
+     * hoe through the dig, the depot at its most of each and so none of it taken.
+     */
+    static List<Integer> tripSlots(boolean digger, Inventory inventory, List<Integer> surplus) {
+        List<Integer> slots = new java.util.ArrayList<>(surplus);
+        if (digger) {
+            for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+                if (!slots.contains(slot) && ItemClassRegistry.classOf(inventory.itemAt(slot)).filter(NOT_A_DIGGERS::contains).isPresent()) {
+                    slots.add(slot);
+                }
+            }
+        }
+        return slots;
+    }
+
     private static Map<ItemClassRegistry.ItemClass, Integer> keepPack() {
         Map<ItemClassRegistry.ItemClass, Integer> kept = new java.util.LinkedHashMap<>();
         kept.put(ItemClassRegistry.ItemClass.DIRT, 64);
-        kept.put(ItemClassRegistry.ItemClass.SEEDS, 64);
+        kept.put(ItemClassRegistry.ItemClass.SEEDS, 0); // a digger sows nothing (operator, 2026-11-22)
         kept.put(ItemClassRegistry.ItemClass.FENCE, 0);
         kept.put(ItemClassRegistry.ItemClass.SAPLING, 0); // a planter's to carry, no one else's (PLANTER_CARRIED)
         kept.put(ItemClassRegistry.ItemClass.STRING, 12); // a bed's three wool

@@ -373,7 +373,7 @@ public class ChainOfCommand implements DisposableBean {
 
     /** {@code objective}, or the night's shelter for {@code squad} under the operator's night rule (NightRules#sheltered). */
     Objective sheltered(Objective objective, SquadStatus squad) {
-        return NightRules.sheltered(night(), objective, squad);
+        return farmMissions.on(Optional.of(objective)) ? objective : NightRules.sheltered(night(), objective, squad); // a mission's step is worked by night as by day: an order given outranks the standing rule (operator, 2026-11-22; field696)
     }
 
     /** Whether the night shift is climbing out (NightRules#surfacing). */

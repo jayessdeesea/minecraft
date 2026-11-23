@@ -24,7 +24,8 @@ import java.util.stream.Stream;
  *   <li><b>Rearm:</b> by day, out of contact, and with no task - the squad holding. A squad given work does the work
  *       (operator, 2026-11-22: soldiers do nothing without a command): its soldiers climb no kit ladder on a task, only
  *       make the weapon or the pickaxe they have none of.</li>
- *   <li><b>Task organisation:</b> plans as they stand, but for one: with every soldier detached on a
+ *   <li><b>Task organisation:</b> plans as they stand, but for two: on a mission's ground work - a flatten, a floor, a
+ *       supply point's template - every soldier detached on a role comes back to the squad; and with every soldier detached on a
  *       role, the one nearest the objective comes back to the squad as a rifleman - live, a squad
  *       of four miners left the platoon leader's FORTIFY to nobody all day.</li>
  * </ul>
@@ -112,9 +113,18 @@ public final class DrillSquadLeader implements SquadLeader {
                 .map(s -> new Position(s.x() + 0.5, s.height(), s.z() + 0.5));
     }
 
-    /** One soldier back to the squad when every one is detached on a role; none otherwise. */
+    /**
+     * One soldier back to the squad when every one is detached on a role; and on a mission's ground work - a flatten, a
+     * floor, a supply point's template, tasks only a mission gives - every one detached back: the work is the whole
+     * squad's (operator, 2026-11-22). Live (field696), a tree farm's flatten had two of Bravo's four for days, one a miner
+     * detached under an older order and still down a mine 80 blocks off.
+     */
     private List<Plan.Change> changes(List<SoldierStatus> soldiers, Objective current) {
         Map<String, Plan> kept = plans;
+        if (current.task() instanceof Objective.Task.Keep || current.task() instanceof Objective.Task.Floor || current.task() instanceof Objective.Task.Stores) {
+            return soldiers.stream().filter(s -> kept.getOrDefault(s.name(), Plan.RIFLEMAN).role() != Role.RIFLEMAN)
+                    .map(s -> Plan.Change.role(s.name(), Role.RIFLEMAN, current.location())).toList();
+        }
         boolean allDetached = soldiers.stream().allMatch(s -> kept.getOrDefault(s.name(), Plan.RIFLEMAN).role() != Role.RIFLEMAN);
         if (!allDetached) {
             return List.of();

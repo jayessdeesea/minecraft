@@ -27,6 +27,13 @@ class StatusBoard {
         this.source = source;
     }
 
+    /** What each soldier present carries, by squad then name: "Alice (Alpha)" to its items and counts. */
+    java.util.Map<String, java.util.Map<String, Integer>> carried() {
+        java.util.Map<String, java.util.Map<String, Integer>> all = new java.util.LinkedHashMap<>();
+        now().squads().forEach(squad -> squad.soldiers().forEach(s -> all.put(s.name() + " (" + squad.name() + ")", s.carries())));
+        return all;
+    }
+
     /** The garrison now. */
     GarrisonStatus now() {
         return source.get();
@@ -35,12 +42,20 @@ class StatusBoard {
     private static GarrisonStatus read(SoldierRunner runner, ChainOfCommand chain, Roster roster) {
         long at = chain.millis();
         return new GarrisonStatus(at, roster.squads().stream().map(Roster.Squad::name).map(squad -> GarrisonStatus.Squad.of(squad, chain.objective(squad),
-                runner.statuses(squad).stream().map(status -> soldier(runner, squad, status, at)).toList())).toList());
+                runner.statuses(squad).stream().map(status -> soldier(runner, squad, status, at)).toList(), progress(chain, squad))).toList(), GarrisonStatus.stores(chain.stores()));
+    }
+
+    /** What was last measured of {@code squad}'s task under way: its row's why in the task register, if it has one. */
+    private static Optional<String> progress(ChainOfCommand chain, String squad) {
+        return chain.objectiveBook.flatMap(book -> book.registers().objectives().stream()
+                .filter(r -> r.squad().filter(squad::equals).isPresent() && r.state() == io.github.jayessdeesea.minecraft.command.ObjectiveRecord.State.UNDER_WAY)
+                .reduce((first, last) -> last).flatMap(io.github.jayessdeesea.minecraft.command.ObjectiveRecord::why));
     }
 
     private static GarrisonStatus.Soldier soldier(SoldierRunner runner, String squad, SoldierStatus status, long at) {
         String unit = runner.unitOf(status.name(), squad);
         Optional<TaskRegister.Tasking> tasking = runner.taskings(unit).stream().filter(t -> t.who().equals(status.name())).findFirst();
-        return GarrisonStatus.Soldier.of(status, unit, runner.state(status.name()).flatMap(s -> s.activity.now()), tasking, at);
+        return GarrisonStatus.Soldier.of(status, unit, runner.state(status.name()).flatMap(s -> s.activity.now()), tasking, at,
+                runner.state(status.name()).map(s -> s.carried).orElse(java.util.Map.of()));
     }
 }

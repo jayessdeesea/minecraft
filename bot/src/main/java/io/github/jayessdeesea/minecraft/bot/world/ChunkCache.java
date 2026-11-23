@@ -173,6 +173,12 @@ public final class ChunkCache {
                 || classAt(x, y - 1, z) == BlockClassRegistry.BlockClass.TALL;
     }
 
+    /** Whether the block at (x, y, z) is a fence gate that's shut. False for a block nobody has cached. */
+    public boolean isShutGate(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId != UNKNOWN && BlockClassRegistry.isGate(stateId) && BlockClassRegistry.classOf(stateId) != BlockClassRegistry.BlockClass.PASSABLE;
+    }
+
     /** Whether the block at (x, y, z) is a torch. False for a block nobody has cached. */
     public boolean isTorch(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);

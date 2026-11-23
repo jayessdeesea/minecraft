@@ -15,9 +15,31 @@ import java.util.List;
 public class ChatRegisters implements PlatoonRegisters {
 
     private final ChainOfCommand chain;
+    /** The status board, asked for when first read: it's built on the runner, which is built after this. */
+    private final org.springframework.beans.factory.ObjectProvider<StatusBoard> board;
 
-    public ChatRegisters(ChainOfCommand chain) {
+    @org.springframework.beans.factory.annotation.Autowired
+    public ChatRegisters(ChainOfCommand chain, org.springframework.beans.factory.ObjectProvider<StatusBoard> board) {
         this.chain = chain;
+        this.board = board;
+    }
+
+    /** With no status board: the registers alone, nobody's pack kept. */
+    public ChatRegisters(ChainOfCommand chain) {
+        this(chain, null);
+    }
+
+    @Override
+    public java.util.Map<String, java.util.Map<String, Integer>> carried() {
+        if (board == null) {
+            throw new IllegalStateException("no soldier's pack is kept here: no status board");
+        }
+        return board.getObject().carried();
+    }
+
+    @Override
+    public java.util.Map<String, Integer> stores() {
+        return GarrisonStatus.stores(chain.stores());
     }
 
     @Override

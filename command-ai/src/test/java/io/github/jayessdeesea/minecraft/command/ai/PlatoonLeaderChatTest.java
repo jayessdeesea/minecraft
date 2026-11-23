@@ -302,8 +302,8 @@ class PlatoonLeaderChatTest {
 
         Map<String, ToolDefinition> tools = Arrays.stream(ToolCallbacks.from(chat(scripted(new ArrayList<>()), NO_COMMANDS).tools("")))
                 .map(ToolCallback::getToolDefinition).collect(Collectors.toMap(ToolDefinition::name, d -> d));
-        assertEquals(List.of("cancelMission", "chunk", "chunkOfBlock", "chunks", "escort", "giveFarmMission", "giveSupplyPointMission", "giveTreeFarmMission", "lastDecision", "missions", "replacePlatoonMission",
-                "setFlattenGround", "task", "tasks"), tools.keySet().stream().sorted().toList());
+        assertEquals(List.of("cancelMission", "chunk", "chunkOfBlock", "chunks", "escort", "giveFarmMission", "giveSupplyPointMission", "giveTreeFarmMission", "inventory", "lastDecision", "missions", "replacePlatoonMission",
+                "setFlattenGround", "stores", "task", "tasks"), tools.keySet().stream().sorted().toList());
         assertTrue(tools.get("missions").description().contains("when the operator asks about missions or operations"));
         assertTrue(tools.get("tasks").description().contains("or about 'objectives' meaning the squads' assignments"));
         for (String command : List.of("cancelMission", "escort", "giveFarmMission", "giveSupplyPointMission", "giveTreeFarmMission", "replacePlatoonMission", "setFlattenGround")) {
@@ -324,5 +324,53 @@ class PlatoonLeaderChatTest {
     void aStoppedClockCountsNothingDown() {
         assertEquals("Minecraft time 18:00 (tick 12000 of the day's 24000). Day. The clock is stopped: it stays this way.",
                 PlatoonLeaderChat.describe(TimeOfDay.of(12000, false)));
+    }
+
+    /**
+     * The operator asks what people carry and what the force has (2026-11-22): the inventory tool gives a line a soldier,
+     * its items by class - narrowed by a soldier's name or a squad's - and the stores tool what every chest known holds.
+     */
+    @Test
+    void theInventoryAndStoresToolsSayWhatIsCarriedAndHeld() {
+        PlatoonRegisters kept = new PlatoonRegisters() {
+            @Override
+            public List<ObjectiveRecord> tasks() {
+                return List.of();
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.command.ChunkRecord> chunks() {
+                return List.of();
+            }
+
+            @Override
+            public long now() {
+                return 0;
+            }
+
+            @Override
+            public Map<String, Map<String, Integer>> carried() {
+                Map<String, Map<String, Integer>> all = new java.util.LinkedHashMap<>();
+                all.put("Alice (Alpha)", new java.util.TreeMap<>(Map.of("pickaxe", 2, "water_bucket", 1, "cobblestone", 64)));
+                all.put("Dana (Bravo)", Map.of("dirt", 22));
+                return all;
+            }
+
+            @Override
+            public Map<String, Integer> stores() {
+                Map<String, Integer> held = new java.util.LinkedHashMap<>();
+                held.put("logs", 1013);
+                held.put("rawIron", 0);
+                held.put("ironIngots", 7);
+                return held;
+            }
+        };
+        PlatoonLeaderTools tools = new PlatoonLeaderTools(kept, NO_COMMANDS, "", Optional::empty);
+
+        assertEquals("2 soldier(s):\n- Alice (Alpha): cobblestone 64, pickaxe 2, water bucket 1\n- Dana (Bravo): dirt 22", tools.inventory(null));
+        assertEquals("1 soldier(s):\n- Dana (Bravo): dirt 22", tools.inventory("bravo"));
+        assertEquals("1 soldier(s):\n- Alice (Alpha): cobblestone 64, pickaxe 2, water bucket 1", tools.inventory("Alice"));
+        assertEquals("No soldier present is named, or is in a squad named, 'Zed'.", tools.inventory("Zed"));
+        assertEquals("In every chest known, in all: logs 1013, raw iron 0, iron ingots 7.", tools.stores());
     }
 }

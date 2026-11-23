@@ -873,7 +873,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The camp's farm ground by water, as the foothold last measured it: kept by squads short of food. */
     private volatile FarmPlan campFarm;
     /** The camp's tree chunk, within 64 blocks: its grove (operator, 2026-11-21: the renewables close by). */
-    private final CampTrees campTrees = new CampTrees(); private final TemplateFixtures templateFixtures = new TemplateFixtures();
+    private final CampTrees campTrees = new CampTrees(); private final TemplateFixtures templateFixtures = new TemplateFixtures(); final Map<String, io.github.jayessdeesea.minecraft.bot.GateHabit> gateHabits = new ConcurrentHashMap<>(); private final Map<BlockPos, Long> gatesUsed = new ConcurrentHashMap<>();
     /** The platoon leader's chunk register, measured each foothold check (ChunkLedger); its file the state directory's, the garrison's from config. */
     private final ChunkLedger chunkLedger;
     /** The camp's farm, sited, grown and kept. */
@@ -1847,8 +1847,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Its outposts, the depots along its edge but the main one: each kept while it stands where its depot is, its chest the next of its row once one's full.
             List<Workshop> outposts = new ArrayList<>();
             for (Position p : chainOfCommand.flatten().depots()) {
-                if (Math.hypot(p.x() - depotAt.x(), p.z() - depotAt.z()) < 1) {
-                    continue;
+                if (Math.hypot(p.x() - depotAt.x(), p.z() - depotAt.z()) < 1 || chainOfCommand.farmMissions.templateAt((int) Math.floor(p.x()), (int) Math.floor(p.z()))) {
+                    continue; // the main one's own; or on a template's ground - a farm is no place for a depot's chests
                 }
                 Workshop outpost = keepState.outposts.stream()
                         .filter(w -> Math.hypot(w.stand().x() + 0.5 - p.x(), w.stand().z() + 0.5 - p.z()) <= DEPOT_MOVE
@@ -7103,8 +7103,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 int feetLooks = feetOnly ? feetInBlock.incrementAndGet() : 0;
                 List<BlockPos> inside = world.isSolid(headCell.x(), headCell.y(), headCell.z())
                         ? java.util.stream.Stream.of(headCell, feetCell)
-                        .filter(c -> world.isSolid(c.x(), c.y(), c.z()) && Clearing.diggable(world, c.x(), c.y(), c.z())).toList()
-                        : feetLooks >= FEET_IN_BLOCK_LOOKS && Clearing.diggable(world, feetCell.x(), feetCell.y(), feetCell.z()) ? List.of(feetCell)
+                        .filter(c -> world.isSolid(c.x(), c.y(), c.z()) && Clearing.diggable(world, c.x(), c.y(), c.z()) && !world.isGate(c.x(), c.y(), c.z())).toList()
+                        : feetLooks >= FEET_IN_BLOCK_LOOKS && Clearing.diggable(world, feetCell.x(), feetCell.y(), feetCell.z()) && !world.isGate(feetCell.x(), feetCell.y(), feetCell.z()) ? List.of(feetCell) // a gate shut on it is opened (GateHabit), never broken
                         : List.of();
                 if (!inside.isEmpty() && !inContact) {
                     wayOut.set(inside);
@@ -7422,10 +7422,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // Not while the recovery drill has it: its way out is its work, as for the supply run. Live
                     // (field424), Eli on his stair up from y=-43 set off for the depot 49 times in ten minutes, each
                     // trip taking his hands from the stair and dropped as no longer wanted.
-                    depositor.tick(status.position(), deposit, free && (fullLoad || breadWanted && depositor.surplusFood() || poolOre || stashOre
-                                    || surplusTrip || stockTrip || depositor.pastHalfway()) && !threatened && fort == null && !downForTheNight && !recovering.contains(name), pooled,
+                    depositor.tick(status.position(), deposit, free && (fullLoad || poolOre || stashOre || surplusTrip || depositor.pastHalfway()
+                                    || SoldierErrands.stocks(upgradeAllowed.getOrDefault(name, false), dutyBook.of(name).isPresent()) && (stockTrip || breadWanted && depositor.surplusFood())) && !threatened && fort == null && !downForTheNight && !recovering.contains(name), pooled,
                             inv -> {
-                                List<Integer> slots = new ArrayList<>(plan.map(p -> p.surplus(inv)).orElse(List.of()));
+                                List<Integer> slots = SoldierErrands.tripSlots(keepState.hands.contains(name), inv, plan.map(p -> p.surplus(inv)).orElse(List.of()));
                                 if (toDepot) {
                                     StockLevels.toStore(inv, packKept, k -> stockedAt(k, deposit)).stream().filter(s -> !slots.contains(s)).forEach(slots::add);
                                 }
@@ -7565,8 +7565,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     free -> scavenger.tick(status.position(), world, free && !cuttingOut && !threatened && fort == null && !(foodCalls || forage != null),
                             item -> atADump(item) || thrownNear(item))));
             Optional<Hands.Routine> hands = Hands.tick(turns);
-            placementAudit.routine(name, hands);
-            afterActionReview.errands.contact(name, threatened, clockwork.millis()).tick(name, hands, status.position(), ErrandLedger.carried(inventory), clockwork.millis())
+            placementAudit.routine(name, hands); gateHabits.computeIfAbsent(name, n -> new io.github.jayessdeesea.minecraft.bot.GateHabit(n, session, gatesUsed, clockwork::millis)).tick(status.position(), world, activeSoldiers.entrySet().stream().filter(e -> !e.getKey().equals(name)).map(e -> e.getValue().status().position()).toList()); // gates opened on the way, shut behind
+            afterActionReview.errands.contact(name, threatened, clockwork.millis()).tick(name, hands, status.position(), state.carried = ErrandLedger.carried(inventory), clockwork.millis())
                     .forEach(line -> { if (line.startsWith("loop")) LOG.warn("[Outcome] {} - SHORT", line); else LOG.info(line.startsWith("errands") ? "[Errand] {}" : "[Productivity] {}", line); }); // a trip's yield against its walk
             if (keepState.hands.contains(name)) {
                 keepState.saplingsCarried.put(name, inventory.count(ItemClass.SAPLING));

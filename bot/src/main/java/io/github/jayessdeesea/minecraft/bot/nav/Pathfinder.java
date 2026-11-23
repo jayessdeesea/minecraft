@@ -88,7 +88,7 @@ public final class Pathfinder {
         // On a block not quite a block high - farmland, a path - its feet are just under the next
         // cell, and that's the one it stands in: live, farmers planned every route from inside the
         // farmland under them, and reported "no route" to the cell they stood in.
-        if (world.isSolid(here.x(), here.y(), here.z()) && y - here.y() >= PARTIAL_BLOCK_TOP) {
+        if (solid(world, here.x(), here.y(), here.z()) && y - here.y() >= PARTIAL_BLOCK_TOP) {
             here = here.offset(0, 1, 0);
         }
         if (standable(world, here) || swimmable(world, here)) {
@@ -112,11 +112,20 @@ public final class Pathfinder {
     /** Half a body's width: a player's box is 0.6 x 1.8 x 0.6. */
     private static final double HALF_WIDTH = 0.3;
     private static final double EPSILON = 1e-9;
+    /**
+     * Whether (x, y, z) is solid to a walker: a shut gate isn't, nor the cell over one - a soldier opens it as it walks
+     * up and shuts it behind ({@code bot.GateHabit}), so a route goes through a gate, never round the fence. To
+     * everything else - what's built, filled, measured - a shut gate is the block it is ({@code WorldView.isSolid}).
+     */
+    private static boolean solid(WorldView world, int x, int y, int z) {
+        return world.isSolid(x, y, z) && !world.isShutGate(x, y, z) && !(world.isShutGate(x, y - 1, z) && !world.solidHere(x, y, z));
+    }
+
     /** Feet this far up a solid cell are on its top: farmland and paths are 15/16 high. */
     public static final double PARTIAL_BLOCK_TOP = 0.75;
 
     public static boolean standable(WorldView world, BlockPos cell) {
-        return clear(world, cell) && world.isSolid(cell.x(), cell.y() - 1, cell.z());
+        return clear(world, cell) && solid(world, cell.x(), cell.y() - 1, cell.z());
     }
 
     /** Afloat: water at the feet and open air at the head - the surface, swum with the head out. */
@@ -135,7 +144,7 @@ public final class Pathfinder {
     }
 
     private static boolean open(WorldView world, int x, int y, int z) {
-        return !world.isSolid(x, y, z) && !world.isHazard(x, y, z);
+        return !solid(world, x, y, z) && !world.isHazard(x, y, z);
     }
 
     /** The cells within {@code radius} across, and 2 up and down, of each of {@code centres}: a berth a route goes round. */
@@ -426,7 +435,7 @@ public final class Pathfinder {
                 }
             }
             BlockPos up = from.offset(d[0], 1, d[1]);
-            if (standable(world, up) && !world.isSolid(from.x(), from.y() + 2, from.z())) {
+            if (standable(world, up) && !solid(world, from.x(), from.y() + 2, from.z())) {
                 moves.add(new Move(up, JUMP_COST));
                 continue;
             }
@@ -434,7 +443,7 @@ public final class Pathfinder {
                 moves.add(new Move(level, SWIM_COST));
                 continue;
             }
-            if (world.isSolid(level.x(), level.y(), level.z())) {
+            if (solid(world, level.x(), level.y(), level.z())) {
                 // A step too high to jump: cut it lower - from the water too, where a bank two high
                 // round a pool is otherwise a cell with no way out. Live, a soldier swam in a flooded
                 // pit for hours with a pickaxe in its pack.
@@ -510,7 +519,7 @@ public final class Pathfinder {
     /** {@link #stepCut(WorldView, BlockPos, BlockPos)}, into stone as well when the soldier carries a {@code pickaxe}. */
     public static List<BlockPos> stepCut(WorldView world, BlockPos from, BlockPos up, boolean pickaxe) {
         if (up.y() != from.y() + 1 || Math.abs(up.x() - from.x()) + Math.abs(up.z() - from.z()) != 1
-                || !world.isSolid(up.x(), up.y() - 1, up.z()) || !open(world, up.x(), up.y() + 2, up.z())) {
+                || !solid(world, up.x(), up.y() - 1, up.z()) || !open(world, up.x(), up.y() + 2, up.z())) {
             return List.of();
         }
         List<BlockPos> cells = List.of(up, up.offset(0, 1, 0), from.offset(0, 2, 0));
@@ -519,7 +528,7 @@ public final class Pathfinder {
             if (world.isHazard(cell.x(), cell.y(), cell.z())) {
                 return List.of();
             }
-            if (world.isSolid(cell.x(), cell.y(), cell.z())) {
+            if (solid(world, cell.x(), cell.y(), cell.z())) {
                 // Never farmland: a step cut through a farm is a cell of it gone.
                 if (world.isFarmland(cell.x(), cell.y(), cell.z())
                         || !world.isSoil(cell.x(), cell.y(), cell.z()) && !(pickaxe && world.isStone(cell.x(), cell.y(), cell.z()))) {
@@ -535,7 +544,7 @@ public final class Pathfinder {
                 }
             }
             BlockPos above = cell.offset(0, 1, 0);
-            if (world.isSolid(above.x(), above.y(), above.z()) && !cut.contains(above) && !holdsUp(world, above)) {
+            if (solid(world, above.x(), above.y(), above.z()) && !cut.contains(above) && !holdsUp(world, above)) {
                 return List.of();
             }
         }
@@ -610,7 +619,10 @@ public final class Pathfinder {
         return world.isFarmland(cell.x(), cell.y() - 1, cell.z()) || world.wheatAge(cell.x(), cell.y(), cell.z()).isPresent()
                 // Or a cell kept open - a staircase's: live, soldiers crossing a mine shaft's open top put
                 // their route's steps into its stairs, and those left there blocked the way up.
-                || world.noBuild(cell.x(), cell.y(), cell.z());
+                || world.noBuild(cell.x(), cell.y(), cell.z())
+                // Or a gate's own cell: a way through to a walker, never ground to build in - in the squad simulation a
+                // route's step went into the gate it was walking through.
+                || world.isGate(cell.x(), cell.y(), cell.z());
     }
 
     /** Whether walking off into {@code edge} lands unhurt on ground within {@link #MAX_DROP}, or in water. */
@@ -620,7 +632,7 @@ public final class Pathfinder {
             if (!open(world, down.x(), down.y(), down.z())) {
                 return swimmable(world, down);
             }
-            if (world.isSolid(down.x(), down.y() - 1, down.z())) {
+            if (solid(world, down.x(), down.y() - 1, down.z())) {
                 return true;
             }
         }
@@ -631,7 +643,7 @@ public final class Pathfinder {
     private static boolean heldUp(WorldView world, BlockPos cell, BlockPos above) {
         for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
             BlockPos side = cell.offset(d[0], d[1], d[2]);
-            if (!side.equals(above) && world.isSolid(side.x(), side.y(), side.z())) {
+            if (!side.equals(above) && solid(world, side.x(), side.y(), side.z())) {
                 return true;
             }
         }
@@ -647,7 +659,7 @@ public final class Pathfinder {
     /** Whether a block one up from {@code cell} is solid on some side - a wall to climb beside. */
     private static boolean besideWall(WorldView world, BlockPos cell) {
         for (int[] d : ORTHOGONAL) {
-            if (world.isSolid(cell.x() + d[0], cell.y() + 1, cell.z() + d[1])) {
+            if (solid(world, cell.x() + d[0], cell.y() + 1, cell.z() + d[1])) {
                 return true;
             }
         }

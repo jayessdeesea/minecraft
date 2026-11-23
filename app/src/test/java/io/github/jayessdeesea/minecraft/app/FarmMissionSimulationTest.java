@@ -190,6 +190,33 @@ class FarmMissionSimulationTest {
         assertTrue(rows.stream().allMatch(r -> r.state() == ObjectiveRecord.State.DONE), "each DONE: " + rows + missionLines);
     }
 
+    /** As {@link #hills}, with a chest left standing in the chunk's flat ground, at (34, 64, 13): a depot's, sited there before the farm was. */
+    static int hillsWithAChest(int x, int y, int z) {
+        return x == 34 && y == GROUND + 1 && z == 13 ? SimServer.CHEST : hills(x, y, z);
+    }
+
+    /**
+     * The eval: a chest standing in a farm mission's chunk is taken up, not dug round (operator, 2026-11-22: random chests
+     * in the wheat farm - who cleans this up?). Live (field696) five of a depot's stood in the wheat farm, counted "to dig"
+     * for hours and nobody's, its template never done. Here the chest is gone, the floor laid under where it stood, and the
+     * farm sown; by night too (the squad sheltering by rule but for its mission): its steps still worked.
+     */
+    @Test
+    void aChestLeftInAFarmsChunkIsTakenUpAndTheFarmMade() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, FarmMissionSimulationTest::hillsWithAChest, new PlayerPosition(30.5, GROUND + 1, 8.5), "0,0", 90);
+        List<String> log = Files.readAllLines(Path.of("target", "sim", "aChestLeftInAFarmsChunkIsTakenUpAndTheFarmMade.log"));
+        String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]")).toList();
+
+        assertTrue(server.block(34, GROUND + 1, 13) != SimServer.CHEST, "the chest taken up" + missionLines);
+        assertEquals(SimServer.COBBLESTONE, server.block(34, LEVEL - 1, 13), "and the floor laid where it stood" + missionLines);
+        Set<String> ground = new HashSet<>();
+        new ChunkFarm(FARM.chunkX(), FARM.chunkZ(), LEVEL).ground().forEach(g -> ground.add(g.x() + "," + (g.y() + 1) + "," + g.z()));
+        long sown = List.copyOf(server.log).stream().filter(l -> l.contains(" sowed ")).map(l -> l.substring(l.indexOf(" sowed ") + 7)).filter(ground::contains)
+                .distinct().count();
+        assertTrue(sown >= 150, "wheat sown on the template's ground: " + sown + " of " + ground.size() + missionLines);
+    }
+
     /** The supply point's chunk: (2, 0) too, its ground at sea level. */
     static final FarmMission STORES = new FarmMission(2, 0, GROUND, FarmMission.Crop.STORES);
 
@@ -231,6 +258,8 @@ class FarmMissionSimulationTest {
                 .filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.CHEST).count();
         assertEquals(24, chests, "the chests of its food and building rows" + missionLines);
         assertEquals(0, runner.afterActionReview.errands.loops(), "no soldier walking trip after trip for nothing");
+        // Its gates kept shut (operator, 2026-11-22: a habit of keeping them shut): put up shut, opened only on the way through.
+        assertEquals(List.of(), template.grid().gates().stream().filter(g -> server.block(g.x(), g.y(), g.z()) == SimItems.GATE_OPEN).toList(), "no gate left open" + missionLines);
 
         List<ObjectiveRecord> rows = new Registers(state.resolve("registers")).objectives().stream().filter(r -> r.mission().equals(STORES.name())).toList();
         assertEquals(List.of(0, 1, 2), rows.stream().map(ObjectiveRecord::step).toList(), "the mission's three steps: " + rows);

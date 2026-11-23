@@ -180,6 +180,13 @@ function showStatus(status) {
     statusBox.appendChild(p);
     return;
   }
+  const held = Object.entries(status.stores || {});
+  if (held.length) {
+    const stores = document.createElement("p");
+    stores.className = "objective";
+    stores.textContent = "Stores, every chest known: " + held.map(([what, count]) => what.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase() + " " + count).join(", ");
+    statusBox.appendChild(stores);
+  }
   for (const squad of status.squads) {
     const h = document.createElement("h2");
     h.textContent = squad.name;
@@ -188,8 +195,15 @@ function showStatus(status) {
     objective.className = "objective";
     objective.textContent = squad.objective === null ? "No objective." : squad.objective + (squad.intent ? " - " + squad.intent : "");
     statusBox.appendChild(objective);
+    if (squad.task) {
+      // The task as the code has it, and what was last measured of it: computed, whatever words the objective was given in.
+      const task = document.createElement("p");
+      task.className = "objective";
+      task.textContent = "Task " + squad.task + (squad.progress ? ": " + squad.progress : "");
+      statusBox.appendChild(task);
+    }
     const table = document.createElement("table"), head = table.insertRow();
-    for (const title of ["Soldier", "Doing", "For", "Hands", "Order", "Report", "Health", "Food", "Changes"]) {
+    for (const title of ["Soldier", "Doing", "For", "Hands", "Order", "Report", "Health", "Food", "Changes", "Carries"]) {
       const th = document.createElement("th");
       th.textContent = title;
       head.appendChild(th);
@@ -206,6 +220,7 @@ function showStatus(status) {
       cell(row, s.health === null ? null : Math.round(s.health), s.health !== null && s.health <= 8 ? "warn" : "");
       cell(row, s.food, s.food !== null && s.food <= 6 ? "warn" : "");
       cell(row, s.changes === null ? null : s.changes + " (" + s.returns + ")", "muted");
+      cell(row, Object.entries(s.carries || {}).map(([what, count]) => what.replace(/_/g, " ") + " " + count).join(", "), "muted");
     }
     statusBox.appendChild(table);
   }

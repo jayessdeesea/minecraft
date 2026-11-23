@@ -52,6 +52,31 @@ final class PlatoonLeaderTools {
         return read("the last decision", () -> lastShown.get().orElse("You haven't decided yet: nothing about the squads has been shown to you."));
     }
 
+    @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "inventory", description = "What soldiers carry now, counted by class of item - weapon, pickaxe, "
+            + "bucket, cobblestone, dirt, log, food, torch and so on - a line a soldier with its squad. Use it when the operator asks what "
+            + "someone has, carries or holds, or who has a thing. Give a soldier's or a squad's name to narrow it; leave it out for everyone.")
+    String inventory(@ToolParam(required = false, description = "a soldier's name or a squad's; leave it out for every soldier") String who) {
+        String wanted = who == null ? "" : who.strip().toLowerCase(java.util.Locale.ROOT);
+        return read("inventory " + (wanted.isEmpty() ? "ALL" : wanted), () -> {
+            List<String> lines = registers.carried().entrySet().stream()
+                    .filter(e -> wanted.isEmpty() || java.util.Arrays.asList(e.getKey().toLowerCase(java.util.Locale.ROOT).replace("(", "").replace(")", "").split(" ")).contains(wanted))
+                    .map(e -> "- " + e.getKey() + ": " + (e.getValue().isEmpty() ? "nothing counted yet" : e.getValue().entrySet().stream()
+                            .map(i -> i.getKey().replace('_', ' ') + " " + i.getValue()).collect(java.util.stream.Collectors.joining(", ")))).toList();
+            return lines.isEmpty() ? "No soldier present is named, or is in a squad named, '" + who + "'." : lines.size() + " soldier(s):\n" + String.join("\n", lines);
+        });
+    }
+
+    @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "stores", description = "The force's stores: what every chest known holds in all - logs, stone, rations, "
+            + "raw iron and copper, ingots, dirt, wheat, seeds, saplings. Use it when the operator asks what resources the force has, "
+            + "what's in the chests or the stockpile, or whether there's enough of a thing. What soldiers carry is the inventory tool's.")
+    String stores() {
+        return read("stores", () -> {
+            java.util.Map<String, Integer> held = registers.stores();
+            return held.isEmpty() ? "No chest has been seen yet: nothing counted." : "In every chest known, in all: " + held.entrySet().stream()
+                    .map(e -> e.getKey().replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase(java.util.Locale.ROOT) + " " + e.getValue()).collect(java.util.stream.Collectors.joining(", ")) + ".";
+        });
+    }
+
     /** What this turn's commands did, each as it said, in order. */
     synchronized List<String> done() {
         return List.copyOf(done);

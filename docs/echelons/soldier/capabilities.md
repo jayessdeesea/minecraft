@@ -144,6 +144,15 @@ armour, arrows, logs, cobblestone, dirt, rations, shield, pickaxe, bow, spare we
   squad holding (docs/military-doctrine.md § 11). On a task it makes only the weapon or the pickaxe it has none of. Live,
   a builder's load plan put its spare sword and its logs in the chest and its kit rule drew a stack of logs and made the
   sword again, 50 blocks each way, a block dug between.
+- Make a trip of its own to stock the depot - a reserve run short there, bread past its load - without its squad
+  leader's leave or a duty whose yield is the depot's, a harvester's or a baker's (`SoldierErrands.stocks`). A full pack
+  goes in, and its stock with it. Live (field696), a tree farm's one digger made 33 trips in a quarter of an hour to a
+  chest 40 blocks off, nothing put in: 62% of its ticks the depositor's, 20% the dig's.
+- Leave a gate open, or be stopped by a shut one (operator, 2026-11-22: a habit of keeping them shut): walking up to
+  a shut gate it opens it, and clear of an open one with nobody in it, it shuts it - its own or one it found open,
+  whatever its task (`bot.GateHabit`, ticked with its walk). To its route a shut gate is a way through, never a wall
+  (`Pathfinder.solid`); to everything that builds, fills or measures it's the block it is - in the squad simulation, with
+  a gate read as open ground everywhere, one was filled with dirt. A farm's gates are put up shut and stay so.
 - Carry the same load to a chest twice: a trip that put nothing in isn't made again while it carries the same
   (`Depositor`). Live (field693), a harvester walked farm to chest and back every 20 s, 30 blocks each way.
 - What it still starts itself is listed, to be taken away, in backlog/authority-and-missions.md.

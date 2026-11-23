@@ -18,13 +18,44 @@ import java.util.function.Predicate;
  * report and where it stands. Values only, read off what the runner holds ({@link StatusBoard}); nothing is decided
  * here. A field with nothing to say is null: no task given, a condition the server hasn't reported.
  */
-record GarrisonStatus(long at, List<Squad> squads) {
+record GarrisonStatus(long at, List<Squad> squads, java.util.Map<String, Integer> stores) {
+
+    /** With no stores counted: none seen yet. */
+    GarrisonStatus(long at, List<Squad> squads) {
+        this(at, squads, java.util.Map.of());
+    }
+
+    /** The force's stores as {@code stockpile} counts them over every chest known, by what's held: "logs" to 1013. */
+    static java.util.Map<String, Integer> stores(Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stockpile) {
+        java.util.Map<String, Integer> held = new java.util.LinkedHashMap<>();
+        stockpile.ifPresent(s -> {
+            for (java.lang.reflect.RecordComponent part : io.github.jayessdeesea.minecraft.command.Stockpile.class.getRecordComponents()) {
+                try {
+                    held.put(part.getName(), (Integer) part.getAccessor().invoke(s));
+                } catch (ReflectiveOperationException e) {
+                    throw new IllegalStateException("the stockpile's " + part.getName() + " can't be read", e);
+                }
+            }
+        });
+        return held;
+    }
+
 
     /** A squad: the platoon leader's objective for it, in the mission's words and its intent, and who's present. */
-    record Squad(String name, String objective, String intent, List<Soldier> soldiers) {
-
+    record Squad(String name, String objective, String intent, List<Soldier> soldiers, String task, String progress) {
+        /** With nothing measured of its task yet. */
         static Squad of(String name, Optional<Objective> objective, List<Soldier> soldiers) {
-            return new Squad(name, objective.map(Objective::mission).orElse(null), objective.map(Objective::intent).orElse(null), soldiers);
+            return of(name, objective, soldiers, Optional.empty());
+        }
+
+        /**
+         * As above, with its task as the code names it - MINE, KEEP, FARM - whatever words the objective was given in, and
+         * {@code progress}, what was last measured of it: "the stairs cut down to y=12, worked on for its ore". The platoon
+         * leader's model words an objective as it likes ("Mine 100 cobblestone ..."); these two are computed.
+         */
+        static Squad of(String name, Optional<Objective> objective, List<Soldier> soldiers, Optional<String> progress) {
+            return new Squad(name, objective.map(Objective::mission).orElse(null), objective.map(Objective::intent).orElse(null), soldiers,
+                    objective.map(o -> OrderTrace.taskName(o.task())).orElse(null), progress.orElse(null));
         }
     }
 
@@ -35,9 +66,14 @@ record GarrisonStatus(long at, List<Squad> squads) {
      * task's state on the register, its order, its report, its feet, and its health and food.
      */
     record Soldier(String name, String unit, String activity, String hands, Long seconds, Integer changes, Integer returns, String task, String taskState,
-                   String order, String report, long x, long y, long z, Double health, Integer food) {
-
+                   String order, String report, long x, long y, long z, Double health, Integer food, java.util.Map<String, Integer> carries) {
+        /** Carrying nothing counted: its pack not read yet. */
         static Soldier of(SoldierStatus status, String unit, Optional<ActivityTrack.Now> now, Optional<TaskRegister.Tasking> tasking, long at) {
+            return of(status, unit, now, tasking, at, java.util.Map.of());
+        }
+
+        static Soldier of(SoldierStatus status, String unit, Optional<ActivityTrack.Now> now, Optional<TaskRegister.Tasking> tasking, long at,
+                          java.util.Map<String, Integer> carries) {
             return new Soldier(status.name(), unit,
                     now.map(n -> n.activity().label()).orElse(null), now.flatMap(ActivityTrack.Now::hands).map(h -> h.name().toLowerCase(Locale.ROOT).replace('_', ' ')).orElse(null),
                     now.map(n -> (at - n.since()) / 1000).orElse(null),
@@ -45,7 +81,7 @@ record GarrisonStatus(long at, List<Squad> squads) {
                     tasking.map(TaskRegister.Tasking::task).orElse(null), tasking.map(t -> t.state().name()).orElse(null),
                     inWords(status.order()), status.report().toString(),
                     (long) Math.floor(status.position().x()), (long) Math.floor(status.position().y()), (long) Math.floor(status.position().z()),
-                    status.condition().map(Condition::health).orElse(null), status.condition().map(Condition::food).orElse(null));
+                    status.condition().map(Condition::health).orElse(null), status.condition().map(Condition::food).orElse(null), new java.util.TreeMap<>(carries));
         }
     }
 

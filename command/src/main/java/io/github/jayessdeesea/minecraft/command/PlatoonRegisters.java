@@ -25,6 +25,24 @@ public interface PlatoonRegisters {
      */
     List<ChunkRecord> chunks();
 
+    /**
+     * What each soldier present carries, "Alice (Alpha)" to its items by class and their counts, by squad then name.
+     *
+     * @throws IllegalStateException if nobody's pack is kept here
+     */
+    default java.util.Map<String, java.util.Map<String, Integer>> carried() {
+        throw new IllegalStateException("no soldier's pack is kept here");
+    }
+
+    /**
+     * The force's stores, what every chest known holds in all: "logs" to 1013. Empty with no chest seen yet.
+     *
+     * @throws IllegalStateException if no stores are kept here
+     */
+    default java.util.Map<String, Integer> stores() {
+        throw new IllegalStateException("no stores are kept here");
+    }
+
     /** The clock now, in the millis a row's {@code changedAt} is kept in. */
     long now();
 }

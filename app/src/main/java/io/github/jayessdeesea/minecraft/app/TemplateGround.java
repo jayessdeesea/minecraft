@@ -37,9 +37,20 @@ final class TemplateGround {
      */
     static Map<String, Order> orders(WorldView world, ChunkFarm farm, List<SoldierStatus> squad, Predicate<SoldierStatus> dirtInAChest,
                                      Set<String> fetching) {
-        List<BlockPos> missing = FarmSite.surveyed(world, farm).get(1);
-        if (missing.isEmpty()) {
-            return Map.of();
+        List<List<BlockPos>> surveyed = FarmSite.surveyed(world, farm);
+        List<BlockPos> missing = surveyed.get(1);
+        // What stands in its way - a block put down as a step and left, a depot's chest - is dug by one of the squad, the
+        // one nearest it (operator, 2026-11-22: who cleans this up?): counted since the farm was first surveyed, and nobody's.
+        List<BlockPos> inTheWay = surveyed.get(0).stream().filter(c -> io.github.jayessdeesea.minecraft.bot.engineer.Clearing.diggable(world, c.x(), c.y(), c.z())).toList();
+        Map<String, Order> clearing = new java.util.HashMap<>();
+        if (!inTheWay.isEmpty() && !squad.isEmpty()) {
+            BlockPos first = inTheWay.getFirst();
+            SoldierStatus nearest = squad.stream().min(java.util.Comparator.comparingDouble(s -> Math.hypot(s.position().x() - first.x(), s.position().z() - first.z()))).orElseThrow();
+            clearing.put(nearest.name(), Order.Dig.of(inTheWay.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList()));
+            squad = squad.stream().filter(s -> s != nearest).toList();
+        }
+        if (missing.isEmpty() || squad.isEmpty()) {
+            return clearing;
         }
         Set<Cell> holes = farm.holes().stream().map(h -> new Cell(h.x(), h.y(), h.z())).collect(Collectors.toSet());
         // With dirt in a chest, a soldier counts as carrying a load: it's given its strip, and draws on the way.
@@ -53,6 +64,8 @@ final class TemplateGround {
                 fetching.add(soldier);
             }
         });
-        return orders;
+        Map<String, Order> all = new java.util.HashMap<>(orders);
+        all.putAll(clearing);
+        return all;
     }
 }

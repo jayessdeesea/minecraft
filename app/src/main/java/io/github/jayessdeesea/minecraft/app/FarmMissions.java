@@ -557,6 +557,13 @@ final class FarmMissions {
         };
     }
 
+    /** Whether block column ({@code x}, {@code z}) is on a template's ground: a chunk made one, or a mission's whose template is being laid. */
+    synchronized boolean templateAt(int x, int z) {
+        int cx = Math.floorDiv(x, 16), cz = Math.floorDiv(z, 16);
+        return made.contains(ChunkFarm.key(cx, cz)) || missions.entrySet().stream().anyMatch(e -> e.getKey().chunkX() == cx && e.getKey().chunkZ() == cz
+                && template(e.getKey().steps().get(e.getValue()).kind()));
+    }
+
     /** The template chunks as last measured, with the camp's chunk farms as they stand. */
     private Set<Long> made(FarmPlan campFarm) {
         Set<Long> all = new HashSet<>(made);

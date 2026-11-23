@@ -65,6 +65,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public boolean isShutGate(int x, int y, int z) {
+        return chunks.isShutGate(x, y, z);
+    }
+
+    @Override
     public long stamp(int x, int z, int chunks) {
         return this.chunks.stamp(x, z, chunks);
     }

@@ -124,6 +124,19 @@ Left: a wheat farm's fence, gates and torches gone after its mission is done are
 squad on its farm - they should count as drift, once the template's own done-measure counts them; a mineshaft's head;
 and each repair kept in the chunk's history.
 
+### A template cleared of what isn't its own: what's left (operator, 2026-11-22)
+Built: a wheat template's squad digs the blocks in its way, a depot's chest among them
+(docs/echelons/platoon-leader/decisions.md) - the chest's contents fall out for the digger; emptying it first, as a
+flatten's salvage does, is left. Left: torches where the layout has none - five fence posts running
+with one each on the wheat farm's south line, one on a stray block over a field torch's cell - and blocks more than three
+over a template's ground; neither is counted, so neither is anyone's. The review counts what's missing still, not
+what's extra: a finished farm that gains a stray block is reopened only once that block makes its stage fall.
+
+### Gates kept shut: what's left (operator, 2026-11-22)
+Built: the habit, in every soldier's walk (docs/echelons/soldier/capabilities.md). Left: its eval against a mob - a
+squad working a fenced chunk through a night, a zombie outside the fence never getting in; and the simulated server
+letting a body through a shut gate, which the real one doesn't (backlog/simulator-fidelity.md).
+
 ### Other farms
 - Nether wart and animal pens - a chicken pen first: feathers are the one part of an arrow with no other source but
   skeletons (backlog/load-plans.md).

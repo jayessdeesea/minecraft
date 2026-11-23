@@ -297,10 +297,10 @@ class TaskOrganisationSimulationTest {
 
     /**
      * The chunk farm's fixtures put up by its farmer from what it carries: the fence on the chunk's lines, the gates
-     * beside its corners - opened, the farm's way in - and its chest.
+     * beside its corners - put up shut, and kept so - and its chest.
      */
     @Test
-    void aChunkFarmIsFencedItsGatesOpenedAndItsChestStood() {
+    void aChunkFarmIsFencedItsGatesPutUpShutAndItsChestStood() {
         chunkFarm = new ChunkFarm(-1, 0, GROUND);
         SimClock clock = new SimClock();
         SimServer server = run(clock, TaskOrganisationSimulationTest::pondOfThreeByTheCamp, """
@@ -313,9 +313,12 @@ class TaskOrganisationSimulationTest {
         ChunkFarm farm = new ChunkFarm(-1, 0, GROUND);
         long posts = farm.fence().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimItems.FENCE).count();
         long open = farm.gates().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimItems.GATE_OPEN).count();
+        long gates = farm.gates().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimItems.GATE || server.block(c.x(), c.y(), c.z()) == SimItems.GATE_OPEN).count();
         String events = "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size());
         assertTrue(posts >= 40, "the fence up: " + posts + " of " + farm.fence().size() + events);
-        assertTrue(open >= 2, "gates open: " + open + events);
+        // Kept shut (operator, 2026-11-22): a soldier opens one on its way through and shuts it behind (bot.GateHabit).
+        assertTrue(gates >= 2, "gates up: " + gates + events);
+        assertEquals(0, open, "none left open" + events);
         assertEquals(SimServer.CHEST, server.block(farm.chest().x(), farm.chest().y(), farm.chest().z()), "its chest" + events);
     }
 

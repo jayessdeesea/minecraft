@@ -44,8 +44,15 @@ and ore beyond it left and noted (docs/military-doctrine.md § 16). To build, in
   - *Backfill* is what solid rock would have left: an ore pocket or a cave broken into filled back to the corridor's
     line. Tunnels and shaft aren't closed off, and are kept lit. Mined dry, the top of the shaft is filled: the ground
     over it is a farm's next, or another resource's.
-  - *One squad at a time to a shaft.* By night as a rule; by need - the force short of ore - the platoon leader sends
-    a squad down full time.
+  - *One squad at a time to a shaft*, and each squad may have its own (operator, 2026-11-22). By night as a rule; by
+    need - the force short of ore - the platoon leader sends a squad down full time.
+  - *Where the mineshafts are is the platoon leader's to keep, in its registers*: a row a shaft - its chunk, its head,
+    the levels cut, the squad on it, dry or not - beside its missions and chunks, read back at a restart; today each
+    mine's stairs are a file of the runner's (`WallStore` "stairs").
+  - *Chests at its head and at each level*, a bank of them, for what's worth keeping and won't fit a pack: ore, ingots,
+    diamonds and the other minerals, tools - everything but dirt and cobblestone, which never go in them.
+  - *Dirt and cobblestone past a load are thrown out* down the mine: carried, they fill the pack that the ore wants
+    and help nothing. A stack or two kept for steps and for filling back a vein's pocket; the rest dumped where it's dug.
 
 **Where the squads mine, and who says so**
 - **By night, a mine site per squad** - backlog/authority-and-missions.md step 3; today every squad goes down the

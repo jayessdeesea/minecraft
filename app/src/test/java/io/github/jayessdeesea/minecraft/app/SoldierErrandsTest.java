@@ -30,4 +30,36 @@ class SoldierErrandsTest {
         assertEquals(100, SoldierErrands.stocked(STOCK, Set.of(DEPOT), ItemClass.SEEDS, farms, Optional.of(FARM)) + 100,
                 "a farm's chest not seen holds none of the count");
     }
+
+    /**
+     * A trip of its own to stock the depot is made only with the squad leader's leave or on a duty whose yield is the
+     * depot's (field696: a tree farm's one digger, 33 trips in a quarter of an hour for the seeds it carried, nothing put in).
+     */
+    @Test
+    void aStockTripWantsLeaveOrADuty() {
+        org.junit.jupiter.api.Assertions.assertFalse(SoldierErrands.stocks(false, false), "on a task, no duty: it digs");
+        org.junit.jupiter.api.Assertions.assertTrue(SoldierErrands.stocks(true, false), "its squad holding");
+        org.junit.jupiter.api.Assertions.assertTrue(SoldierErrands.stocks(false, true), "a harvester or a baker");
+    }
+
+    /**
+     * A digger's trip to the chest takes what's no part of digging with it, whatever the depot holds of it (operator,
+     * 2026-11-22: she doesn't need saplings or seeds when she's digging): its seeds and saplings go in; its dirt and
+     * pickaxe don't, and nobody else's seeds do.
+     */
+    @Test
+    void aDiggersTripTakesItsSeedsAndSaplingsWithIt() {
+        io.github.jayessdeesea.minecraft.bot.world.Inventory pack = new io.github.jayessdeesea.minecraft.bot.world.Inventory();
+        java.util.function.Function<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, Integer> item = kind ->
+                java.util.stream.IntStream.range(0, 4096).filter(id -> io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.classOf(id).equals(java.util.Optional.of(kind))).findFirst().orElseThrow();
+        int first = io.github.jayessdeesea.minecraft.bot.world.Inventory.MAIN_FIRST;
+        pack.setSlot(first, new int[]{item.apply(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.SEEDS), 64});
+        pack.setSlot(first + 1, new int[]{item.apply(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.DIRT), 64});
+        pack.setSlot(first + 2, new int[]{item.apply(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.SAPLING), 31});
+        pack.setSlot(first + 3, new int[]{item.apply(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.PICKAXE), 1});
+
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of(first + 5, first, first + 2), SoldierErrands.tripSlots(true, pack, java.util.List.of(first + 5)),
+                "its load's surplus, then its seeds and saplings");
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of(first + 5), SoldierErrands.tripSlots(false, pack, java.util.List.of(first + 5)), "no digger: its load's surplus only");
+    }
 }

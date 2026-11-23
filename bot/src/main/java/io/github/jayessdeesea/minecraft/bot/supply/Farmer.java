@@ -350,26 +350,6 @@ public final class Farmer {
         }
     }
 
-    /** Opens the shut gate at {@code gate}, from the ground beside it: the farm's way in, left open. */
-    private void open(WorldView world, BlockPos gate) {
-        Optional<BlockPos> stand = WaterCarrier.beside(world, gate.offset(0, -1, 0));
-        if (stand.isEmpty()) {
-            passedOver.failed(gate, ticks, "no ground beside the farm's gate at " + gate);
-            return;
-        }
-        claimed = gate;
-        claims.add(gate);
-        BlockPos s = stand.get();
-        standAt = new Position(s.x() + 0.5, s.y(), s.z() + 0.5);
-        fieldWork = new Script(name, List.of(
-                new Step("walk to " + s, () -> {
-                }, new Expect("standing at " + s, () -> Math.hypot(soldier.x() - standAt.x(), soldier.z() - standAt.z()) < 0.6
-                        && Math.abs(soldier.y() - standAt.y()) < 0.6), Math.max(WALK_TICKS, Digger.walkTicks(soldier, s))),
-                new Step("open the gate at " + gate, () -> !world.isSolid(gate.x(), gate.y(), gate.z()), () -> session.useBlock(gate.x(), gate.y(), gate.z()),
-                        new Expect("the gate at " + gate + " open", () -> !world.isSolid(gate.x(), gate.y(), gate.z())), ANSWER_TICKS)));
-        LOG.info("{} opens the farm's gate at {}", name, gate);
-    }
-
     /** The hole it was watering given up, its claim with it. */
     private void unclaimWatering() {
         if (watering != null) {
@@ -788,19 +768,13 @@ public final class Farmer {
             }
             return;
         }
-        // Its chunk farms' fixtures, with what it carries: the fence, the gates - opened, the farm's way in - and the chest.
+        // Its chunk farms' fixtures, with what it carries: the fence, the gates - left shut: a soldier opens one on its way through and shuts it behind (bot.GateHabit) - and the chest.
         for (ItemClass item : FIXTURES) {
             if (inventory.count(item) > 0 && !fixtures(world, farm, item, builders.get(item).skipped()).isEmpty()) {
                 placing = item;
                 place(world, farm);
                 return;
             }
-        }
-        Optional<BlockPos> shut = farm.chunks().stream().flatMap(c -> c.gates().stream()).filter(g -> world.isGate(g.x(), g.y(), g.z())
-                && world.isSolid(g.x(), g.y(), g.z()) && !claims.contains(g) && !passedOver.barred(g, ticks)).findFirst();
-        if (shut.isPresent()) {
-            open(world, shut.get());
-            return;
         }
         // A crop far off is worth its walk only with a batch ripe to sweep: live (field617), Ned walked 27 blocks for one.
         List<BlockPos> ripes = plot.stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).toList();

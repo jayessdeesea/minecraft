@@ -39,6 +39,8 @@ platoon leader's to give as data.
   their load's surplus. Given only to a squad holding with no task (operator, 2026-11-22: soldiers do nothing without a
   command); without it a soldier makes only the weapon or the pickaxe it has none of.
 - **Intent**, in words, logged with the order.
+- **Detachments called in** on a mission's ground work - a flatten, a floor, a supply point's template: every soldier
+  on a role from an older order comes back to the squad (`DrillSquadLeader.changes`).
 - **Task organisation:** changes to its soldiers' standing plans, usually none - `roleChanges`, a
   soldier's role and site; `detached`, a soldier sent off on a job of his own: `GO_TO`, `FETCH`, `LEVEL`, or
   `CANCEL` ([military-doctrine.md § 18](../../military-doctrine.md#18-task-organisation)). By the rules: plans as they stand, but with every

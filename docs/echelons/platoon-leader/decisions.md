@@ -148,6 +148,16 @@ chunk 640 columns uncut).
 3. **The template**: the chunk farm on the floor at the farm's level, taken into the camp's farm (`CampFarm.take`) and
    worked by a squad on `FARM` at the chunk. Done when its ground is laid - its `FarmSite` stage past SURVEYED.
 
+**A mission's step is worked by night as by day**: the operator's order given outranks the standing rule that sends
+every squad down the mine by night (`ChainOfCommand.sheltered`; live, field696, a tree farm's flatten had half of each
+day and took nine). And its ground work is the whole squad's: on a flatten, a floor or a supply point's template its
+squad leader calls in every soldier detached on a role under an older order (`DrillSquadLeader.changes`).
+
+**What stands in a wheat template's way is dug**: the blocks over its ground - a step put down and left, a depot's
+chest sited there before the farm was - are one of the squad's to dig while the rest lay its ground
+(`app.TemplateGround`); counted since the farm was first surveyed, they were nobody's, and its template never done. A
+chest on ground a flatten works is emptied into the depot first, then dug (the flatten's salvage).
+
 **What's built is reviewed** (operator, 2026-11-22: once the sites are built the construction might drift - who reviews
 and fixes it?): every five minutes each mission done, its chunk in sight, is measured against its layout again
 (`FarmMissions.review`), and one whose structure has gone has its template phase opened again - a repair, a squad's task
@@ -203,11 +213,14 @@ turn is a model call through the same `ChatClient` (`command.ai.PlatoonLeaderCha
   `missions` (each with its operation's phases under it; open or all), `tasks` (filtered by squad, state, mission),
   `task` (one, by number), `chunk`, `chunkOfBlock` (the chunk a block's x and z are in) and `chunks` (by kind). Asked
   about missions it reads `missions`; about tasks, or "objectives" meaning them, `tasks`. A chunk or task not kept,
-  or no mission open, is said so in the result, for the model to tell the operator. The registers aren't in the
+  or no mission open, is said so in the result, for the model to tell the operator. Two read what the garrison holds
+  now, not the registers (operator, 2026-11-22): `inventory` - what each soldier present carries, by class of item, a
+  line a soldier, narrowed by a soldier's name or a squad's - and `stores`, what every chest known holds in all. Both
+  are on the page too: a Carries column, and the stores over the squads (`GarrisonStatus`). The registers aren't in the
   prompt: the tools read them as they stand at the moment asked, at the level asked.
 - **What it may do: commands, as tools** (`command.OperatorCommands`, `app.ChatCommands`), each one of the operator's
   own orders through the chain of command - the same WILCO on the net, order trace and checks as from game chat:
-  `giveFarmMission` and `giveTreeFarmMission` (`ChainOfCommand.onOperatorFarm`), `cancelMission` (`onOperatorCancel`), `replacePlatoonMission`
+  `giveFarmMission`, `giveTreeFarmMission` and `giveSupplyPointMission` (`ChainOfCommand.onOperatorFarm`), `cancelMission` (`onOperatorCancel`), `replacePlatoonMission`
   (`onOperatorMission`), `escort` (`onOperatorEscort`) and `setFlattenGround` (`onOperatorFlatten`). None writes,
   edits or deletes a register's row: the rows are the chain of command's to keep. The prompt and each command's
   description say it's used only when the operator asks for it in this turn. What each command did is said as it
