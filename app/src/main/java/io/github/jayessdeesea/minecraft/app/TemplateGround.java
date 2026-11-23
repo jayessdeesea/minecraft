@@ -31,6 +31,40 @@ final class TemplateGround {
     private TemplateGround() {
     }
 
+    /** How far down under a trunk ground is looked for to build up from. */
+    static final int TRUNK_FILL_DEPTH = 12;
+
+    /**
+     * {@code squad}'s orders on a tree farm's template whose trunks have no ground under them (operator, 2026-11-23: the
+     * soldiers don't build the base out where there's free space under): a tree farm's flatten only cuts down, and a
+     * sapling wants soil under it, so a trunk over a pit was never planted and its template never done. Each such trunk's
+     * column is filled in dirt from the ground under it up to the farm's level - lowest first, each block on the one
+     * below - by the squad between them, as a wheat template's ground is. None once every trunk has ground.
+     */
+    static Map<String, Order> treeOrders(WorldView world, io.github.jayessdeesea.minecraft.bot.farm.TreeChunk trees, List<SoldierStatus> squad,
+                                         Predicate<SoldierStatus> dirtInAChest, Set<String> fetching) {
+        List<BlockPos> missing = new java.util.ArrayList<>();
+        for (BlockPos trunk : trees.trunks()) {
+            for (int y = trunk.y() - 1; y > trunk.y() - 1 - TRUNK_FILL_DEPTH && !world.isSolid(trunk.x(), y, trunk.z()); y--) {
+                missing.add(new BlockPos(trunk.x(), y, trunk.z()));
+            }
+        }
+        if (missing.isEmpty() || squad.isEmpty()) {
+            return Map.of();
+        }
+        List<Tasking.Hand> hands = squad.stream().map(s -> new Tasking.Hand(s.name(), dirtInAChest.test(s) ? Tasking.LOAD
+                : s.condition().flatMap(Condition::kit).map(Kit::dirt).orElse(0))).toList();
+        Flatten chunk = new Flatten(trees.chunkX() * 16, trees.chunkZ() * 16, trees.chunkX() * 16 + 15, trees.chunkZ() * 16 + 15, trees.level());
+        Map<String, Order> orders = Tasking.soil(hands, SiteGeometry.bounds(missing), SiteGeometry.soilBorrow(chunk), Set.of(), fetching);
+        fetching.clear();
+        orders.forEach((soldier, order) -> {
+            if (order instanceof Order.Gather) {
+                fetching.add(soldier);
+            }
+        });
+        return orders;
+    }
+
     /**
      * {@code squad}'s orders on {@code farm}'s ground as {@code world} stands - none once it's laid. {@code dirtInAChest}
      * says whether a chest in a soldier's reach holds dirt; {@code fetching} is those sent for dirt last cycle, kept here.

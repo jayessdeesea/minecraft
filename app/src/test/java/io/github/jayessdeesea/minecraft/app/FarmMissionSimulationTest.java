@@ -217,6 +217,74 @@ class FarmMissionSimulationTest {
         assertTrue(sown >= 150, "wheat sown on the template's ground: " + sown + " of " + ground.size() + missionLines);
     }
 
+    /**
+     * Flat at sea level but for a pit in the chunk: x 36..40, z 4..8, three deep - free space under where a template's
+     * ground goes, with a trunk's cell (38, 6) and a chest row's over it.
+     */
+    static int pit(int x, int y, int z) {
+        boolean inPit = x >= 36 && x <= 40 && z >= 4 && z <= 8 && y <= GROUND && y > GROUND - 3;
+        return inPit ? SimServer.AIR : SquadSimulationTest.flat(x, y, z);
+    }
+
+    /** A squad of four given {@code mission} on {@link #pit} ground, each carrying {@code kit}, for {@code minutes}. */
+    private SimServer overAPit(FarmMission mission, List<int[]> kit, long minutes) {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FarmMissionSimulationTest::pit, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
+        Position chunk = mission.centre(mission.steps().getFirst());
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
+        chain.onOperatorFarm("Pat", mission);
+        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), kit)).run();
+        clock.advance(minutes * 60_000);
+        server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
+        return server;
+    }
+
+    /**
+     * The eval: a template's ground built out over free space (operator, 2026-11-23: the soldiers don't know how to build
+     * out the cobblestone base as there is free space under - from underneath, or placing blocks sideways out over it;
+     * either works). A supply point given on a chunk with a pit three deep: its floor is laid across the pit, every cell
+     * of it cobblestone, and its mission's flatten and floor are DONE.
+     */
+    @Test
+    void aFloorIsLaidOutOverAPit() throws IOException {
+        SimServer server = overAPit(STORES, List.of(
+                new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{40, SimServer.ITEM_BREAD, 64},
+                new int[]{9, SimServer.ITEM_COBBLESTONE, 64}, new int[]{10, SimServer.ITEM_COBBLESTONE, 64}, new int[]{11, SimServer.ITEM_OAK_LOG, 64},
+                new int[]{12, SimServer.ITEM_TORCH, 16}), 60);
+        List<String> log = Files.readAllLines(Path.of("target", "sim", "aFloorIsLaidOutOverAPit.log"));
+        String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]")).toList();
+        io.github.jayessdeesea.minecraft.bot.farm.StoresChunk template = new io.github.jayessdeesea.minecraft.bot.farm.StoresChunk(STORES.chunkX(), STORES.chunkZ(), GROUND);
+        List<BlockPos> open = template.ground().stream().filter(c -> server.block(c.x(), c.y(), c.z()) != SimServer.COBBLESTONE).toList();
+        assertEquals(List.of(), open, "its floor cobblestone across the pit too" + missionLines);
+    }
+
+    /**
+     * The eval: a tree farm given on a chunk with a pit under one of its trunks. A sapling wants soil under it, so the
+     * pit is filled there: a sapling, or its tree, at each of its sixteen trunks - the one over the pit among them.
+     */
+    @Test
+    void aTreeFarmsTrunkOverAPitIsGivenGroundAndPlanted() throws IOException {
+        SimServer server = overAPit(TREES, List.of(
+                new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
+                new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.itemNamedOrMinus("spruce_sapling"), 16},
+                new int[]{10, SimServer.itemNamedOrMinus("torch"), 16}, new int[]{11, SimServer.itemNamedOrMinus("chest"), 1},
+                new int[]{12, SimServer.ITEM_DIRT, 64}), 45);
+        List<String> log = Files.readAllLines(Path.of("target", "sim", "aTreeFarmsTrunkOverAPitIsGivenGroundAndPlanted.log"));
+        String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]") || l.contains("[Trees]")).toList();
+        io.github.jayessdeesea.minecraft.bot.farm.TreeChunk template = new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(TREES.chunkX(), TREES.chunkZ(), GROUND);
+        assertTrue(server.block(38, GROUND, 6) != SimServer.AIR, "ground put under the trunk over the pit" + missionLines);
+        long planted = template.trunks().stream().filter(t -> server.block(t.x(), t.y(), t.z()) == SimServer.SPRUCE_SAPLING
+                || server.block(t.x(), t.y(), t.z()) == SimServer.SPRUCE_LOG).count();
+        assertEquals(16, planted, "a sapling or its tree at each trunk, the one over the pit too" + missionLines);
+    }
+
     /** The mineshaft's chunk: (2, 0) too, its head on the ground at sea level. */
     static final FarmMission MINESHAFT = new FarmMission(2, 0, GROUND, FarmMission.Crop.MINE);
 

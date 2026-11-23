@@ -64,6 +64,16 @@ public final class WorldModel implements WorldView {
         return chunks.isGate(x, y, z);
     }
 
+    /** Whether block state {@code stateId} is a fence gate, open or shut - for whoever stands in for the server. */
+    public static boolean gateState(int stateId) {
+        return BlockClassRegistry.isGate(stateId);
+    }
+
+    /** Whether block state {@code stateId} is a fence gate that's shut: its open state is two under it. */
+    public static boolean shutGateState(int stateId) {
+        return BlockClassRegistry.isGate(stateId) && BlockClassRegistry.classOf(stateId) != BlockClassRegistry.BlockClass.PASSABLE;
+    }
+
     @Override
     public boolean isShutGate(int x, int y, int z) {
         return chunks.isShutGate(x, y, z);

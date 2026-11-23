@@ -125,6 +125,18 @@ final class SoldierErrands {
         return leave || onDuty;
     }
 
+    /**
+     * Whether the stand at {@code cell} is another soldier's already: somebody but the asker - who stands at {@code from} -
+     * within a body's width of its middle. A chest is reached from any cell round it, so the next soldier takes the next
+     * cell. Live (field698), ten soldiers of three squads were sent to one cell by the camp's chests and went round each
+     * other there (operator, 2026-11-23: they are moving in circles), 34 crowding alerts in six minutes.
+     */
+    static boolean standTaken(io.github.jayessdeesea.minecraft.command.Position cell, io.github.jayessdeesea.minecraft.command.Position from,
+                              java.util.Collection<io.github.jayessdeesea.minecraft.command.Position> soldiers) {
+        return soldiers.stream().anyMatch(o -> Math.hypot(o.x() - from.x(), o.z() - from.z()) > 0.1 && Math.abs(o.y() - cell.y()) < 1.5
+                && Math.hypot(o.x() - cell.x(), o.z() - cell.z()) < 0.9);
+    }
+
     /** How far across, and how far up or down, a chest is still in reach of a soldier on a mission's task. */
     static final double MISSION_REACH = 48, MISSION_REACH_UP = 12;
 

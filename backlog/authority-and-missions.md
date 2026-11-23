@@ -153,6 +153,22 @@ haul or the making to somebody as a task - or goes:
   refit - buckets, armour - for a squad, by name.
 - An idle soldier is then the signal: its echelon above gave it nothing.
 
+## The platoon leader keeps the stores (operator, 2026-11-23)
+"Really the platoon leader should be helping the soldiers by looking at the inventory in the stockpiles and telling
+the soldiers what to throw out and what to keep." Live (field698): 33,479 cobblestone in the chests, 5,380 seeds, 841
+logs, 490 copper ingots, 215 iron ingots - and every chest by the camp full, soldiers failing to put loads in and
+going round each other. Built: the counts (`GarrisonStatus.stores`, the chat's `stores` tool), and most-and-least
+levels the depositor reads (`StockLevels`, `ProductionLevels`). To build:
+- **A stock policy the platoon leader gives**, by kind: keep up to so many, throw out past it - cobblestone and dirt
+  past a few stacks a chest row, seeds past 1,024 (operator), and so on - computed from what the stores hold against
+  what the missions ordered will use, said as an order and kept with its missions.
+- **Chests cleaned out to it**: what's past the policy taken out and thrown at a dump, as an ordered task - "clean out
+  the chests" - not each soldier's guess at its own pack.
+- **The soldier's ladder when a chest is full** (docs/conventions.md, "A retry changes something"): another chest; the
+  next chest of the row put up; ask; and for what the policy says is past its most, throw it out where it stands.
+- **A farmer's seeds**: its surplus past a stack or two into the chest up to the policy's most, and drawn back when it
+  has none (the draw is built; the squad on a template step never got to sow - see below).
+
 ## Left from the flatten work (2026-11-22)
 - **A flatten's crew, what's left** (field696, the tree farm at chunk (2, 3): nine Minecraft days, its flatten not
   done). Built: a mission's step worked by night, and its squad's detachments called in. Left: a mission's squad made up

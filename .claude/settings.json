@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(//c/mc-state/garrison/garrison.args)",
+      "Bash(*garrison.args*)",
+      "PowerShell(*garrison.args*)"
+    ]
+  }
+}

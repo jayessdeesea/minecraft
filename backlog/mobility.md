@@ -48,3 +48,18 @@ than one search reaches. The platoon leader still picks ground a squad can't get
 - If something unseen stops a soldier again as at the mine's bottom (field161-168: Bob stuck three times a minute short
   of (-42, 31, 42), the cell air on the server), run this from the console while it's stuck:
   `execute as @e[x=-42,y=31,z=42,distance=..1,type=!player] run say PROBE` with the cell's own coordinates.
+
+## Unreachable is a fault to find, not a state to report (operator, 2026-11-23)
+"Mobility-wise, everything should be reachable." The garrison has drafted 1,069 stuck cases with their ground
+(`garrison-state/worlds/`); a handful were ever registered. `StuckTriageIT` replays the newest forty, each soldier
+alone on its recorded ground: 22 reach their goal - held live by something else, a crowd or their tasking - 3 have a
+goal beyond the ground kept, and 15 are stuck alone. Of those, as first read:
+- **The simulated server's own gaps** stop a replay before the soldier's fault shows: it swung only the one kind of
+  gate it places (fixed), and it opens only the one chest state it places - a chest facing another way, or half of a
+  double one, fails the tick of whoever uses it (Kate, Bob by the camp's chests). Next: any chest state opened.
+- **A step of a block or two with a heap in the way** (Fran on the old hill's top among chests and tables, 2 blocks;
+  Pete at y=41 under the camp, 3 up; Olga, Mia and Carol on the mine's stairs, 2 to 3): "no route" a body's length
+  from the goal. Each to be read in its replay and registered under `stuck/`.
+- **A stand in its own way** (Dana, rearming at a table: ended 1.7 off the stand it started on).
+To build: the triage's STUCK cases read one by one, the fault of each fixed and its case registered; a goal beyond
+the recorded ground recorded wider (the snapshot is 24 each way of the soldier, the goal often 30 off).

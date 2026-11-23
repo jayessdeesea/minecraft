@@ -290,4 +290,92 @@ class FarmMissionsTest {
         assertEquals(List.of(), missions.worked(), "dry: the mission done");
         assertEquals(ObjectiveRecord.State.DONE, registers.objectives().stream().filter(r -> r.step() == 1).findFirst().orElseThrow().state());
     }
+
+    /**
+     * A flatten whose chunk is cut and whose slopes hold columns nobody cuts is done with them left, and says which
+     * (field697-698: a tree farm's chunk flat for five hours, nine columns ten blocks out up a hill handed from one soldier
+     * to another every two minutes). Not at once: only when their count has stood a quarter of an hour.
+     */
+    @Test
+    void aFlattenIsDoneWithSlopeColumnsNobodyReachesLeftAndSaid() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMissions missions = new FarmMissions(cause -> { });
+        missions.keptIn(new ObjectiveBook(() -> registers));
+        FarmMission trees = new FarmMission(2, 3, 63, FarmMission.Crop.TREES);
+        missions.give(trees, 0);
+        // Flat at the level but for one column ten out south-east of the chunk, a block over its slope's line there.
+        io.github.jayessdeesea.minecraft.bot.world.WorldView world = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63 || x == 57 && z == 73 && y <= 74;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        missions.measure(world, null, null, null, 1_000);
+        missions.measure(world, null, null, null, 1_000 + FarmMissions.SLOPE_PATIENCE_MILLIS - 1);
+        assertEquals(List.of(FarmMission.Kind.FLATTEN), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "its slope's column still wanted");
+        assertEquals(java.util.Set.of(), missions.stalled(), "not yet said as stalled");
+
+        missions.measure(world, null, null, null, 1_000 + FarmMissions.SLOPE_PATIENCE_MILLIS);
+        assertEquals(List.of(FarmMission.Kind.TREE_TEMPLATE), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "left, and its template begun");
+        ObjectiveRecord flatten = registers.objectives().stream().filter(r -> r.step() == 0).findFirst().orElseThrow();
+        assertEquals(ObjectiveRecord.State.DONE, flatten.state());
+        assertTrue(flatten.why().orElse("").contains("1 column(s) out on its slopes left as they are") && flatten.why().orElse("").contains("57,73 at y=74"), "said, with which: " + flatten);
+    }
+
+    /**
+     * A mission whose measure hasn't changed in twenty minutes is said as stalled, once, and the platoon leader woken
+     * (operator, 2026-11-23: there should be an alarm when we're not making forward progress): a wheat farm at its
+     * template with ground still to lay and nobody laying it.
+     */
+    @Test
+    void aMissionMakingNoProgressIsAlarmed() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMission wheat = FarmMission.atSeaLevel(1, 3);
+        for (FarmMission.Step step : wheat.steps()) {
+            registers.add(new ObjectiveRecord(0, wheat.name(), step.index(), step.task(), 1, 3, java.util.Optional.empty(),
+                    step.index() < 2 ? ObjectiveRecord.State.DONE : ObjectiveRecord.State.PLANNED, 0, java.util.Optional.empty()));
+        }
+        List<String> woken = new java.util.ArrayList<>();
+        FarmMissions missions = new FarmMissions(woken::add);
+        missions.keptIn(new ObjectiveBook(() -> registers));
+        // Its floor at 62 and nothing laid over it: every cell of its ground still to fill.
+        io.github.jayessdeesea.minecraft.bot.world.WorldView world = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 62;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return List.of();
+            }
+        };
+        CampFarm farms = new CampFarm(new WallStore(state, "farm"), 1000);
+
+        missions.measure(world, null, farms, null, 1_000);
+        missions.measure(world, null, farms, null, 1_000 + FarmMissions.STALL_MILLIS - 1);
+        assertEquals(java.util.Set.of(), missions.stalled());
+        woken.clear();
+        missions.measure(world, null, farms, null, 1_000 + FarmMissions.STALL_MILLIS);
+        assertEquals(java.util.Set.of(wheat), missions.stalled(), "said as stalled");
+        assertEquals(List.of("a mission making no progress"), woken, "and the platoon leader woken, once");
+        missions.measure(world, null, farms, null, 1_000 + 2 * FarmMissions.STALL_MILLIS);
+        assertEquals(1, woken.size(), "not said again while nothing moves");
+    }
 }

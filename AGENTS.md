@@ -49,6 +49,8 @@ Each points to its home, which has the reasons.
   in the same commit. [docs/conventions.md](docs/conventions.md#docs)
 - **Check the outcome of what the force is sent to do:** a task that should yield is checked
   against what it yielded, and a miss is dug into. [docs/conventions.md](docs/conventions.md#check-the-outcome-of-what-the-force-is-sent-to-do)
+- **A retry changes something:** wait longer and out of step, then another target, another means, ask for help, give
+  it up and say so - never the same try again; and the count is logged. [docs/conventions.md](docs/conventions.md#a-retry-changes-something)
 - **Profile every sixteenth commit:** at a commit count that's a multiple of 16, record the live
   garrison with Flight Recorder and fix the worst offenders where it makes sense.
   [docs/conventions.md](docs/conventions.md#profile-every-sixteenth-commit)
@@ -69,4 +71,5 @@ Each points to its home, which has the reasons.
 | [docs/protocol-pipeline.md](docs/protocol-pipeline.md) | The Netty pipeline, stage by stage. |
 | [docs/world-data-spec.md](docs/world-data-spec.md) | Chunk, block-state and light data the client decodes. |
 | [docs/entry-docs.md](docs/entry-docs.md) | Before editing README.md or DEVELOPMENT.md. |
+| [docs/loop.md](docs/loop.md) | Watching the running garrison toward the operator's goals, pass after pass: the watch loop. |
 | [backlog/](backlog/README.md) | Choosing work. "Work on the backlog" is the `work-on-backlog` skill. |

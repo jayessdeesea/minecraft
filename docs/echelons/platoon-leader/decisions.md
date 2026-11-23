@@ -163,6 +163,15 @@ chest sited there before the farm was - are one of the squad's to dig while the 
 (`app.TemplateGround`); counted since the farm was first surveyed, they were nobody's, and its template never done. A
 chest on ground a flatten works is emptied into the depot first, then dug (the flatten's salvage).
 
+**A mission making no progress is alarmed** (operator, 2026-11-23): a step whose measure hasn't changed in twenty
+minutes is said once as an outcome missed - "[Outcome] a farm at chunk (1, 3) at y=63 has made no progress in 20 min -
+SHORT", with what it waits on - and the platoon leader woken (`FarmMissions.alarmStalled`). And **a flatten isn't held
+by slope nobody reaches**: its chunk cut and only columns out on its slopes left, their count unchanged a quarter of an
+hour, the step is done with them left and named (`SLOPE_PATIENCE_MILLIS`) - the chunk is what the template wants.
+**A tree template's trunks with nothing under them are given ground**: a tree farm's flatten only cuts down, so the
+squad fills each such trunk's column in dirt up to the farm's level, as a wheat template's ground is laid
+(`TemplateGround.treeOrders`); in the squad simulation a trunk over a pit was never planted, and its template never done.
+
 **What's built is reviewed** (operator, 2026-11-22: once the sites are built the construction might drift - who reviews
 and fixes it?): every five minutes each mission done, its chunk in sight, is measured against its layout again
 (`FarmMissions.review`), and one whose structure has gone has its template phase opened again - a repair, a squad's task

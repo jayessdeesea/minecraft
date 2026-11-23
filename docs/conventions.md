@@ -145,6 +145,26 @@ level was dealt to went back and forth between two steps for two minutes. A chec
 `[Outcome]` line (the flatten's is its `[Keep] pace` line), read in every live check with the
 alerts.
 
+## A retry changes something
+Trying again what just failed, the same way, expects a different outcome for no reason (operator, 2026-11-23). A
+routine whose try fails does something different with the next, from a ladder it climbs in order:
+1. **Wait, a little longer each time, and not in step with the others** - `bot.supply.Setbacks`: the target left
+   alone twice as long at each failure; given a salt - whose it is - each wait is lengthened by up to a quarter, so
+   several failed at one thing don't come back as one. No routine is salted yet (backlog/wood-reshare.md says why).
+2. **Another target** - the next cell, another chest, another stand, a different way round. A stand somebody's in is
+   taken (`SoldierErrands.standTaken`); a trip that put nothing in isn't made again with the same load (`Depositor`).
+3. **Another means** - what would make the try work: build the chest that's wanted, clear what's in the way, draw
+   what's short, throw out what fills the pack.
+4. **Ask for help** - CANTCO up the chain with the reason and the count (`Setbacks.stuck`), for its leader to give
+   the work to someone else, or change it.
+5. **Give it up, and say so** - work nobody reaches is left and named, not handed round: a flatten's slope columns
+   out of reach (`FarmMissions`, `SLOPE_PATIENCE_MILLIS`).
+And the count is said: four failures running at one target is a `[Retry]` line, again at each doubling; four trips
+running that moved nothing an `[Outcome] loop`. Whoever watches the garrison digs into each
+([loop.md](loop.md)). Live, on one day: a soldier dug a block and walked 38 blocks to a chest with it, 33 times; ten
+soldiers went round each other at one cell by a full chest; nine columns of a slope nobody could reach were handed
+from one soldier to another every two minutes for five hours.
+
 ## Profile every sixteenth commit
 
 When the commit count on main (`git rev-list --count HEAD`) is a multiple of 16, the live

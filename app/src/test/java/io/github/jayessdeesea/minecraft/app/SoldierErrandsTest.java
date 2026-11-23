@@ -62,4 +62,18 @@ class SoldierErrandsTest {
                 "its load's surplus, then its seeds and saplings");
         org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of(first + 5), SoldierErrands.tripSlots(false, pack, java.util.List.of(first + 5)), "no digger: its load's surplus only");
     }
+
+    /** A stand by a chest another soldier is in is taken; the asker's own, and one a block off, aren't (field698: ten at one cell). */
+    @Test
+    void aStandSomebodyElseIsInIsTaken() {
+        io.github.jayessdeesea.minecraft.command.Position cell = new io.github.jayessdeesea.minecraft.command.Position(38.5, 67, 86.5);
+        io.github.jayessdeesea.minecraft.command.Position me = new io.github.jayessdeesea.minecraft.command.Position(38.4, 67, 86.6);
+        io.github.jayessdeesea.minecraft.command.Position bob = new io.github.jayessdeesea.minecraft.command.Position(38.7, 67, 86.2);
+        org.junit.jupiter.api.Assertions.assertFalse(SoldierErrands.standTaken(cell, me, java.util.List.of(me)), "its own stand");
+        org.junit.jupiter.api.Assertions.assertTrue(SoldierErrands.standTaken(cell, me, java.util.List.of(me, bob)), "Bob in it");
+        org.junit.jupiter.api.Assertions.assertFalse(SoldierErrands.standTaken(cell, me, java.util.List.of(me,
+                new io.github.jayessdeesea.minecraft.command.Position(40.0, 67, 86.5))), "Bob a block and a half off");
+        org.junit.jupiter.api.Assertions.assertFalse(SoldierErrands.standTaken(cell, me, java.util.List.of(me,
+                new io.github.jayessdeesea.minecraft.command.Position(38.5, 70, 86.5))), "Bob on the level above");
+    }
 }

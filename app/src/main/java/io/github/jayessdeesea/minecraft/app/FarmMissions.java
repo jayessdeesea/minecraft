@@ -203,6 +203,13 @@ final class FarmMissions {
         dry.add(ChunkFarm.key(Math.floorDiv(x, 16), Math.floorDiv(z, 16)));
     }
 
+    /** The tree chunk whose template {@code objective} is - a tree farm mission's last step, worked now - if it is one. */
+    Optional<TreeChunk> trees(Optional<Objective> objective) {
+        return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.TREE_TEMPLATE
+                        && objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent())
+                .map(c -> new TreeChunk(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level())).findFirst();
+    }
+
     /** The mission whose flatten is under way, and that step. */
     private Optional<Map.Entry<FarmMission, FarmMission.Step>> flattening() {
         return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.FLATTEN).findFirst();
@@ -298,6 +305,7 @@ final class FarmMissions {
             campFarm.chunks().forEach(c -> chunks.add(ChunkFarm.key(c.chunkX(), c.chunkZ())));
         }
         made = Set.copyOf(chunks);
+        measuredAt = now;
         recheck(world, campFarm, now);
         if (trees != null) {
             treeChunk().ifPresent(trees::take);
@@ -306,6 +314,7 @@ final class FarmMissions {
             measure(world, campFarm, farms, now, under.getKey(), under.getValue());
         }
         review(world, now);
+        alarmStalled(now);
     }
 
     /** The missions done, their templates standing: what the review looks over. */
@@ -404,8 +413,25 @@ final class FarmMissions {
                 List<BlockPos> unknown = Clearing.unknownIn(world, over, Set.of());
                 List<BlockPos> water = Clearing.waterIn(world, over, Set.of()); // the plan's ground measure sees no water: it's filled and dug first
                 unknown.stream().findFirst().ifPresent(c -> say(m, step, Clearer.unknownSaid(world, c)));
+                // The chunk itself cut and only columns out on its slopes left, their count unchanged for SLOPE_PATIENCE: the
+                // step is done with them left and said - the chunk is what the template wants; the slope is how it's walked onto.
+                // Live (field697-698), a tree farm's chunk lay flat for five hours while nine columns ten blocks out, eleven
+                // up a hill, were handed from one soldier to another every two minutes, neither reaching them.
+                Optional<String> slopesLeft = plan.filter(p -> !p.cut() && unknown.isEmpty() && water.isEmpty() && chunkCut(m, p)).flatMap(p -> {
+                    long[] seen = slopeLeft.computeIfAbsent(m, k -> new long[]{p.dig().size(), now});
+                    if (seen[0] != p.dig().size()) {
+                        seen[0] = p.dig().size();
+                        seen[1] = now;
+                    }
+                    return now - seen[1] < SLOPE_PATIENCE_MILLIS ? Optional.<String>empty() : Optional.of("nothing over y=" + step.level() + " in the chunk; "
+                            + p.dig().size() + " column(s) out on its slopes left as they are, none cut in " + SLOPE_PATIENCE_MILLIS / 60_000 + " min - out of reach: "
+                            + p.dig().stream().limit(8).map(c -> c.x() + "," + c.z() + " at y=" + c.from()).toList());
+                });
+                if (plan.filter(p -> chunkCut(m, p) && !p.cut()).isEmpty()) {
+                    slopeLeft.remove(m);
+                }
                 yield plan.filter(FlattenPlan::cut).filter(p -> unknown.isEmpty() && water.isEmpty()).map(p -> "nothing over y=" + step.level() + " in the chunk or its " + slopes(m, campFarm).said()
-                        + (p.fill().isEmpty() ? "" : ", " + p.fill().size() + " column(s) under it - the floor's inside, the ground's outside"));
+                        + (p.fill().isEmpty() ? "" : ", " + p.fill().size() + " column(s) under it - the floor's inside, the ground's outside")).or(() -> slopesLeft);
             }
             case FLOOR -> {
                 List<BlockPos> cells = floorCells(m.layer(step.level()), campFarm);
@@ -534,7 +560,7 @@ final class FarmMissions {
             if (plan.isEmpty()) {
                 return; // not in sight yet: looked at again next measure
             }
-            if (!plan.get().cut()) {
+            if (!chunkCut(m, plan.get())) { // its chunk's own columns: the slopes' may have been left as out of reach
                 missions.put(m, k);
                 book.ifPresent(b -> b.reopen(m, behind, "measured again: not cut", now));
                 LOG.warn("[Mission] {}: {} measured again - not cut; worked again", m.name(), behind.task());
@@ -542,6 +568,16 @@ final class FarmMissions {
             break;
         }
         rechecked = true;
+    }
+
+    /** How long a flatten's slope columns stand uncut, the chunk itself cut, before the step is done with them left. */
+    static final long SLOPE_PATIENCE_MILLIS = 15 * 60_000;
+    /** Each flattening mission's slope columns left, and since when that count has stood: {count, since}. */
+    private final Map<FarmMission, long[]> slopeLeft = new java.util.HashMap<>();
+
+    /** Whether {@code plan} has nothing left to cut in {@code m}'s own chunk: what's left, if anything, is out on its slopes. */
+    private static boolean chunkCut(FarmMission m, FlattenPlan plan) {
+        return plan.dig().stream().noneMatch(c -> c.x() >= m.minX() && c.x() <= m.minX() + 15 && c.z() >= m.minZ() && c.z() <= m.minZ() + 15);
     }
 
     /** The flatten's plan for {@code m} as {@code world} stands, if every column it works is in sight. */
@@ -607,6 +643,15 @@ final class FarmMissions {
         if (campFarm != null) {
             campFarm.chunks().forEach(c -> all.add(ChunkFarm.key(c.chunkX(), c.chunkZ())));
         }
+        // And every mission's chunk whose template is going up or stands - a supply point's, a mineshaft's head: its fence
+        // is on the line it shares with the chunk beside it, and a flatten there cuts no slope into it. Live (field699), a
+        // tree farm's flatten counted the posts of the mineshaft's head south of it among its columns to cut.
+        built.forEach(m -> all.add(ChunkFarm.key(m.chunkX(), m.chunkZ())));
+        missions.forEach((m, at) -> {
+            if (template(m.steps().get(at).kind())) {
+                all.add(ChunkFarm.key(m.chunkX(), m.chunkZ()));
+            }
+        });
         return all;
     }
 
@@ -614,7 +659,40 @@ final class FarmMissions {
         String line = m.name() + ": " + step.task() + " - " + how;
         if (!line.equals(said.put(m, line))) {
             LOG.info("[Mission] {}", line);
+            movedAt.put(m, measuredAt);
+            stalled.remove(m);
         }
+    }
+
+    /** How long a mission's step stands as last measured, nothing of it done, before it's said as stalled. */
+    static final long STALL_MILLIS = 20 * 60_000;
+    /** When each mission's measure last changed, the missions said as stalled since, and the clock at the measure under way. */
+    private final Map<FarmMission, Long> movedAt = new java.util.HashMap<>();
+    private final Set<FarmMission> stalled = new HashSet<>();
+    private long measuredAt;
+
+    /**
+     * The alarm for a mission making no progress (operator, 2026-11-23: blocking on that one block seems very wrong -
+     * there should be an alarm): each step worked whose measure hasn't changed in {@link #STALL_MILLIS} is said once, by
+     * name and with what it waits on, as an outcome missed - and the platoon leader woken. Live (field697-698), a wheat
+     * farm stood at "2 cells to fill" for ten hours and a tree farm's flatten at "16 columns" for five, each in the log
+     * and neither an alarm. Not a mineshaft's shaft: its measure is "dry or not", and says nothing of its progress.
+     */
+    private void alarmStalled(long now) {
+        for (Map.Entry<FarmMission, FarmMission.Step> under : worked()) {
+            FarmMission m = under.getKey();
+            Long moved = movedAt.get(m);
+            if (under.getValue().kind() == FarmMission.Kind.MINE || moved == null || now - moved < STALL_MILLIS || !stalled.add(m)) {
+                continue;
+            }
+            LOG.warn("[Outcome] {} has made no progress in {} min - SHORT: {}", m.name(), (now - moved) / 60_000, said.get(m));
+            wake.accept("a mission making no progress");
+        }
+    }
+
+    /** The missions said as stalled, not moved since: for whoever watches. */
+    synchronized Set<FarmMission> stalled() {
+        return Set.copyOf(stalled);
     }
 
     /**

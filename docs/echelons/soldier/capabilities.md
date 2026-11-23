@@ -153,6 +153,10 @@ armour, arrows, logs, cobblestone, dirt, rations, shield, pickaxe, bow, spare we
   whatever its task (`bot.GateHabit`, ticked with its walk). To its route a shut gate is a way through, never a wall
   (`Pathfinder.solid`); to everything that builds, fills or measures it's the block it is - in the squad simulation, with
   a gate read as open ground everywhere, one was filled with dirt. A farm's gates are put up shut and stay so.
+- Take a stand by a chest another soldier is in: a chest is reached from any cell round it, and the next soldier takes
+  the next (`SoldierErrands.standTaken`). Live (field698), ten soldiers of three squads were sent to one cell.
+- Leave a torch standing where a block of ground goes: a builder of ground takes it up and puts the block in
+  (`Builder`). Read as the cell filled, a torch a block under a farm's level held its squad as fillers for hours.
 - Carry the same load to a chest twice: a trip that put nothing in isn't made again while it carries the same
   (`Depositor`). Live (field693), a harvester walked farm to chest and back every 20 s, 30 blocks each way.
 - What it still starts itself is listed, to be taken away, in backlog/authority-and-missions.md.

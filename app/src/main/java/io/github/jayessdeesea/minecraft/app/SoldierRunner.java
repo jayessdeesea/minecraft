@@ -5235,7 +5235,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         n -> gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE), at -> woodsBook.spent(chainOfCommand, at, clockwork.millis())));
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         // A farm mission's template whose ground isn't laid: the whole squad lays it in dirt, not its tender alone (app.TemplateGround).
-        chainOfCommand.farmMissions.template(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.orders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt)));
+        chainOfCommand.farmMissions.template(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.orders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); chainOfCommand.farmMissions.trees(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.treeOrders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); // and a tree template's trunks with nothing under them
         statuses.forEach(s -> policeCall.order(s, ground.containsKey(s.name()), withoutWork.alarmed(s.name()) || idleWatch.alarmed(s.name()) && s.report() instanceof Report.Cantco,
                 world, scaffolding, stepPlacedAt, activeSoldiers.values().stream().map(d -> d.status().position()).toList(),
                 Optional.ofNullable(campWallKey).map(walls::get).map(Set::copyOf).orElse(Set.of()), clockwork.millis()).ifPresent(o -> ground.put(s.name(), o)));
@@ -6153,7 +6153,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             && Depositor.withinReach(new Position(centre.x() + 0.3, centre.y(), centre.z() - 0.3), chest)
                             && Depositor.withinReach(new Position(centre.x() - 0.3, centre.y(), centre.z() + 0.3), chest)
                             && Depositor.withinReach(new Position(centre.x() + 0.3, centre.y(), centre.z() + 0.3), chest);
-                    if (!reachable.contains(cell) || !reachedFromAll || world.isChest(cell.x(), cell.y() - 1, cell.z())) {
+                    if (!reachable.contains(cell) || !reachedFromAll || world.isChest(cell.x(), cell.y() - 1, cell.z()) || SoldierErrands.standTaken(centre, from, activeSoldiers.values().stream().map(d -> d.status().position()).toList())) { // or another soldier's stand already
                         continue;
                     }
                     double distance = Math.hypot(centre.x() - from.x(), centre.z() - from.z()) + Math.abs(centre.y() - from.y());

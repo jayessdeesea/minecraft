@@ -48,7 +48,14 @@ class BuilderTest {
         public List<Position> bodiesNear(Position center, double radius) {
             return bodies;
         }
+
+        @Override
+        public boolean isTorch(int x, int y, int z) {
+            return torches.contains(new BlockPos(x, y, z));
+        }
     };
+    /** Cells holding a torch: broken at a touch. */
+    private final Set<BlockPos> torches = new HashSet<>();
     /** Who else is standing about: the server won't place a block into one. */
     private final List<Position> bodies = new ArrayList<>();
     private final List<String> calls = new ArrayList<>();
@@ -87,7 +94,10 @@ class BuilderTest {
                         calls.add("swap " + slot + " to hotbar " + args[3]);
                     }
                     case "selectHotbarSlot" -> calls.add("select " + args[0]);
-                    case "startDigging" -> flowers.remove(new BlockPos((int) args[0], (int) args[1], (int) args[2]));
+                    case "startDigging" -> {
+                        flowers.remove(new BlockPos((int) args[0], (int) args[1], (int) args[2]));
+                        torches.remove(new BlockPos((int) args[0], (int) args[1], (int) args[2]));
+                    }
                     case "finishDigging" -> calls.add("dig " + new BlockPos((int) args[0], (int) args[1], (int) args[2]));
                     default -> throw new AssertionError("unexpected " + method.getName());
                 }
@@ -219,6 +229,23 @@ class BuilderTest {
 
         assertInstanceOf(Builder.Progress.Done.class, progress);
         assertEquals(List.of("swap 20 to hotbar 8", "select 8", "place " + cell, "dig " + cell, "place " + cell, "select 0"), calls);
+    }
+
+    /**
+     * A torch standing in a cell of ground to lay is taken up and the block put in (field698: a torch a block under a
+     * farm's level read as its cell filled, and the squad stood at it as fillers for hours while nothing was sown).
+     */
+    @Test
+    void aTorchWhereGroundGoesIsTakenUpAndTheBlockPutIn() {
+        BlockPos cell = new BlockPos(2, 64, 0);
+        torches.add(cell);
+        Builder builder = new Builder("Alice", session, inventory);
+
+        Builder.Progress progress = run(builder, new Position(0.5, 64, 0.5), List.of(cell), 100);
+
+        assertInstanceOf(Builder.Progress.Done.class, progress);
+        assertTrue(solid.contains(cell) && !torches.contains(cell), "the torch out, the block in: " + calls);
+        assertTrue(calls.indexOf("dig " + cell) >= 0 && calls.indexOf("dig " + cell) < calls.lastIndexOf("place " + cell), "dug, then placed: " + calls);
     }
 
     @Test

@@ -23,8 +23,14 @@ import java.util.Set;
  */
 public final class Setbacks<T> {
 
+    private static final org.apache.logging.log4j.Logger LOG = org.apache.logging.log4j.LogManager.getLogger(Setbacks.class);
+
     private final long first;
     private final long most;
+    /** What spreads its waits, or 0 for none: two soldiers failed at one thing don't both come back at the same tick. */
+    private final long salt;
+    /** How many failures in a row at one target are said, and then at each doubling: a retry that isn't working is dug into. */
+    public static final int SAID_FROM = 4;
     private final Map<T, long[]> failed = new HashMap<>();
     /** Tries in a row that failed, on any target, and the last one's target and reason. */
     private int streak;
@@ -35,11 +41,21 @@ public final class Setbacks<T> {
     public static final int ESCALATE = 3;
 
     public Setbacks(long first, long most) {
+        this(first, most, 0);
+    }
+
+    /**
+     * As {@link #Setbacks(long, long)}, each wait lengthened by up to a quarter of itself, by {@code salt} - its owner's,
+     * a soldier's name's hash - the target and how often it has failed (operator, 2026-11-23: trying again, do something
+     * different - wait a little while, with jitter). Worked out, not drawn: the same failures give the same waits.
+     */
+    public Setbacks(long first, long most, long salt) {
         if (first <= 0 || most < first) {
             throw new IllegalArgumentException("first " + first + " and most " + most + " ticks");
         }
         this.first = first;
         this.most = most;
+        this.salt = salt;
     }
 
     /** {@code target} failed at tick {@code now} for {@code why}: it's left alone for longer than the last time. */
@@ -48,12 +64,20 @@ public final class Setbacks<T> {
         lastTarget = target;
         lastWhy = why;
         failed(target, now);
+        // Said at four in a row at one target, and at each doubling: the count is what says a retry isn't working.
+        int failures = failures(target);
+        if (failures >= SAID_FROM && Integer.bitCount(failures) == 1) {
+            LOG.warn("[Retry] {} tries in a row have failed at {}, the last: {} - left alone longer each time", failures, target, why);
+        }
     }
 
     /** {@code target} failed at tick {@code now}: it's left alone for longer than the last time. */
     public synchronized void failed(T target, long now) {
         long[] entry = failed.computeIfAbsent(target, t -> new long[]{0, 0});
         long wait = Math.min(most, first << Math.min(entry[0], 30));
+        if (salt != 0) {
+            wait += Math.floorMod(31L * java.util.Objects.hash(target, entry[0]) + salt, wait / 4 + 1);
+        }
         entry[0]++;
         entry[1] = now + wait;
     }

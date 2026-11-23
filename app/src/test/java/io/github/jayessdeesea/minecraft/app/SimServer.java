@@ -579,8 +579,8 @@ final class SimServer {
                 sync();
                 return;
             }
-            if (state == SimItems.GATE || state == SimItems.GATE_OPEN) {
-                set(x, y, z, state == SimItems.GATE ? SimItems.GATE_OPEN : SimItems.GATE);
+            if (io.github.jayessdeesea.minecraft.bot.world.WorldModel.gateState(state)) {
+                set(x, y, z, io.github.jayessdeesea.minecraft.bot.world.WorldModel.shutGateState(state) ? state - 2 : state + 2); // any gate swings: its open state is two under its shut one (recorded ground has birch and spruce ones)
                 return;
             }
             if (state == CRAFTING_TABLE || state == FURNACE) {

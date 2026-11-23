@@ -124,6 +124,22 @@ Left: a wheat farm's fence, gates and torches gone after its mission is done are
 squad on its farm - they should count as drift, once the template's own done-measure counts them; a mineshaft's head;
 and each repair kept in the chunk's history.
 
+### A site made to match its template, first (operator, 2026-11-23)
+"When a soldier is asked to work the field, maybe the first step is to fix the construction site so it matches the
+template: remove the extra chests, get rid of the cobblestone on the fences, hoe the field." One pass, not a rule a
+fault: every cell of the template's box compared with what its layout says is there, and the differences - what's
+extra, what's missing, what's the wrong block - worked by whoever is sent to the site, before its crop.
+- **What isn't a violation** (operator): on a tree farm a sapling at a trunk, or the tree it has grown into, leaves
+  and all; on a wheat farm tilled ground, bare or sown or with wheat at any growth. **What is**: ground at a field's
+  cell not tilled; ground missing; a block that isn't the layout's - a chest but the farm's own, cobblestone where a
+  fence post goes or on top of one, a step left standing; a torch where the layout has none or a block under its level;
+  a post, a gate, a torch or the chest missing.
+- Wanted of the world model first: what a block is, cell by cell - a fence told from any other solid block
+  (`WorldView` says only "solid here"); today cobblestone on the fence's line counts as its post.
+- Built towards it: missing ground laid and what stands in a wheat template's way dug by its squad (`TemplateGround`);
+  a torch where ground goes taken up (`Builder`); a tree template's trunks with nothing under them filled; the review
+  that reopens a built template (`FarmMissions.review`).
+
 ### A template cleared of what isn't its own: what's left (operator, 2026-11-22)
 Built: a wheat template's squad digs the blocks in its way, a depot's chest among them
 (docs/echelons/platoon-leader/decisions.md) - the chest's contents fall out for the digger; emptying it first, as a

@@ -159,7 +159,7 @@ public final class Builder {
                 }
             }
         }
-        if (target != null && solid(world, target)) {
+        if (target != null && holds(world, target)) {
             target = null;
             attempts = 0;
             walking = 0;
@@ -171,7 +171,7 @@ public final class Builder {
             attempts = 0;
         }
         Set<BlockPos> passed = skipped.barredNow(ticks);
-        List<BlockPos> remaining = plan.stream().filter(cell -> !solid(world, cell) && !passed.contains(cell)).toList();
+        List<BlockPos> remaining = plan.stream().filter(cell -> !holds(world, cell) && !passed.contains(cell)).toList();
         if (remaining.isEmpty()) {
             stop();
             done = passed.isEmpty();
@@ -214,6 +214,14 @@ public final class Builder {
             return new Progress.Working();
         }
         waitingOn = false;
+        // A torch standing where a block of ground goes is taken up first - it breaks at a touch - and the block put in
+        // its cell on the next try. Live (field698), a torch in a farm's ground cell, a block under the farm's level, read
+        // as the cell filled already: its squad stood at it as fillers for hours, "1 left", and none of them sowed.
+        if (world.isTorch(target.x(), target.y(), target.z()) && !materials.contains(ItemClass.TORCH)) {
+            session.startDigging(target.x(), target.y(), target.z());
+            session.finishDigging(target.x(), target.y(), target.z());
+            return new Progress.Working();
+        }
         script = place(target);
         script.tick();
         return new Progress.Working();
@@ -270,7 +278,7 @@ public final class Builder {
                     }
                     session.useBlockFace(against.x(), against.y(), against.z(), toward);
                     attempts++;
-                }, new Expect("the block at " + cell + " in", () -> solid(world, cell), PLACE_TICKS), PLACE_TICKS)));
+                }, new Expect("the block at " + cell + " in", () -> holds(world, cell), PLACE_TICKS), PLACE_TICKS)));
     }
 
     private boolean materialInHand() {
@@ -349,6 +357,11 @@ public final class Builder {
     private static boolean solid(WorldView world, BlockPos cell) {
         return world.solidHere(cell.x(), cell.y(), cell.z()) || world.isTorch(cell.x(), cell.y(), cell.z())
                 || world.isGate(cell.x(), cell.y(), cell.z());
+    }
+
+    /** Whether {@code cell} holds what this builder puts there ({@link #solid}): a torch does only for one that builds with torches. */
+    private boolean holds(WorldView world, BlockPos cell) {
+        return solid(world, cell) && (materials.contains(ItemClass.TORCH) || !world.isTorch(cell.x(), cell.y(), cell.z()));
     }
 
     static boolean withinReach(Position soldier, BlockPos cell) {
