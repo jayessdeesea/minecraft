@@ -182,6 +182,21 @@ final class FarmMissions {
         }).toList();
     }
 
+    /**
+     * Whether {@code objective}'s place is a mission's own, on ground the force has made at a level it knows: a step past
+     * its flatten, or a farm built and kept. It isn't put "on the ground" again by what stands there now: live
+     * (field708-711), a tree farm's point at y=64 was put on its trees' canopy at y=69, its squads stood up there with
+     * nothing to do, and soldiers walking to points five blocks up put steps on the wheat farm beside it - which its
+     * review found, reopened and had dug away, every ten minutes.
+     */
+    synchronized boolean atItsLevel(Objective objective) {
+        io.github.jayessdeesea.minecraft.command.Position at = objective.location();
+        return java.util.stream.Stream.concat(
+                missions.entrySet().stream().filter(e -> e.getKey().steps().get(e.getValue()).kind() != FarmMission.Kind.FLATTEN)
+                        .map(e -> e.getKey().centre(e.getKey().steps().get(e.getValue()))),
+                built.stream().map(m -> m.centre(m.steps().getLast()))).anyMatch(at::equals);
+    }
+
     /** Whether {@code objective} is a mission's step worked now: its squad is on the operator's mission. */
     boolean on(Optional<Objective> objective) {
         // By its mission, not the whole objective: one given to a squad has its place put on the ground it stands on, and

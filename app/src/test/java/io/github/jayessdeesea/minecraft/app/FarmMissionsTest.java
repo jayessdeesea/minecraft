@@ -580,4 +580,48 @@ class FarmMissionsTest {
         assertTrue(reach.stream().noneMatch(c -> c.x() > 31), "nothing east of it, the mineshaft's chunk: " + reach.stream().filter(c -> c.x() > 31).limit(4).toList());
         assertTrue(reach.stream().anyMatch(c -> c.x() < 16), "its west side sloped as before");
     }
+
+    /**
+     * A mission's place past its flatten is its own level's, kept as given; its flatten's is the ground's, found where the
+     * squad stands. Live (field708-711) a tree farm's template at y=64 was put on its trees' canopy, y=69.
+     */
+    @Test
+    void aMissionsPlacePastItsFlattenKeepsItsLevel() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMissions missions = new FarmMissions(cause -> { });
+        missions.keptIn(new ObjectiveBook(() -> registers));
+        FarmMission trees = new FarmMission(2, 3, 63, FarmMission.Crop.TREES);
+        missions.give(trees, 0);
+        io.github.jayessdeesea.minecraft.command.Objective flatten = missions.objectives().getFirst();
+        assertEquals(false, missions.atItsLevel(flatten), "its flatten: the ground is whatever stands there");
+
+        io.github.jayessdeesea.minecraft.bot.world.WorldView flat = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 62;
+            }
+
+            @Override
+            public boolean isCobblestone(int x, int y, int z) {
+                return y == 62;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return List.of();
+            }
+        };
+        missions.measure(flat, null, null, null, 1_000);
+        missions.measure(flat, null, null, null, 2_000);
+        io.github.jayessdeesea.minecraft.command.Objective next = missions.objectives().getFirst();
+        assertTrue(!next.mission().equals(flatten.mission()), "past its flatten: " + next.mission());
+        assertTrue(missions.atItsLevel(next), "its place kept at its level: " + next.location());
+        assertEquals(false, missions.atItsLevel(new io.github.jayessdeesea.minecraft.command.Objective("Hold the camp",
+                new io.github.jayessdeesea.minecraft.command.Position(24.5, 67, 88.5), "A foothold", new io.github.jayessdeesea.minecraft.command.Objective.Task.None())), "any other objective is grounded as before");
+    }
 }

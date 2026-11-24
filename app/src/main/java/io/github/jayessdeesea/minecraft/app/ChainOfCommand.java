@@ -389,7 +389,7 @@ public class ChainOfCommand implements DisposableBean {
 
     /** {@code objective} put on the ground at its x and z (NightRules#grounded). */
     Objective grounded(Objective objective, List<SoldierStatus> soldiers) {
-        return NightRules.grounded(ground, objective, soldiers);
+        return farmMissions.atItsLevel(objective) ? objective : NightRules.grounded(ground, objective, soldiers); // a mission's built ground keeps its level
     }
 
     /** The night as its rules read it, now. */
