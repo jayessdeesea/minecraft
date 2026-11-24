@@ -145,6 +145,11 @@ class FarmMissionsTest {
         assertEquals(steps.getFirst(), day.getFirst(), "Alpha keeps the floor");
         assertEquals(1, day.stream().filter(steps.get(1)::equals).count(), "one squad on the trees' flatten: " + day);
         assertEquals(1, day.stream().filter(idle::equals).count(), "the third left to its own order");
+
+        // After a restart no squad's standing order says which step it had: the register does, and that squad goes back on it.
+        new ObjectiveBook(() -> registers).given("Alpha", steps.get(1), 2_000);
+        List<io.github.jayessdeesea.minecraft.command.Objective> restarted = missions.guarded(List.of(idle, idle, idle), squads, java.util.Optional.empty());
+        assertEquals(steps.get(1), restarted.get(0), "Alpha, on the trees' flatten in the register, keeps it - not the last squad free: " + restarted);
     }
 
     /**

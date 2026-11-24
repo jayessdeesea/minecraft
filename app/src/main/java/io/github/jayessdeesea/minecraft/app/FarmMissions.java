@@ -397,7 +397,10 @@ final class FarmMissions {
                 LOG.warn("[Guardrail] no squad to put on '{}': the others hold the missions' steps before it, the farm squad keeps the farm", step.mission());
                 continue;
             }
+            // The squad on it already; else the one the register has on it - a restart re-deals nothing (live, two squads
+            // swapped a mineshaft and a flatten at every deploy, a walk each way); else one doing that kind of work; else the last.
             int k = movable.stream().filter(i -> statuses.get(i).standing().filter(step::equals).isPresent()).findFirst()
+                    .or(() -> book.flatMap(b -> b.squadOn(step.mission())).flatMap(on_ -> movable.stream().filter(i -> statuses.get(i).squadName().equals(on_)).findFirst()))
                     .or(() -> movable.stream().filter(i -> out.get(i).task().getClass() == step.task().getClass()).findFirst())
                     .orElse(movable.getLast());
             LOG.warn("[Guardrail] the operator's farm - {} put on '{}', not '{}'", statuses.get(k).squadName(), step.mission(), out.get(k).mission());

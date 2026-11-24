@@ -65,6 +65,15 @@ final class ObjectiveBook {
         LOG.info("[Objectives] {}: {} ({}) under way in chunk ({}, {})", squad, row.mission(), row.task(), row.chunkX(), row.chunkZ());
     }
 
+    /**
+     * The squad the register has on the step said as {@code said} - its mission and task - under way: who goes back on it
+     * after a restart, when no squad's standing order says so yet.
+     */
+    synchronized Optional<String> squadOn(String said) {
+        return registers.get().objectives().stream().filter(r -> r.state() == ObjectiveRecord.State.UNDER_WAY && (r.mission() + ": " + r.task()).equals(said))
+                .flatMap(r -> r.squad().stream()).reduce((first, last) -> last);
+    }
+
     /** {@code squad} holding {@code objective} at {@code now}: written if no row of it is open - the first decision after a restart. */
     synchronized void held(String squad, Objective objective, long now) {
         if (open(squad).filter(r -> same(r, objective)).isEmpty()) {
