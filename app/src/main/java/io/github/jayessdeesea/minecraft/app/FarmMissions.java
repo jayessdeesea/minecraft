@@ -536,6 +536,25 @@ final class FarmMissions {
             LOG.warn("[Mission] {} reviewed - {}; its template worked again", m.name(), gone.get());
             wake.accept("a template built wants repair");
         }
+        // A mineshaft whose shaft is being worked keeps its head too: a head built to an older pattern, or broken since, is
+        // put up again before the mining goes on - its head step opened, its shaft's after it.
+        for (Map.Entry<FarmMission, FarmMission.Step> under : worked()) {
+            FarmMission m = under.getKey();
+            if (under.getValue().kind() != FarmMission.Kind.MINE || !world.isLoaded(m.minX(), m.minZ()) || !world.isLoaded(m.minX() + 15, m.minZ() + 15)
+                    || now < reviewDue.getOrDefault(m, Long.MIN_VALUE)) {
+                continue;
+            }
+            reviewDue.put(m, now + REVIEW_EVERY - Math.floorMod(java.util.Objects.hash(m.name(), now / DAY_MILLIS), DAY_MILLIS));
+            int left = Fixtures.left(world, new MineHead(m.chunkX(), m.chunkZ(), m.level()).fixtures()).values().stream().mapToInt(List::size).sum();
+            if (left == 0) {
+                continue;
+            }
+            FarmMission.Step head = m.steps().stream().filter(s -> s.kind() == FarmMission.Kind.MINE_HEAD).findFirst().orElseThrow();
+            missions.put(m, head.index());
+            book.ifPresent(b -> b.reopen(m, head, "reviewed: " + left + " of its head's fixtures to put up", now));
+            LOG.warn("[Mission] {} reviewed - {} of its head's fixtures to put up; its head worked again", m.name(), left);
+            wake.accept("a mineshaft's head wants repair");
+        }
     }
 
     /**

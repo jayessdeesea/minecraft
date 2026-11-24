@@ -280,10 +280,16 @@ class FarmMissionsTest {
         }
         FarmMissions missions = new FarmMissions(cause -> { });
         missions.keptIn(new ObjectiveBook(() -> registers));
+        // Its head standing, each fixture in its cell - but one chest, at first.
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> head = new java.util.HashSet<>();
+        io.github.jayessdeesea.minecraft.bot.farm.MineHead layout = new io.github.jayessdeesea.minecraft.bot.farm.MineHead(2, 4, 63);
+        layout.fixtures().values().forEach(head::addAll);
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos chest = layout.chests().getFirst();
+        head.remove(chest);
         io.github.jayessdeesea.minecraft.bot.world.WorldView world = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
-                return y <= 63;
+                return y <= 63 || head.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
             }
 
             @Override
@@ -297,13 +303,19 @@ class FarmMissionsTest {
             }
         };
 
+        // A head short of its pattern is put up again before the mining goes on (operator, 2026-11-24: its chests in a
+        // pattern, its mouth ringed): the head's step opened, and the shaft's after it once the head stands.
         missions.measure(world, null, null, null, 5_000);
+        assertEquals(List.of(FarmMission.Kind.MINE_HEAD), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "a chest short: its head worked again");
+        head.add(chest);
+        missions.measure(world, null, null, null, 5_000 + FarmMissions.REVIEW_MILLIS);
+        assertEquals(List.of(FarmMission.Kind.MINE), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "its head standing: the shaft again");
         io.github.jayessdeesea.minecraft.command.Objective mine = missions.objectives().getFirst();
         assertTrue(mine.task() instanceof io.github.jayessdeesea.minecraft.command.Objective.Task.Mine, "its squad's task a MINE: " + mine);
         assertEquals(new io.github.jayessdeesea.minecraft.command.Position(40.5, ChainOfCommand.MINE_DEPTH, 72.5), mine.location(), "at the chunk's middle, its y the depth");
 
         missions.mineDry(40, 72);
-        missions.measure(world, null, null, null, 6_000);
+        missions.measure(world, null, null, null, 5_000 + 2 * FarmMissions.REVIEW_MILLIS);
         assertEquals(List.of(), missions.worked(), "dry: the mission done");
         assertEquals(ObjectiveRecord.State.DONE, registers.objectives().stream().filter(r -> r.step() == 4).findFirst().orElseThrow().state());
     }

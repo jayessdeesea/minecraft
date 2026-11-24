@@ -14,7 +14,6 @@ Built: its layout (`bot.farm.MineHead` - two rows of double chests by kind, `Min
 and lit; a table and two furnaces by its north fence).
 - **A load goes to its kind's chest**: `Bank.of` names it; the depositor's choice of chest doesn't read it yet
   (backlog/depot-placement.md, the same choice by row).
-- **A head built before the pattern** is brought to it by its review, as a farm's template is.
 - **A gate across the stair at its first landing**, so what spawns below stays below.
 - **Its stairs kept** - anti-entropy, as a template's: each review, every step has its floor, its headroom and its
   walls where the well's layout has them; no water or lava beside one; its torches lit every so many steps; its ring

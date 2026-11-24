@@ -218,7 +218,8 @@ is done already measures done at once (`FarmMissions.reshape`, `Registers.retask
 and fixes it?): each mission done, its chunk in sight - the force near it, no outpost with nobody there - is measured against its
 layout again (`FarmMissions.review`): one a squad keeps every five minutes, the first thing done with it; any other when
 first seen and then inside every four garrison days, up to a day early by its name and the day, so the sites aren't
-all looked over at once (operator, 2026-11-24), and one whose structure has gone has its template phase opened again - a repair, a squad's task
+all looked over at once (operator, 2026-11-24); a mineshaft whose shaft is being worked has its head looked over the
+same way, and a head short of its layout is put up again before the mining goes on, and one whose structure has gone has its template phase opened again - a repair, a squad's task
 as the build was, the register's row saying what was found ("reviewed: back at FENCED - to put up again: 1 torch, 1
 chest"). Structure, not the crop's own cycle (`TemplateDrift.drifted`): a wheat farm's ground - its tilling, sowing and
 fixtures are its tender's; a tree chunk's chest and torches - felling and planting are its foresters'; a supply point's
