@@ -162,7 +162,10 @@ public record StoresChunk(int chunkX, int chunkZ, int level) {
 
     /** The stage it's at, as the world stands: the first whose work is left undone. */
     public Stage stage(WorldView world) {
-        if (!ground().stream().allMatch(c -> world.isCobblestone(c.x(), c.y(), c.z()))) {
+        // A cell with something standing on it already - the fence of the template beside, on the line the two share - is
+        // ground as it is: it's never paved from under what stands there.
+        if (!ground().stream().allMatch(c -> world.isCobblestone(c.x(), c.y(), c.z())
+                || world.isSolid(c.x(), c.y(), c.z()) && world.solidHere(c.x(), c.y() + 1, c.z()))) {
             return Stage.GROUND;
         }
         // A gate's cell the ground stands in - a slope's foot on the chunk's line - is the ground's: it bars the way itself.

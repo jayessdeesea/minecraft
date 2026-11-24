@@ -119,6 +119,13 @@ class StoresChunkTest {
         cobblestone.addAll(stores.ground());
         assertEquals(StoresChunk.Stage.FENCED, stores.stage(world));
 
+        // Its west line is the template's beside it too: that one's fence, standing on ground never paved, is ground enough.
+        List<BlockPos> shared = stores.ground().stream().filter(c -> c.x() == 16).toList();
+        cobblestone.removeAll(shared);
+        assertEquals(StoresChunk.Stage.GROUND, stores.stage(world), "bare of cobblestone and of a fence: to lay");
+        shared.forEach(c -> blocks.add(c.offset(0, 1, 0)));
+        assertEquals(StoresChunk.Stage.FENCED, stores.stage(world), "a fence stands on it: its ground as it is");
+
         blocks.addAll(stores.grid().fence());
         gates.addAll(stores.grid().gates());
         torches.addAll(stores.torches());
