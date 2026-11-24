@@ -707,4 +707,81 @@ class ClearingTest {
         assertTrue(!Clearing.safeFrom(cells(Set.of(over), Set.of(new BlockPos(0, 69, 0))), stand, over), "gravel over it would fall on its head");
         assertTrue(Clearing.safeFrom(cells(Set.of(), Set.of(new BlockPos(1, 69, 0))), stand, new BlockPos(1, 68, 0)), "beside it: always");
     }
+
+    private static final BlockPos GATE = new BlockPos(0, 64, 0);
+
+    /**
+     * Flat ground, feet at y=64, a shut gate at {@link #GATE} - solid in its own cell and the cell over it, a block only
+     * in its own - and soil in {@code soil}.
+     */
+    private static WorldView gated(Set<BlockPos> soil) {
+        return new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos at = new BlockPos(x, y, z);
+                return y <= 63 || at.equals(GATE) || at.equals(GATE.offset(0, 1, 0)) || soil.contains(at);
+            }
+
+            @Override
+            public boolean solidHere(int x, int y, int z) {
+                BlockPos at = new BlockPos(x, y, z);
+                return y <= 63 || at.equals(GATE) || soil.contains(at);
+            }
+
+            @Override
+            public boolean isGate(int x, int y, int z) {
+                return GATE.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isShutGate(int x, int y, int z) {
+                return isGate(x, y, z);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return y <= 63 || soil.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    /**
+     * A gate is dug by kind, and a tunnel's cut takes one in its cover, from the ground beside it. Pinned as it stands,
+     * ahead of backlog/kept-ground.md, which has a tunnel take no gate but a flatten's own.
+     */
+    @Test
+    void aGateIsDiggableAndATunnelTakesOneInItsCover() {
+        WorldView world = gated(Set.of());
+        assertTrue(Clearing.diggable(world, GATE.x(), GATE.y(), GATE.z()), "a gate is dug as a gate");
+
+        Clearing.Cut cut = Clearing.nextInTunnel(world, List.of(GATE), new Position(2.5, 64, 0.5), Set.of(), s -> true).orElseThrow();
+        assertEquals(GATE, cut.block(), "the gate offered");
+        assertEquals(new BlockPos(-1, 64, 0), cut.stand(), "from the ground beside it: the stand nearest the gate, not the soldier");
+    }
+
+    /**
+     * A shut gate's own cell is a stand: for a block beside the gate it is taken like any ground beside it, a shut gate and
+     * the cell over it barring no walker. For the gate itself it is not - a block is never cut from inside its own cell.
+     * Pinned as it stands, ahead of backlog/kept-ground.md, which has nobody stand in a gate's cell.
+     */
+    @Test
+    void aShutGatesCellIsTakenAsAStandForTheBlockBesideIt() {
+        BlockPos beside = new BlockPos(1, 64, 0);
+        WorldView world = gated(Set.of(beside));
+        Set<BlockPos> otherSides = Set.of(new BlockPos(2, 64, 0), new BlockPos(1, 64, 1), new BlockPos(1, 64, -1));
+
+        assertEquals(Optional.of(GATE), Clearing.standFor(world, beside, otherSides), "the gate's cell, the side left");
+        assertEquals(Optional.of(GATE), Clearing.standFor(world, beside, Set.of()), "and first of its four sides, all as near");
+        assertEquals(Optional.of(new BlockPos(-1, 64, 0)), Clearing.standFor(gated(Set.of()), GATE, Set.of()), "for the gate, beside it");
+    }
 }

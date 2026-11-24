@@ -755,4 +755,71 @@ class PathfinderTest {
         assertTrue(one.path().contains(new BlockPos(3, GROUND, 0)), "over the hole: " + one.path());
         assertEquals(List.of(new BlockPos(3, GROUND - 1, 0)), Pathfinder.stepBuild(gallery, new BlockPos(2, GROUND, 0), new BlockPos(3, GROUND, 0)));
     }
+
+    /**
+     * What a block put down would spoil, by kind and by cell: a gate's own cell, shut or open; the cell over farmland; a
+     * crop's cell; a cell kept open. Plain ground, none - nor the cell over a gate, nor farmland's own cell.
+     */
+    @Test
+    void aBlockSpoilsAGatesCellFarmlandsTopACropAndACellKeptOpen() {
+        BlockPos gate = new BlockPos(2, GROUND, 0), openGate = new BlockPos(2, GROUND, 4), farmland = new BlockPos(4, GROUND - 1, 0);
+        BlockPos crop = new BlockPos(6, GROUND, 0), keptOpen = new BlockPos(8, GROUND, 0);
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND || gate.equals(new BlockPos(x, y, z)) || gate.equals(new BlockPos(x, y - 1, z));
+            }
+
+            @Override
+            public boolean solidHere(int x, int y, int z) {
+                return y < GROUND || gate.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isGate(int x, int y, int z) {
+                return gate.equals(new BlockPos(x, y, z)) || openGate.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isShutGate(int x, int y, int z) {
+                return gate.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isFarmland(int x, int y, int z) {
+                return farmland.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public java.util.OptionalInt wheatAge(int x, int y, int z) {
+                return crop.equals(new BlockPos(x, y, z)) ? java.util.OptionalInt.of(3) : java.util.OptionalInt.empty();
+            }
+
+            @Override
+            public boolean noBuild(int x, int y, int z) {
+                return keptOpen.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertTrue(Pathfinder.spoils(world, gate), "a shut gate's cell");
+        assertTrue(Pathfinder.spoils(world, openGate), "an open gate's cell");
+        assertTrue(Pathfinder.spoils(world, farmland.offset(0, 1, 0)), "the cell over farmland");
+        assertTrue(Pathfinder.spoils(world, crop), "a crop's cell");
+        assertTrue(Pathfinder.spoils(world, keptOpen), "a cell kept open");
+
+        assertFalse(Pathfinder.spoils(world, START), "plain ground");
+        assertFalse(Pathfinder.spoils(world, gate.offset(0, 1, 0)), "the cell over a gate");
+        assertFalse(Pathfinder.spoils(world, farmland), "farmland's own cell");
+        assertFalse(Pathfinder.spoils(world, keptOpen.offset(0, 1, 0)), "the cell over one kept open");
+    }
 }

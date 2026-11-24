@@ -64,4 +64,109 @@ class AccessRouteTest {
         assertTrue(AccessRoute.plan(world, depot, c -> inKeep.test(c) && c.y() == 64, inKeep).orElseThrow().cut(),
                 "cut, the same route has nothing left to cut");
     }
+
+    /** What stands in the one cell of a fence line at x=3 that a road may cross, on flat ground with feet at y=64. */
+    private enum Fixture { SHUT_GATE, CHEST, TABLE }
+
+    private static final BlockPos CROSSING = new BlockPos(3, 64, 0);
+
+    /**
+     * Flat ground with a fence along x=3 and {@code fixture} in its line at {@link #CROSSING}. A fence post and a shut gate
+     * read solid in their own cell and in the cell over it, and are a block only in their own.
+     */
+    private static WorldView fenced(Fixture fixture) {
+        return new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                boolean tall = z != 0 || fixture == Fixture.SHUT_GATE;
+                return y <= 63 || x == 3 && (y == 64 || y == 65 && tall);
+            }
+
+            @Override
+            public boolean solidHere(int x, int y, int z) {
+                return y <= 63 || x == 3 && y == 64;
+            }
+
+            @Override
+            public boolean isGate(int x, int y, int z) {
+                return fixture == Fixture.SHUT_GATE && CROSSING.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isShutGate(int x, int y, int z) {
+                return isGate(x, y, z);
+            }
+
+            @Override
+            public boolean isChest(int x, int y, int z) {
+                return fixture == Fixture.CHEST && CROSSING.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public java.util.Optional<io.github.jayessdeesea.minecraft.bot.world.Workstation> workstation(int x, int y, int z) {
+                return fixture == Fixture.TABLE && CROSSING.equals(new BlockPos(x, y, z))
+                        ? java.util.Optional.of(io.github.jayessdeesea.minecraft.bot.world.Workstation.CRAFTING_TABLE) : java.util.Optional.empty();
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    /** The fence line but its crossing, at every height: the road's keep-out, so the only way is through {@link #CROSSING}. */
+    private static final java.util.function.Predicate<BlockPos> LINE_BUT_CROSSING = c -> c.x() == 3 && !c.equals(CROSSING);
+
+    private static final java.util.function.Predicate<BlockPos> PAST_THE_LINE = c -> c.x() == 6 && c.y() == 64;
+
+    /**
+     * A road whose only way lies through a shut gate is planned through it, and lists the gate's cell and the cell over it
+     * as rock to cut: a shut gate reads solid, and so does the cell over a tall block, which is no block. Pinned as it
+     * stands, ahead of backlog/kept-ground.md, which has the road neither cut nor pass a gate.
+     */
+    @Test
+    void aRoadThroughAShutGateListsTheGateAndTheCellOverItToCut() {
+        AccessRoute route = AccessRoute.plan(fenced(Fixture.SHUT_GATE), new BlockPos(0, 64, 0), PAST_THE_LINE, LINE_BUT_CROSSING).orElseThrow();
+
+        assertTrue(route.feet().contains(CROSSING), "through the gate's cell: " + route.feet());
+        assertEquals(List.of(CROSSING, CROSSING.offset(0, 1, 0)), route.toCut(), "the gate, and the cell over it");
+        assertTrue(route.floors().isEmpty(), "nothing put down: " + route.floors());
+        assertEquals(java.util.Optional.of(AccessRoute.STEP + 2 * AccessRoute.DIG),
+                AccessRoute.stepCost(fenced(Fixture.SHUT_GATE), new BlockPos(2, 64, 0), CROSSING), "a step and two digs");
+    }
+
+    /**
+     * Left free to, a road crosses a fence over its gate: the cell over the gate cut, the gate its floor - a dig cheaper
+     * than through it. Pinned as it stands, ahead of backlog/kept-ground.md.
+     */
+    @Test
+    void aRoadFreeToCrossesOverAShutGateStandingOnIt() {
+        AccessRoute route = AccessRoute.plan(fenced(Fixture.SHUT_GATE), new BlockPos(0, 64, 0), PAST_THE_LINE, c -> false).orElseThrow();
+
+        assertTrue(route.feet().contains(CROSSING.offset(0, 1, 0)), "over the gate: " + route.feet());
+        assertEquals(List.of(CROSSING.offset(0, 1, 0)), route.toCut(), "the cell over the gate only");
+        assertTrue(route.floors().isEmpty(), "the gate its floor: " + route.floors());
+    }
+
+    /** A road is never planned through a chest's cell or a workstation's: with no other way, there is no road. */
+    @Test
+    void aRoadIsNeverPlannedThroughAChestOrAWorkstation() {
+        for (Fixture fixture : List.of(Fixture.CHEST, Fixture.TABLE)) {
+            WorldView world = fenced(fixture);
+            assertEquals(java.util.Optional.empty(), AccessRoute.stepCost(world, new BlockPos(2, 64, 0), CROSSING), fixture + ": no step into it");
+            assertEquals(java.util.Optional.empty(), AccessRoute.stepCost(world, new BlockPos(2, 63, 0), CROSSING.offset(0, -1, 0)),
+                    fixture + ": nor with it for head room");
+            assertEquals(java.util.Optional.empty(), AccessRoute.plan(world, new BlockPos(0, 64, 0), PAST_THE_LINE, LINE_BUT_CROSSING),
+                    fixture + ": no road with no other way");
+
+            AccessRoute over = AccessRoute.plan(world, new BlockPos(0, 64, 0), PAST_THE_LINE, c -> false).orElseThrow();
+            assertTrue(!over.feet().contains(CROSSING) && !over.toCut().contains(CROSSING), fixture + ": free to, never through it: " + over.feet());
+        }
+    }
 }

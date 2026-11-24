@@ -667,4 +667,42 @@ class FarmMissionsTest {
         assertEquals(false, missions.atItsLevel(new io.github.jayessdeesea.minecraft.command.Objective("Hold the camp",
                 new io.github.jayessdeesea.minecraft.command.Position(24.5, 67, 88.5), "A foothold", new io.github.jayessdeesea.minecraft.command.Objective.Task.None())), "any other objective is grounded as before");
     }
+
+    /**
+     * A mission's paving and its flatten leave out the columns another template stands on - its chunk and the fence line
+     * past it, x0..x0+16, so the line a mission shares with the template west or north of it is the template's - and never
+     * its own chunk's for being a template's itself. A template east of it shares the line in its own chunk, not the mission's.
+     */
+    @Test
+    void aMissionsPavingAndFlattenLeaveOutTheTemplateBesideItItsSharedFenceLineIncluded() {
+        FarmMissions missions = new FarmMissions(cause -> { });
+        FarmMission mission = new FarmMission(5, 5, 63, FarmMission.Crop.STORES); // x 80..95, z 80..95
+        missions.give(mission, 1_000);
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos water = new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(0, 63, 0);
+        java.util.function.BiFunction<Integer, Integer, io.github.jayessdeesea.minecraft.bot.farm.FarmPlan> ownAnd = (cx, cz) ->
+                new io.github.jayessdeesea.minecraft.bot.farm.FarmPlan(water, List.of(), List.of(), List.of(
+                        new io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm(5, 5, 63), new io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm(cx, cz, 63)));
+        io.github.jayessdeesea.minecraft.bot.farm.FarmPlan own = ownAnd.apply(5, 5), west = ownAnd.apply(4, 5), east = ownAnd.apply(6, 5), north = ownAnd.apply(5, 4);
+
+        assertEquals(256, missions.floorCells(mission.layer(63), own).size(), "its own chunk a template's: all of it paved");
+
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> paved = missions.floorCells(mission.layer(63), west);
+        assertEquals(256 - 16, paved.size(), "less the line it shares with the template west of it");
+        assertTrue(paved.stream().noneMatch(c -> c.x() == 80), "none on x=80");
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> southOfOne = missions.floorCells(mission.layer(63), north);
+        assertEquals(256 - 16, southOfOne.size(), "and the line it shares with one north of it");
+        assertTrue(southOfOne.stream().noneMatch(c -> c.z() == 80), "none on z=80");
+        assertEquals(256, missions.floorCells(mission.layer(63), east).size(), "a template east of it: the shared line is x=96, none of its own");
+
+        io.github.jayessdeesea.minecraft.command.Flatten ground = missions.flatten().orElseThrow();
+        List<io.github.jayessdeesea.minecraft.command.FlattenPlan.Column> reach = missions.reach(ground, west).orElseThrow();
+        assertTrue(reach.stream().noneMatch(c -> c.x() < 80), "the flatten: nothing west of the line, the template's side unsloped");
+        assertTrue(reach.stream().noneMatch(c -> c.x() == 80 && c.z() >= 80 && c.z() <= 96), "nor on the shared line, the template's box z 80..96");
+        assertTrue(reach.stream().anyMatch(c -> c.x() == 80 && c.z() < 80), "the line run on north past the template's box is its north slope's");
+        assertEquals(15 * 16, reach.stream().filter(c -> c.x() >= 81 && c.x() <= 95 && c.z() >= 80 && c.z() <= 95).count(), "its chunk's other columns all worked");
+        assertTrue(reach.stream().anyMatch(c -> c.x() > 95), "its east side sloped as before");
+        List<io.github.jayessdeesea.minecraft.command.FlattenPlan.Column> westOfOne = missions.reach(ground, east).orElseThrow();
+        assertTrue(westOfOne.stream().noneMatch(c -> c.x() >= 96), "nothing on the ground of the template east of it");
+        assertEquals(256, westOfOne.stream().filter(c -> c.x() >= 80 && c.x() <= 95 && c.z() >= 80 && c.z() <= 95).count(), "its own chunk whole");
+    }
 }
