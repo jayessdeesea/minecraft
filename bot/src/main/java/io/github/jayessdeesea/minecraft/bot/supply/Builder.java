@@ -92,6 +92,13 @@ public final class Builder {
     /** How long a walk to a stand may take before the cell it's for is given up. */
     static final int WALK_TICKS = 400;
     private Position lookAt;
+    /** Where it may stand to put a block in a cell: anywhere in reach, unless the block's facing is taken from where it's put from. */
+    private java.util.function.BiPredicate<BlockPos, Position> from = (cell, stand) -> true;
+
+    /** Its blocks are put only from a stand {@code from} allows for their cell: a gate faces the way its builder looks. */
+    public synchronized void putFrom(java.util.function.BiPredicate<BlockPos, Position> from) {
+        this.from = from;
+    }
     private boolean done;
 
     /** What it builds with, in the order it's spent. */
@@ -189,8 +196,8 @@ public final class Builder {
             stop();
             return new Progress.Failed("no blocks to build with");
         }
-        if (!withinReach(soldier, target) || overlaps(soldier, target)) {
-            standAt = inPlace ? null : standingSpot(world, soldier, target).orElse(null);
+        if (!withinReach(soldier, target) || overlaps(soldier, target) || !from.test(target, soldier)) {
+            standAt = inPlace ? null : standingSpot(world, soldier, target, from).orElse(null);
             // A stand the soldier never gets to - no route there - gives the cell up, as one with no
             // stand does: live in the squad simulation, a filler stood still for good walking nowhere.
             if (standAt != null && ++walking > WALK_TICKS) {
@@ -395,7 +402,7 @@ public final class Builder {
      * simulation, a soldier with the blocks for its own stair skipped its top step, the one stand
      * that reaches it left unlooked at.
      */
-    private static Optional<Position> standingSpot(WorldView world, Position soldier, BlockPos cell) {
+    private static Optional<Position> standingSpot(WorldView world, Position soldier, BlockPos cell, java.util.function.BiPredicate<BlockPos, Position> from) {
         Position best = null;
         double bestDistance = Double.MAX_VALUE;
         for (int dx = -3; dx <= 3; dx++) {
@@ -406,7 +413,7 @@ public final class Builder {
                     int z = cell.z() + dz;
                     Position spot = new Position(x + 0.5, y, z + 0.5);
                     if (!world.isSolid(x, y - 1, z) || world.isSolid(x, y, z) || world.isSolid(x, y + 1, z) || world.isHazard(x, y, z)
-                            || !withinReach(spot, cell, STAND_MARGIN) || overlaps(spot, cell)) {
+                            || !withinReach(spot, cell, STAND_MARGIN) || overlaps(spot, cell) || !from.test(cell, spot)) {
                         continue;
                     }
                     double distance = Math.hypot(spot.x() - soldier.x(), spot.z() - soldier.z()) + Math.abs(spot.y() - soldier.y());

@@ -175,6 +175,16 @@ class DiggerTest {
         assertEquals(Optional.empty(), Digger.findSpot(forest(Set.of(new BlockPos(40, GROUND, 0))), new BlockPos(0, GROUND, 0), Set.of(), Digger.Target.LOG));
     }
 
+    /** Rock breaks in its hardness's time with the pickaxe held, not a time fixed for the slowest: cobblestone, hardness 2. */
+    @Test
+    void cobblestoneBreaksInTheTimeOfThePickaxeHeld() {
+        io.github.jayessdeesea.minecraft.bot.world.Hardness cobblestone = new io.github.jayessdeesea.minecraft.bot.world.Hardness(2.0, 0);
+        assertEquals(30 + Breacher.MARGIN_TICKS, Digger.Target.ticksFor(cobblestone, item("wooden_pickaxe")));
+        assertEquals(15 + Breacher.MARGIN_TICKS, Digger.Target.ticksFor(cobblestone, item("stone_pickaxe")), "a third of the 45 it was given whatever was held");
+        assertEquals(10 + Breacher.MARGIN_TICKS, Digger.Target.ticksFor(cobblestone, item("iron_pickaxe")));
+        assertTrue(Digger.Target.ticksFor(cobblestone, item("stone_pickaxe")) < Digger.Target.COBBLESTONE.digTicks);
+    }
+
     @Test
     void ironOreTakesAStonePickaxeAndTheBestOneCarriedIsUsed() {
         Inventory inventory = new Inventory();

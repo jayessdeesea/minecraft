@@ -158,5 +158,13 @@ class TemplateGroundTest {
         assertTrue(SoldierErrands.madeOnMission(pickaxe, 1, 0), "no pickaxe: one is made");
         assertFalse(SoldierErrands.madeOnMission(pickaxe, 1, 1), "a second pickaxe waits");
         assertFalse(SoldierErrands.madeOnMission(armour, 1, 1), "armour waits");
+        // But for what's all in its pack already: nothing fetched, the task not left.
+        assertTrue(SoldierErrands.madeOnMission(armour, 1, 1, true), "armour from the ingots it carries");
+        assertTrue(SoldierErrands.madeOnMission(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.SHIELD, 1, 1, true));
+        assertFalse(SoldierErrands.madeOnMission(weapon, 1, 2, true), "a spare sword still waits");
+        var copper = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.COPPER_INGOT;
+        assertTrue(SoldierErrands.carried(io.github.jayessdeesea.minecraft.bot.craft.Recipe.COPPER_CHESTPLATE, k -> k == copper ? 8 : 0), "eight ingots: a chestplate");
+        assertFalse(SoldierErrands.carried(io.github.jayessdeesea.minecraft.bot.craft.Recipe.COPPER_CHESTPLATE, k -> k == copper ? 7 : 0));
+        assertFalse(SoldierErrands.carried(io.github.jayessdeesea.minecraft.bot.craft.Recipe.SHIELD, k -> 0), "no iron, no planks: no shield");
     }
 }

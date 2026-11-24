@@ -302,11 +302,11 @@ class PlatoonLeaderChatTest {
 
         Map<String, ToolDefinition> tools = Arrays.stream(ToolCallbacks.from(chat(scripted(new ArrayList<>()), NO_COMMANDS).tools("")))
                 .map(ToolCallback::getToolDefinition).collect(Collectors.toMap(ToolDefinition::name, d -> d));
-        assertEquals(List.of("cancelMission", "chunk", "chunkOfBlock", "chunks", "escort", "giveFarmMission", "giveMineshaftMission", "giveSupplyPointMission", "giveTreeFarmMission", "inventory", "lastDecision", "missions", "replacePlatoonMission",
+        assertEquals(List.of("cancelMission", "chunk", "chunkOfBlock", "chunks", "escort", "giveAnimalFarmMission", "giveFarmMission", "giveMineshaftMission", "giveSupplyPointMission", "giveTreeFarmMission", "inventory", "lastDecision", "missions", "replacePlatoonMission",
                 "setFlattenGround", "stores", "task", "tasks"), tools.keySet().stream().sorted().toList());
         assertTrue(tools.get("missions").description().contains("when the operator asks about missions or operations"));
         assertTrue(tools.get("tasks").description().contains("or about 'objectives' meaning the squads' assignments"));
-        for (String command : List.of("cancelMission", "escort", "giveFarmMission", "giveMineshaftMission", "giveSupplyPointMission", "giveTreeFarmMission", "replacePlatoonMission", "setFlattenGround")) {
+        for (String command : List.of("cancelMission", "escort", "giveAnimalFarmMission", "giveFarmMission", "giveMineshaftMission", "giveSupplyPointMission", "giveTreeFarmMission", "replacePlatoonMission", "setFlattenGround")) {
             assertTrue(tools.get(command).description().startsWith("A command - only when the operator asks for it in this turn."), command);
         }
         assertTrue(tools.get("giveFarmMission").inputSchema().contains("\"y\""), tools.get("giveFarmMission").inputSchema());

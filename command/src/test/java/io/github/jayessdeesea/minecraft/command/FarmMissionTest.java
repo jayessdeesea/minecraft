@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -127,5 +128,22 @@ class FarmMissionTest {
 
     private static boolean inside(int x, int z) {
         return x >= 16 && x <= 31 && z >= 48 && z <= 63;
+    }
+
+    /** An animal farm is a mission like the others: named by what's kept, found again by its name, flattened, floored and laid out. */
+    @Test
+    void anAnimalFarmIsNamedFoundAgainAndWorkedInThreeSteps() {
+        for (FarmMission.Crop crop : List.of(FarmMission.Crop.SHEEP, FarmMission.Crop.COW, FarmMission.Crop.PIG, FarmMission.Crop.CHICKEN)) {
+            FarmMission farm = new FarmMission(1, 2, 63, crop);
+            assertEquals("a " + crop.name().toLowerCase(java.util.Locale.ROOT) + " farm at chunk (1, 2) at y=63", farm.name());
+            assertEquals(Optional.of(farm), FarmMission.named(farm.name()), "found again by its name");
+            assertEquals(List.of(FarmMission.Kind.FLATTEN, FarmMission.Kind.FLOOR, FarmMission.Kind.PASTURE_TEMPLATE), farm.steps().stream().map(FarmMission.Step::kind).toList());
+            assertEquals(List.of(62, 62, 63), farm.steps().stream().map(FarmMission.Step::level).toList(), "its slab one under its level");
+        }
+        // And the names that were, read as they were.
+        assertEquals(FarmMission.Crop.WHEAT, FarmMission.named("a farm at chunk (1, 3) at y=63").orElseThrow().crop());
+        assertEquals(FarmMission.Crop.TREES, FarmMission.named("a tree farm at chunk (2, 3) at y=63").orElseThrow().crop());
+        assertEquals(FarmMission.Crop.STORES, FarmMission.named("a supply point at chunk (1, 2) at y=63").orElseThrow().crop());
+        assertEquals(FarmMission.Crop.MINE, FarmMission.named("a mineshaft at chunk (0, 2) at y=63").orElseThrow().crop());
     }
 }

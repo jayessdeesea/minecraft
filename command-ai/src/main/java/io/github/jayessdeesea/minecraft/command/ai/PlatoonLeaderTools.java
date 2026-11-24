@@ -187,6 +187,19 @@ final class PlatoonLeaderTools {
         return command("giveMineshaftMission " + x + " " + z + (y == null ? "" : " " + y), () -> commands.giveMineshaftMission(x, z, level));
     }
 
+    @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "giveAnimalFarmMission", description = "A command - only when the operator asks for it in this turn. Gives the "
+            + "mission for an animal farm - a sheep farm, a cow farm, a pig farm or a chicken farm - on the chunk a block is in, carried out in three "
+            + "phases: the chunk flattened a block under its level, floored there in cobblestone, then its template: dirt at its level with "
+            + "cobblestone under its fence and lights, the chunk fenced with a gate each side of each corner, torches on the fence and inside, "
+            + "and a chest for its feed. The animals themselves are brought in later, not by this. Quote its result.")
+    String giveAnimalFarmMission(@ToolParam(description = "which animal: sheep, cow, pig or chicken") String animal,
+                                 @ToolParam(description = "a block's x in the chunk") int x, @ToolParam(description = "a block's z in the chunk") int z,
+                                 @ToolParam(required = false, description = "its ground's level, only if the operator said one; leave it out for sea level")
+                                 Integer y) {
+        OptionalInt level = levelAsSaid(y, message);
+        return command("giveAnimalFarmMission " + animal + " " + x + " " + z + (y == null ? "" : " " + y), () -> commands.giveAnimalFarmMission(animal, x, z, level));
+    }
+
     @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "cancelMission", description = "A command - only when the operator asks for it in this turn. Cancels the farm "
             + "or tree farm mission open on a chunk: its phases not done are closed SUPERSEDED with the operator's reason kept, none deleted, and it "
             + "isn't taken up again. Quote its result.")

@@ -107,11 +107,28 @@ final class SoldierErrands {
      * 50 blocks each way, a block dug between.
      */
     static boolean madeOnMission(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass makes, int weapons, int pickaxes) {
+        return madeOnMission(makes, weapons, pickaxes, false);
+    }
+
+    /**
+     * As {@link #madeOnMission(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, int, int)}, and
+     * its armour and its shield too when all they're made of is in its pack already - {@code fromItsPack}: nothing is
+     * fetched for them, so the task isn't left (operator, 2026-11-24: soldiers not in armour, with so much copper; with
+     * every squad on a mission's step, the leave to rearm never came and nobody made any).
+     */
+    static boolean madeOnMission(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass makes, int weapons, int pickaxes, boolean fromItsPack) {
         return switch (makes) {
             case WEAPON -> weapons == 0;
             case PICKAXE -> pickaxes == 0;
+            case ARMOUR, SHIELD -> fromItsPack;
             default -> false;
         };
+    }
+
+    /** Whether everything {@code recipe} is laid out with is carried, by {@code count} of each kind: none of it to fetch or make first. */
+    static boolean carried(io.github.jayessdeesea.minecraft.bot.craft.Recipe recipe, java.util.function.ToIntFunction<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass> count) {
+        return recipe.key().values().stream().distinct().allMatch(kind -> count.applyAsInt(kind) >= recipe.rows().stream()
+                .flatMapToInt(String::chars).filter(ch -> kind.equals(recipe.key().get((char) ch))).count());
     }
 
     /**

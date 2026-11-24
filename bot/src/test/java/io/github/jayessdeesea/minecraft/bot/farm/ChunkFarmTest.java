@@ -150,7 +150,8 @@ class ChunkFarmTest {
         BlockPos post = farm.fence().get(5), gate = farm.gates().getFirst(), topped = farm.fence().get(9);
         BlockPos torch = farm.torches().getFirst();
         BlockPos tilled = farm.fence().get(12).offset(0, -1, 0), paved = farm.fence().get(20).offset(0, -1, 0), open = farm.fence().get(30).offset(0, -1, 0);
-        Set<BlockPos> blocks = Set.of(post, gate, topped, topped.offset(0, 1, 0), torch);
+        BlockPos floating = farm.ground().get(40).offset(0, 9, 0), overALine = post.offset(0, 6, 0);
+        Set<BlockPos> blocks = Set.of(post, gate, topped, topped.offset(0, 1, 0), torch, floating, overALine);
         Set<BlockPos> soil = Set.of(post);
         WorldView world = new WorldView() {
             @Override
@@ -190,12 +191,25 @@ class ChunkFarmTest {
         List<BlockPos> toPave = farm.footingsToPave(world);
         assertEquals(farm.footings().size() - 1, toPave.size(), "every footing of dirt, the tilled and the open among them - not the one in cobblestone");
         assertTrue(toPave.contains(tilled) && toPave.contains(open) && !toPave.contains(paved), toPave.toString());
-        assertEquals(Set.of(post, gate, topped.offset(0, 1, 0), torch), Set.copyOf(farm.obstructions(world)),
-                "dirt in a post's cell, cobblestone in a gate's, a block on a post, a block where a field torch goes - not the post under it");
+        assertEquals(Set.of(post, gate, topped.offset(0, 1, 0), torch, floating, overALine), Set.copyOf(farm.obstructions(world)),
+                "dirt in a post's cell, cobblestone in a gate's, a block on a post, a block where a field torch goes, and what hangs in its sky - not the post under it");
 
         FarmSite.Work work = FarmSite.work(world, farm);
         assertEquals(FarmSite.Stage.SURVEYED, work.stage(), "its ground isn't right till they're paved and dug: " + work);
         assertEquals(toPave, FarmSite.surveyed(world, farm).get(2), "the survey's third list");
+    }
+
+    /** A gate is put from across its fence line, so it shuts across the line: from along it, it stands a quarter turn round. */
+    @Test
+    void aGateIsPutFromAcrossItsLine() {
+        ChunkFarm farm = new ChunkFarm(1, 3, GROUND);
+        BlockPos onNorthLine = farm.gates().get(0), onEastLine = farm.gates().get(2);
+        assertEquals(new BlockPos(17, GROUND + 1, 48), onNorthLine);
+        assertTrue(ChunkFarm.across(onNorthLine, 17.5, 49.5) && ChunkFarm.across(onNorthLine, 17.5, 46.5), "from inside or outside, in its own x");
+        assertTrue(!ChunkFarm.across(onNorthLine, 18.5, 48.5) && !ChunkFarm.across(onNorthLine, 16.5, 49.5), "not from along the fence, nor aslant");
+        assertEquals(new BlockPos(32, GROUND + 1, 49), onEastLine);
+        assertTrue(ChunkFarm.across(onEastLine, 31.5, 49.5) && ChunkFarm.across(onEastLine, 34.5, 49.5));
+        assertTrue(!ChunkFarm.across(onEastLine, 32.5, 50.5));
     }
 
     /** A plot never holds a footing of the farm's chunk farms: nothing a fence, a gate or a torch stands on is tilled or sown. */

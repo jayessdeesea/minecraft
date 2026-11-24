@@ -149,7 +149,11 @@ started when the one before is measured done. "A tree farm at chunk (x, z)" (ope
 tree it's dirt. So: the chunk flattened a block under its level, a cobblestone slab laid there, its level paved in
 cobblestone but for its sixteen trees' cells (`FarmMissions.floorCells`), then the tree chunk's template on it - each tree's cell laid in dirt by its squad, one found paved dug out first
 (`TemplateGround.treeOrders`, `TreeChunk.soil`), and done when its sixteen saplings, its chest and its nine torches are in (`TreeChunk.Stage`); its chunk is the camp's tree chunk from then on, whatever the siting rule
-would have chosen (`CampTrees.take`), and after a restart too, read back from its template's row. "A supply point at
+would have chosen (`CampTrees.take`), and after a restart too, read back from its template's row. An **animal farm** (operator, 2026-11-24; the chat's
+`giveAnimalFarmMission` - sheep, cow, pig or chicken) is the same mission in three phases: flattened a block under its
+level, floored there, then its template (`bot.farm.PastureChunk`, one layout whatever is kept): dirt at its level laid
+by its squad (`TemplateGround.pastureOrders`), cobblestone under its fence, gates, torches and chest, then those put up
+(`bot.supply.Fixtures`) - done when nothing of its ground or fixtures is left. The animals are not this mission's. "A supply point at
 chunk (x, z)" (operator, 2026-11-22; the chat's `giveSupplyPointMission`) is the same again, in four phases: the chunk
 flattened a block under its level, a cobblestone slab laid there as under every template, its level paved in cobblestone
 over that (operator, 2026-11-23: stone at the level where a farm has dirt), then the supply point's template on it (`bot.farm.StoresChunk`:

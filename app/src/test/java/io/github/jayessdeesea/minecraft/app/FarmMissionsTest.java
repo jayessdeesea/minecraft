@@ -582,6 +582,23 @@ class FarmMissionsTest {
         assertTrue(reach.stream().anyMatch(c -> c.x() < 16), "its west side sloped as before");
     }
 
+    /** A squad on a mission's wheat farm, building or built, keeps that chunk farm - known by its mission, wherever water lies. */
+    @Test
+    void aMissionsWheatFarmIsKnownByItsObjectiveBuildingOrBuilt() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMissions missions = new FarmMissions(cause -> { });
+        missions.keptIn(new ObjectiveBook(() -> registers));
+        FarmMission wheat = FarmMission.atSeaLevel(1, 3);
+        missions.give(wheat, 0);
+        assertEquals(java.util.Optional.empty(), missions.wheatFarm(java.util.Optional.of(missions.objectives().getFirst())), "its flatten: no farm yet");
+        io.github.jayessdeesea.minecraft.command.Objective kept = new io.github.jayessdeesea.minecraft.command.Objective("Keep the wheat farm at chunk (1, 3)",
+                wheat.centre(wheat.steps().getLast()), "Food for the force", new io.github.jayessdeesea.minecraft.command.Objective.Task.Farm());
+        assertEquals(java.util.Optional.empty(), missions.wheatFarm(java.util.Optional.of(kept)), "nor one kept before it's built");
+        io.github.jayessdeesea.minecraft.command.Objective elsewhere = new io.github.jayessdeesea.minecraft.command.Objective("Keep the wheat farms",
+                new io.github.jayessdeesea.minecraft.command.Position(24.5, 67, 88.5), "Food for the force", new io.github.jayessdeesea.minecraft.command.Objective.Task.Farm());
+        assertEquals(java.util.Optional.empty(), missions.wheatFarm(java.util.Optional.of(elsewhere)));
+    }
+
     /**
      * A mission's place past its flatten is its own level's, kept as given; its flatten's is the ground's, found where the
      * squad stands. Live (field708-711) a tree farm's template at y=64 was put on its trees' canopy, y=69.

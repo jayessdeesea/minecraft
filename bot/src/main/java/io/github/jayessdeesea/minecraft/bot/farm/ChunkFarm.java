@@ -57,6 +57,15 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
                 new BlockPos(x0(), y, z1 - 1), new BlockPos(x0(), y, z0() + 1));
     }
 
+    /**
+     * Whether a gate in {@code gate}, on a chunk's line, is put from ({@code x}, {@code z}) facing across its line: a gate
+     * faces the way its builder looks, so one put from along the fence stands a quarter turn round, shut across nothing
+     * (operator, 2026-11-24). On a line along z - its x a chunk's edge - the stand is in the gate's own z; else its own x.
+     */
+    public static boolean across(BlockPos gate, double x, double z) {
+        return Math.floorMod(gate.x(), SIDE) == 0 ? (int) Math.floor(z) == gate.z() : (int) Math.floor(x) == gate.x();
+    }
+
     /** The fence posts, on the ground over its level: its four lines, the corners in, the gates out. */
     public List<BlockPos> fence() {
         int y = level + 1;
@@ -192,8 +201,25 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
                 in.add(cell);
             }
         }
+        // And its sky (operator, 2026-11-24: cobblestone floating in the farm): every column of it and its fence lines,
+        // from over what the nearer checks cover up to SKY blocks over its level, clear of anything put there - a step
+        // left hanging, a pillar's top. A tree's leaves and trunk aren't: the farm beside overhangs its line.
+        for (int dx = 0; dx <= SIDE; dx++) {
+            for (int dz = 0; dz <= SIDE; dz++) {
+                int x = x0() + dx, z = z0() + dz;
+                for (int y = level + 3; y <= level + SKY; y++) {
+                    BlockPos cell = new BlockPos(x, y, z);
+                    if (world.solidHere(x, y, z) && !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty() && !in.contains(cell)) {
+                        in.add(cell);
+                    }
+                }
+            }
+        }
         return in;
     }
+
+    /** How far over its level a farm's sky is kept clear. */
+    static final int SKY = 24;
 
     /** Whether a post's or gate's cell {@code c} holds a block known not to be one: ground, rock or a chest. */
     private static boolean wrong(WorldView world, BlockPos c) {

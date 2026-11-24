@@ -119,13 +119,47 @@ final class TemplateGround {
     }
 
     /**
-     * The {@code i}th of {@code n} soldiers' share of {@code farm}'s chunk farms' footings still to pave in cobblestone
+     * The {@code i}th of {@code n} soldiers' share of {@code farms}' footings still to pave in cobblestone
      * ({@code ChunkFarm.footingsToPave}): every {@code n}th of them, so each is one paver's. Its squad's work whenever
      * any stands unpaved - a farm built or building - as a floor's cells are a floor squad's.
      */
-    static List<BlockPos> footings(WorldView world, io.github.jayessdeesea.minecraft.bot.farm.FarmPlan farm, int i, int n) {
-        List<BlockPos> all = farm.chunks().stream().flatMap(c -> c.footingsToPave(world).stream()).distinct().toList();
+    static List<BlockPos> footings(WorldView world, List<ChunkFarm> farms, int i, int n) {
+        List<BlockPos> all = farms.stream().flatMap(c -> c.footingsToPave(world).stream()).distinct().toList();
         return java.util.stream.IntStream.range(0, all.size()).filter(k -> k % Math.max(1, n) == i).mapToObj(all::get).toList();
+    }
+
+    /**
+     * {@code squad}'s orders on an animal farm's ground still to lay: dirt in every cell of it but its footings, which
+     * are paved, each soldier a strip - one with none sent for a load. None once it's laid.
+     */
+    static Map<String, Order> pastureOrders(WorldView world, io.github.jayessdeesea.minecraft.bot.farm.PastureChunk pasture, List<SoldierStatus> squad,
+                                            Predicate<SoldierStatus> dirtInAChest, Set<String> fetching) {
+        List<BlockPos> missing = pasture.groundToLay(world);
+        if (missing.isEmpty() || squad.isEmpty()) {
+            return Map.of();
+        }
+        Set<Cell> footings = pasture.footings().stream().map(c -> new Cell(c.x(), c.y(), c.z())).collect(Collectors.toSet());
+        List<Tasking.Hand> hands = squad.stream().map(s -> new Tasking.Hand(s.name(), dirtInAChest.test(s) ? Tasking.LOAD
+                : s.condition().flatMap(Condition::kit).map(Kit::dirt).orElse(0))).toList();
+        Flatten chunk = new Flatten(pasture.chunkX() * 16, pasture.chunkZ() * 16, pasture.chunkX() * 16 + 15, pasture.chunkZ() * 16 + 15, pasture.level());
+        Map<String, Order> orders = new java.util.HashMap<>(Tasking.soil(hands, SiteGeometry.bounds(missing), SiteGeometry.soilBorrow(chunk), footings, fetching));
+        fetching.clear();
+        orders.forEach((soldier, order) -> {
+            if (order instanceof Order.Gather) {
+                fetching.add(soldier);
+            }
+        });
+        return orders;
+    }
+
+    /**
+     * The farm a squad on {@code objective} keeps when it's a mission's wheat farm, building or built: that chunk farm,
+     * its ground taken into its plot as it's laid - not whatever plot lies by the nearest water. Null for any other. With
+     * the plot by the water, its tenders had no fence, gate, torch or footing to see to, and stood.
+     */
+    static io.github.jayessdeesea.minecraft.bot.farm.FarmPlan missionFarm(FarmMissions missions, io.github.jayessdeesea.minecraft.command.Objective objective, WorldView world) {
+        return missions.wheatFarm(java.util.Optional.of(objective)).map(c -> new io.github.jayessdeesea.minecraft.bot.farm.FarmPlan(
+                c.holes().getFirst(), List.of(), List.of(), List.of(c)).withChunkGround(world)).orElse(null);
     }
 
     /** How far under a template's ground a missing cell's hole is followed down to fill it from its bottom. */

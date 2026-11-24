@@ -44,6 +44,9 @@ public final class Fixtures {
         this.name = name;
         this.inventory = inventory;
         MAKES.keySet().forEach(item -> builders.put(item, new Builder(name, session, inventory, List.of(item))));
+        // A gate faces the way it's put from: across its fence line, as a farm's are (ChunkFarm.across).
+        Optional.ofNullable(builders.get(ItemClass.FENCE_GATE)).ifPresent(b -> b.putFrom((gate, stand) ->
+                io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm.across(gate, stand.x(), stand.z())));
     }
 
     /** Whether {@code cell} is still open for a fixture: nothing in it, and ground under it. */

@@ -70,7 +70,7 @@ public final class FarmSite {
             if (!world.isSolid(c.x(), c.y(), c.z()) || world.isWater(c.x(), c.y(), c.z())) {
                 fill.add(c);
             }
-            for (int up = 1; up <= 3; up++) {
+            for (int up = 1; up <= 2; up++) { // from the third up it's the farm's sky (ChunkFarm.obstructions)
                 if (world.isSolid(c.x(), farm.level() + up, c.z())) {
                     dig.add(new BlockPos(c.x(), farm.level() + up, c.z()));
                 }
@@ -97,7 +97,7 @@ public final class FarmSite {
             } else if (!world.isFarmland(c.x(), c.y(), c.z())) {
                 till++;
             }
-            for (int up = 1; up <= 3; up++) {
+            for (int up = 1; up <= 2; up++) {
                 if (world.isSolid(c.x(), level + up, c.z())) {
                     dig++;
                 }

@@ -43,6 +43,14 @@ public class ChatCommands implements OperatorCommands {
         return give(x, z, level, FarmMission.Crop.MINE);
     }
 
+    @Override
+    public String giveAnimalFarmMission(String animal, int x, int z, OptionalInt level) {
+        FarmMission.Crop crop = java.util.Arrays.stream(FarmMission.Crop.values())
+                .filter(k -> k.animals() && k.name().equalsIgnoreCase(animal == null ? "" : animal.strip())).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("no animal farm for '" + animal + "': sheep, cow, pig or chicken"));
+        return give(x, z, level, crop);
+    }
+
     private String give(int x, int z, OptionalInt level, FarmMission.Crop crop) {
         String order = x + " " + z + (level.isPresent() ? " " + level.getAsInt() : "");
         FarmMission farm = FarmMission.parse(order, crop).orElseThrow(() -> new IllegalArgumentException(

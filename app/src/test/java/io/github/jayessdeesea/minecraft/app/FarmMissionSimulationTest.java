@@ -371,6 +371,55 @@ class FarmMissionSimulationTest {
     static final FarmMission STORES = new FarmMission(2, 0, GROUND, FarmMission.Crop.STORES);
 
     /**
+     * The eval: a chunk with a mound given a sheep farm's mission (operator, 2026-11-24: animal farms - cobblestone one
+     * under the level, dirt at it, fenced and lit so nothing spawns, gates at the corners). Its slab cobblestone, its
+     * ground dirt, its footings cobblestone, its fence, gates, torches and chest each in the cell its layout names, and
+     * its three steps DONE in order.
+     */
+    @Test
+    void aSheepFarmIsFlattenedFlooredLaidInDirtFencedGatedAndLit() throws IOException {
+        FarmMission sheepFarm = new FarmMission(STORES.chunkX(), STORES.chunkZ(), GROUND, FarmMission.Crop.SHEEP);
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FarmMissionSimulationTest::hills, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
+        Position chunk = sheepFarm.centre(sheepFarm.steps().getFirst());
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
+        chain.onOperatorFarm("Pat", sheepFarm);
+        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
+                new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
+                new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.ITEM_COBBLESTONE, 64}, new int[]{10, SimServer.ITEM_COBBLESTONE, 64},
+                new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 32},
+                new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_DIRT, 64}, new int[]{15, SimServer.ITEM_DIRT, 64}))).run();
+        clock.advance(120 * 60_000);
+        server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
+        List<String> log = Files.readAllLines(Path.of("target", "sim", "aSheepFarmIsFlattenedFlooredLaidInDirtFencedGatedAndLit.log"));
+        String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]")).toList();
+
+        io.github.jayessdeesea.minecraft.bot.farm.PastureChunk template = new io.github.jayessdeesea.minecraft.bot.farm.PastureChunk(
+                sheepFarm.chunkX(), sheepFarm.chunkZ(), GROUND, io.github.jayessdeesea.minecraft.bot.farm.PastureChunk.Animal.SHEEP);
+        assertEquals(List.of(), template.ground().stream().filter(c -> server.block(c.x(), c.y() - 1, c.z()) != SimServer.COBBLESTONE).limit(8).toList(),
+                "its slab cobblestone, one under its level" + missionLines);
+        assertEquals(List.of(), template.ground().stream().filter(c -> server.block(c.x(), c.y(), c.z()) != SimServer.DIRT
+                && server.block(c.x(), c.y(), c.z()) != SimServer.GRASS).limit(8).toList(), "its ground dirt" + missionLines);
+        assertEquals(List.of(), template.footings().stream().filter(c -> server.block(c.x(), c.y(), c.z()) != SimServer.COBBLESTONE).limit(8).toList(),
+                "its footings cobblestone" + missionLines);
+        assertEquals(List.of(), template.grid().fence().stream().filter(c -> server.block(c.x(), c.y(), c.z()) != SimItems.FENCE).limit(8).toList(), "its fence" + missionLines);
+        assertEquals(List.of(), template.grid().gates().stream().filter(c -> server.block(c.x(), c.y(), c.z()) != SimItems.GATE).limit(8).toList(),
+                "its gates, shut" + missionLines);
+        assertEquals(List.of(), template.torches().stream().filter(t -> server.block(t.x(), t.y(), t.z()) != SimServer.TORCH).limit(8).toList(), "its torches" + missionLines);
+        assertEquals(SimServer.CHEST, server.block(template.chest().x(), template.chest().y(), template.chest().z()), "its chest" + missionLines);
+
+        List<ObjectiveRecord> rows = new Registers(state.resolve("registers")).objectives().stream().filter(r -> r.mission().equals(sheepFarm.name())).toList();
+        assertEquals(List.of(0, 1, 2), rows.stream().map(ObjectiveRecord::step).toList(), "the mission's three steps: " + rows);
+        assertTrue(rows.stream().allMatch(r -> r.state() == ObjectiveRecord.State.DONE), "each DONE: " + rows + missionLines);
+    }
+
+    /**
      * The eval: a chunk with a mound given the supply point mission (operator, 2026-11-22: a supply dump near the farms).
      * Its ground cobblestone at its level, nothing over it but what's put there; its nine torches, its table and four
      * furnaces, and the twenty-four chests of its first two rows, each in the cell the layout names; no soldier walking

@@ -210,6 +210,11 @@ final class Digger {
             };
         }
 
+        /** Ticks to break {@code block} holding {@code item}, as the server times it, and its margin: a stone pickaxe on cobblestone, 15 and the margin. */
+        static int ticksFor(Hardness block, int item) {
+            return block.ticks(ItemClassRegistry.miningTier(item).orElse(Hardness.HAND), speedFor(block, item)) + Breacher.MARGIN_TICKS;
+        }
+
         /** The speed of {@code item} as the tool {@code block} wants, or 1 for a hand or the wrong tool. */
         static double speedFor(Hardness block, int item) {
             return switch (block.tool()) {
@@ -407,10 +412,14 @@ final class Digger {
                 // The server times the dig itself: finishing early is refused, so wait out its break time.
                 new Step("dig the " + target + " at " + block, () -> {
                     digStarted = ticks;
-                    digTicks = target == Target.OTHER || target == Target.ORE ? otherTicks() : target.digTicks(inventory);
+                    // Rock is timed by its own hardness and the pickaxe in hand, as the server times it - not a time fixed for
+                    // the slowest pickaxe, which had a stone one swinging three times as long as the block took.
+                    digTicks = target == Target.OTHER || target == Target.ORE || target.tool == ItemClass.PICKAXE && hardnessKnown()
+                            ? otherTicks() : target.digTicks(inventory);
                     dropsBefore = target.drop == null ? 0 : dropCount();
                     session.startDigging(block.x(), block.y(), block.z());
-                }, new Expect("the break time to pass", () -> ticks - digStarted >= digTicks), target.digTicks + Breacher.MARGIN_TICKS + 1),
+                }, new Expect("the break time to pass", () -> ticks - digStarted >= digTicks),
+                        Math.max(target.digTicks, target.tool == ItemClass.PICKAXE ? Clearing.MAX_DIG_TICKS : 0) + Breacher.MARGIN_TICKS + 1),
                 new Step("break the " + target, () -> session.finishDigging(block.x(), block.y(), block.z()),
                         new Expect("the " + target + " at " + block + " broken", () -> !target.at(world, block)), ANSWER_TICKS)));
         if (target.drop != null) {
@@ -449,7 +458,13 @@ final class Digger {
         int held = ItemClassRegistry.miningTier(item).orElse(Hardness.HAND);
         Hardness hardness = world.hardness(b.x(), b.y(), b.z())
                 .orElseThrow(() -> new IllegalStateException("no hardness for the block at " + b + " - it can't be broken"));
-        return hardness.ticks(held, Target.speedFor(hardness, item)) + Breacher.MARGIN_TICKS;
+        return Target.ticksFor(hardness, item);
+    }
+
+    /** Whether the world says how hard its block is: rock's break time is taken from that. */
+    private boolean hardnessKnown() {
+        BlockPos b = spot.block();
+        return world != null && world.hardness(b.x(), b.y(), b.z()).isPresent();
     }
 
     /** What of its drop it carries: for {@link Target#ORE}, any mineral or diamond - which one an ore drops is its own. */

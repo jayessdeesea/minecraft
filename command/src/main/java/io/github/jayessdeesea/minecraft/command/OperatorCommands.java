@@ -33,6 +33,14 @@ public interface OperatorCommands {
     String giveMineshaftMission(int x, int z, OptionalInt level);
 
     /**
+     * The mission for an animal farm - {@code animal} one of sheep, cow, pig, chicken - on the chunk a block is in. Not
+     * every implementation gives it: one that doesn't refuses loudly.
+     */
+    default String giveAnimalFarmMission(String animal, int x, int z, OptionalInt level) {
+        throw new UnsupportedOperationException("no animal farm missions here");
+    }
+
+    /**
      * The farm mission open on chunk ({@code chunkX}, {@code chunkZ}) cancelled: its phases not done closed SUPERSEDED,
      * {@code reason} kept in each row's why, none deleted - and not taken up again after a restart.
      */

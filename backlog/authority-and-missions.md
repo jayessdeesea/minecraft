@@ -229,6 +229,14 @@ levels the depositor reads (`StockLevels`, `ProductionLevels`). To build:
   the template (the first at chunk (1, 2)), each old chest emptied into the nearest one and taken up, and the mound it
   stood on cut to the ground round it - a condemned structure, as an old camp's is. With the chests cleaned out to the
   cap, above.
+- **A supply point's other rows** (operator, 2026-11-24: the supply dump is missing a bunch of chests): its template
+  puts up two of its four rows - food and building (`StoresChunk.FIRST_ROWS`) - and its kit row and its fuel and arrows
+  row not at all; all four, with backlog/depot-placement.md's choice of chest by row.
+- **A supply point's chests face the wrong way** (operator, 2026-11-24): a chest faces whoever puts it, and each is put
+  from the nearest stand, so a row's chests face every way and don't pair into doubles. Wanted: each row put from its
+  aisle's side, facing it (`Builder.putFrom`, as a gate is put from across its line). Tried from due south of each: the
+  supply point's simulation left chests of its two rows unplaced - the stands a row needs are the next row's cells; the
+  layout says which side each row's aisle is before this is done.
 
 ## Done when
 - Each step's eval passes; `OperatorChatScenarioIT` and the live chat probe stay at full marks.

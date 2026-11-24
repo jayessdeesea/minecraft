@@ -110,7 +110,7 @@ final class FarmMissions {
     /** Whether a step of {@code kind} lays a template on ground already made, digging and paving nothing. */
     private static boolean template(FarmMission.Kind kind) {
         return kind == FarmMission.Kind.FARM_TEMPLATE || kind == FarmMission.Kind.TREE_TEMPLATE || kind == FarmMission.Kind.STORES_TEMPLATE
-                || kind == FarmMission.Kind.MINE_HEAD || kind == FarmMission.Kind.MINE;
+                || kind == FarmMission.Kind.MINE_HEAD || kind == FarmMission.Kind.MINE || kind == FarmMission.Kind.PASTURE_TEMPLATE;
     }
 
     /**
@@ -172,7 +172,7 @@ final class FarmMissions {
                 case FLOOR -> new Objective.Task.Floor(m.layer(step.level()));
                 case FARM_TEMPLATE -> new Objective.Task.Farm();
                 case TREE_TEMPLATE -> new Objective.Task.TreeFarm();
-                case STORES_TEMPLATE, MINE_HEAD -> new Objective.Task.Stores();
+                case STORES_TEMPLATE, MINE_HEAD, PASTURE_TEMPLATE -> new Objective.Task.Stores();
                 case MINE -> new Objective.Task.Mine();
             };
             // A shaft's objective is its head's x and z and the depth to cut to: a MINE's y is a depth (NightRules.grounded).
@@ -206,6 +206,15 @@ final class FarmMissions {
         return objective.filter(o -> steps.contains(o.mission())).isPresent();
     }
 
+    /**
+     * The wheat farm {@code objective} is for, by its mission and not by whatever plot its squad found there: one whose
+     * template is being laid, or one built and kept. Its squad paves its footings and tends it as that chunk farm.
+     */
+    synchronized Optional<ChunkFarm> wheatFarm(Optional<Objective> objective) {
+        return template(objective).or(() -> objective.flatMap(o -> built.stream().filter(m -> m.crop() == FarmMission.Crop.WHEAT
+                && m.centre(m.steps().getLast()).equals(o.location())).findFirst()).map(m -> new ChunkFarm(m.chunkX(), m.chunkZ(), m.level())));
+    }
+
     /** The chunk farm whose template {@code objective} is - a wheat farm mission's last step, worked now - if it is one. */
     Optional<ChunkFarm> template(Optional<Objective> objective) {
         return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.FARM_TEMPLATE
@@ -222,8 +231,29 @@ final class FarmMissions {
                 .flatMap(c -> switch (c.getValue().kind()) {
                     case STORES_TEMPLATE -> java.util.stream.Stream.of(new StoresChunk(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level()).fixtures());
                     case MINE_HEAD -> java.util.stream.Stream.of(new io.github.jayessdeesea.minecraft.bot.farm.MineHead(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level()).fixtures());
+                    case PASTURE_TEMPLATE -> java.util.stream.Stream.of(pasture(c.getKey()).fixtures());
                     default -> java.util.stream.Stream.empty();
                 }).findFirst();
+    }
+
+    /** {@code m}'s animal farm, as its template lays it out. */
+    private static io.github.jayessdeesea.minecraft.bot.farm.PastureChunk pasture(FarmMission m) {
+        return new io.github.jayessdeesea.minecraft.bot.farm.PastureChunk(m.chunkX(), m.chunkZ(), m.level(),
+                io.github.jayessdeesea.minecraft.bot.farm.PastureChunk.Animal.valueOf(m.crop().name()));
+    }
+
+    /** The animal farm whose template {@code objective} is, worked now - if it is one: its squad lays its ground. */
+    Optional<io.github.jayessdeesea.minecraft.bot.farm.PastureChunk> pasture(Optional<Objective> objective) {
+        return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.PASTURE_TEMPLATE
+                && objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent()).map(c -> pasture(c.getKey())).findFirst();
+    }
+
+    /**
+     * The footings {@code objective}'s squad paves in cobblestone, if it's on a mission's wheat farm - building or built -
+     * or an animal farm's template: what its fence, gates, lights and chest stand on.
+     */
+    Optional<List<BlockPos>> footingsToPave(Optional<Objective> objective, WorldView world) {
+        return wheatFarm(objective).map(f -> f.footingsToPave(world)).or(() -> pasture(objective).map(f -> f.footingsToPave(world)));
     }
 
     /** The mineshafts mined dry, by their chunks' keys: told by whoever works them ({@link #mineDry}). */
@@ -470,6 +500,12 @@ final class FarmMissions {
                 yield dark == 0 && chest ? Optional.empty() : Optional.of((chest ? "" : "its chest is gone; ") + dark + " of its " + chunk.torches().size() + " torches gone");
             }
             case MINE -> Optional.empty(); // mined dry and done with: its ground is another template's next
+            case SHEEP, COW, PIG, CHICKEN -> {
+                io.github.jayessdeesea.minecraft.bot.farm.PastureChunk pasture = pasture(m);
+                Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> left = Fixtures.left(world, pasture.fixtures());
+                yield pasture.grounded(world) && left.isEmpty() ? Optional.empty() : Optional.of("to put right: " + pasture.groundToLay(world).size()
+                        + " of its ground, " + pasture.footingsToPave(world).size() + " footings, " + left.values().stream().mapToInt(List::size).sum() + " fixtures");
+            }
             case STORES -> {
                 StoresChunk stores = new StoresChunk(m.chunkX(), m.chunkZ(), m.level());
                 yield stores.stocked(world) ? Optional.empty() : Optional.of("back at " + stores.stage(world) + " - to put up again: "
@@ -614,6 +650,19 @@ final class FarmMissions {
             case MINE -> {
                 say(m, step, "its squad down it");
                 yield dry.contains(ChunkFarm.key(m.chunkX(), m.chunkZ())) ? Optional.of("mined dry: every level cut, its ore taken or noted") : Optional.empty();
+            }
+            case PASTURE_TEMPLATE -> {
+                io.github.jayessdeesea.minecraft.bot.farm.PastureChunk pasture = pasture(m);
+                if (!world.isLoaded(m.minX(), m.minZ()) || !world.isLoaded(m.minX() + 15, m.minZ() + 15)) {
+                    say(m, step, "not all of it in sight");
+                    yield Optional.empty();
+                }
+                int toLay = pasture.groundToLay(world).size(), toPave = pasture.footingsToPave(world).size();
+                Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> left = Fixtures.left(world, pasture.fixtures());
+                say(m, step, (toLay + toPave > 0 ? "GROUND - " + toLay + " cell(s) to lay in dirt, " + toPave + " footing(s) to pave; " : "")
+                        + "to put up: " + (left.isEmpty() ? "nothing" : left.entrySet().stream()
+                        .map(e -> e.getValue().size() + " " + e.getKey().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' ')).collect(Collectors.joining(", "))));
+                yield toLay + toPave == 0 && left.isEmpty() ? Optional.of("its ground laid, fenced, gated and lit, its chest up") : Optional.empty();
             }
             case STORES_TEMPLATE -> {
                 StoresChunk stores = new StoresChunk(m.chunkX(), m.chunkZ(), step.level());

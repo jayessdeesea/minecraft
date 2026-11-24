@@ -119,6 +119,7 @@ public final class Farmer {
         this.steps = steps;
         this.carrier = new WaterCarrier(name, session, inventory);
         FIXTURES.forEach(item -> builders.put(item, new Builder(name, session, inventory, List.of(item))));
+        builders.get(ItemClass.FENCE_GATE).putFrom((gate, stand) -> ChunkFarm.across(gate, stand.x(), stand.z())); // a gate faces the way it's put from
         this.holeFloor = new Builder(name, session, inventory, List.of(ItemClass.COBBLESTONE, ItemClass.DIRT));
         this.groundFill = new Builder(name, session, inventory, List.of(ItemClass.DIRT)); // farmland is tilled from dirt, never cobblestone
         // Cut from off the farmland: in the squad simulation, stands on the plot in its hollow had the

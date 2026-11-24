@@ -31,7 +31,14 @@ import java.util.regex.Pattern;
 public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
 
     /** What a mission makes of its chunk: wheat on a chunk farm, trees on a tree chunk, or the supply point's stores. */
-    public enum Crop { WHEAT, TREES, STORES, MINE }
+    public enum Crop {
+        WHEAT, TREES, STORES, MINE, SHEEP, COW, PIG, CHICKEN;
+
+        /** Whether it's an animal farm: one template, whatever is kept in it. */
+        public boolean animals() {
+            return this == SHEEP || this == COW || this == PIG || this == CHICKEN;
+        }
+    }
 
     public FarmMission {
         Objects.requireNonNull(crop, "crop");
@@ -46,7 +53,7 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
     public static final int SEA_LEVEL = 63;
 
     /** What a step of the mission is. */
-    public enum Kind { FLATTEN, FLOOR, FARM_TEMPLATE, TREE_TEMPLATE, STORES_TEMPLATE, MINE_HEAD, MINE }
+    public enum Kind { FLATTEN, FLOOR, FARM_TEMPLATE, TREE_TEMPLATE, STORES_TEMPLATE, MINE_HEAD, MINE, PASTURE_TEMPLATE }
 
     /** A step of the mission: its place in it, what it is, the level it works to, as said down the chain. */
     public record Step(int index, Kind kind, int level, String task) {
@@ -74,6 +81,10 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
             case TREES -> "tree farm";
             case STORES -> "supply point";
             case MINE -> "mineshaft";
+            case SHEEP -> "sheep farm";
+            case COW -> "cow farm";
+            case PIG -> "pig farm";
+            case CHICKEN -> "chicken farm";
         };
     }
 
@@ -90,6 +101,14 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
                     new Step(2, Kind.FLOOR, level, "pave " + chunk + " in cobblestone at y=" + level),
                     new Step(3, Kind.MINE_HEAD, level, "the mineshaft's head on " + chunk + " at y=" + level),
                     new Step(4, Kind.MINE, level, "mine the shaft under " + chunk + " till it's dry"));
+        }
+        if (crop.animals()) {
+            // An animal farm's ground (operator, 2026-11-24): the slab one under its level as every template has, dirt at
+            // its level, cobblestone under its fence and lights - laid with its template, then its fence, gates and torches.
+            return List.of(
+                    new Step(0, Kind.FLATTEN, level - 1, "flatten " + chunk + " to y=" + (level - 1)),
+                    new Step(1, Kind.FLOOR, level - 1, "floor " + chunk + " in cobblestone at y=" + (level - 1)),
+                    new Step(2, Kind.PASTURE_TEMPLATE, level, "the " + what() + " template on " + chunk + " at y=" + level));
         }
         if (crop == Crop.STORES) {
             // The slab one under its level as every template has, and cobblestone at the level too where a farm has dirt
@@ -120,13 +139,17 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
         return name() + ": " + step.task();
     }
 
-    private static final Pattern NAME = Pattern.compile("a (tree farm|farm|supply point|mineshaft) at chunk \\((-?\\d+), (-?\\d+)\\) at y=(-?\\d+)");
+    private static final Pattern NAME = Pattern.compile("a (tree farm|sheep farm|cow farm|pig farm|chicken farm|farm|supply point|mineshaft) at chunk \\((-?\\d+), (-?\\d+)\\) at y=(-?\\d+)");
 
     /** The mission {@code name} names, as {@link #name} says it: empty for any other. */
     public static Optional<FarmMission> named(String name) {
         Matcher m = NAME.matcher(name);
-        return m.matches() ? Optional.of(new FarmMission(Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)), Integer.parseInt(m.group(4)),
-                m.group(1).equals("farm") ? Crop.WHEAT : m.group(1).equals("tree farm") ? Crop.TREES : m.group(1).equals("mineshaft") ? Crop.MINE : Crop.STORES)) : Optional.empty();
+        if (!m.matches()) {
+            return Optional.empty();
+        }
+        // By the words its name says it in: a wheat farm's is "farm".
+        return java.util.Arrays.stream(Crop.values()).map(crop -> new FarmMission(Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)),
+                Integer.parseInt(m.group(4)), crop)).filter(f -> f.name().startsWith("a " + m.group(1) + " at")).findFirst();
     }
 
     /**

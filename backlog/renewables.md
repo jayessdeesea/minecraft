@@ -61,6 +61,14 @@ One cycle for wheat chunks, tree chunks and the supply point; only the template 
 - Live bug (field495): Ivy jumped 123 times from (-12, 65, 71), a one-block step climbed and come back down while a
   crop at (-12, 63, 87) was started three times and never done - a routine walking it out and back.
 
+### Animals
+- **Built (2026-11-24): the template and its mission** - `bot.farm.PastureChunk`, one layout for sheep, cows, pigs and
+  chickens: the slab one under its level, dirt at its level, cobblestone under its fence, gates, torches and chest;
+  fenced on the chunk's lines with a gate each side of each corner, put from across its line; a torch on every fourth
+  post and nine inside; a chest for its feed. Ordered through the chat (`giveAnimalFarmMission`), three phases.
+- **Left**: the animals - found, lured with their feed (a pig's has no kind yet) through a gate, bred, counted, culled
+  for food, wool and leather; the base plan siting them; a built one reviewed and kept as a wheat farm is.
+
 ### Trees
 - **Every template's ground, one rule** (operator, 2026-11-23): cobblestone one under the level, all of it; and
   cobblestone at the level too, except where it can't be - a wheat farm's field cells are dirt, but not under its fence
@@ -68,7 +76,8 @@ One cycle for wheat chunks, tree chunks and the supply point; only the template 
   tree farm and a supply point; a supply point's level paved; a tree farm's level paved but for the dirt under its
   trees; a wheat farm's footings - under its fence, gates, field torches and chest - paved in cobblestone by its tenders,
   built or building (`ChunkFarm.footingsToPave`), and what stands in a fixture's place dug out (`ChunkFarm.obstructions`).
-  Left: a mineshaft's head given its slab and its level paved round the shaft; the same two lists for the tree farm, the
+  Left: a gate standing a quarter turn round is found and put again (the world's view can't say which way one faces
+  yet; new ones are put from across their line); a mineshaft's head given its slab and its level paved round the shaft; the same two lists for the tree farm, the
   supply point and the mineshaft's head - the conformance pass below.
 - **Birch first** (operator, 2026-11-23: wood that grows predictably): a planter takes birch if it carries any, then
   spruce, then any other (docs/military-doctrine.md § 12). Left: a tree template never planted with oak or acacia

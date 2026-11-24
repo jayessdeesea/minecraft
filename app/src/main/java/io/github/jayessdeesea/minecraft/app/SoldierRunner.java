@@ -5066,7 +5066,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         boolean baseOrdered = taskOf(squadName, Objective.Task.PatrolBase.class).isPresent();
         // The farm: the plot round the water nearest the platoon leader's objective, kept while the
         // objective stays put - a farm is tended for days, not re-sited each cycle.
-        FarmPlan farm = taskOf(squadName, Objective.Task.Farm.class).map(o -> {
+        FarmPlan farm = taskOf(squadName, Objective.Task.Farm.class).map(o -> { FarmPlan its = TemplateGround.missionFarm(chainOfCommand.farmMissions, o, world); if (its != null) return its;
             BlockPos at = BlockPos.containing(o.location().x(), o.location().y(), o.location().z());
             // Kept for the point it was sited for, as a wall is: live, its water lay just over the
             // radius from the site, and it was sited afresh every cycle, found or not by where a soldier stood.
@@ -5235,7 +5235,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 at -> woodsBook.spent(chainOfCommand, at, clockwork.millis()), clockwork.millis()); // its strips kept, a cut-out one's woodcutter alone moved
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         // A farm mission's template whose ground isn't laid: the whole squad lays it in dirt, not its tender alone (app.TemplateGround).
-        chainOfCommand.farmMissions.template(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.orders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); chainOfCommand.farmMissions.trees(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.treeOrders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); // and a tree template's trunks with nothing under them
+        chainOfCommand.farmMissions.template(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.orders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); chainOfCommand.farmMissions.trees(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.treeOrders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); chainOfCommand.farmMissions.pasture(objectiveOf(squadName)).ifPresent(a -> ground.putAll(TemplateGround.pastureOrders(world, a, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); // and a tree template's trunks with nothing under them
         statuses.forEach(s -> policeCall.order(s, ground.containsKey(s.name()), withoutWork.alarmed(s.name()) || idleWatch.alarmed(s.name()) && s.report() instanceof Report.Cantco,
                 world, scaffolding, stepPlacedAt, activeSoldiers.values().stream().map(d -> d.status().position()).toList(),
                 Optional.ofNullable(campWallKey).map(walls::get).map(Set::copyOf).orElse(Set.of()), clockwork.millis()).ifPresent(o -> ground.put(s.name(), o)));
@@ -5721,7 +5721,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // A floor's paver (Objective.Task.Floor): its strip of the layer, and short of cobblestone, a draw from the stockpile holding some.
             Optional<Objective.Task.Floor> floorTask = taskOf(squadName, Objective.Task.Floor.class).filter(o -> !squadInContact).map(o -> (Objective.Task.Floor) o.task());
             int strip = i;
-            floorTask.map(f -> chainOfCommand.farmMissions.share(f.layer(), campFarm, strip, statuses.size())).or(() -> Optional.ofNullable(farming.get(soldierName)).filter(f -> !squadInContact).map(f -> TemplateGround.footings(world, f, 0, 1)).filter(c -> !c.isEmpty() && (statuses.get(strip).condition().flatMap(k -> k.kit()).filter(k -> k.stone() > 0).isPresent() || chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false)))).ifPresentOrElse(c -> paving.put(soldierName, c), () -> paving.remove(soldierName)); // or, keeping a farm, its footings: cobblestone under its fence and torches - with cobblestone carried or in the stores: with none a paver holds its farm's work up for nothing
+            floorTask.map(f -> chainOfCommand.farmMissions.share(f.layer(), campFarm, strip, statuses.size())).or(() -> chainOfCommand.farmMissions.footingsToPave(objectiveOf(squadName), world).or(() -> Optional.ofNullable(farming.get(soldierName)).map(f -> TemplateGround.footings(world, f.chunks(), 0, 1))).filter(f -> !squadInContact).filter(c -> !c.isEmpty() && (statuses.get(strip).condition().flatMap(k -> k.kit()).filter(k -> k.stone() > 0).isPresent() || chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false)))).ifPresentOrElse(c -> paving.put(soldierName, c), () -> paving.remove(soldierName)); // or, keeping a farm, its footings: cobblestone under its fence and torches - with cobblestone carried or in the stores: with none a paver holds its farm's work up for nothing
             if (paving.containsKey(soldierName) && statuses.get(i).condition().flatMap(c -> c.kit()).filter(k -> k.stone() == 0).isPresent()
                     && chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false) && stockpileFor(soldierName).isPresent()) {
                 drawingStone.add(soldierName);
@@ -7972,7 +7972,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig,
                 upgradeAllowed.getOrDefault(name, false) ? highest : Math.min(highest, Ladder.BASIC_LOAD),
                 camp == null ? Optional.empty() : Optional.of(campLevel), r -> (cutting.containsKey(name) ? LoadPlan.MINING : LoadPlan.FLATTENING).putsAway(r, inventory)); // nor what its load puts away
-        Optional<Recipe> made = upgradeAllowed.getOrDefault(name, false) ? next : next.filter(r -> SoldierErrands.madeOnMission(r.makes(), inventory.meleeWeapons(), inventory.count(ItemClass.PICKAXE)));
+        Optional<Recipe> made = upgradeAllowed.getOrDefault(name, false) ? next : next.filter(r -> SoldierErrands.madeOnMission(r.makes(), inventory.meleeWeapons(), inventory.count(ItemClass.PICKAXE), SoldierErrands.carried(r, inventory::count)));
         made.ifPresentOrElse(r -> rungsWanted.put(name, Ladder.rungOf(r)), () -> rungsWanted.remove(name));
         return made;
     }
