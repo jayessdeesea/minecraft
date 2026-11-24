@@ -824,24 +824,9 @@ final class FarmMissions {
         return missions.keySet().stream().filter(o -> !o.equals(m)).map(o -> ChunkFarm.key(o.chunkX(), o.chunkZ())).collect(Collectors.toSet());
     }
 
-    /** The columns a template's ground stands on, but {@code m}'s own chunk's: its box, fence lines and all, never dug or paved. */
+    /** The columns {@code m} keeps off: every template's as last measured but its own chunk's ({@link KeptGround#columns}). */
     private BiPredicate<Integer, Integer> kept(FarmMission m, FarmPlan campFarm) {
-        Set<Long> templates = made(campFarm);
-        long own = ChunkFarm.key(m.chunkX(), m.chunkZ());
-        return (x, z) -> {
-            // A template's box is its chunk and the fence lines past it: x0..x0+16, so a column on a line is its west neighbour's too.
-            for (int dx = 0; dx <= 1; dx++) {
-                for (int dz = 0; dz <= 1; dz++) {
-                    int cx = Math.floorDiv(x, 16) - (dx == 1 && Math.floorMod(x, 16) == 0 ? 1 : 0);
-                    int cz = Math.floorDiv(z, 16) - (dz == 1 && Math.floorMod(z, 16) == 0 ? 1 : 0);
-                    long key = ChunkFarm.key(cx, cz);
-                    if (key != own && templates.contains(key)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        };
+        return KeptGround.columns(made(campFarm), m);
     }
 
     /** Whether block column ({@code x}, {@code z}) is on a template's ground: a chunk made one, or a mission's whose template is being laid. */

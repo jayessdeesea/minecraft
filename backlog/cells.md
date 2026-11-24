@@ -46,7 +46,7 @@ today (`bot.farm.ChunkFarm`, `TreeChunk`), and a mine's way down is sited by sea
 
 ### Kept structures
 - A stairwell is a kept structure every dig, fill and pave skips, at every height of its column, kept on disk
-  wherever it is. The one list is `SoldierRunner.groundExcept`; a mine away from the camp is on disk only while it's
+  wherever it is. The one list is `KeptGround.ground`; a mine away from the camp is on disk only while it's
   the camp's, so after a restart another's cells aren't protected.
 - A cell's floor is inspected like a wall: a crater is filled and paved again, in stone straight away rather than
   dirt then a second trip, and never over a mine head or stairwell.

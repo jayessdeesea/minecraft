@@ -85,7 +85,7 @@ class ArchitectureTest {
      * and come off this list once under (backlog/split-oversized-sources.md).
      */
     static final Map<String, Integer> OVER_THE_LIMIT = Map.of(
-            "app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java", 8042);
+            "app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java", 7987);
 
     /**
      * The state `SoldierRunner` holds, counted as its declarations at class level - fields and constants, a line each,

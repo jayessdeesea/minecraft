@@ -2196,36 +2196,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Flatten ground = chainOfCommand.flatten();
         Optional<List<FlattenPlan.Column>> missionReach = chainOfCommand.farmMissions.reach(ground, campFarm); // a farm mission's chunk and its slopes
         Set<Cell> kept = groundExcept();
-        Set<Cell> digExcept = new HashSet<>(kept);
-        Box slab = ground.slab();
-        for (int x = slab.minX(); x <= slab.maxX(); x++) {
-            for (int z = slab.minZ(); z <= slab.maxZ(); z++) {
-                for (int y = slab.minY(); y <= slab.maxY(); y++) {
-                    // The slab's own cobblestone, and rock, which is as good: kept. Live in the squad
-                    // simulation, a block laid was the dig's again, and dug and laid in turn.
-                    // A soil site's top keeps its soil instead, and its rock is dug for dirt to go in.
-                    if (ground.soil() ? world.isSoil(x, y, z) : world.isStone(x, y, z) || world.isCobblestone(x, y, z)) {
-                        digExcept.add(new Cell(x, y, z));
-                    }
-                }
-            }
-        }
-        // Salvage (backlog/salvage-and-pack.md): a chest standing on the ground to flatten - the old depot's,
-        // the site moved onto it - is emptied into the depot before it's dug; till it's seen empty it stands
-        // on a pillar of the ground under it and round it, so its salvager can still reach it. Dug, a chest spills what it holds on the ground.
-        Set<BlockPos> condemnedNow = condemned(ground, hands);
-        for (BlockPos c : condemnedNow) {
-            if (emptied(c)) {
-                continue;
-            }
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dz = -1; dz <= 1; dz++) {
-                    for (int y = ground.bottom(); y <= c.y(); y++) {
-                        digExcept.add(new Cell(c.x() + dx, y, c.z() + dz));
-                    }
-                }
-            }
-        }
+        // Salvage (backlog/salvage-and-pack.md): a chest standing on the ground to flatten is emptied into the depot before
+        // it's dug; till it's seen empty it stands on a pillar of that ground (KeptGround.keep).
+        Set<Cell> digExcept = KeptGround.keep(world, ground, kept, condemned(ground, hands).stream().filter(c -> !emptied(c)).toList());
         // Each squad on the keep its own share of it, west to east in the roster's order: two squads
         // splitting the whole site each, every strip was two soldiers'.
         List<String> onKeep = squadStates.keySet().stream().filter(s -> taskOf(s, Objective.Task.Keep.class).isPresent()).sorted().toList();
@@ -2331,7 +2304,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .orElse(stepTops.values().stream().mapToInt(Integer::intValue).max().orElse(ground.bottom()));
         // Not built up for now (operator, 2026-11-15): taken down to its ground and left. A soil site's top
         // is: the gaps its rock left, filled with dirt.
-        Box soilShare = slab.strips(Math.max(1, onKeep.size())).get(share);
+        Box soilShare = ground.slab().strips(Math.max(1, onKeep.size())).get(share);
         // Water over the level in its share filled now, whatever's left to dig: then it's ground, dug in its turn (operator, 2026-11-22).
         List<BlockPos> shareWater = siteClears.water().stream().filter(c -> c.x() >= digShare.minX() && c.x() <= digShare.maxX() && c.z() >= digShare.minZ() && c.z() <= digShare.maxZ()).toList();
         List<BlockPos> toFill = !shareWater.isEmpty() ? shareWater : !toDig.isEmpty() ? List.of() : ground.soil() ? Clearing.toFill(world, soilShare, kept)
@@ -3738,10 +3711,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** What no ground work digs or fills: the camp's kept structures, its mine, and every squad's stairs. */
     private Set<Cell> groundExcept() {
-        Set<Cell> except = new HashSet<>();
-        Stream.concat(Stream.concat(campKeep().stream(), campMine().stream()), squadStates.values().stream().filter(s -> s.stairs != null)
-                .flatMap(s -> Stream.concat(s.stairs.walkway().stream(), s.stairs.landing().stream()))).forEach(c -> except.add(new Cell(c.x(), c.y(), c.z())));
-        return except;
+        Set<BlockPos> campKeep = KeptGround.camp(world, new KeptGround.Camp(walls.values(), chainOfCommand.foothold().map(Foothold::camp), CAMP_RADIUS,
+                fortifying.values().stream().map(f -> new KeptGround.Hut(f.stand(), f.cells())).toList(),
+                squadStates.values().stream().map(s -> s.builtBase).filter(Objects::nonNull).toList(), workshops.values(), Optional.ofNullable(campWorkshop),
+                chestClaims(), DEPOT_CHESTS, fullChests, c -> condemned.contains(c) && emptied(c)));
+        return KeptGround.ground(campKeep, campMine(), squadStates.values().stream().map(s -> s.stairs).filter(Objects::nonNull).toList());
     }
 
     /** Whether {@code cell} is a structure's - a wall line's, or the keep's slab - where a step goes in as cobblestone. */
@@ -4446,35 +4420,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The camp's mine's walkway and landing, as kept on disk: empty for no camp, or no mine sited. */
     private List<BlockPos> campMine() {
         return campStairs().map(s -> Stream.concat(s.walkway().stream(), s.landing().stream()).toList()).orElse(List.of());
-    }
-
-    private Set<BlockPos> campKeep() {
-        Set<BlockPos> keep = new HashSet<>();
-        // Never the wall: levelled round the camp's ground, not the wall's centre, its high ground
-        // took in the wall's own blocks, dug out as the masons put them back - live, soldiers broke blocks and put them back all day.
-        walls.values().forEach(keep::addAll);
-        // A hut going up is kept as well as one built: cobblestone over the floor is dug by day. Only one on the camp's
-        // level, or none of its ground's: one on ground still to come down is the night's, dug with it (CampGround.hutKept).
-        Optional<Position> camp = chainOfCommand.foothold().map(Foothold::camp);
-        fortifying.values().stream().filter(f -> CampGround.hutKept(f.stand(), camp, CAMP_RADIUS)).forEach(f -> keep.addAll(f.cells()));
-        for (SquadState s : squadStates.values()) {
-            if (s.builtBase != null && CampGround.hutKept(s.builtBase.floor().getFirst(), camp, CAMP_RADIUS)) {
-                s.builtBase.cells().forEach(c -> keep.add(BlockPos.containing(c.x(), c.y(), c.z())));
-                s.builtBase.floor().forEach(c -> keep.add(BlockPos.containing(c.x(), c.y() - 1, c.z())));
-            }
-        }
-        List<Workshop> shops = new ArrayList<>(workshops.values());
-        if (campWorkshop != null) {
-            shops.add(campWorkshop);
-        }
-        // Each workshop's stand, table, furnace and chest, and each chest found full that stands with its stores (SiteGeometry.fullKept): the upkeep digs no stores out.
-        // And every chest standing in the camp workshop's row: live (field487), idle squads dug them out of it.
-        Stream.concat(Stream.concat(shops.stream().flatMap(w -> Stream.concat(Stream.of(w.stand(), w.table(), w.furnace()), w.chest().stream())),
-                                SiteGeometry.fullKept(fullChests, c -> world.isChest(c.x(), c.y(), c.z()), c -> condemned.contains(c) && emptied(c)).stream()),
-                        campWorkshop == null ? Stream.empty() : campWorkshop.chestCells(world, chestClaims(), DEPOT_CHESTS).stream()
-                                .filter(c -> world.isChest(c.x(), c.y(), c.z())))
-                .forEach(c -> keep.addAll(List.of(c, c.offset(0, -1, 0))));
-        return keep;
     }
 
     /** How far below the stairs' head a soldier is down the mine, for the mine base's workshop. */
