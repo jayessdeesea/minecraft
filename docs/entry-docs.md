@@ -10,6 +10,7 @@ matters more than keeping them complete: everything else has a home of its own a
 | `README.md` | Anyone landing on the repo: a visitor, a new contributor, someone weighing the results | What is this, why does it exist, how is it built? |
 | `DEVELOPMENT.md` | Someone with a fresh clone who wants it running | What do I type, in what order, and how do I know it worked? |
 | `AGENTS.md` | Anyone (human or agent) about to change the code | Which rules always apply, and where's the reference for this change? |
+| `CLAUDE.md` | Claude Code | It imports `AGENTS.md`, then lists what is wired for Claude Code alone under `.claude/`. It states no rule: a rule goes in `AGENTS.md` or `docs/`, where every tool reads it. |
 | `docs/` | Someone who needs the detail of one subsystem | How does this part work, exactly? |
 | `backlog/` | Someone choosing what to work on | What's planned or open? |
 

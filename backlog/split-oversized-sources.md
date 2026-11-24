@@ -77,3 +77,14 @@ with the file's cap in `OVER_THE_LIMIT` lowered behind it.
 
 ## Done when
 `OVER_THE_LIMIT` is empty.
+
+## What a smaller model needs that isn't there yet (operator, 2026-11-24)
+docs/conventions.md's refactor section gives the measure: a smaller model can make the change. Not met today:
+- **No package says what it owns**: there is no `package-info.java` in `bot`, `command` or `app`. One a package, a few
+  lines: what it decides, what it never does, its way in.
+- **`ArchitectureTest`'s failures don't all say where the rule lives**: each message names its doc section and what to
+  do instead.
+- **The caps are met by packing** (backlog/one-home.md, B10): the ratchets count declarations and statements, not lines.
+- **The first trial**: one of backlog/engagement-rules.md's changes - a row group flipped, its rule added to
+  `bot.Contact` - given to a smaller model with only that item for a brief; what it gets wrong, and what it had to read
+  to get it right, written here.

@@ -175,6 +175,15 @@ levels the depositor reads (`StockLevels`, `ProductionLevels`). To build:
   never). Left: what a soldier carries that its squad's task doesn't want - seeds and saplings on a paver, 11 chests -
   put down at the nearest depot once, at the task's start, as part of taking the task; and thrown away if there is no
   room for it. And a paver's cobblestone drawn as a full load before it's out, from the nearest chest holding some: today it draws at none left, and a draw asked for 32 took the chest's 627 (`Depositor.tickDraw`) - tried once with three stacks and it and the stores passed the load back and forth; wants its own eval.
+- **Things in the right chests** (operator, 2026-11-24: the stockpile template's anti-entropy should make sure stuff is
+  in the right chests). A kind's row is named (`StoresChunk.Row.of`, `MineHead.Bank.of`) and a chest's row is known
+  (`rowAt`); the depositor's choice of chest reads neither, and no review compares them. Wanted: a load goes to its
+  kind's row, the next chest of that row put up when it is full; and a supply point's or a mineshaft head's review
+  lists each chest's stacks whose row isn't the chest's - as last seen: a chest not opened lately is opened by the
+  review - and orders a sort, taken out and carried to its row. One table of a kind's supply class for rows, banks
+  and the stockpile's getters (backlog/one-home.md, A18), on the templates' one layout interface. Evals: a supply
+  point with cobblestone in the food row - sorted, and the next load of each kind put in its own row; a row full -
+  its next chest put up, nothing put in another row's.
 - **A stock policy the platoon leader gives**, by kind: keep up to so many, throw out past it - cobblestone and dirt
   past a few stacks a chest row, seeds past 1,024 (operator), and so on - computed from what the stores hold against
   what the missions ordered will use, said as an order and kept with its missions.

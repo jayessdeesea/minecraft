@@ -24,6 +24,10 @@ bin/
 # IDE - VS Code
 .vscode/
 
+# Claude Code: agents' worktrees, and a user's own settings
+.claude/worktrees/
+.claude/settings.local.json
+
 # Logs
 *.log
 logs/

@@ -57,6 +57,10 @@ Each points to its home, which has the reasons.
   in the same commit. [docs/conventions.md](docs/conventions.md#docs)
 - **Check the outcome of what the force is sent to do:** a task that should yield is checked
   against what it yielded, and a miss is dug into. [docs/conventions.md](docs/conventions.md#check-the-outcome-of-what-the-force-is-sent-to-do)
+- **A contact met live is a row first:** a combination of weapon, armour, health, hostile and ground not in the table
+  of evals is added with today's answer before any fix; the fix flips it. [docs/conventions.md](docs/conventions.md#a-contact-met-live-is-a-row-first)
+- **One home for a fact; a pass re-reads what its code assumes.** A change needed in two places to stay consistent is
+  the fault. [docs/conventions.md](docs/conventions.md#refactor-every-sixteenth-commit-between-profiles)
 - **A retry changes something:** wait longer and out of step, then another target, another means, ask for help, give
   it up and say so - never the same try again; and the count is logged. [docs/conventions.md](docs/conventions.md#a-retry-changes-something)
 - **Refactor every sixteenth commit, between profiles:** 8 past each profile, measure with `tools/ops/hotspots.sh` and make one
@@ -85,4 +89,4 @@ Each points to its home, which has the reasons.
 | [docs/world-data-spec.md](docs/world-data-spec.md) | Chunk, block-state and light data the client decodes. |
 | [docs/entry-docs.md](docs/entry-docs.md) | Before editing README.md or DEVELOPMENT.md. |
 | [docs/loop.md](docs/loop.md) | Watching the running garrison toward the operator's goals, pass after pass: the watch loop. |
-| [backlog/](backlog/README.md) | Choosing work. "Work on the backlog" is the `work-on-backlog` skill. |
+| [backlog/](backlog/README.md) | Choosing work, and the procedure for "work on the backlog". |

@@ -231,10 +231,36 @@ Not only on the count. Three things call for the pass at the next commit, whatev
 - **A fix touched one decision in three places.** It has one home after.
 - **Two measures of one fact disagreed** - what's counted and what's worked. One is derived from the other after.
 - **A file is in "returned to" twice running**: the fixes there aren't holding.
+- **A change had to be made in two places to stay consistent** (operator, 2026-11-24) - a constant, a predicate, a
+  ladder over the same kinds: that is the fault, not the two edits. The fact has one home after and the rest read
+  it; where the copies had drifted apart, which is right is decided and said, not averaged
+  ([backlog/one-home.md](../backlog/one-home.md) lists the ones found).
+
+**A pass re-reads what its code assumes** (operator, 2026-11-24). What a comment, a name or a constant takes for
+granted was true when it was written: one camp, one mine, a level, a model deciding, work ending at dusk, a guard for a
+case that can't arise now. Each one in the files a pass opens is checked against the code as it is. One that no
+longer holds isn't put right in the pass - that changes an answer - but written into `backlog/` with the line that
+states it and the line that contradicts it, and fixed as its own change; a guard whose case is gone is deleted the
+same way, with the test that shows it gone.
 
 A pass makes the next change cheaper to hold in mind: a decision as a pure function over value types with its unit
 test, in a file of one job, is what a smaller model can own end to end; a decision threaded through a file of
 eight thousand lines is not.
+
+**The measure is whether a smaller model can make the change** (operator, 2026-11-24: the refactoring should make it
+easier for lower-tier models to work in the code base). A pass is aimed at what stops one:
+- **One decision, one file, one table.** To change an answer it reads the function, its table of evals and the rule's
+  doc section - not the runner. Where a change needs a second file to stay consistent, that is the next extraction.
+- **Inputs as values, said in the signature.** No field read from the middle of a tick, no order of calls to know: what
+  a decision depends on is its arguments.
+- **A fast answer to "did I break it".** A decision's own tests in seconds and the quick tier in a minute; a failure
+  that says which rule broke and where its home is.
+- **Nothing to know that isn't written where the work is.** A rule a change must keep is in `AGENTS.md`'s index or the
+  doc it points at, not in a comment three files off.
+
+It is checked, not supposed: after a pass, a small real change in the area it touched - a row flipped, a rule added -
+is given to a smaller model with only the backlog item for a brief. Where it goes wrong is the next pass's target, and
+is written into [backlog/split-oversized-sources.md](../backlog/split-oversized-sources.md).
 
 ## A comment is the rule and its reason
 

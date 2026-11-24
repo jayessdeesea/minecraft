@@ -90,3 +90,23 @@ goal beyond the ground kept, and 15 are stuck alone. Of those, as first read:
 - **A stand in its own way** (Dana, rearming at a table: ended 1.7 off the stand it started on).
 To build: the triage's STUCK cases read one by one, the fault of each fixed and its case registered; a goal beyond
 the recorded ground recorded wider (the snapshot is 24 each way of the soldier, the goal often 30 off).
+
+## Three soldiers in a cave under a finished template (live, 2026-11-24)
+Alice, Bob and Carol were sent, one after another, to take back a step left in a cave under a placeholder's floor, were
+stranded there, and their recovery stair was cut up through the floor - which the mission then called done. Four
+things, each a test first:
+- **A step left is taken back only where a walk reaches it.** `PoliceCall`'s reach is 16 across and 4 down, measured
+  through a floor: a step under one is another level's, and nobody goes underground for it.
+- **A recovery stair asks what a mission keeps before it cuts** - a template's floor is kept (backlog/kept-ground.md:
+  the stair's cut asks `bars`, with the templates' columns) - and where the only way up is through one, it is said,
+  cut, and paved behind the last soldier out.
+- **A template's review reads its floor**: a placeholder's drift is its fixtures and sky; its floor is settled at the
+  FLOOR step and never read again (the templates' one drift check).
+- **The walk out that is refused**: a plain search over the snapshot reaches the surface from (10, 61, 25); the
+  pathfinder says no route, as it does for Pete at (33, 41, 34). Not traced.
+
+## A strip whose soldier can't work it is nobody's (live, 2026-11-24)
+A floor's cells are dealt in strips by a soldier's place in its squad (`FarmMissions.share`). The origin's paving held
+at 14 of 256 for two hours: eleven of them in the strip of a soldier stranded elsewhere, two squadmates' strips empty
+and they at "no task". Wanted: strips dealt among the soldiers who can work them, a soldier dealt back in when it is at
+the ground again, without re-dealing each second. And `Mason` says "paves" once the cell is paved, not before the walk.
