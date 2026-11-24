@@ -172,6 +172,34 @@ class TemplateGroundTest {
         assertEquals(List.of(top), FARM.sky(world), "the log three over an open cell - not the trunk on its ground, nor a branch nine up");
     }
 
+    /** A step left standing in a tree farm's trunk cell is its squad's to dig: no sapling goes in through it. */
+    @Test
+    void whatStandsInATrunksCellIsDugWithTheSky() {
+        io.github.jayessdeesea.minecraft.command.FarmMission trees = new io.github.jayessdeesea.minecraft.command.FarmMission(2, 3, 63,
+                io.github.jayessdeesea.minecraft.command.FarmMission.Crop.TREES);
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos trunk = new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(2, 3, 63).trunks().getFirst();
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> steps = java.util.Set.of(trunk, trunk.offset(0, 1, 0));
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63 || steps.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(List.of(trunk, trunk.offset(0, 1, 0)), TemplateDrift.sky(trees, world), "the two steps on its first trunk's cell");
+        assertEquals(List.of(), TemplateDrift.sky(new io.github.jayessdeesea.minecraft.command.FarmMission(2, 3, 63,
+                io.github.jayessdeesea.minecraft.command.FarmMission.Crop.PLACEHOLDER), world), "no trunk's cell on any other template");
+    }
+
     /** A fixture's footing that stands open is its squad's to pave - under what stands on the ground, not under a post-top torch. */
     @Test
     void anOpenFootingUnderAFixtureIsToPave() {

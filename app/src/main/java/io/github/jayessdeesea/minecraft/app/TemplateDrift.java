@@ -30,9 +30,23 @@ final class TemplateDrift {
                 || kind == FarmMission.Kind.PASTURE_TEMPLATE || kind == FarmMission.Kind.PLACEHOLDER_TEMPLATE;
     }
 
-    /** What hangs in the sky over {@code m}'s chunk and its fence lines (ChunkFarm.sky). */
+    /**
+     * What hangs in the sky over {@code m}'s chunk and its fence lines (ChunkFarm.sky) - and, on a tree farm, what stands
+     * in a trunk's own cell or the one over it that is no tree: a step left there, under the sky's reach, that nothing
+     * is planted through.
+     */
     static List<BlockPos> sky(FarmMission m, WorldView world) {
-        return new ChunkFarm(m.chunkX(), m.chunkZ(), m.level()).sky(world);
+        List<BlockPos> hanging = new java.util.ArrayList<>(new ChunkFarm(m.chunkX(), m.chunkZ(), m.level()).sky(world));
+        if (m.crop() == FarmMission.Crop.TREES) {
+            for (BlockPos trunk : new TreeChunk(m.chunkX(), m.chunkZ(), m.level()).trunks()) {
+                for (BlockPos c : List.of(trunk, trunk.offset(0, 1, 0))) {
+                    if (world.solidHere(c.x(), c.y(), c.z()) && !world.isLog(c.x(), c.y(), c.z()) && world.leaves(c.x(), c.y(), c.z()).isEmpty()) {
+                        hanging.add(c);
+                    }
+                }
+            }
+        }
+        return hanging;
     }
 
     /** {@code m}'s animal farm, as its template lays it out. */
