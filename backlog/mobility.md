@@ -52,9 +52,10 @@ than one search reaches. The platoon leader still picks ground a squad can't get
 ## Steps put up on the way and left (P1; operator, 2026-11-24: the camp is getting messy again)
 Live (field715, one hour): 97 blocks placed, most of them a walk's steps (`[Place] ... route step`), dirt 5 to 13 over
 sea level. Most are the keep's crew climbing what it is taking down, a step put up and dug again.
-- **The audit can't say a walk was spared**: its "a walk round N steps" (`Mover.walkRound`) is searched after the
-  step is put, from where the soldier then stands, and lets the walk dig - so "a walk round 0 steps" is every step's.
-  Search it before the step, plain as `Pathfinder.find` wants it, then count the steps a walk would have spared.
+- **The audit can't say a walk was spared**: its "a walk round N steps" (`Mover.walkRound`) lets the walk dig, which
+  the route's own search refuses a walk for, and reads "0 steps" where the walk's search takes the soldier's cell for
+  the goal already while its route has a step to put - the two searches disagree on where it stands. Make it the
+  search `Pathfinder.find` itself weighs (plain, from the route's own start), then count the steps a walk would spare.
 - **A step is taken down by who put it up**, once across - the debt `TAKEDOWN_COST` prices is paid by nobody yet: a
   register of steps by soldier and route, each dug as its walker leaves it or on its way back, and what's left counted.
 - **The camp's hill itself**: most of these climb it; backlog/camp-to-sea-level.md ends the reason for them.
