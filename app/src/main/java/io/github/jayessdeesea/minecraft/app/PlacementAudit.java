@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * would leave nothing lying about). All placing goes through one call, {@link PlaySession#useBlockFace} with a block in
  * hand; this wraps each soldier's session, and says each such use as a {@code [Place]} line - who, where, how far over
  * the sea, what it held and which routine had its hands - and every {@link #SUMMARY_MILLIS} the counts by routine.
+ * Every block broken at sea level or over it too ({@link PlaySession#finishDigging}), as a {@code [Dig]} line.
  * Thread-safe: each soldier's tick writes, any reads.
  */
 final class PlacementAudit {
@@ -55,7 +56,41 @@ final class PlacementAudit {
     private volatile long summarisedAt = Long.MIN_VALUE;
 
     PlacementAudit(java.util.function.LongSupplier clock) {
+        this(clock, (x, y, z) -> "a block");
+    }
+
+    /** What's at a cell, as said in a line: the block's name. */
+    interface Named {
+        String at(int x, int y, int z);
+    }
+
+    private final Named named;
+    /** Blocks broken at sea level or over it since the audit began, by routine: who takes what's built apart. */
+    private final Map<String, Integer> digs = new ConcurrentHashMap<>();
+
+    /** As {@link #PlacementAudit(java.util.function.LongSupplier)}, each block broken said by {@code named}'s name for it. */
+    PlacementAudit(java.util.function.LongSupplier clock, Named named) {
         this.clock = clock;
+        this.named = named;
+    }
+
+    /**
+     * A block {@code soldier} breaks at sea level or over it, said with what it was and which routine had its hands
+     * (operator, 2026-11-23: when the anti-entropy runs, know why): live, a farm's fourteen fence posts, a tree farm's
+     * torch and a birch's foot went, and nothing said who took them. Under the sea level is the mines', and not said.
+     */
+    private void broke(String soldier, int x, int y, int z) {
+        if (y < SoldierRunner.SEA_LEVEL) {
+            return;
+        }
+        String routine = routines.getOrDefault(soldier, "none");
+        digs.merge(routine, 1, Integer::sum);
+        LOG.info("[Dig] {} breaks {} at ({}, {}, {}), {} over sea level - {}", soldier, named.at(x, y, z), x, y, z, y - SoldierRunner.SEA_LEVEL, routine);
+    }
+
+    /** The blocks broken at sea level or over it by routine (the audit's test). */
+    Map<String, Integer> digs() {
+        return new TreeMap<>(digs);
     }
 
     /** {@code soldier}'s hands this tick: {@code routine}'s, or none. */
@@ -86,6 +121,8 @@ final class PlacementAudit {
                 int out = held(soldier, hotbar, inventory);
                 mine.put(hotbar, new long[]{into, now});
                 mine.put(-1 - slot, new long[]{out, now});
+            } else if (method.getName().equals("finishDigging") && args != null && args.length == 3) {
+                broke(soldier, (int) args[0], (int) args[1], (int) args[2]);
             } else if (method.getName().equals("selectHotbarSlot") && args != null && args.length == 1) {
                 selected.put(soldier, (int) args[0]);
             }

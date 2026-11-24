@@ -42,6 +42,27 @@ class PlacementAuditTest {
         assertEquals(4, passed.stream().filter("useBlockFace"::equals).count(), "every use still reaches the server");
     }
 
+    /** A block broken at sea level or over it is counted by the routine with the hands; under it - the mines' - isn't. */
+    @Test
+    void aBlockBrokenAtSeaLevelOrOverItIsCountedByItsRoutine() {
+        List<String> passed = new ArrayList<>();
+        PlaySession server = (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(), new Class<?>[]{PlaySession.class},
+                (proxy, method, args) -> {
+                    passed.add(method.getName());
+                    return null;
+                });
+        PlacementAudit audit = new PlacementAudit(() -> 0, (x, y, z) -> "oak_fence");
+        PlaySession session = audit.wrap("Ann", server, new Inventory());
+
+        audit.routine("Ann", Optional.of("CLEARER"));
+        session.finishDigging(32, SoldierRunner.SEA_LEVEL + 1, 56);
+        session.finishDigging(32, SoldierRunner.SEA_LEVEL, 56);
+        session.finishDigging(32, SoldierRunner.SEA_LEVEL - 20, 56);
+
+        assertEquals(Map.of("CLEARER", 2), audit.digs());
+        assertEquals(3, passed.stream().filter("finishDigging"::equals).count(), "every dig still reaches the server");
+    }
+
     /** A block swapped into the hotbar and selected is the one put, before the server's answer moves it in the inventory. */
     @Test
     void theBlockSwappedIntoHandIsTheOnePut() {

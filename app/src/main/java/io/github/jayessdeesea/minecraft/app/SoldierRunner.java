@@ -1962,7 +1962,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     private final SurfaceCache surfaces = new SurfaceCache();
     /** Every block a soldier puts above sea level, said by what put it (operator, 2026-11-21: audit it). */
-    private final PlacementAudit placementAudit = new PlacementAudit(() -> clockwork.millis());
+    private final PlacementAudit placementAudit = new PlacementAudit(() -> clockwork.millis(), (x, y, z) -> chunkCache.describeAt(x, y, z));
     /** Whether {@code at} is under the ground: the column's surface, a second or two old, more than {@link #UNDERGROUND} over it. */
     private boolean underground(Position at) {
         return surfaces.underground(world, at, UNDERGROUND, clockwork.millis());

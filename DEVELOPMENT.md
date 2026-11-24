@@ -300,7 +300,8 @@ squad simulation logs, so the two can be set side by side (`app.Ledger`; backlog
 walk's 4.9 ticks a step, 87.7 crop-ticks a crop, 1045 cell-ticks a cell); and `[Place]`, each block a soldier puts above
 sea level with the item and the routine that had its hands ("route step" for its walk's, with the route's goal and
 whether a walk round was there), and every ten minutes the
-counts by routine / item (`app.PlacementAudit`). Crop-ticks ripe measure harvest hands
+counts by routine / item, and `[Dig]`, each block a soldier breaks at sea level or over it with the block's name and
+the routine (`app.PlacementAudit`). Crop-ticks ripe measure harvest hands
 against supply as well as the farmer's pace: live (field563) 3,250 a crop, about 22 ripe crops standing on 400-odd
 cells, against the simulation's 96 cells for one farmer - the game and the simulation parting. A soldier stuck a minute has its
 ground kept for the simulation (`[World]`, `garrison-state/worlds/`): `SimWorlds.replay` makes it a scenario's terrain. The scoreboard's
