@@ -173,6 +173,17 @@ public final class ChunkCache {
                 || classAt(x, y - 1, z) == BlockClassRegistry.BlockClass.TALL;
     }
 
+    /** {@link WorldView#barsWay}, from the cell's state and the one under it: the same answer in two reads, not five. */
+    public boolean barsWay(int x, int y, int z) {
+        int here = rawStateIdAt(x, y, z), below = rawStateIdAt(x, y - 1, z);
+        BlockClassRegistry.BlockClass h = here == UNKNOWN ? BlockClassRegistry.BlockClass.SOLID : BlockClassRegistry.classOf(here);
+        BlockClassRegistry.BlockClass b = below == UNKNOWN ? BlockClassRegistry.BlockClass.SOLID : BlockClassRegistry.classOf(below);
+        boolean solidHere = h != BlockClassRegistry.BlockClass.PASSABLE && h != BlockClassRegistry.BlockClass.HAZARD;
+        boolean shutHere = here != UNKNOWN && h != BlockClassRegistry.BlockClass.PASSABLE && BlockClassRegistry.isGate(here);
+        boolean shutBelow = below != UNKNOWN && b != BlockClassRegistry.BlockClass.PASSABLE && BlockClassRegistry.isGate(below);
+        return (solidHere || b == BlockClassRegistry.BlockClass.TALL) && !shutHere && !(shutBelow && !solidHere);
+    }
+
     /** Whether the block at (x, y, z) is a fence gate that's shut. False for a block nobody has cached. */
     public boolean isShutGate(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);

@@ -147,6 +147,7 @@ class TemplateGroundTest {
         }
         io.github.jayessdeesea.minecraft.bot.nav.BlockPos top = new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(26, 67, 58);
         logs.add(top);
+        logs.add(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(24, 72, 54)); // a branch, out of a hand's reach
         WorldView world = new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
@@ -168,7 +169,7 @@ class TemplateGroundTest {
                 return List.of();
             }
         };
-        assertEquals(List.of(top), FARM.sky(world), "the log three over an open cell, not the trunk on its ground");
+        assertEquals(List.of(top), FARM.sky(world), "the log three over an open cell - not the trunk on its ground, nor a branch nine up");
     }
 
     /** A fixture's footing that stands open is its squad's to pave - under what stands on the ground, not under a post-top torch. */

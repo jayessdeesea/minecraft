@@ -118,7 +118,7 @@ public final class Pathfinder {
      * everything else - what's built, filled, measured - a shut gate is the block it is ({@code WorldView.isSolid}).
      */
     private static boolean solid(WorldView world, int x, int y, int z) {
-        return world.isSolid(x, y, z) && !world.isShutGate(x, y, z) && !(world.isShutGate(x, y - 1, z) && !world.solidHere(x, y, z));
+        return world.barsWay(x, y, z);
     }
 
     /** Feet this far up a solid cell are on its top: farmland and paths are 15/16 high. */

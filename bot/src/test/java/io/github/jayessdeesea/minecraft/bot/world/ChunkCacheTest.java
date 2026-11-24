@@ -86,6 +86,55 @@ class ChunkCacheTest {
         assertTrue(cache.isSolid(0, 0, 0), "a chunk nothing has loaded should be treated as blocked");
     }
 
+    /** What bars a walker is answered in two reads as the view's own three questions answer it: every kind of block, over every kind. */
+    @Test
+    void whatBarsAWalkerIsTheSameInTwoReadsAsInFive() {
+        ChunkCache cache = new ChunkCache();
+        cache.load(0, 0, List.of(filled(AIR), filled(AIR)), "owner");
+        WorldModel world = new WorldModel(cache, new EntityTracker());
+        WorldView asked = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return cache.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean solidHere(int x, int y, int z) {
+                return cache.solidHere(x, y, z);
+            }
+
+            @Override
+            public boolean isShutGate(int x, int y, int z) {
+                return cache.isShutGate(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return List.of();
+            }
+        };
+        // Air, stone, an oak fence, an oak fence gate shut and open, water, a torch.
+        int[] kinds = {AIR, STONE, 8666, 10387, 10385, 86, 4926};
+        int column = 0;
+        for (int under : kinds) {
+            for (int over : kinds) {
+                int x = column % 16, z = column / 16;
+                cache.setBlock(x, -60, z, under);
+                cache.setBlock(x, -59, z, over);
+                for (int y = -61; y <= -57; y++) {
+                    assertEquals(asked.barsWay(x, y, z), world.barsWay(x, y, z), over + " over " + under + " at y=" + y);
+                }
+                column++;
+            }
+        }
+        assertTrue(world.barsWay(40, -60, 40), "a chunk nobody has loaded bars the way");
+    }
+
     @Test
     void reportsAirAndStoneCorrectlyWithinALoadedChunk() {
         ChunkCache cache = new ChunkCache();
