@@ -178,7 +178,7 @@ chunk 640 columns uncut).
 1. **Flatten** the chunk to a block below the farm's level: the `KEEP` task, the ground to flatten the mission's
    chunk while the step's under way (`ChainOfCommand.flatten`), and the dig the columns of `FlattenPlan.reach` - the
    chunk, and a slope a block a block out on each side whose `command.Slopes` flag is on, off beside a chunk the
-   force has made a template of (`Slopes.around`), never into a template's ground, its shared fence line included.
+   force has made a template of or that has an open mission of its own (`Slopes.around`, `FarmMissions.slopes`), never into a template's ground, its shared fence line included.
    Done when nothing stands over the level in the chunk or its slopes (`FlattenPlan.cut`, over the world's tops).
 2. **Floor** that layer in cobblestone, every cell, natural stone included (`FLOOR`, [military-doctrine.md
    § 17](../../military-doctrine.md#17-the-lodgment)). Done when every cell of it is cobblestone.

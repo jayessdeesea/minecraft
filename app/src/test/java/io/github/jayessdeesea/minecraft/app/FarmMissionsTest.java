@@ -560,4 +560,24 @@ class FarmMissionsTest {
         assertTrue(paved.stream().noneMatch(soil::contains), "none of them a tree's");
         assertEquals(256, missions.floorCells(trees.layer(62), none).size(), "its slab, the whole chunk");
     }
+
+    /**
+     * A flatten cuts no slope into a chunk with a mission of its own open: that chunk is to be cut to its own level, and
+     * a slope into it is the same ground cut twice. Live (field708-709) a supply point's flatten at chunk (1, 4) stood at
+     * "up to 48 column(s)" for an hour, its crew on boxes x=32..38 - the mineshaft's chunk (2, 4), waiting behind it.
+     */
+    @Test
+    void aFlattenCutsNoSlopeIntoAChunkWithAnOpenMission() {
+        FarmMissions missions = new FarmMissions(cause -> { });
+        FarmMission stores = new FarmMission(1, 4, 63, FarmMission.Crop.STORES), mine = new FarmMission(2, 4, 63, FarmMission.Crop.MINE);
+        missions.give(stores, 0);
+        missions.give(mine, 0);
+        io.github.jayessdeesea.minecraft.command.Flatten ground = missions.flatten().orElseThrow();
+        assertEquals(16, ground.minX(), "the supply point's, the first given: " + ground);
+
+        List<io.github.jayessdeesea.minecraft.command.FlattenPlan.Column> reach = missions.reach(ground, null).orElseThrow();
+
+        assertTrue(reach.stream().noneMatch(c -> c.x() > 31), "nothing east of it, the mineshaft's chunk: " + reach.stream().filter(c -> c.x() > 31).limit(4).toList());
+        assertTrue(reach.stream().anyMatch(c -> c.x() < 16), "its west side sloped as before");
+    }
 }

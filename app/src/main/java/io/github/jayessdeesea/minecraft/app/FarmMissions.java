@@ -719,9 +719,18 @@ final class FarmMissions {
         return Integer.MIN_VALUE;
     }
 
-    /** The slopes of {@code m}'s flatten: each side sloped unless the chunk past it is a template's. */
+    /**
+     * The slopes of {@code m}'s flatten: each side sloped unless the chunk past it is a template's - or another open
+     * mission's, to be cut to its own level: a slope into it is that ground cut twice.
+     */
     private Slopes slopes(FarmMission m, FarmPlan campFarm) {
-        return Slopes.around(m.chunkX(), m.chunkZ(), (cx, cz) -> made(campFarm).contains(ChunkFarm.key(cx, cz)));
+        Set<Long> open = openChunks(m);
+        return Slopes.around(m.chunkX(), m.chunkZ(), (cx, cz) -> made(campFarm).contains(ChunkFarm.key(cx, cz)) || open.contains(ChunkFarm.key(cx, cz)));
+    }
+
+    /** The chunks of the open missions other than {@code m}. */
+    private synchronized Set<Long> openChunks(FarmMission m) {
+        return missions.keySet().stream().filter(o -> !o.equals(m)).map(o -> ChunkFarm.key(o.chunkX(), o.chunkZ())).collect(Collectors.toSet());
     }
 
     /** The columns a template's ground stands on, but {@code m}'s own chunk's: its box, fence lines and all, never dug or paved. */
