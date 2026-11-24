@@ -23,7 +23,7 @@ first three passes, in that order:
    (`depositTo`, `chestStand`, two inline), and a fix reached three of them twice.
 2. **The keep's work by ground**, out of the runner with its state (backlog/named-work.md, the flatten): the level
    plan, its shares, its foreman and pace - a class a squad leader's process will own.
-3. **A mission's measures**, out of `FarmMissions`: what each step counts as left, one function a kind, shared by the
+3. **A mission's measures**, out of `FarmMissions` (its drift check is out: `app.TemplateDrift`, 2026-11-24): what each step counts as left, one function a kind, shared by the
    count that's said and the orders that are given - they've disagreed three times (the flatten's columns, the wheat
    farm's posts, the tree farm's paving).
 

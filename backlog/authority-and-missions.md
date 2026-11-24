@@ -232,7 +232,9 @@ levels the depositor reads (`StockLevels`, `ProductionLevels`). To build:
 - **A supply point's other rows** (operator, 2026-11-24: the supply dump is missing a bunch of chests): its template
   puts up two of its four rows - food and building (`StoresChunk.FIRST_ROWS`) - and its kit row and its fuel and arrows
   row not at all; all four, with backlog/depot-placement.md's choice of chest by row.
-- **A supply point's chests face the wrong way** (operator, 2026-11-24): a chest faces whoever puts it, and each is put
+- **A supply point's chests face the wrong way** (operator, 2026-11-24; decided the same day: each row faces its aisle -
+  rows z=3 and z=9 south, z=6 and z=12 north, so one stand in an aisle reaches the rows either side, as a mineshaft
+  head's rows face its mouth): a chest faces whoever puts it, and each is put
   from the nearest stand, so a row's chests face every way and don't pair into doubles. Wanted: each row put from its
   aisle's side, facing it (`Builder.putFrom`, as a gate is put from across its line). Tried from due south of each: the
   supply point's simulation left chests of its two rows unplaced - the stands a row needs are the next row's cells; the

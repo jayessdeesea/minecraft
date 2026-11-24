@@ -220,7 +220,7 @@ layout again (`FarmMissions.review`): one a squad keeps every five minutes, the 
 first seen and then inside every four garrison days, up to a day early by its name and the day, so the sites aren't
 all looked over at once (operator, 2026-11-24), and one whose structure has gone has its template phase opened again - a repair, a squad's task
 as the build was, the register's row saying what was found ("reviewed: back at FENCED - to put up again: 1 torch, 1
-chest"). Structure, not the crop's own cycle (`FarmMissions.drifted`): a wheat farm's ground - its tilling, sowing and
+chest"). Structure, not the crop's own cycle (`TemplateDrift.drifted`): a wheat farm's ground - its tilling, sowing and
 fixtures are its tender's; a tree chunk's chest and torches - felling and planting are its foresters'; a supply point's
 fence, lights, workshop and first rows.
 

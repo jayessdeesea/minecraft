@@ -234,39 +234,22 @@ final class FarmMissions {
                 .flatMap(c -> switch (c.getValue().kind()) {
                     case STORES_TEMPLATE -> java.util.stream.Stream.of(new StoresChunk(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level()).fixtures());
                     case MINE_HEAD -> java.util.stream.Stream.of(new MineHead(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level()).fixtures());
-                    case PASTURE_TEMPLATE -> java.util.stream.Stream.of(pasture(c.getKey()).fixtures());
+                    case PASTURE_TEMPLATE -> java.util.stream.Stream.of(TemplateDrift.pasture(c.getKey()).fixtures());
                     case PLACEHOLDER_TEMPLATE -> java.util.stream.Stream.of(new PlaceholderChunk(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level()).fixtures());
                     default -> java.util.stream.Stream.empty();
                 }).findFirst();
     }
 
-    /** Whether a step of {@code kind} is a template whose sky is its own to keep clear here: a wheat farm's is its site's (ChunkFarm.obstructions). */
-    private static boolean skyKept(FarmMission.Kind kind) {
-        return kind == FarmMission.Kind.TREE_TEMPLATE || kind == FarmMission.Kind.STORES_TEMPLATE || kind == FarmMission.Kind.MINE_HEAD
-                || kind == FarmMission.Kind.PASTURE_TEMPLATE || kind == FarmMission.Kind.PLACEHOLDER_TEMPLATE;
-    }
-
-    /** What hangs in the sky over {@code m}'s chunk and its fence lines (ChunkFarm.sky). */
-    private static List<BlockPos> sky(FarmMission m, WorldView world) {
-        return new ChunkFarm(m.chunkX(), m.chunkZ(), m.level()).sky(world);
-    }
-
     /** What hangs in the sky of the template {@code objective}'s squad is laying, for it to dig: none for any other, or with a clear sky. */
     Optional<List<BlockPos>> inTheSky(Optional<Objective> objective, WorldView world) {
-        return worked().stream().filter(c -> skyKept(c.getValue().kind()) && objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent())
-                .map(c -> sky(c.getKey(), world)).filter(hanging -> !hanging.isEmpty()).findFirst();
-    }
-
-    /** {@code m}'s animal farm, as its template lays it out. */
-    private static io.github.jayessdeesea.minecraft.bot.farm.PastureChunk pasture(FarmMission m) {
-        return new io.github.jayessdeesea.minecraft.bot.farm.PastureChunk(m.chunkX(), m.chunkZ(), m.level(),
-                io.github.jayessdeesea.minecraft.bot.farm.PastureChunk.Animal.valueOf(m.crop().name()));
+        return worked().stream().filter(c -> TemplateDrift.skyKept(c.getValue().kind()) && objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent())
+                .map(c -> TemplateDrift.sky(c.getKey(), world)).filter(hanging -> !hanging.isEmpty()).findFirst();
     }
 
     /** The animal farm whose template {@code objective} is, worked now - if it is one: its squad lays its ground. */
     Optional<io.github.jayessdeesea.minecraft.bot.farm.PastureChunk> pasture(Optional<Objective> objective) {
         return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.PASTURE_TEMPLATE
-                && objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent()).map(c -> pasture(c.getKey())).findFirst();
+                && objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent()).map(c -> TemplateDrift.pasture(c.getKey())).findFirst();
     }
 
     /**
@@ -516,47 +499,9 @@ final class FarmMissions {
     }
 
     /**
-     * What of {@code m}'s template has gone since it was built, as {@code world} stands - its structure, not its crop:
-     * wheat's ground (tilling, sowing and its fixtures are its tender's), a tree chunk's chest and torches (felling and
-     * planting are its foresters'), a supply point's fence, lights, workshop and first rows. Empty while it stands.
-     */
-    static Optional<String> drifted(WorldView world, FarmMission m) {
-        Optional<String> gone = switch (m.crop()) {
-            case WHEAT -> {
-                FarmSite.Work work = FarmSite.work(world, new ChunkFarm(m.chunkX(), m.chunkZ(), m.level()));
-                yield work.stage() == FarmSite.Stage.SURVEYED ? Optional.of("its ground is gone in places - " + work) : Optional.empty();
-            }
-            case TREES -> {
-                TreeChunk chunk = new TreeChunk(m.chunkX(), m.chunkZ(), m.level());
-                long dark = chunk.torches().stream().filter(t -> !world.isTorch(t.x(), t.y(), t.z())).count();
-                boolean chest = world.isChest(chunk.chest().x(), chunk.chest().y(), chunk.chest().z());
-                yield dark == 0 && chest ? Optional.empty() : Optional.of((chest ? "" : "its chest is gone; ") + dark + " of its " + chunk.torches().size() + " torches gone");
-            }
-            case MINE -> Optional.empty(); // mined dry and done with: its ground is another template's next
-            case PLACEHOLDER -> Optional.of(Fixtures.left(world, new PlaceholderChunk(m.chunkX(), m.chunkZ(), m.level()).fixtures()).values().stream().mapToInt(List::size).sum())
-                    .filter(n -> n > 0).map(n -> n + " of its fence, gates and torches gone");
-            case SHEEP, COW, PIG, CHICKEN -> {
-                io.github.jayessdeesea.minecraft.bot.farm.PastureChunk pasture = pasture(m);
-                Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> left = Fixtures.left(world, pasture.fixtures());
-                yield pasture.grounded(world) && left.isEmpty() ? Optional.empty() : Optional.of("to put right: " + pasture.groundToLay(world).size()
-                        + " of its ground, " + pasture.footingsToPave(world).size() + " footings, " + left.values().stream().mapToInt(List::size).sum() + " fixtures");
-            }
-            case STORES -> {
-                StoresChunk stores = new StoresChunk(m.chunkX(), m.chunkZ(), m.level());
-                yield stores.stocked(world) ? Optional.empty() : Optional.of("back at " + stores.stage(world) + " - to put up again: "
-                        + Fixtures.left(world, stores.fixtures()).entrySet().stream().map(e -> e.getValue().size() + " " + e.getKey().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' '))
-                        .collect(Collectors.joining(", ")));
-            }
-        };
-        // And its sky, whatever it is but a wheat farm (its site's own) or a mine worked out.
-        boolean itsSky = m.crop() != FarmMission.Crop.WHEAT && m.crop() != FarmMission.Crop.MINE;
-        return gone.or(() -> Optional.of(sky(m, world)).filter(h -> itsSky && !h.isEmpty()).map(h -> h.size() + " block(s) hanging in its sky"));
-    }
-
-    /**
      * The review (operator, 2026-11-22: once the sites are built the construction might drift - who reviews and fixes
      * it?): a template built and in sight - the force near it, no remote outpost with nobody there - is measured against
-     * its layout again, and one whose structure has gone ({@link #drifted}) has its template step opened again - a repair,
+     * its layout again, and one whose structure has gone ({@link TemplateDrift#drifted}) has its template step opened again - a repair,
      * a squad's task as the build was, kept in the register with what was found. One a squad keeps is looked over every
      * {@link #REVIEW_MILLIS}, as the first thing done with it; any other when first seen and then inside every
      * {@link #REVIEW_EVERY}, up to a day early by its name and the day, so the sites aren't all looked over at once
@@ -575,7 +520,7 @@ final class FarmMissions {
                 continue;
             }
             reviewDue.put(m, now + REVIEW_EVERY - Math.floorMod(java.util.Objects.hash(m.name(), now / DAY_MILLIS), DAY_MILLIS));
-            Optional<String> gone = drifted(world, m);
+            Optional<String> gone = TemplateDrift.drifted(world, m);
             if (gone.isEmpty()) {
                 continue;
             }
@@ -699,7 +644,7 @@ final class FarmMissions {
                 yield dry.contains(ChunkFarm.key(m.chunkX(), m.chunkZ())) ? Optional.of("mined dry: every level cut, its ore taken or noted") : Optional.empty();
             }
             case PASTURE_TEMPLATE -> {
-                io.github.jayessdeesea.minecraft.bot.farm.PastureChunk pasture = pasture(m);
+                io.github.jayessdeesea.minecraft.bot.farm.PastureChunk pasture = TemplateDrift.pasture(m);
                 if (!world.isLoaded(m.minX(), m.minZ()) || !world.isLoaded(m.minX() + 15, m.minZ() + 15)) {
                     say(m, step, "not all of it in sight");
                     yield Optional.empty();
@@ -728,7 +673,7 @@ final class FarmMissions {
         if (done.isEmpty()) {
             return;
         }
-        List<BlockPos> hanging = skyKept(step.kind()) ? sky(m, world) : List.of();
+        List<BlockPos> hanging = TemplateDrift.skyKept(step.kind()) ? TemplateDrift.sky(m, world) : List.of();
         if (!hanging.isEmpty()) {
             say(m, step, hanging.size() + " block(s) hanging in its sky, to dig: " + hanging.stream().limit(6).map(b -> b.x() + "," + b.y() + "," + b.z()).toList());
             return;
