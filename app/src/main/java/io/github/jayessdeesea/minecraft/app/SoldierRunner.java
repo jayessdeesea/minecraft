@@ -4467,10 +4467,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (campWorkshop != null) {
             shops.add(campWorkshop);
         }
-        // Each workshop's stand, table, furnace and chest - and every chest found full, its row's earlier ones: live
-        // (field480, field486), the camp's upkeep dug its full chests out, and the stores they held were forgotten.
+        // Each workshop's stand, table, furnace and chest, and each chest found full that stands with its stores (SiteGeometry.fullKept): the upkeep digs no stores out.
         // And every chest standing in the camp workshop's row: live (field487), idle squads dug them out of it.
-        Stream.concat(Stream.concat(shops.stream().flatMap(w -> Stream.concat(Stream.of(w.stand(), w.table(), w.furnace()), w.chest().stream())), fullChests.stream()),
+        Stream.concat(Stream.concat(shops.stream().flatMap(w -> Stream.concat(Stream.of(w.stand(), w.table(), w.furnace()), w.chest().stream())),
+                                SiteGeometry.fullKept(fullChests, c -> world.isChest(c.x(), c.y(), c.z()), c -> condemned.contains(c) && emptied(c)).stream()),
                         campWorkshop == null ? Stream.empty() : campWorkshop.chestCells(world, chestClaims(), DEPOT_CHESTS).stream()
                                 .filter(c -> world.isChest(c.x(), c.y(), c.z())))
                 .forEach(c -> keep.addAll(List.of(c, c.offset(0, -1, 0))));

@@ -406,4 +406,14 @@ final class SiteGeometry {
 
     /** How long a soldier whose pack had no room to salvage into is passed over as salvager. */
     static final long SALVAGE_PASSED_MILLIS = 10 * 60_000;
+
+    /**
+     * The chests found full that hold their ground against a dig: each of {@code full} that {@code stands} still and
+     * isn't {@code released} - on ground to flatten, and seen empty by its salvage. One gone, or emptied for the dig, is
+     * nothing to keep: its cell and the block under it would stand as a pillar the flatten never finishes.
+     */
+    static List<BlockPos> fullKept(java.util.Collection<BlockPos> full, java.util.function.Predicate<BlockPos> stands,
+                                   java.util.function.Predicate<BlockPos> released) {
+        return full.stream().filter(c -> stands.test(c) && !released.test(c)).toList();
+    }
 }
