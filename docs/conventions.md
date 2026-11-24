@@ -199,6 +199,41 @@ offenders are fixed where it makes sense to:
 - A recording with almost no execution samples is a garrison doing nothing: check it's connected
   before reading anything into it.
 
+## Refactor every sixteenth commit, between profiles
+
+The operator's (2026-11-24): the code base is made easy to change - for whichever model is changing it - on a
+schedule, as its speed is - tick and tock: a profile at every multiple of 16 commits, a refactor pass 8 past it. When
+the commit count on main is 8 past a multiple of 16 (`tools/ops/commit.sh` says so), the next commit is a refactor
+pass, before the next change is started:
+- **Measure** with `sh tools/ops/hotspots.sh`: the main sources by churn x size over the last 64 commits; the ones
+  returned to in three of the last eight; the pairs that change together; the long lines; the slowest tests of the
+  last verify. The lists are counts, not judgements - they say where a change costs most to make and to check.
+- **Take the top of it, one extraction a pass**, with no change of behaviour: every test and simulation passes as it
+  was, and nothing is fixed in the same commit. What to cut and along which lines is
+  [backlog/split-oversized-sources.md](../backlog/split-oversized-sources.md) - by echelon, the way the processes
+  will divide: a soldier's tick, a squad leader's state and orders, the platoon's missions, talking only in
+  `command`'s value types.
+- **Bring the caps down behind it** - `ArchitectureTest`: a file's lines (`OVER_THE_LIMIT`), `SoldierRunner`'s
+  declarations (`RUNNER_FIELDS`), the long lines (`LONG_LINES`). They only shrink, and a build that adds to one fails:
+  the control between passes.
+
+Not only on the count. Three things call for the pass at the next commit, whatever the number:
+- **A fix touched one decision in three places.** It has one home after.
+- **Two measures of one fact disagreed** - what's counted and what's worked. One is derived from the other after.
+- **A file is in "returned to" twice running**: the fixes there aren't holding.
+
+A pass makes the next change cheaper to hold in mind: a decision as a pure function over value types with its unit
+test, in a file of one job, is what a smaller model can own end to end; a decision threaded through a file of
+eight thousand lines is not.
+
+## A comment is the rule and its reason
+
+The operator's (2026-11-24): the history is in git. A comment says what the code must do and why, in the present
+tense, and no more: not the run it was seen in, the soldier it happened to, or what was tried first. Those go in the
+commit that made the change, briefly - what changed and why; the rest is the diff. A comment that needs an incident
+to be believed wants a test instead, and names it. Comments that tell a story are cut down as their file is passed
+through, and each refactor pass takes its file's.
+
 ## Standard formats go through standard libraries
 
 XML, JSON, CSV and other standard formats are written and read with a library, never marshalled

@@ -14,6 +14,27 @@ two methods - `orderSquad` (the squad loop, about 1300 lines) and `onJoined` (ea
 more sit at the limit, where the next edit fails the build: `bot.DeterministicSoldier` (989), `app.ChainOfCommand`
 (998) and the test `app.SimServer` (1000 - the ratchet fails a file past 1000 that isn't listed).
 
+## How it's worked
+One step a refactor pass (docs/conventions.md, "Refactor every sixteenth commit, between profiles"), chosen by
+`tools/ops/hotspots.sh`. On 2026-11-24 that read: `SoldierRunner` 31 changes in 64 commits at 8,042 lines, twelve times
+the next file's score; `FarmMissions` (22 changes, 896 lines) next, and the two changed together in 15 of the 64. The
+first three passes, in that order:
+1. **Where a soldier stands for a chest**, one function: it's decided on four paths in `SoldierRunner` today
+   (`depositTo`, `chestStand`, two inline), and a fix reached three of them twice.
+2. **The keep's work by ground**, out of the runner with its state (backlog/named-work.md, the flatten): the level
+   plan, its shares, its foreman and pace - a class a squad leader's process will own.
+3. **A mission's measures**, out of `FarmMissions`: what each step counts as left, one function a kind, shared by the
+   count that's said and the orders that are given - they've disagreed three times (the flatten's columns, the wheat
+   farm's posts, the tree farm's paving).
+
+And with each file passed through, its comments cut down to the rule and its reason (docs/conventions.md, "A comment
+is the rule and its reason").
+
+**Toward processes.** The cut lines below are the echelons', and the processes to come are theirs: sixteen soldiers,
+four squad leaders, one platoon leader (operator, 2026-11-24). Each step leaves its two sides talking only in
+`command`'s value types - `Order`, `Report`, `DutyOrder`, `Objective` - so that moving a side into its own process
+is a transport, not a redesign; `ArchitectureTest` gains the rule as each seam is made.
+
 ## What's left
 The plan agreed by the operator (2026-11-20): cut along the tenets, not the line count (docs/echelons/tenets.md - the
 soldier owns how, never what; backlog/echelon-contracts.md - the runner keeps only the connections). Each step is a

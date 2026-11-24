@@ -253,6 +253,9 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
 
 **Keeping a garrison running while you change the code** (`tools/ops/`, POSIX `sh`, e.g. Git Bash; runs live in
 `GARRISON_RUNS`, default `C:/mc-state/garrison`, outside any cloud-sync folder):
+- `hotspots.sh [commits]` is where the code is hard to change, counted: churn x size, files returned to, files that
+  change together, long lines, and the last verify's slowest tests - what a refactor pass reads first
+  (docs/conventions.md, "Refactor every sixteenth commit, between profiles").
 - `quick.sh [mvn arguments]` runs every module's tests but those tagged `slow` - the simulations, the stuck evals and
   the combat matrices, nearly all of the suite's time - for the loop while a change is being made.
 - `commit.sh <message file>` commits the tracked changes (`git add` new files first), verifies that commit with the

@@ -21,6 +21,8 @@ if echo "$out" | grep -q "BUILD SUCCESS" && ! echo "$out" | grep -q "BUILD FAILU
   git log --oneline -1 "$commit"
   count=$(git rev-list --count "$commit"); echo "$count"
   [ $((count % 16)) -eq 0 ] && echo "commit $count: a profile is due (docs/conventions.md, \"Profile every sixteenth commit\")"
+  [ $((count % 16)) -eq 8 ] && echo "commit $count: a refactor pass is due (docs/conventions.md, \"Refactor every sixteenth commit, between profiles\"; sh tools/ops/hotspots.sh)"
+  sh tools/ops/hotspots.sh | sed -n '/the slowest tests/,$p'
   exit 0
 fi
 if [ "$(git rev-parse HEAD)" = "$commit" ]; then

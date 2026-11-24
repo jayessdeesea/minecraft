@@ -59,6 +59,11 @@ Each points to its home, which has the reasons.
   against what it yielded, and a miss is dug into. [docs/conventions.md](docs/conventions.md#check-the-outcome-of-what-the-force-is-sent-to-do)
 - **A retry changes something:** wait longer and out of step, then another target, another means, ask for help, give
   it up and say so - never the same try again; and the count is logged. [docs/conventions.md](docs/conventions.md#a-retry-changes-something)
+- **Refactor every sixteenth commit, between profiles:** 8 past each profile, measure with `tools/ops/hotspots.sh` and make one
+  extraction with no change of behaviour; `ArchitectureTest`'s caps only come down.
+  [docs/conventions.md](docs/conventions.md#refactor-every-sixteenth-commit-between-profiles)
+- **A comment is the rule and its reason:** no incident history - that's git's.
+  [docs/conventions.md](docs/conventions.md#a-comment-is-the-rule-and-its-reason)
 - **Profile every sixteenth commit:** at a commit count that's a multiple of 16, record the live
   garrison with Flight Recorder and fix the worst offenders where it makes sense.
   [docs/conventions.md](docs/conventions.md#profile-every-sixteenth-commit)

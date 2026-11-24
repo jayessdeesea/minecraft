@@ -1,6 +1,6 @@
 ---
 status: ready
-priority: P2
+priority: P1
 ---
 
 # The verify's time: a budget by test, and the simulations that prove the same thing twice
@@ -17,8 +17,9 @@ mission simulation runs a flatten, a floor and a template end to end, and the fl
 simulations run those phases again - and a mission test that flattens a chunk before reaching the step it's about.
 
 ## Done when
-- **The verify says where its time went.** `tools/ops/commit.sh` prints, after a verify, the slowest fifteen tests
-  (from the surefire reports) and each one's change against the run before, so growth shows in the commit that caused it.
+- **The verify says where its time went, against the run before.** Built: `tools/ops/hotspots.sh` lists the last
+  verify's slowest fifteen and the sum, and `commit.sh` prints them after each verify. Left: each one's change against
+  the run before, so growth shows in the commit that caused it.
 - **A test's time is capped**, a ratchet in `ArchitectureTest` like the line caps: a simulation over the cap is
   justified or cut down, and a cap only comes down.
 - **Each of the eleven slowest classes has been gone through once**: for every test, the one behaviour only it proves
@@ -29,6 +30,9 @@ simulations run those phases again - and a mission test that flattens a chunk be
 - The verify is measurably shorter, and the number is in DEVELOPMENT.md where the verify's time is stated.
 
 ## Notes
+- Pulled forward (operator, 2026-11-24). On that day's verify: 1,961 tests, 8,234 s summed across the parallel forks;
+  `FarmMissionSimulationTest`'s twelve were ten of the fifteen slowest, 225 to 535 s each - every one flattens or
+  floors a chunk before its subject. The prepared ground is the first cut.
 - Not wanted: a mechanical detector of duplicate tests (same setup, same assertions). These overlap by scenario, not by
   text, and it would find little.
 - The stuck evals aren't a cost: `StuckEvalsTest` is 12 s, and `StuckTriageIT` runs by name, outside the suite.

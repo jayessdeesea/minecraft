@@ -87,6 +87,58 @@ class ArchitectureTest {
     static final Map<String, Integer> OVER_THE_LIMIT = Map.of(
             "app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java", 8042);
 
+    /**
+     * The state `SoldierRunner` holds, counted as its declarations at class level - fields and constants, a line each,
+     * near enough: it may only shrink (docs/conventions.md, "Refactor
+     * every sixteenth commit, between profiles"). State added there is state every change has to read past; a new one belongs in the
+     * class whose work it is. The cap comes down with each extraction - the test says when.
+     */
+    static final int RUNNER_FIELDS = 673;
+    /** Lines over {@value #LONG} characters in the main sources: no new one, and the count only comes down. */
+    static final int LONG_LINES = 58;
+    static final int LONG = 200;
+    /** How far under a cap a count may fall before the cap has to follow it down. */
+    static final int SLACK = 5;
+
+    @Test
+    void theRunnersStateAndTheLongLinesOnlyShrink() throws IOException {
+        Path root = Path.of("..").toAbsolutePath().normalize();
+        java.util.regex.Pattern field = java.util.regex.Pattern.compile(
+                "^    (?:private |protected |public )?(?:static |final |volatile |transient )*[\\w.<>\\[\\], ?]+ \\w+(?: = .*)?[;({]?\\s*$");
+        java.util.regex.Pattern notAField = java.util.regex.Pattern.compile("^    (?:return|throw|if|for|while|else|try|case|//|\\*|@|\\}).*");
+        long fields;
+        try (Stream<String> lines = Files.lines(root.resolve("app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java"))) {
+            fields = lines.filter(l -> field.matcher(l).matches() && !notAField.matcher(l).matches() && !l.contains("(")
+                    || l.matches("^    (?:private |protected |public )?(?:static |final |volatile )+[\\w.<>\\[\\], ?]+ \\w+ = .*")).count();
+        }
+        long longLines = 0;
+        for (String module : List.of("protocol", "command", "command-ai", "bot", "app")) {
+            Path src = root.resolve(module).resolve("src").resolve("main");
+            if (!Files.isDirectory(src)) {
+                continue;
+            }
+            try (Stream<Path> files = Files.walk(src)) {
+                for (Path file : files.filter(f -> f.toString().endsWith(".java")).toList()) {
+                    try (Stream<String> read = Files.lines(file)) {
+                        longLines += read.filter(l -> l.length() > LONG).count();
+                    }
+                }
+            }
+        }
+        List<String> wrong = new ArrayList<>();
+        ratchet(wrong, "SoldierRunner's fields", fields, RUNNER_FIELDS, "RUNNER_FIELDS");
+        ratchet(wrong, "lines over " + LONG + " characters in the main sources", longLines, LONG_LINES, "LONG_LINES");
+        assertEquals(List.of(), wrong);
+    }
+
+    private static void ratchet(List<String> wrong, String what, long now, int cap, String name) {
+        if (now > cap) {
+            wrong.add(what + " grew to " + now + ", past " + cap + " - they may only shrink");
+        } else if (now < cap - SLACK) {
+            wrong.add(what + " are down to " + now + ": bring " + name + " down to it");
+        }
+    }
+
     @Test
     void sourceFilesStayUnder1000Lines() throws IOException {
         Path root = Path.of("..").toAbsolutePath().normalize();
