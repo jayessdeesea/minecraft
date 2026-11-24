@@ -117,9 +117,8 @@ public record AccessRoute(List<BlockPos> feet, List<BlockPos> toCut, List<BlockP
     static Optional<Double> stepCost(WorldView world, BlockPos from, BlockPos to) {
         double c = STEP;
         for (BlockPos cell : clearFor(from, to)) {
-            // Nothing liquid, and never through a depot's table, furnace or chest.
-            if (world.isHazard(cell.x(), cell.y(), cell.z()) || world.workstation(cell.x(), cell.y(), cell.z()).isPresent()
-                    || world.isChest(cell.x(), cell.y(), cell.z())) {
+            // Nothing liquid, and never through a depot's table, furnace or chest: what Kept keeps from a cut.
+            if (Kept.NONE.bars(Kept.Use.CUT, world, cell)) {
                 return Optional.empty();
             }
             if (world.isSolid(cell.x(), cell.y(), cell.z())) {

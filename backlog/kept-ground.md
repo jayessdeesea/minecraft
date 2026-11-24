@@ -32,7 +32,7 @@ missions only - the keep's dig, a tunnel and an `Order.Dig` never ask); `noBuild
 standing); a **chest or workstation** (diggable by kind, uncuttable by the road, safe from a dig only if listed).
 
 ## The abstraction
-`bot.engineer.Kept`, pure, beside `Clearing`:
+`bot.engineer.Kept`, pure, beside `Clearing` (built; what follows is what's left to give it):
 - `enum Use { DIG, CUT, BUILD, STAND }`
 - `record Kept(Set<Cell> cells, BiPredicate<Integer, Integer> columns, Set<Use> gateBars)` with
   `boolean bars(Use, WorldView, BlockPos)`, `Optional<String> why(...)` for the logs, `NONE`, `and(Kept)`, `but(Cell)`.
@@ -42,12 +42,11 @@ standing); a **chest or workstation** (diggable by kind, uncuttable by the road,
   `keep(Flatten, condemned)` - static, from arguments, holding nothing. `Order.Dig`'s `Set<Cell> except` stays as it is.
 
 ## Its commits, each changing no behaviour
-1. **Today's answers pinned, tests only**: a road past a shut gate lists the gate and the cell over it in `toCut`, and
-   refuses a chest (`AccessRouteTest`); `diggable(gate)` is true, `nextInTunnel` takes a gate in its cover, `standFor`
-   returns a shut gate's cell (`ClearingTest`); `spoils` on a gate, farmland, a crop, `noBuild` (`PathfinderTest`);
-   `kept` on a shared fence line and not on its own chunk (`FarmMissionsTest`). The test world may want a gate's state.
-2. **`Kept` with its table saying exactly what is said today** - a gate diggable included: `Pathfinder.spoils`,
-   `Builder`, `Clearing.diggable` and `safeFrom`, `AccessRoute.stepCost`, `Clearer`'s stand ask it.
+Built: today's answers pinned by tests; `bot.engineer.Kept` with its table of kind by use, asked by `Pathfinder.spoils`,
+`AccessRoute.stepCost`, `Clearing.diggable` and `Clearer`'s stand. Left as they were, each for its reason: `Builder`
+(it refuses no cell by kind - its checks ask whether a block landed) and `Clearing.safeFrom` (never straight down onto
+farmland is about where the digger stands; under STAND it would change `Clearer`, which stands on farmland).
+
 3. **`KeptGround`**: `campKeep`, `groundExcept` and the `digExcept` out of `SoldierRunner`, its cap lowered;
    `FarmMissions.kept` with them.
 4. **`Kept` passed where the sets were**: `AccessRoute.plan(world, start, goal, Kept)`, `Clearing.toClear`,

@@ -275,17 +275,22 @@ public final class Clearing {
     public static boolean diggable(WorldView world, int x, int y, int z) {
         // A fence gate, shut or open - open, it reads passable - is dug as a gate (Digger.Target#GATE): it needs nothing under
         // it, and live (operator, 2026-11-22) the old farm's gates hung over the flatten at chunk (1, 3).
-        if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent() || world.isGate(x, y, z)) {
+        if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent()) {
             return true;
+        }
+        // What is kept from a dig is Kept's table, asked a row at a time between the reads of what breaks: a gate first,
+        // which is no ground and holds no water back.
+        if (world.isGate(x, y, z)) {
+            return !Kept.NONE.keeps(Kept.Kind.GATE, Kept.Use.DIG);
         }
         // Farmland is a farm's, never a clear's - but where it's given up, a farm mission's chunk to flatten: live (field681),
         // the operator's flatten crew cut round the wheat of a farm the mission had superseded.
-        boolean farmland = world.isFarmland(x, y, z) && !world.farmlandGivenUp(x, z);
+        boolean farmland = Kept.NONE.bars(Kept.Use.DIG, Kept.Kind.FARMLAND, world, x, y, z);
         boolean breaks = world.isSoil(x, y, z) && !farmland || world.isStone(x, y, z) || world.isGravel(x, y, z)
                 || world.isCobblestone(x, y, z)
                 || world.isSolid(x, y, z) && !farmland
                 && world.hardness(x, y, z).filter(h -> h.ticks(Hardness.HAND) <= MAX_DIG_TICKS).isPresent();
-        return breaks && !letsInWater(world, new BlockPos(x, y, z));
+        return breaks && !Kept.NONE.bars(Kept.Use.DIG, Kept.Kind.HOLDS_WATER, world, x, y, z);
     }
 
     /**

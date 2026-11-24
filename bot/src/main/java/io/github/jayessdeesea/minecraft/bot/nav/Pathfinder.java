@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.nav;
 
+import io.github.jayessdeesea.minecraft.bot.engineer.Kept;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 
 import java.util.ArrayDeque;
@@ -614,17 +615,11 @@ public final class Pathfinder {
 
     /**
      * Whether a block put down at {@code cell} would spoil a farm or a way kept open: on farmland, which turns to dirt
-     * under it, or in a crop. Live, soldiers climbing out of the camp's farm in its hollow built
-     * their steps on the cells beside them, and a third of the farm lay under cobblestone.
+     * under it, or in a crop; in a cell kept open - a staircase's, where a route's step left behind blocks the way up; or
+     * in a gate's own cell, a way through to a walker and never ground to build in. The rules are {@link Kept}'s.
      */
     static boolean spoils(WorldView world, BlockPos cell) {
-        return world.isFarmland(cell.x(), cell.y() - 1, cell.z()) || world.wheatAge(cell.x(), cell.y(), cell.z()).isPresent()
-                // Or a cell kept open - a staircase's: live, soldiers crossing a mine shaft's open top put
-                // their route's steps into its stairs, and those left there blocked the way up.
-                || world.noBuild(cell.x(), cell.y(), cell.z())
-                // Or a gate's own cell: a way through to a walker, never ground to build in - in the squad simulation a
-                // route's step went into the gate it was walking through.
-                || world.isGate(cell.x(), cell.y(), cell.z());
+        return Kept.NONE.bars(Kept.Use.BUILD, world, cell);
     }
 
     /** Whether walking off into {@code edge} lands unhurt on ground within {@link #MAX_DROP}, or in water. */
