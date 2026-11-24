@@ -162,6 +162,16 @@ level was dealt to went back and forth between two steps for two minutes. A chec
 `[Outcome]` line (the flatten's is its `[Keep] pace` line), read in every live check with the
 alerts.
 
+## A contact met live is a row first
+
+What a soldier does on contact is one pure function (`bot.Contact.respond`), and `bot`'s `ContactEvalTest` is the table
+of its answers: a row a combination of weapon, armour, health, hostile and ground, with the response it gives. A
+`[Contact]` line whose combination isn't in the table is added as a row, with what the code answers today, before
+anything is fixed (operator, 2026-11-24: as more combinations are found they join the eval suite). The fix then flips
+that row's expectation in its own commit, so the diff shows which answers a change moved and that no other did. A
+combination that only a table row holds is also one a later change can't break unseen. What the answers should be is
+backlog/engagement-rules.md's.
+
 ## A retry changes something
 Trying again what just failed, the same way, expects a different outcome for no reason (operator, 2026-11-23). A
 routine whose try fails does something different with the next, from a ladder it climbs in order:

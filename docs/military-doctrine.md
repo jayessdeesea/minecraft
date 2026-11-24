@@ -701,6 +701,10 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   pillager on hills, among trees or afloat (50-83%). A squad's melee (`CombatSquadMatrixTest`): two or three against a
   pack, every hostile killed, none of the squad, and no squadmate hit by a sweep in any cell - the swing struck as the
   server strikes it (`Battle.swing`); its sweeps took 22-92 hostiles a cell where they hit none of ours.
+- **The response is one decision** (`bot.Contact.respond`, pure): which hostile is answered first, and what is done
+  about it, from the soldier's kit and health, the hostile's kind and place, and what the ground says - asked of the
+  soldier (`Contact.Ground`) only when it decides something, so the walks it plans stay on their one-second clock.
+  `DeterministicSoldier` carries the response out. Its answers are tabled a row a combination (`ContactEvalTest`).
 - **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the
   response changes, each hostile's type, place, distance, height off the soldier and whether it's in water;
   the soldier's health and kit; and the rule that chose the response - fights, shoots, takes cover (and why),

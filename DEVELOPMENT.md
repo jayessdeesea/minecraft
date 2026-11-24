@@ -100,6 +100,11 @@ AI), and prints how the fights end. Use it to measure a change to combat behavio
 seeds, a cell short of it listed in the class's known set; `app`'s `StuckEvalsTest` replays each recorded stuck soldier
 under `stuck/`. What they don't cover yet is backlog/scenario-matrix.md.
 
+**The contact table.** `bot`'s `ContactEvalTest` pins the response `bot.Contact.respond` gives to each combination of
+weapon, armour, health, hostile and ground, a row a line, in milliseconds: `mvn -o -q test -pl bot -Dtest=ContactEvalTest`.
+The matrices above say whether a fight is won; this says which response was chosen. When a row is added is
+docs/conventions.md's ("A contact met live is a row first").
+
 **Squad-leader evaluation.** `app`'s `SquadLeaderScenarioIT` runs the real squad leader, with its
 real prompt, against Ollama on the same scenarios. It prints a pass rate per family rather than
 pass/fail. Re-run it after any prompt or model change:

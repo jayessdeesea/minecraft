@@ -146,27 +146,44 @@ public final class DeterministicSoldier extends Mover implements Soldier {
 
     /** Whether it carries what shooting takes: a bow, and arrows for it. */
     private boolean canShoot() {
-        Kit carried = kit;
-        return carried != null && carried.bow() && carried.arrows() > 0;
+        return Contact.canShoot(kit);
     }
 
-    /** Aims at {@code target} along the arrow's arc and draws; loosed once the draw is full. False if no arc reaches. */
-    private boolean shoot(Position target) {
-        double dx = target.x() - gait.position.x();
-        double dz = target.z() - gait.position.z();
+    /** The pitch of the arrow's arc to {@code target}, empty if none reaches. */
+    private OptionalDouble aim(Position target) {
         double up = target.y() + TARGET_HEIGHT - (gait.position.y() + EYE_HEIGHT);
-        OptionalDouble aim = aimPitch(Math.hypot(dx, dz), up);
-        if (aim.isEmpty()) {
-            return false;
-        }
-        yaw = yawToward(dx, dz);
-        pitch = (float) aim.getAsDouble();
+        return aimPitch(Math.hypot(target.x() - gait.position.x(), target.z() - gait.position.z()), up);
+    }
+
+    /** Turns to {@code target} at {@code aim} and draws; loosed once the draw is full. */
+    private void draw(Position target, double aim) {
+        yaw = yawToward(target.x() - gait.position.x(), target.z() - gait.position.z());
+        pitch = (float) aim;
         drawing = true;
         if (++drawTicks >= FULL_DRAW_TICKS) {
             loose = true;
             drawTicks = 0;
         }
-        return true;
+    }
+
+    /** The ground's answers to what the contact decision asks this tick (Contact.Ground), and the aim it found for an arrow. */
+    private final class Asked implements Contact.Ground {
+        private final WorldView world;
+        private OptionalDouble aim = OptionalDouble.empty();
+
+        Asked(WorldView world) {
+            this.world = world;
+        }
+
+        @Override public boolean noWalkTo(Position hostile) { return DeterministicSoldier.this.noWalkTo(world, hostile); }
+        @Override public boolean overhead(Position hostile) { return DeterministicSoldier.this.overhead(world, hostile); }
+        @Override public boolean pinned(Position archer) { return DeterministicSoldier.this.pinned(world, archer); }
+
+        @Override
+        public boolean shotAt(Position hostile) {
+            aim = squadmateInTheLine(world, hostile) ? OptionalDouble.empty() : aim(hostile);
+            return aim.isPresent();
+        }
     }
 
     /** Whether a squadmate stands in the line from its eyes to {@code target} (Ballistics.inTheLine): the arrow waits. */
@@ -467,10 +484,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             // Hit with nothing in reach: someone is shooting - find the shooter.
             threats = visible(world, within(near, UNDER_FIRE_RADIUS));
         }
-        // An enderman only in self-defense: just hit, and it at hand - a swing at one passing provokes it. Live
-        // (field451), Eli at the mine's bottom swung at three in eight seconds, and was killed by them.
-        threats = threats.stream().filter(t -> !t.fightsOnlyAtHand() || underFireTicks > 0
-                && Math.hypot(t.position().x() - gait.position.x(), t.position().z() - gait.position.z()) <= ATTACK_REACH + 1).toList();
+        threats = Contact.inOrder(gait.position, threats, underFireTicks > 0);
         if (underFireTicks > 0) {
             underFireTicks--;
         }
@@ -483,29 +497,6 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         if (hurtNow && threats.stream().noneMatch(t -> gait.position.distanceTo(t.position()) <= CONTACT_RADIUS) && hurtSaidIn == 0) {
             hurtSaidIn = 40;
             contactLog.hurtWithNothing(world, gait.position, lastReportedHealth, near);
-        }
-        // A creeper inside its blast's clearing comes first, whatever's nearer: live (field595) Olga fought a skeleton 0.8
-        // off with a creeper 1.3 off, her answer flipping between the two each tick, and the creeper's blast took her from
-        // 16 health to 2 - the next one killed her.
-        Optional<TrackedEntity> blast = threats.stream().filter(t -> t.explodes() && gait.position.distanceTo(t.position()) <= CREEPER_CLEAR).findFirst();
-        if (blast.isPresent() && !threats.getFirst().equals(blast.get())) {
-            List<TrackedEntity> first = new java.util.ArrayList<>(threats);
-            first.remove(blast.get());
-            first.addFirst(blast.get());
-            threats = List.copyOf(first);
-        }
-        // And an archer before a hand-to-hand one out of reach: live (field598), Jack stood over a pit with a zombie and a
-        // skeleton 6 below, his answer flipping between "takes cover" and "fights hand to hand" as the nearer changed, and
-        // was shot from 9 health to none where he stood.
-        if (!threats.isEmpty() && !threats.getFirst().shoots() && !threats.getFirst().explodes()
-                && gait.position.distanceTo(threats.getFirst().position()) > ATTACK_REACH) {
-            Optional<TrackedEntity> archer = threats.stream().filter(TrackedEntity::shoots).findFirst();
-            if (archer.isPresent()) {
-                List<TrackedEntity> first = new java.util.ArrayList<>(threats);
-                first.remove(archer.get());
-                first.addFirst(archer.get());
-                threats = List.copyOf(first);
-            }
         }
         int nearestId = threats.isEmpty() ? -1 : threats.get(0).entityId();
         contactTicks++;
@@ -527,43 +518,31 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             gait.fall(world);
             return attack;
         }
-        // A hostile that fights hand to hand, out of reach with no way to it - water, a drop, a wall
-        // between - has no way to the soldier either: not a fight, and the soldier carries on. Live,
-        // the farm squad stood a night's start "in contact" with one across from it, stepping at it
-        // into what stopped it, none of them striking; once it comes within reach, it's a fight.
-        // A creeper too: one with no way to the soldier never comes within its blast. Live, three of a
-        // squad stood a night in a cave 5 to 8 blocks from creepers, each backing off it with nowhere to
-        // back to and too far to strike, and none of them moved.
+        // What it does about the first of them is Contact's to say; here it's done.
         String response = null;
         List<TrackedEntity> seen = threats;
-        if (!threats.isEmpty() && !threats.get(0).shoots()
-                && gait.position.distanceTo(threats.get(0).position()) > ATTACK_REACH && noWalkTo(world, threats.get(0).position())) {
+        Asked asked = threats.isEmpty() ? null : new Asked(world);
+        Contact.Choice choice = threats.isEmpty() ? null : Contact.respond(new Contact.Situation(gait.position, lastReportedHealth, kit,
+                threats, underFireTicks > 0, contactTicks > BEGUN_TICKS, stalledTicks <= BEGUN_TICKS, boxedIn, wet, fitToSprint(),
+                shieldRaised(), clearingFrom == nearestId, nearestId == standoffWith ? creeperStandoff : 0), asked);
+        if (choice != null && choice.response().letsBe()) {
             threats = List.of();
-            response = "carries on: no way between them on foot";
-        } else if (!threats.isEmpty() && !threats.get(0).shoots() && !threats.get(0).explodes() && overhead(world, threats.get(0).position())) {
-            // In the air overhead: a walk to under it is no way to it, and till it comes down neither strikes. One on a ledge walks down.
-            threats = List.of();
-            response = "carries on: overhead, out of a sword's reach";
+            response = choice.response().said();
         }
         if (!threats.isEmpty()) {
+            Contact.Response chosen = choice.response();
+            response = chosen.said();
             TrackedEntity nearest = threats.get(0);
             Position threat = nearest.position();
             double range = gait.position.distanceTo(threat);
-            boolean shot = false;
-            // A creeper too, from outside its blast (operator, 2026-11-18: soldiers with bows shoot far-away
-            // enemies): live (field436-443), six soldiers were killed by creepers in melee, boxed in or after the
-            // standoff, a stone sword's four hits outlasting its fuse; at arm's length it's still got away from.
-            if ((!nearest.explodes() || range > CREEPER_CLEAR) && canShoot() && (range > SHOOT_BEYOND || !armedForMelee()
-                    || nearest.shoots() && pinned(world, threat))) {
-                // Out of a sword's reach, or with no sword, or pinned under an archer it can't close
-                // on: stand and shoot back, the bow's arc aimed at it.
-                shieldTicks = 0;
-                shot = !squadmateInTheLine(world, threat) && shoot(threat);
+            boolean shot = chosen == Contact.Response.SHOOTS;
+            if (choice.bowUp()) {
+                shieldTicks = 0; // the bow in hand, the shield is down
             }
             if (shot) {
                 holdCoverTicks = 0;
-                response = "shoots";
-            } else if (nearest.explodes() && (range > CREEPER_DEFUSE || range > CREEPER_CLEAR && clearingFrom != nearest.entityId())) {
+                draw(threat, asked.aim.getAsDouble());
+            } else if (chosen == Contact.Response.PAST_CREEPER) {
                 // Getting clear of one it came within lighting distance of goes on past where its fuse goes out; one
                 // never come that close is gone round, the route kept.
                 creeperStandoff = 0;
@@ -576,10 +555,10 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 // could walk to them and didn't. Closing inside this, it backs off as below.
                 navigate(world);
                 report = new Report.InContact(threats.size());
-                contactLog.tick(world, gait.position, lastReportedHealth, kit, threats, "carries on: a creeper outside its blast");
+                contactLog.tick(world, gait.position, lastReportedHealth, kit, threats, response);
                 gait.fall(world);
                 return attack;
-            } else if (nearest.explodes()) {
+            } else if (chosen == Contact.Response.CLEAR_OF_BLAST || chosen == Contact.Response.CREEPER_STANDOFF) {
                 // A creeper is never fought at arm's length: get clear of the blast - straight away,
                 // else the heading nearest that the ground allows. Boxed in, strike it: a hit knocks
                 // it back out of its blast's reach. Live, a soldier with a wall at her back stood still
@@ -591,8 +570,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 clearingFrom = nearest.entityId();
                 creeperStandoff = nearest.entityId() == standoffWith ? creeperStandoff + 1 : 1;
                 standoffWith = nearest.entityId();
-                boolean engage = creeperStandoff > CREEPER_STANDOFF_TICKS;
-                response = engage ? "closes on the creeper holding it in a standoff" : "gets clear of the creeper's blast";
+                boolean engage = chosen == Contact.Response.CREEPER_STANDOFF;
                 if (engage && range > ATTACK_REACH) {
                     stepGuarded(world, threat.x(), threat.z());
                 } else if ((engage || !evade(world, threat)) && ticksUntilAttack == 0 && range <= ATTACK_REACH && !shieldRaised()) {
@@ -600,38 +578,15 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                     Kit carried = kit;
                     ticksUntilAttack = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon()).ticksToCharge();
                 }
-            // An enderman at hand is fought only with a weapon: bare fists against its 40 health lose. Live (field441),
-            // Pete, on his way to make a stone sword, punched one ten times at the depot and was killed, twice in 90 s.
-            } else if (nearest.fightsOnlyAtHand() && !armedForMelee()) {
-                response = "backs off: no weapon against one that fights only at hand";
+            } else if (chosen == Contact.Response.BACKS_OFF) {
                 stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z());
-            // One that fights hand to hand, the exchange lost and a way clear of it (Engagement): got clear at a sprint - one
-            // that keeps pace can't be got away from, and is fought. In place of always fighting it (operator, 2026-11-21:
-            // flee and recover, re-engage if relevant); healed, the exchange is won again and it closes.
-            } else if (!nearest.shoots() && !nearest.explodes() && meleeExchange(range) != Engagement.Kind.ENGAGE) {
-                response = "gets clear: the exchange lost, hand to hand";
+            } else if (chosen == Contact.Response.GETS_CLEAR) {
                 withdrawFrom(nearest, false);
                 sprinting = canSprint();
                 stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z(), sprinting ? SPRINT_STEP : STEP);
-            // An archer well below - across a cave's drop - out-shoots a sword as surely as one it has no route to:
-            // the engagement doctrine's it-can-I-can't cell, cover and carry on. Live (field410-419), Alice, Hal and
-            // Gus closed on skeletons in the caves under their faces and were shot 12-28 blocks down.
-            } else if (nearest.shoots() && armedForMelee() && range > CONTACT_RADIUS && underFireTicks == 0 && lastReportedHealth >= HURT_HEALTH
-                    && (threat.y() < gait.position.y() - ARCHER_BELOW || pinned(world, threat))) {
-                // Out of reach for its sword, out of contact and not shooting: let be, and the work goes on - hidden
-                // from, it held soldiers off their work (operator, 2026-11-20).
-                response = "carries on: an archer out of contact, not shooting, with no way to close on it";
+            } else if (chosen == Contact.Response.PAST_ARCHER) {
                 navigate(world);
-            // Not closed on when the exchange is lost (Engagement): its shots crossing to it and while it's struck down outlast
-            // the soldier. Live (field611), Eli at 0.6 health closed on a skeleton 6.4 off across level ground and was shot
-            // dead. A fight begun is finished while it outlasts the kill: broken off at a health line, soldiers were shot
-            // running - four cells of the combat matrix lost, the water scenarios' wading soldiers killed.
-            } else if (nearest.shoots() && (!armedForMelee() || range > ATTACK_REACH && archerExchange(range) != Engagement.Kind.ENGAGE
-                    || threat.y() < gait.position.y() - ARCHER_BELOW || pinned(world, threat))) {
-                response = !armedForMelee() ? "takes cover: an archer, and no melee weapon"
-                        : range > ATTACK_REACH && archerExchange(range) != Engagement.Kind.ENGAGE ? "takes cover: an archer, the exchange lost"
-                        : threat.y() < gait.position.y() - ARCHER_BELOW ? "takes cover: an archer " + ARCHER_BELOW + " or more below"
-                        : "takes cover: an archer with no route to strike it from";
+            } else if (chosen.takesCover()) {
                 // An archer out-fights a bare hand from any range, and a sword it can't be closed on:
                 // get out of its sight, and stay out.
                 Optional<Position> cover = coverFrom(world, gait.position, threat);
@@ -653,7 +608,6 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 holdCoverTicks = UNDER_FIRE_TICKS;
                 eatsInCover = threats.stream().noneMatch(t -> !t.shoots() && gait.position.distanceTo(t.position()) <= ATTACK_REACH + 1) && !lineOfSight(world, new Position(threat.x(), threat.y() + EYE_HEIGHT, threat.z()), new Position(gait.position.x(), gait.position.y() + TARGET_HEIGHT, gait.position.z()));
             } else {
-                response = armedForMelee() ? "fights hand to hand" : "fights bare-handed";
                 // Which swing (Strike): the sword's sweep with none of the force's in its box, else one that doesn't sweep - a
                 // knockback hit sprinting, or one short of a sweep's charge (operator, 2026-11-21: the sweep has its place, and it's
                 // not always). Live (field584), four squadmates in one cell of a slot each held fire for the others, and a zombie
@@ -757,13 +711,13 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     static final double HURT_HEALTH = 10;
     /** The exchange with one that fights hand to hand {@code range} off (Engagement.melee). */
     private Engagement.Kind meleeExchange(double range) {
-        return Engagement.melee(lastReportedHealth, kit, range, contactTicks > BEGUN_TICKS, boxedIn ? 0 : canSprint() ? Engagement.SPRINT : Engagement.WALK);
+        return Engagement.melee(lastReportedHealth, kit, range, contactTicks > BEGUN_TICKS, Contact.pace(boxedIn, false, canSprint()));
     }
 
     /** The exchange with an archer {@code range} off (Engagement.archer). */
     private Engagement.Kind archerExchange(double range) {
-        return Engagement.archer(lastReportedHealth, kit, range, contactTicks > BEGUN_TICKS, boxedIn ? 0 : wet ? Engagement.SWIM
-                : canSprint() ? Engagement.SPRINT : Engagement.WALK, stalledTicks <= BEGUN_TICKS);
+        return Engagement.archer(lastReportedHealth, kit, range, contactTicks > BEGUN_TICKS, Contact.pace(boxedIn, wet, canSprint()),
+                stalledTicks <= BEGUN_TICKS);
     }
     /**
      * Ticks since it met the hostile it's in contact with now: past {@link #BEGUN_TICKS} the fight's begun. Not the health
@@ -962,8 +916,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     }
 
     private boolean armedForMelee() {
-        Kit carried = kit;
-        return carried == null || WeaponStats.melee(carried.weapon()) != WeaponStats.HAND;
+        return Contact.armed(kit);
     }
 
     /**

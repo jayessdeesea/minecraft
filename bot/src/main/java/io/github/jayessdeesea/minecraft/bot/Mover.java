@@ -455,8 +455,13 @@ abstract class Mover {
      * its shield up - an item in use slows a player and stops a sprint.
      */
     boolean canSprint() {
+        return fitToSprint() && !shieldRaised();
+    }
+
+    /** Whether its food and footing let it sprint, its shield aside. */
+    boolean fitToSprint() {
         Condition known = condition;
-        return (known == null || known.food() > SPRINT_FOOD_FLOOR) && !shieldRaised() && !gait.afloat;
+        return (known == null || known.food() > SPRINT_FOOD_FLOOR) && !gait.afloat;
     }
 
     /** Whether it carries a pickaxe, to cut steps into stone with - unknown kit carries none. */
