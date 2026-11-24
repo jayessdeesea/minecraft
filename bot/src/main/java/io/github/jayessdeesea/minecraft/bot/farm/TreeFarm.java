@@ -112,6 +112,7 @@ public record TreeFarm(BlockPos centre, List<BlockPos> plot, List<BlockPos> torc
 
     /** Whether {@code cell} holds a sapling, or the trunk it grew into. */
     public static boolean planted(WorldView world, BlockPos cell) {
-        return world.sapling(cell.x(), cell.y(), cell.z()).isPresent() || world.isLog(cell.x(), cell.y(), cell.z());
+        return world.sapling(cell.x(), cell.y(), cell.z()).isPresent() || world.isLog(cell.x(), cell.y(), cell.z())
+                || world.isLog(cell.x(), cell.y() + 1, cell.z()); // its foot cut, the trunk left standing over the cell: still its tree
     }
 }

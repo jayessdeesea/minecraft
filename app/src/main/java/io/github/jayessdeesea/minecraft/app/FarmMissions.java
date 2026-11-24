@@ -388,7 +388,8 @@ final class FarmMissions {
             if (farm.isPresent()) {
                 FarmMission m = farm.get();
                 kept.add(m);
-                out.set(i, new Objective("Keep the " + m.what() + " at chunk (" + m.chunkX() + ", " + m.chunkZ() + ")", m.centre(m.steps().getLast()), standing.intent(), standing.task()));
+                out.set(i, new Objective("Keep the " + m.what() + " at chunk (" + m.chunkX() + ", " + m.chunkZ() + ")", m.centre(m.steps().getLast()), standing.intent(),
+                        kind == FarmMission.Crop.WHEAT ? new Objective.Task.Farm() : new Objective.Task.TreeFarm())); // the farm's own task, whatever the squad was dealt
             } else if (first.isPresent()) {
                 out.set(i, first.get());
             }
@@ -572,7 +573,9 @@ final class FarmMissions {
                 TreeChunk.Stage stage = chunk.stage(world);
                 int takes = chunk.plantable(world).size();
                 say(m, step, stage + " - " + takes + " of " + chunk.trunks().size() + " trunk cells take a sapling"
-                        + (stage == TreeChunk.Stage.GROUND ? ", the rest want soil under them and nothing over" : ""));
+                        + (stage == TreeChunk.Stage.GROUND ? ", the rest want soil under them and nothing over" : "")
+                        + (stage != TreeChunk.Stage.PLANTED ? "" : ", not planted: " + chunk.trunks().stream().filter(t -> !io.github.jayessdeesea.minecraft.bot.farm.TreeFarm.planted(world, t))
+                        .limit(4).map(t -> t.x() + "," + t.y() + "," + t.z()).toList() + (world.isChest(chunk.chest().x(), chunk.chest().y(), chunk.chest().z()) ? "" : ", no chest")));
                 yield stage.compareTo(TreeChunk.Stage.PRODUCING) >= 0 ? Optional.of("its " + chunk.trunks().size()
                         + " saplings in, its chest and its " + chunk.torches().size() + " torches - " + stage) : Optional.empty();
             }

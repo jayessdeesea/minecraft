@@ -22,6 +22,7 @@ class TreeChunkTest {
     private final Set<BlockPos> saplings = new HashSet<>();
     private final Set<BlockPos> torches = new HashSet<>();
     private final Set<BlockPos> chests = new HashSet<>();
+    private final Set<BlockPos> logs = new HashSet<>();
     /** Columns of ground standing over the grass, six high. */
     private final Set<BlockPos> mounds = new HashSet<>();
 
@@ -29,7 +30,7 @@ class TreeChunkTest {
     private final WorldView world = new WorldView() {
         @Override
         public boolean isSolid(int x, int y, int z) {
-            return y <= GROUND || chests.contains(new BlockPos(x, y, z)) || y <= GROUND + 6 && mounds.contains(new BlockPos(x, 0, z));
+            return y <= GROUND || chests.contains(new BlockPos(x, y, z)) || logs.contains(new BlockPos(x, y, z)) || y <= GROUND + 6 && mounds.contains(new BlockPos(x, 0, z));
         }
 
         @Override
@@ -45,6 +46,11 @@ class TreeChunkTest {
         @Override
         public Optional<String> sapling(int x, int y, int z) {
             return saplings.contains(new BlockPos(x, y, z)) ? Optional.of("birch") : Optional.empty();
+        }
+
+        @Override
+        public boolean isLog(int x, int y, int z) {
+            return logs.contains(new BlockPos(x, y, z));
         }
 
         @Override
@@ -78,6 +84,25 @@ class TreeChunkTest {
                 .anyMatch(c -> Math.abs(c.x() - t.x()) + Math.abs(c.z() - t.z()) <= 4)), "a torch within 4 of a trunk: light 10 there");
         assertEquals(new BlockPos(17, GROUND + 1, -15), grove.chest());
         assertEquals(new ChunkFarm(1, -1, GROUND).gates(), grove.grid().gates(), "one grid with the wheat");
+    }
+
+    /**
+     * A tree whose foot was cut and the rest left standing is still that cell's tree: live (field708) the tree farm at
+     * chunk (2, 3) stood PLANTED, "15 of 16 trunk cells take a sapling", three squads on it with nothing to do - at
+     * (34, 64, 54) air, and a birch's trunk from the block over it up. No sapling grows under a trunk; felled, it's replanted.
+     */
+    @Test
+    void aTreeWithItsFootCutIsStillPlanted() {
+        TreeChunk grove = new TreeChunk(0, 0, GROUND);
+        saplings.addAll(grove.trunks());
+        chests.add(grove.chest());
+        BlockPos cut = grove.trunks().getFirst();
+        saplings.remove(cut);
+        for (int up = 1; up <= 5; up++) {
+            logs.add(cut.offset(0, up, 0));
+        }
+        assertTrue(TreeFarm.planted(world, cut), "a trunk over its cell");
+        assertEquals(TreeChunk.Stage.LIT, grove.stage(world), "all sixteen planted: its torches next");
     }
 
     @Test

@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The operator's farm missions as orders: the latest for a chunk is the one worked. */
@@ -532,6 +533,9 @@ class FarmMissionsTest {
         // With a farm squad, the wheat is its - whatever standing work it was dealt - and the others join the step.
         List<io.github.jayessdeesea.minecraft.command.Objective> withFarmSquad = missions.guarded(day, squads, java.util.Optional.of("Bravo"));
         assertEquals(List.of(flatten, "Keep the wheat farm at chunk (1, 3)", flatten), withFarmSquad.stream().map(io.github.jayessdeesea.minecraft.command.Objective::mission).toList());
+        // Its task the wheat's too: live (field708), dealt "keep the tree farms", it kept the wheat farm by name with a tree
+        // farm's task - "Keep the wheat farm at chunk (1, 3) (TREE_FARM)" - and the farm's fourteen posts were never put up.
+        assertInstanceOf(io.github.jayessdeesea.minecraft.command.Objective.Task.Farm.class, withFarmSquad.get(1).task(), "the wheat farm's task is a farm's");
 
         book.given("Bravo", given.get(1), 2_000);
         book.given("Charlie", given.get(2), 2_000);
