@@ -545,7 +545,7 @@ final class FarmMissions {
                 continue;
             }
             reviewDue.put(m, now + REVIEW_EVERY - Math.floorMod(java.util.Objects.hash(m.name(), now / DAY_MILLIS), DAY_MILLIS));
-            int left = Fixtures.left(world, new MineHead(m.chunkX(), m.chunkZ(), m.level()).fixtures()).values().stream().mapToInt(List::size).sum();
+            int left = Fixtures.left(world, TemplateDrift.layout(m)).values().stream().mapToInt(List::size).sum() + TemplateDrift.misplaced(world, TemplateDrift.layout(m)).size();
             if (left == 0) {
                 continue;
             }

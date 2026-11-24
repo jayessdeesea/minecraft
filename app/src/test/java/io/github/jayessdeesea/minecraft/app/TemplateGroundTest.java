@@ -200,6 +200,50 @@ class TemplateGroundTest {
                 io.github.jayessdeesea.minecraft.command.FarmMission.Crop.PLACEHOLDER), world), "no trunk's cell on any other template");
     }
 
+    /** A step left in a post's or a gate's cell is dug before the fixture goes up: a post, and a gate, are left as they stand. */
+    @Test
+    void aStepInAFencesOrAGatesCellIsMisplaced() {
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos post = new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(5, 64, 37), stepOnLine = post.offset(0, 0, 1),
+                stepInGate = post.offset(0, 0, 2), gate = post.offset(0, 0, 3);
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z);
+                return y <= 63 || at.equals(post) || at.equals(post.offset(0, 1, 0)) || at.equals(stepOnLine) || at.equals(stepInGate) || at.equals(gate);
+            }
+
+            @Override
+            public boolean solidHere(int x, int y, int z) {
+                return isSolid(x, y, z) && !new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z).equals(post.offset(0, 1, 0));
+            }
+
+            @Override
+            public boolean isGate(int x, int y, int z) {
+                return new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z).equals(gate);
+            }
+
+            @Override
+            public boolean isCobblestone(int x, int y, int z) {
+                return y == 64;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        var layout = new java.util.LinkedHashMap<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>>();
+        layout.put(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FENCE, List.of(post, stepOnLine));
+        layout.put(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FENCE_GATE, List.of(stepInGate, gate));
+
+        assertEquals(List.of(stepOnLine, stepInGate), TemplateDrift.misplaced(world, layout), "the two steps, not the post or the gate");
+    }
+
     /** A fixture's footing that stands open is its squad's to pave - under what stands on the ground, not under a post-top torch. */
     @Test
     void anOpenFootingUnderAFixtureIsToPave() {

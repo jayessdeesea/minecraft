@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.bot.farm.StoresChunk;
 import io.github.jayessdeesea.minecraft.bot.farm.TreeChunk;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.supply.Fixtures;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.FarmMission;
 
@@ -46,7 +47,40 @@ final class TemplateDrift {
                 }
             }
         }
+        hanging.addAll(misplaced(world, layout(m)));
         return hanging;
+    }
+
+    /** {@code m}'s fixtures as its template lays them out: none for a wheat or tree farm, whose ground work is its own. */
+    static Map<ItemClass, List<BlockPos>> layout(FarmMission m) {
+        return switch (m.crop()) {
+            case STORES -> new StoresChunk(m.chunkX(), m.chunkZ(), m.level()).fixtures();
+            case MINE -> new io.github.jayessdeesea.minecraft.bot.farm.MineHead(m.chunkX(), m.chunkZ(), m.level()).fixtures();
+            case PLACEHOLDER -> new PlaceholderChunk(m.chunkX(), m.chunkZ(), m.level()).fixtures();
+            case SHEEP, COW, PIG, CHICKEN -> pasture(m).fixtures();
+            case WHEAT, TREES -> Map.of();
+        };
+    }
+
+    /**
+     * What stands in a fence's or a gate's cell of {@code layout} that is neither, and can be dug: a step left on the line
+     * before its post went up. A fixture is passed over where its cell is taken, so the line would stand shut by a block
+     * of dirt where its gate belongs - live, a mineshaft's mouth with no way in. A post is known by the cell over it,
+     * solid to a body and no block; what isn't dug - a chest - is left for its salvage.
+     */
+    static List<BlockPos> misplaced(WorldView world, Map<ItemClass, List<BlockPos>> layout) {
+        List<BlockPos> wrong = new java.util.ArrayList<>();
+        for (BlockPos c : layout.getOrDefault(ItemClass.FENCE, List.of())) {
+            if (world.solidHere(c.x(), c.y(), c.z()) && !world.isGate(c.x(), c.y(), c.z()) && !world.isSolid(c.x(), c.y() + 1, c.z())) {
+                wrong.add(c);
+            }
+        }
+        for (BlockPos c : layout.getOrDefault(ItemClass.FENCE_GATE, List.of())) {
+            if (world.solidHere(c.x(), c.y(), c.z()) && !world.isGate(c.x(), c.y(), c.z())) {
+                wrong.add(c);
+            }
+        }
+        return wrong.stream().filter(c -> io.github.jayessdeesea.minecraft.bot.engineer.Clearing.diggable(world, c.x(), c.y(), c.z())).toList();
     }
 
     /** {@code m}'s animal farm, as its template lays it out. */

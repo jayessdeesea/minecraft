@@ -98,7 +98,9 @@ public final class DrillSquadLeader implements SquadLeader {
     /** Where the squad moves: the objective, or the reachable spot nearest it in the survey - empty when none is. */
     static Optional<Position> point(Objective objective, TerrainSurvey terrain) {
         Position goal = objective.location();
-        if (objective.task() instanceof Objective.Task.Keep) {
+        // A tree farm's ground is at its objective, under its trees: the survey's ground there is the canopy's top, and a
+        // squad sent to that climbs it on steps it leaves standing on the farm.
+        if (objective.task() instanceof Objective.Task.Keep || objective.task() instanceof Objective.Task.TreeFarm) {
             return Optional.of(goal);
         }
         // Walked to before climbed to: a spot reached only by pillaring costs cobblestone and time, and

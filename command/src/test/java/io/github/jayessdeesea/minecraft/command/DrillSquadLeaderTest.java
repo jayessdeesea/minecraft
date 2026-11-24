@@ -23,6 +23,16 @@ class DrillSquadLeaderTest {
         assertEquals(Optional.of(new Position(0.5, 40, 2.5)), DrillSquadLeader.point(mine, terrain));
     }
 
+    /** A tree farm's squad goes to its ground, not to the top of the canopy the survey finds over it. */
+    @Test
+    void aTreeFarmsPointIsItsGroundNotItsCanopy() {
+        Objective farm = new Objective("Keep the tree farm at chunk (2, 3)", new Position(40.5, 64, 56.5), "Wood that grows back", new Objective.Task.TreeFarm());
+        TerrainSurvey terrain = new TerrainSurvey(40, 56, 8, 32, List.of(
+                new TerrainSurvey.Sample(41, 57, TerrainSurvey.Ground.LAND, 69, true, 0)));
+
+        assertEquals(Optional.of(new Position(40.5, 64, 56.5)), DrillSquadLeader.point(farm, terrain));
+    }
+
     /**
      * On a mission's ground work every soldier detached on a role comes back to the squad (operator, 2026-11-22; field696:
      * a tree farm's flatten with two of four, one a miner detached under an older order). On other work a detachment stands.
