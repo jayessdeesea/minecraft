@@ -138,6 +138,33 @@ class TemplateGroundTest {
                 && filled.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(22, 61, 59)), filled.toString());
     }
 
+    /** A fixture's footing that stands open is its squad's to pave - under what stands on the ground, not under a post-top torch. */
+    @Test
+    void anOpenFootingUnderAFixtureIsToPave() {
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos trench = new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(16, 63, 40);
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63 && !(x == 16 && z == 40);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        var layout = new java.util.LinkedHashMap<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>>();
+        layout.put(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FENCE, List.of(trench.offset(0, 1, 0), trench.offset(0, 1, 1)));
+        layout.put(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.TORCH, List.of(trench.offset(0, 2, 0)));
+
+        assertEquals(List.of(trench), TemplateGround.openFootings(world, layout), "the trench under the post, and nothing under the torch on its top");
+    }
+
     /** What hangs in a template's sky is one soldier's to dig, the nearest: every template's sky is kept clear. */
     @Test
     void whatHangsInATemplatesSkyIsDugByTheNearest() {

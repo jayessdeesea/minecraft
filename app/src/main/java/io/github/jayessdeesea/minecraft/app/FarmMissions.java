@@ -254,10 +254,12 @@ final class FarmMissions {
 
     /**
      * The footings {@code objective}'s squad paves in cobblestone, if it's on a mission's wheat farm - building or built -
-     * or an animal farm's template: what its fence, gates, lights and chest stand on.
+     * or an animal farm's template: what its fence, gates, lights and chest stand on. On any other template of fixtures,
+     * the footings that stand open ({@link TemplateGround#openFootings}).
      */
     Optional<List<BlockPos>> footingsToPave(Optional<Objective> objective, WorldView world) {
-        return wheatFarm(objective).map(f -> f.footingsToPave(world)).or(() -> pasture(objective).map(f -> f.footingsToPave(world)));
+        return wheatFarm(objective).map(f -> f.footingsToPave(world)).or(() -> pasture(objective).map(f -> f.footingsToPave(world)))
+                .or(() -> fixtures(objective).map(layout -> TemplateGround.openFootings(world, layout)));
     }
 
     /** The mineshafts mined dry, by their chunks' keys: told by whoever works them ({@link #mineDry}). */

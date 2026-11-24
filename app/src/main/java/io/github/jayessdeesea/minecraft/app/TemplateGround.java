@@ -128,6 +128,17 @@ final class TemplateGround {
         return java.util.stream.IntStream.range(0, all.size()).filter(k -> k % Math.max(1, n) == i).mapToObj(all::get).toList();
     }
 
+    /**
+     * The open footings of {@code layout}: under each fixture that stands on the ground - its lowest - a cell with nothing
+     * solid in it. A fixture is passed over where it has no ground, so a line shared with the chunk beside, paved by
+     * neither, would stand open in the fence for good; its squad paves these first.
+     */
+    static List<BlockPos> openFootings(WorldView world, Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> layout) {
+        int ground = layout.values().stream().flatMap(List::stream).mapToInt(BlockPos::y).min().orElse(0);
+        return layout.values().stream().flatMap(List::stream).filter(c -> c.y() == ground).map(c -> c.offset(0, -1, 0))
+                .filter(c -> !world.isSolid(c.x(), c.y(), c.z())).distinct().toList();
+    }
+
     /** What hangs in a template's {@code sky} that can be dug, to the one of {@code squad} nearest it: none with nothing there. */
     static Map<String, Order> skyOrders(WorldView world, List<BlockPos> sky, List<SoldierStatus> squad) {
         List<BlockPos> toDig = sky.stream().filter(b -> io.github.jayessdeesea.minecraft.bot.engineer.Clearing.diggable(world, b.x(), b.y(), b.z())).toList();
