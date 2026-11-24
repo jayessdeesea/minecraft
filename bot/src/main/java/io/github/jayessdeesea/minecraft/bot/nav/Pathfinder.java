@@ -129,7 +129,7 @@ public final class Pathfinder {
      * body and no block itself): a fence is crossed at its gate, not by a step put up beside it (operator, 2026-11-24).
      */
     public static boolean standable(WorldView world, BlockPos cell) {
-        return clear(world, cell) && solid(world, cell.x(), cell.y() - 1, cell.z()) && world.solidHere(cell.x(), cell.y() - 1, cell.z());
+        return clear(world, cell) && world.floors(cell.x(), cell.y() - 1, cell.z());
     }
 
     /** Afloat: water at the feet and open air at the head - the surface, swum with the head out. */

@@ -128,6 +128,7 @@ class ChunkCacheTest {
                 cache.setBlock(x, -59, z, over);
                 for (int y = -61; y <= -57; y++) {
                     assertEquals(asked.barsWay(x, y, z), world.barsWay(x, y, z), over + " over " + under + " at y=" + y);
+                    assertEquals(asked.floors(x, y, z), world.floors(x, y, z), "a floor: " + over + " over " + under + " at y=" + y);
                 }
                 column++;
             }

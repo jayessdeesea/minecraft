@@ -31,6 +31,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public boolean floors(int x, int y, int z) {
+        return chunks.floors(x, y, z);
+    }
+
+    @Override
     public boolean openSection(int x, int y, int z) {
         return chunks.openSection(x, y, z);
     }

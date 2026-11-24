@@ -51,6 +51,11 @@ public interface WorldView {
      * Whether (x, y, z) bars a walker: solid, but for a shut gate and the cell over one, which it opens and walks through.
      * One question, since a route asks it of every cell it looks at: a view over chunks answers it in two reads.
      */
+    /** Whether (x, y, z) is a floor to stand on: it bars the way and is a block itself, not the cell over a fence. */
+    default boolean floors(int x, int y, int z) {
+        return barsWay(x, y, z) && solidHere(x, y, z);
+    }
+
     default boolean barsWay(int x, int y, int z) {
         return isSolid(x, y, z) && !isShutGate(x, y, z) && !(isShutGate(x, y - 1, z) && !solidHere(x, y, z));
     }
