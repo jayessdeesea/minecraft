@@ -22,6 +22,14 @@ and lit; a table and two furnaces by its north fence).
 - **A vein met in the stairs is followed** as one met in a tunnel is: mined out along its run, the stair's floor and
   walls put back behind it (miners keep stone for that), then the cut carried on.
 
+## No diamonds yet: the shafts are shallow (operator, 2026-11-24)
+No diamond ore has been seen or dug in any run's log. A well's first landing is y=12 and it is deepened twelve at a
+time only as its levels dry (`Staircase.deeper`, to `DEEPEST` -58); the deepest a soldier stood that day was about
+y=-8, and diamonds are thick only under y=-40. Not a tool's refusal: iron pickaxes are on the kit ladder and the
+stores hold iron.
+- A mineshaft mission may be given its depth, or a rule sends one squad's well straight to y=-52 once the force has
+  iron pickaxes; its levels worked from the bottom up.
+
 ## A mineshaft's shaft that is never cut (P1, live 2026-11-24)
 The operator expected the mineshaft's head to have a hole at its centre and stairs going down. The template's head is
 its fence, gates, torches and chests; the hole and the stairs are its last step, "mine the shaft ... till it's dry".

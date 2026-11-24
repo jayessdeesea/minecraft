@@ -124,8 +124,12 @@ public final class Pathfinder {
     /** Feet this far up a solid cell are on its top: farmland and paths are 15/16 high. */
     public static final double PARTIAL_BLOCK_TOP = 0.75;
 
+    /**
+     * Somewhere to stand: room for the body, on something solid - never on a fence's top (the cell over one, solid to a
+     * body and no block itself): a fence is crossed at its gate, not by a step put up beside it (operator, 2026-11-24).
+     */
     public static boolean standable(WorldView world, BlockPos cell) {
-        return clear(world, cell) && solid(world, cell.x(), cell.y() - 1, cell.z());
+        return clear(world, cell) && solid(world, cell.x(), cell.y() - 1, cell.z()) && world.solidHere(cell.x(), cell.y() - 1, cell.z());
     }
 
     /** Afloat: water at the feet and open air at the head - the surface, swum with the head out. */

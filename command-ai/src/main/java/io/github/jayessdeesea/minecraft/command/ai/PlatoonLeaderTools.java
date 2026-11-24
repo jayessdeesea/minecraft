@@ -174,8 +174,8 @@ final class PlatoonLeaderTools {
     }
 
     @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "giveMineshaftMission", description = "A command - only when the operator asks for it in this turn. Gives the "
-            + "mission 'a mineshaft at' the chunk a block is in, carried out in two phases: its head - the chunk fenced and gated, four "
-            + "torches, four chests for ore and valuables - then its shaft, cut down from the chunk's middle and mined by one squad, day "
+            + "mission 'a mineshaft at' the chunk a block is in, carried out in phases: its ground paved, then its head - the chunk fenced and gated, its mouth "
+            + "ringed and gated, rows of chests by kind, a workshop - then its shaft, cut down from the chunk's middle and mined by one squad, day "
             + "and night, till it's dry. Quote its result.")
     String giveMineshaftMission(@ToolParam(description = "a block's x in the chunk") int x, @ToolParam(description = "a block's z in the chunk") int z,
                                 @ToolParam(required = false, description = "the level of the ground at its head, only if the operator said one; leave it out for sea level")
@@ -198,6 +198,18 @@ final class PlatoonLeaderTools {
                                  Integer y) {
         OptionalInt level = levelAsSaid(y, message);
         return command("giveAnimalFarmMission " + animal + " " + x + " " + z + (y == null ? "" : " " + y), () -> commands.giveAnimalFarmMission(animal, x, z, level));
+    }
+
+    @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "giveTemplateMission", description = "A command - only when the operator asks for it in this turn. Gives the "
+            + "mission for a template named in words on the chunk a block is in. 'placeholder': the chunk flattened, cobblestone one under its "
+            + "level and at its level, fenced with gates, lit - ground held for whatever is put there later, and a safe way across meanwhile. "
+            + "Quote its result.")
+    String giveTemplateMission(@ToolParam(description = "which template: placeholder") String template,
+                               @ToolParam(description = "a block's x in the chunk") int x, @ToolParam(description = "a block's z in the chunk") int z,
+                               @ToolParam(required = false, description = "its ground's level, only if the operator said one; leave it out for sea level")
+                               Integer y) {
+        OptionalInt level = levelAsSaid(y, message);
+        return command("giveTemplateMission " + template + " " + x + " " + z + (y == null ? "" : " " + y), () -> commands.giveTemplateMission(template, x, z, level));
     }
 
     @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "cancelMission", description = "A command - only when the operator asks for it in this turn. Cancels the farm "

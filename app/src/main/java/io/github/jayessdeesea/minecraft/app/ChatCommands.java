@@ -51,6 +51,14 @@ public class ChatCommands implements OperatorCommands {
         return give(x, z, level, crop);
     }
 
+    @Override
+    public String giveTemplateMission(String template, int x, int z, OptionalInt level) {
+        if (template == null || !template.strip().equalsIgnoreCase("placeholder")) {
+            throw new IllegalArgumentException("no template '" + template + "': placeholder");
+        }
+        return give(x, z, level, FarmMission.Crop.PLACEHOLDER);
+    }
+
     private String give(int x, int z, OptionalInt level, FarmMission.Crop crop) {
         String order = x + " " + z + (level.isPresent() ? " " + level.getAsInt() : "");
         FarmMission farm = FarmMission.parse(order, crop).orElseThrow(() -> new IllegalArgumentException(

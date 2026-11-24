@@ -49,6 +49,18 @@ than one search reaches. The platoon leader still picks ground a squad can't get
   of (-42, 31, 42), the cell air on the server), run this from the console while it's stuck:
   `execute as @e[x=-42,y=31,z=42,distance=..1,type=!player] run say PROBE` with the cell's own coordinates.
 
+## Steps put up on the way and left (P1; operator, 2026-11-24: the camp is getting messy again)
+Live (field715, one hour): 97 blocks placed, most of them a walk's steps (`[Place] ... route step`), dirt 5 to 13 over
+sea level round the camp's hill - among them "its route 21 steps; a walk round 20 steps" and "its route 1 steps; a
+walk round 0 steps": a step put up where the walk round was no longer.
+- **Why the walk round wasn't taken** (`nav.Pathfinder.find`: the walk is taken only if it's plain - no dig, no fall,
+  no trampling - and the ground is held): find which of those refused it in those cases, from the log's own lines,
+  and reproduce each as a test before the fix.
+- **A step is taken down by who put it up**, once across - the debt `TAKEDOWN_COST` prices is paid by nobody yet: a
+  register of steps by soldier and route, each dug as its walker leaves it or on its way back, and what's left counted.
+- **The camp's hill itself**: most of these climb it; backlog/camp-to-sea-level.md ends the reason for them.
+- Built: a fence is never crossed by a step beside it - nothing stands on a fence's top (`Pathfinder.standable`).
+
 ## Unreachable is a fault to find, not a state to report (operator, 2026-11-23)
 "Mobility-wise, everything should be reachable." The garrison has drafted 1,069 stuck cases with their ground
 (`garrison-state/worlds/`); a handful were ever registered. `StuckTriageIT` replays the newest forty, each soldier

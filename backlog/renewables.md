@@ -194,6 +194,18 @@ Built: the habit, in every soldier's walk (docs/echelons/soldier/capabilities.md
 squad working a fenced chunk through a night, a zombie outside the fence never getting in; and the simulated server
 letting a body through a shut gate, which the real one doesn't (backlog/simulator-fidelity.md).
 
+### Sugar cane (operator, 2026-11-24: a template, cobblestone one under its level, the most efficient layout, lit)
+- **Layout** (`bot.farm.CaneChunk`, to write): cane grows on dirt beside water, so a trench serves the row each side of
+  it - by local x, cane | water | cane, five times over 1..15: water at x=2, 5, 8, 11, 14, cane on the ten columns
+  between, 150 cells less its chest's (backlog's one place, local (13, 3)); the slab one under its level as every
+  template has, dirt at its level under the cane, the trench cut to its level with the slab its bed, cobblestone under
+  its fence; lit from its fence - a torch on every fourth post - since no cell inside is free for one and none is
+  eight from the line.
+- **Its mission**: flatten, floor, then its template - ground laid as an animal farm's is, trenches filled from
+  buckets (every other cell a source, the rest fill themselves), cane planted, its fence, gates and torches.
+- **Wanted first**: cane as a kind the force knows (`ItemClass`), found where it grows and brought back; water carried
+  (`WATER_BUCKET` is a kind; nobody fills a trench yet); a harvest that cuts from the second block up and leaves the foot.
+
 ### Other farms
 - Nether wart and animal pens - a chicken pen first: feathers are the one part of an arrow with no other source but
   skeletons (backlog/load-plans.md).

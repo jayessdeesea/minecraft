@@ -140,6 +140,12 @@ class FarmMissionTest {
             assertEquals(List.of(FarmMission.Kind.FLATTEN, FarmMission.Kind.FLOOR, FarmMission.Kind.PASTURE_TEMPLATE), farm.steps().stream().map(FarmMission.Step::kind).toList());
             assertEquals(List.of(62, 62, 63), farm.steps().stream().map(FarmMission.Step::level).toList(), "its slab one under its level");
         }
+        FarmMission held = new FarmMission(0, 1, 63, FarmMission.Crop.PLACEHOLDER);
+        assertEquals("a placeholder at chunk (0, 1) at y=63", held.name());
+        assertEquals(Optional.of(held), FarmMission.named(held.name()), "found again by its name");
+        assertEquals(List.of(FarmMission.Kind.FLATTEN, FarmMission.Kind.FLOOR, FarmMission.Kind.FLOOR, FarmMission.Kind.PLACEHOLDER_TEMPLATE),
+                held.steps().stream().map(FarmMission.Step::kind).toList());
+        assertEquals(List.of(62, 62, 63, 63), held.steps().stream().map(FarmMission.Step::level).toList(), "cobblestone one under its level, and at it");
         // And the names that were, read as they were.
         assertEquals(FarmMission.Crop.WHEAT, FarmMission.named("a farm at chunk (1, 3) at y=63").orElseThrow().crop());
         assertEquals(FarmMission.Crop.TREES, FarmMission.named("a tree farm at chunk (2, 3) at y=63").orElseThrow().crop());

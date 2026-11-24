@@ -609,6 +609,37 @@ class PathfinderTest {
         assertFalse(result.reachesGoal(), "an endless fence can't be crossed");
     }
 
+    /** Nor is it climbed over with blocks to put up: the cell over a fence is no block to stand on, and its gate is the way. */
+    @Test
+    void aFenceIsNotCrossedByAStepPutUpBesideIt() {
+        WorldView plain = world((x, y, z) -> x == 2 && (y == GROUND || y == GROUND + 1));
+        WorldView fence = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return plain.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean solidHere(int x, int y, int z) {
+                return plain.isSolid(x, y, z) && !(x == 2 && y == GROUND + 1);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public java.util.List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return java.util.List.of();
+            }
+        };
+
+        Pathfinder.Result result = Pathfinder.find(fence, START, exactly(4, GROUND, 0), 3000, FallAllowance.NONE, 8, false, true);
+
+        assertFalse(result.reachesGoal(), "an endless fence isn't climbed over: " + result.path());
+    }
+
     @Test
     void anOutOfBudgetGoalYieldsPartialProgressTowardIt() {
         Pathfinder.Result result = Pathfinder.find(world((x, y, z) -> false), START, exactly(500, GROUND, 0), 200);

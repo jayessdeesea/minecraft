@@ -160,7 +160,10 @@ over that (operator, 2026-11-23: stone at the level where a farm has dirt), then
 the chunk farms' fence and gates, nine torches, a workshop of a table and four furnaces, four rows of six double chests
 by class of supply) - each fixture made and put in the cell the layout names by the squad on its `STORES` task
 (`bot.supply.Fixtures`), done when it's fenced and lit, its workshop in and its first two rows up, food and Class IV
-(`StoresChunk.stocked`). "A mineshaft at chunk (x, z)" (operator, 2026-11-22; the chat's `giveMineshaftMission`) has
+(`StoresChunk.stocked`). A **placeholder** (operator, 2026-11-24; the chat's `giveTemplateMission placeholder`) holds a chunk for what is put
+there later and is a safe way across meanwhile: flattened a block under its level, a slab there, its level paved, then
+its template (`bot.farm.PlaceholderChunk`) - the chunk farms' fence and gates and five torches, no cell of it out of
+their light. "A mineshaft at chunk (x, z)" (operator, 2026-11-22; the chat's `giveMineshaftMission`) has
 its ground made as every template's - flattened a block under its level, a slab there, its level paved (operator,
 2026-11-23) - then two phases more: its head (`bot.farm.MineHead`: the chunk
 farms' fence and gates and a torch inside each corner; its mouth, the well's four by four at its middle, ringed with
@@ -212,8 +215,10 @@ template, a supply point as three steps - open, or built - has its rows made the
 is done already measures done at once (`FarmMissions.reshape`, `Registers.retask`).
 
 **What's built is reviewed** (operator, 2026-11-22: once the sites are built the construction might drift - who reviews
-and fixes it?): every five minutes each mission done, its chunk in sight, is measured against its layout again
-(`FarmMissions.review`), and one whose structure has gone has its template phase opened again - a repair, a squad's task
+and fixes it?): each mission done, its chunk in sight - the force near it, no outpost with nobody there - is measured against its
+layout again (`FarmMissions.review`): one a squad keeps every five minutes, the first thing done with it; any other when
+first seen and then inside every four garrison days, up to a day early by its name and the day, so the sites aren't
+all looked over at once (operator, 2026-11-24), and one whose structure has gone has its template phase opened again - a repair, a squad's task
 as the build was, the register's row saying what was found ("reviewed: back at FENCED - to put up again: 1 torch, 1
 chest"). Structure, not the crop's own cycle (`FarmMissions.drifted`): a wheat farm's ground - its tilling, sowing and
 fixtures are its tender's; a tree chunk's chest and torches - felling and planting are its foresters'; a supply point's

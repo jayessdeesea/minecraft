@@ -235,9 +235,11 @@ class FarmMissionsTest {
         // The review (operator, 2026-11-22: once built, the construction might drift - who reviews and fixes it?): its chest and
         // torches gone, looked at again - not before the review's due - its template is opened again, and kept so.
         standing[0] = false;
-        restarted.measure(world, null, null, campTrees, 5_000 + FarmMissions.REVIEW_MILLIS - 1);
+        long due = restarted.reviewDue(trees).orElseThrow();
+        assertTrue(due > 5_000 + 3 * FarmMissions.DAY_MILLIS && due <= 5_000 + FarmMissions.REVIEW_EVERY, "looked over when first seen, and due again inside four days: " + due);
+        restarted.measure(world, null, null, campTrees, due - FarmMissions.REVIEW_MILLIS);
         assertEquals(List.of(), restarted.worked(), "not looked over again before the review is due");
-        restarted.measure(world, null, null, campTrees, 5_000 + FarmMissions.REVIEW_MILLIS);
+        restarted.measure(world, null, null, campTrees, due);
         assertEquals(List.of(FarmMission.Kind.TREE_TEMPLATE), restarted.worked().stream().map(e -> e.getValue().kind()).toList(), "its template worked again");
         ObjectiveRecord template = registers.objectives().stream().filter(r -> r.step() == 3).findFirst().orElseThrow();
         assertEquals(ObjectiveRecord.State.PLANNED, template.state(), "open again in the register: " + template);

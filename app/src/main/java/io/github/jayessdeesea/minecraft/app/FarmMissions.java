@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.farm.MineHead;
+import io.github.jayessdeesea.minecraft.bot.farm.PlaceholderChunk;
 import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmSite;
@@ -110,7 +112,8 @@ final class FarmMissions {
     /** Whether a step of {@code kind} lays a template on ground already made, digging and paving nothing. */
     private static boolean template(FarmMission.Kind kind) {
         return kind == FarmMission.Kind.FARM_TEMPLATE || kind == FarmMission.Kind.TREE_TEMPLATE || kind == FarmMission.Kind.STORES_TEMPLATE
-                || kind == FarmMission.Kind.MINE_HEAD || kind == FarmMission.Kind.MINE || kind == FarmMission.Kind.PASTURE_TEMPLATE;
+                || kind == FarmMission.Kind.MINE_HEAD || kind == FarmMission.Kind.MINE || kind == FarmMission.Kind.PASTURE_TEMPLATE
+                || kind == FarmMission.Kind.PLACEHOLDER_TEMPLATE;
     }
 
     /**
@@ -172,7 +175,7 @@ final class FarmMissions {
                 case FLOOR -> new Objective.Task.Floor(m.layer(step.level()));
                 case FARM_TEMPLATE -> new Objective.Task.Farm();
                 case TREE_TEMPLATE -> new Objective.Task.TreeFarm();
-                case STORES_TEMPLATE, MINE_HEAD, PASTURE_TEMPLATE -> new Objective.Task.Stores();
+                case STORES_TEMPLATE, MINE_HEAD, PASTURE_TEMPLATE, PLACEHOLDER_TEMPLATE -> new Objective.Task.Stores();
                 case MINE -> new Objective.Task.Mine();
             };
             // A shaft's objective is its head's x and z and the depth to cut to: a MINE's y is a depth (NightRules.grounded).
@@ -230,8 +233,9 @@ final class FarmMissions {
         return worked().stream().filter(c -> objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent())
                 .flatMap(c -> switch (c.getValue().kind()) {
                     case STORES_TEMPLATE -> java.util.stream.Stream.of(new StoresChunk(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level()).fixtures());
-                    case MINE_HEAD -> java.util.stream.Stream.of(new io.github.jayessdeesea.minecraft.bot.farm.MineHead(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level()).fixtures());
+                    case MINE_HEAD -> java.util.stream.Stream.of(new MineHead(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level()).fixtures());
                     case PASTURE_TEMPLATE -> java.util.stream.Stream.of(pasture(c.getKey()).fixtures());
+                    case PLACEHOLDER_TEMPLATE -> java.util.stream.Stream.of(new PlaceholderChunk(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level()).fixtures());
                     default -> java.util.stream.Stream.empty();
                 }).findFirst();
     }
@@ -239,7 +243,7 @@ final class FarmMissions {
     /** Whether a step of {@code kind} is a template whose sky is its own to keep clear here: a wheat farm's is its site's (ChunkFarm.obstructions). */
     private static boolean skyKept(FarmMission.Kind kind) {
         return kind == FarmMission.Kind.TREE_TEMPLATE || kind == FarmMission.Kind.STORES_TEMPLATE || kind == FarmMission.Kind.MINE_HEAD
-                || kind == FarmMission.Kind.PASTURE_TEMPLATE;
+                || kind == FarmMission.Kind.PASTURE_TEMPLATE || kind == FarmMission.Kind.PLACEHOLDER_TEMPLATE;
     }
 
     /** What hangs in the sky over {@code m}'s chunk and its fence lines (ChunkFarm.sky). */
@@ -432,6 +436,7 @@ final class FarmMissions {
     private synchronized void atTheFarms(List<Objective> out, List<SquadStatus> statuses, Set<Integer> held, Optional<String> farmSquad) {
         Optional<Objective> first = objectives().stream().findFirst();
         Set<FarmMission> kept = new HashSet<>();
+        tended = kept;
         // The farm squad first, and the wheat is its: live (field702), it stood at the camp with "keep the tree farms"
         // while another squad kept the wheat farm.
         List<Integer> order = new ArrayList<>();
@@ -490,9 +495,20 @@ final class FarmMissions {
 
     /** The missions done, their templates standing: what the review looks over. */
     private final Set<FarmMission> built = new java.util.LinkedHashSet<>();
-    /** How often what's built is looked over. */
+    /** How often the review runs: what a squad keeps is looked over each time, the rest when it's due. */
     static final long REVIEW_MILLIS = 5 * 60_000;
     private long reviewedAt = Long.MIN_VALUE;
+    /** A garrison day and night; and how long a built template nobody is working goes between looks, at most. */
+    static final long DAY_MILLIS = 20 * 60_000, REVIEW_EVERY = 4 * DAY_MILLIS;
+    /** When each built template is next due a look: by mission, never one time for all. */
+    private final Map<FarmMission, Long> reviewDue = new java.util.HashMap<>();
+    /** The built farms a squad was last given to keep. */
+    private Set<FarmMission> tended = Set.of();
+
+    /** When {@code m} is next looked over, once it has been. */
+    synchronized Optional<Long> reviewDue(FarmMission m) {
+        return Optional.ofNullable(reviewDue.get(m));
+    }
 
     /** The templates built and not open again, for whoever asks what stands. */
     synchronized Set<FarmMission> built() {
@@ -517,6 +533,8 @@ final class FarmMissions {
                 yield dark == 0 && chest ? Optional.empty() : Optional.of((chest ? "" : "its chest is gone; ") + dark + " of its " + chunk.torches().size() + " torches gone");
             }
             case MINE -> Optional.empty(); // mined dry and done with: its ground is another template's next
+            case PLACEHOLDER -> Optional.of(Fixtures.left(world, new PlaceholderChunk(m.chunkX(), m.chunkZ(), m.level()).fixtures()).values().stream().mapToInt(List::size).sum())
+                    .filter(n -> n > 0).map(n -> n + " of its fence, gates and torches gone");
             case SHEEP, COW, PIG, CHICKEN -> {
                 io.github.jayessdeesea.minecraft.bot.farm.PastureChunk pasture = pasture(m);
                 Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> left = Fixtures.left(world, pasture.fixtures());
@@ -537,9 +555,12 @@ final class FarmMissions {
 
     /**
      * The review (operator, 2026-11-22: once the sites are built the construction might drift - who reviews and fixes
-     * it?): every {@link #REVIEW_MILLIS} each template built and in sight is measured against its layout again, and one
-     * whose structure has gone ({@link #drifted}) has its template step opened again - a repair, a squad's task as the
-     * build was, kept in the register with what was found.
+     * it?): a template built and in sight - the force near it, no remote outpost with nobody there - is measured against
+     * its layout again, and one whose structure has gone ({@link #drifted}) has its template step opened again - a repair,
+     * a squad's task as the build was, kept in the register with what was found. One a squad keeps is looked over every
+     * {@link #REVIEW_MILLIS}, as the first thing done with it; any other when first seen and then inside every
+     * {@link #REVIEW_EVERY}, up to a day early by its name and the day, so the sites aren't all looked over at once
+     * (operator, 2026-11-24).
      */
     private void review(WorldView world, long now) {
         if (reviewedAt != Long.MIN_VALUE && now - reviewedAt < REVIEW_MILLIS) {
@@ -550,6 +571,10 @@ final class FarmMissions {
             if (!world.isLoaded(m.minX(), m.minZ()) || !world.isLoaded(m.minX() + 15, m.minZ() + 15)) {
                 continue; // not in sight: looked at next time
             }
+            if (!tended.contains(m) && now < reviewDue.getOrDefault(m, Long.MIN_VALUE)) {
+                continue;
+            }
+            reviewDue.put(m, now + REVIEW_EVERY - Math.floorMod(java.util.Objects.hash(m.name(), now / DAY_MILLIS), DAY_MILLIS));
             Optional<String> gone = drifted(world, m);
             if (gone.isEmpty()) {
                 continue;
@@ -655,17 +680,19 @@ final class FarmMissions {
                 yield stage.compareTo(TreeChunk.Stage.PRODUCING) >= 0 ? Optional.of("its " + chunk.trunks().size()
                         + " saplings in, its chest and its " + chunk.torches().size() + " torches - " + stage) : Optional.empty();
             }
-            case MINE_HEAD -> {
-                io.github.jayessdeesea.minecraft.bot.farm.MineHead head = new io.github.jayessdeesea.minecraft.bot.farm.MineHead(m.chunkX(), m.chunkZ(), step.level());
+            case MINE_HEAD, PLACEHOLDER_TEMPLATE -> {
+                boolean head = step.kind() == FarmMission.Kind.MINE_HEAD;
+                Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> layout = head
+                        ? new MineHead(m.chunkX(), m.chunkZ(), step.level()).fixtures() : new PlaceholderChunk(m.chunkX(), m.chunkZ(), step.level()).fixtures();
                 if (!world.isLoaded(m.minX(), m.minZ()) || !world.isLoaded(m.minX() + 15, m.minZ() + 15)) {
                     say(m, step, "not all of it in sight");
                     yield Optional.empty();
                 }
                 // Everything its ground takes: a cell with no ground under it, or ground standing in it, is passed over.
-                Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> left = Fixtures.left(world, head.fixtures());
+                Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> left = Fixtures.left(world, layout);
                 say(m, step, "to put up: " + (left.isEmpty() ? "nothing" : left.entrySet().stream()
                         .map(e -> e.getValue().size() + " " + e.getKey().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' ')).collect(Collectors.joining(", "))));
-                yield left.isEmpty() ? Optional.of("fenced and lit, its head's chests up") : Optional.empty();
+                yield left.isEmpty() ? Optional.of(head ? "fenced and lit, its head's chests up" : "paved, fenced, gated and lit") : Optional.empty();
             }
             case MINE -> {
                 say(m, step, "its squad down it");

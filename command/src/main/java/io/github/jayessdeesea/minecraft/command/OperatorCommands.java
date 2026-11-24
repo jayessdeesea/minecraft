@@ -41,6 +41,14 @@ public interface OperatorCommands {
     }
 
     /**
+     * The mission for a template named in words - {@code template} "placeholder": the chunk paved, fenced, gated and lit,
+     * held for what's put there later - on the chunk a block is in. Not every implementation gives it.
+     */
+    default String giveTemplateMission(String template, int x, int z, OptionalInt level) {
+        throw new UnsupportedOperationException("no template missions here");
+    }
+
+    /**
      * The farm mission open on chunk ({@code chunkX}, {@code chunkZ}) cancelled: its phases not done closed SUPERSEDED,
      * {@code reason} kept in each row's why, none deleted - and not taken up again after a restart.
      */

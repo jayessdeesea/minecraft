@@ -32,7 +32,7 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
 
     /** What a mission makes of its chunk: wheat on a chunk farm, trees on a tree chunk, or the supply point's stores. */
     public enum Crop {
-        WHEAT, TREES, STORES, MINE, SHEEP, COW, PIG, CHICKEN;
+        WHEAT, TREES, STORES, MINE, SHEEP, COW, PIG, CHICKEN, PLACEHOLDER;
 
         /** Whether it's an animal farm: one template, whatever is kept in it. */
         public boolean animals() {
@@ -53,7 +53,7 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
     public static final int SEA_LEVEL = 63;
 
     /** What a step of the mission is. */
-    public enum Kind { FLATTEN, FLOOR, FARM_TEMPLATE, TREE_TEMPLATE, STORES_TEMPLATE, MINE_HEAD, MINE, PASTURE_TEMPLATE }
+    public enum Kind { FLATTEN, FLOOR, FARM_TEMPLATE, TREE_TEMPLATE, STORES_TEMPLATE, MINE_HEAD, MINE, PASTURE_TEMPLATE, PLACEHOLDER_TEMPLATE }
 
     /** A step of the mission: its place in it, what it is, the level it works to, as said down the chain. */
     public record Step(int index, Kind kind, int level, String task) {
@@ -85,6 +85,7 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
             case COW -> "cow farm";
             case PIG -> "pig farm";
             case CHICKEN -> "chicken farm";
+            case PLACEHOLDER -> "placeholder";
         };
     }
 
@@ -109,6 +110,14 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
                     new Step(0, Kind.FLATTEN, level - 1, "flatten " + chunk + " to y=" + (level - 1)),
                     new Step(1, Kind.FLOOR, level - 1, "floor " + chunk + " in cobblestone at y=" + (level - 1)),
                     new Step(2, Kind.PASTURE_TEMPLATE, level, "the " + what() + " template on " + chunk + " at y=" + level));
+        }
+        if (crop == Crop.PLACEHOLDER) {
+            // Ground held for what comes later, safe to walk meanwhile: every template's two courses of cobblestone, fenced, gated, lit.
+            return List.of(
+                    new Step(0, Kind.FLATTEN, level - 1, "flatten " + chunk + " to y=" + (level - 1)),
+                    new Step(1, Kind.FLOOR, level - 1, "floor " + chunk + " in cobblestone at y=" + (level - 1)),
+                    new Step(2, Kind.FLOOR, level, "pave " + chunk + " in cobblestone at y=" + level),
+                    new Step(3, Kind.PLACEHOLDER_TEMPLATE, level, "the placeholder template on " + chunk + " at y=" + level));
         }
         if (crop == Crop.STORES) {
             // The slab one under its level as every template has, and cobblestone at the level too where a farm has dirt
@@ -139,7 +148,8 @@ public record FarmMission(int chunkX, int chunkZ, int level, Crop crop) {
         return name() + ": " + step.task();
     }
 
-    private static final Pattern NAME = Pattern.compile("a (tree farm|sheep farm|cow farm|pig farm|chicken farm|farm|supply point|mineshaft) at chunk \\((-?\\d+), (-?\\d+)\\) at y=(-?\\d+)");
+    private static final Pattern NAME = Pattern.compile("a (tree farm|sheep farm|cow farm|pig farm|chicken farm|farm|supply point|mineshaft|placeholder)"
+            + " at chunk \\((-?\\d+), (-?\\d+)\\) at y=(-?\\d+)");
 
     /** The mission {@code name} names, as {@link #name} says it: empty for any other. */
     public static Optional<FarmMission> named(String name) {
