@@ -22,6 +22,11 @@ A strip cut out, the wood left is shared again among the squad's woodcutters (`c
 log against the strip first given, which holds only because the strips come back round. A change of timing alone - the
 depositor's waits jittered - failed it. So nothing jitters `Depositor.trips` yet (`Setbacks` takes a salt).
 
+It holds a second change back too (2026-11-24): the squad's walk order gives a depositor its chest's own cell
+(`SoldierRunner`, the stand taken from `standOf`), where the mine's and the errands' orders give a stand by it
+(`depositTo`). A soldier beside its chest then reports "no route ... to within 0 of" it and is taken off its task -
+harmless to the trip, which goes by reach. Sent through `depositTo`, this simulation fails the same way.
+
 ## Done when
 - A woodcutter given other ground looks it over before anything is said of it: a strip is cut out once, when its trees
   are felled.
@@ -30,4 +35,4 @@ depositor's waits jittered - failed it. So nothing jitters `Depositor.trips` yet
 - The wood is said spent only when no log stands in it.
 - `WoodDutiesSimulationTest` judges each tree against the strip its feller held when it began it, asserts each strip cut
   out once, and that the wood is felled; `aWoodcutterWithNothingToFell...` shows it given ground that has some.
-- `Depositor.trips` salted by its soldier's name, and that simulation still passing.
+- `Depositor.trips` salted by its soldier's name, the squad's walk order through `depositTo`, and that simulation still passing.

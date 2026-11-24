@@ -38,8 +38,12 @@ final class ObjectiveBook {
         if (was != null && same(was, objective)) {
             return;
         }
-        if (was != null) {
+        if (was != null && was.squad().filter(squad::equals).isPresent()) {
             keep(was.now(ObjectiveRecord.State.RELIEVED, was.squad(), Optional.of("given " + objective.mission()), now));
+        } else if (was != null) {
+            // A step it joined is its first squad's row, not its own to relieve: live (field703-707), a squad given the
+            // next step relieved the row it held a copy of - done that second - and the mission was open again at a restart.
+            open.remove(squad);
         }
         // A mission's step, PLANNED when the mission was given: its own row under way, not a new one.
         Optional<ObjectiveRecord> planned = registers.get().objectives().stream().filter(r -> step(r, objective)
@@ -83,6 +87,9 @@ final class ObjectiveBook {
         Optional<String> why = report instanceof Report.Cantco(String reason) ? Optional.of(reason)
                 : progress.map(p -> p.state() == Progress.State.STALLED ? "stalled: " + p.detail() : p.detail());
         ObjectiveRecord was = row.get();
+        if (was.squad().filter(squad::equals).isEmpty()) {
+            return; // a step it joined: the row is its first squad's to report into
+        }
         // A mission's step is done when the mission measures it so (book.done), never by a squad's SITREP: live (field671),
         // Charlie's night mine reported its stairs cut and closed the farm mission's flatten, 640 columns still to cut.
         if (state == ObjectiveRecord.State.DONE && FarmMission.named(was.mission()).isPresent()) {
@@ -148,7 +155,7 @@ final class ObjectiveBook {
                 && r.state() != ObjectiveRecord.State.DONE).forEach(r -> {
             ObjectiveRecord row = r.now(ObjectiveRecord.State.DONE, r.squad(), Optional.of(why), now);
             registers.get().update(row);
-            r.squad().filter(sq -> open.containsKey(sq) && open.get(sq).id() == r.id()).ifPresent(open::remove);
+            open.values().removeIf(o -> o.id() == r.id()); // its squad's, and each that joined it
             LOG.info("[Objectives] {}: {} DONE - {}", r.squad().orElse("no squad"), r.mission() + ": " + r.task(), why);
         });
     }
@@ -158,7 +165,7 @@ final class ObjectiveBook {
         registers.get().objectives().stream().filter(r -> r.mission().equals(mission.name()) && r.state() != ObjectiveRecord.State.DONE
                 && r.state() != ObjectiveRecord.State.SUPERSEDED).forEach(r -> {
             registers.get().update(r.now(ObjectiveRecord.State.SUPERSEDED, r.squad(), Optional.of(why), now));
-            r.squad().filter(sq -> open.containsKey(sq) && open.get(sq).id() == r.id()).ifPresent(open::remove);
+            open.values().removeIf(o -> o.id() == r.id()); // its squad's, and each that joined it
         });
         LOG.info("[Objectives] {}: relieved - {}", mission.name(), why);
     }
@@ -177,7 +184,7 @@ final class ObjectiveBook {
         registers.get().objectives().stream().filter(r -> r.mission().equals(mission.name()) && r.step() >= step.index()
                 && r.state() != ObjectiveRecord.State.PLANNED && r.state() != ObjectiveRecord.State.SUPERSEDED).forEach(r -> {
             registers.get().update(r.now(ObjectiveRecord.State.PLANNED, Optional.empty(), Optional.of(why), now));
-            r.squad().filter(sq -> open.containsKey(sq) && open.get(sq).id() == r.id()).ifPresent(open::remove);
+            open.values().removeIf(o -> o.id() == r.id()); // its squad's, and each that joined it
         });
         LOG.info("[Objectives] {}: from {} open again - {}", mission.name(), step.task(), why);
     }

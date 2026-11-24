@@ -288,13 +288,20 @@ final class FarmMissions {
                         kept(c.getKey(), campFarm)));
     }
 
-    /** The cells of {@code layer} a floor paves: none of a template's ground beside it (its fence line shared). */
+    /**
+     * The cells of {@code layer} a floor paves: none of a template's ground beside it (its fence line shared), and at a
+     * tree farm's level none of its trees' cells, which are dirt - the template's to lay. Live (field704-707), a tree
+     * farm planted and open again at its paving had "16 of 240 cells to pave", and thirteen trees' dirt was paved over.
+     */
     List<BlockPos> floorCells(Box layer, FarmPlan campFarm) {
-        BiPredicate<Integer, Integer> kept = on(layer).map(m -> kept(m, campFarm)).orElse((x, z) -> false);
+        Optional<FarmMission> mission = on(layer);
+        BiPredicate<Integer, Integer> kept = mission.map(m -> kept(m, campFarm)).orElse((x, z) -> false);
+        Set<BlockPos> soil = mission.filter(m -> m.crop() == FarmMission.Crop.TREES && m.level() == layer.minY())
+                .map(m -> Set.copyOf(new TreeChunk(m.chunkX(), m.chunkZ(), m.level()).soil())).orElse(Set.of());
         List<BlockPos> cells = new ArrayList<>();
         for (int x = layer.minX(); x <= layer.maxX(); x++) {
             for (int z = layer.minZ(); z <= layer.maxZ(); z++) {
-                if (!kept.test(x, z)) {
+                if (!kept.test(x, z) && !soil.contains(new BlockPos(x, layer.minY(), z))) {
                     cells.add(new BlockPos(x, layer.minY(), z));
                 }
             }

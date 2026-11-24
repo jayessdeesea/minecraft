@@ -100,6 +100,43 @@ class TemplateGroundTest {
         assertEquals(Map.of(), TemplateGround.orders(LAID, FARM, List.of(soldier("Ivy", 64)), s -> true, new HashSet<>()));
     }
 
+    /**
+     * A footing open deeper than a block - under its east fence line, the chunk beside's, never slabbed - is filled from
+     * its bottom: live (field705-707) the wheat farm stood SURVEYED "fill=2 ... to fill [32,63,56, 32,63,59]" for two
+     * hours, eight soldiers on it reporting nothing left - a fill a block deep over an open cell fills nothing.
+     */
+    @Test
+    void aFootingOpenDeeperThanABlockIsFilledFromItsBottom() {
+        WorldView holed = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63 && !(x == 32 && (z == 56 || z == 59) && y >= 61);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(2, FarmSite.surveyed(holed, FARM).get(1).size(), "the survey's two: " + FarmSite.surveyed(holed, FARM).get(1));
+
+        Map<String, Order> orders = TemplateGround.orders(holed, FARM, List.of(soldier("Ivy", 64), soldier("Jack", 64)), s -> true, new HashSet<>());
+
+        Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> filled = new HashSet<>();
+        orders.values().forEach(o -> {
+            Order.Fill fill = assertInstanceOf(Order.Fill.class, o);
+            filled.addAll(io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toFill(holed, fill.box(), fill.except()));
+        });
+        assertEquals(6, filled.size(), "both columns, three cells each, bottom to level: " + filled);
+        assertTrue(filled.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(32, 63, 56))
+                && filled.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(32, 61, 59)), filled.toString());
+    }
+
     /** A chest in reach of a soldier on a mission's task is near it and near its height: not the mine's stash 60 blocks under it. */
     @Test
     void aChestInAMissionWorkersReachIsNearAndNearItsHeight() {

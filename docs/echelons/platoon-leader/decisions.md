@@ -147,7 +147,7 @@ started when the one before is measured done. "A tree farm at chunk (x, z)" (ope
 `giveTreeFarmMission`) is the same mission with trees for its crop, in four phases. Every template's ground is one rule
 (operator, 2026-11-23): cobblestone one under the level, and cobblestone at the level too unless it can't be - under a
 tree it's dirt. So: the chunk flattened a block under its level, a cobblestone slab laid there, its level paved in
-cobblestone, then the tree chunk's template on it - each tree's cell of the paving dug out and laid in dirt by its squad
+cobblestone but for its sixteen trees' cells (`FarmMissions.floorCells`), then the tree chunk's template on it - each tree's cell laid in dirt by its squad, one found paved dug out first
 (`TemplateGround.treeOrders`, `TreeChunk.soil`), and done when its sixteen saplings, its chest and its nine torches are in (`TreeChunk.Stage`); its chunk is the camp's tree chunk from then on, whatever the siting rule
 would have chosen (`CampTrees.take`), and after a restart too, read back from its template's row. "A supply point at
 chunk (x, z)" (operator, 2026-11-22; the chat's `giveSupplyPointMission`) is the same again, in four phases: the chunk

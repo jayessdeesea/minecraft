@@ -538,4 +538,22 @@ class FarmMissionsTest {
         assertEquals(1, registers.objectives().stream().filter(r -> r.mission().equals(trees.name()) && r.step() == 0).count(), "one row for the step both work");
         assertEquals(trees.steps().size(), registers.objectives().stream().filter(r -> !r.mission().equals(wheat.name())).count(), "and no row but the mission's own");
     }
+
+    /**
+     * A tree farm's paving leaves its sixteen trees' cells out - dirt, the template's to lay; its slab a block under takes
+     * the whole chunk. Live (field704-707) a planted tree farm, open again at its paving, had thirteen trees' dirt paved over.
+     */
+    @Test
+    void aTreeFarmsPavingLeavesItsTreesCellsOut() {
+        FarmMissions missions = new FarmMissions(cause -> { });
+        FarmMission trees = new FarmMission(5, 5, 63, FarmMission.Crop.TREES);
+        missions.give(trees, 1_000);
+        io.github.jayessdeesea.minecraft.bot.farm.FarmPlan none = new io.github.jayessdeesea.minecraft.bot.farm.FarmPlan(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(0, 63, 0), List.of());
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> soil = new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(5, 5, 63).soil();
+
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> paved = missions.floorCells(trees.layer(63), none);
+        assertEquals(256 - 16, paved.size(), "its level, less its trees' cells");
+        assertTrue(paved.stream().noneMatch(soil::contains), "none of them a tree's");
+        assertEquals(256, missions.floorCells(trees.layer(62), none).size(), "its slab, the whole chunk");
+    }
 }

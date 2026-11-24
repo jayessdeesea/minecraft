@@ -220,6 +220,9 @@ levels the depositor reads (`StockLevels`, `ProductionLevels`). To build:
   part of step 3.
 - **The chat**: a command's computed confirmation shown word for word on the net; cancel for missions of any kind; no
   reprioritise command - the platoon leader coordinates.
+- **A furnace stood over a stockpile's chest** (the old hill's, field704-707): the lid's block is broken now, furnace or
+  not, but where a table or furnace is put up isn't checked against a chest under it - and a lid cutter with nothing it
+  will break says nothing.
 
 ## Done when
 - Each step's eval passes; `OperatorChatScenarioIT` and the live chat probe stay at full marks.

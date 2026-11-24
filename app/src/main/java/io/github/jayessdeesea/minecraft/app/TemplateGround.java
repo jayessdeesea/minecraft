@@ -14,6 +14,7 @@ import io.github.jayessdeesea.minecraft.command.Tasking;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -94,7 +95,18 @@ final class TemplateGround {
         List<Tasking.Hand> hands = squad.stream().map(s -> new Tasking.Hand(s.name(), dirtInAChest.test(s) ? Tasking.LOAD
                 : s.condition().flatMap(Condition::kit).map(Kit::dirt).orElse(0))).toList();
         Flatten chunk = new Flatten(farm.chunkX() * 16, farm.chunkZ() * 16, farm.chunkX() * 16 + 15, farm.chunkZ() * 16 + 15, farm.level());
-        Map<String, Order> orders = Tasking.soil(hands, SiteGeometry.bounds(missing), SiteGeometry.soilBorrow(chunk), holes, fetching);
+        // Down to the bottom of the deepest of them: a fill fills a column from its first solid block up, and one a block
+        // deep over an open cell fills nothing - live, two footings under a fence line the chunk beside never slabbed.
+        int deepest = missing.stream().mapToInt(c -> {
+            int down = 0;
+            while (down < MAX_FOOTING_DEPTH && !world.isSolid(c.x(), c.y() - down - 1, c.z())) {
+                down++;
+            }
+            return down;
+        }).max().orElse(0);
+        Optional<io.github.jayessdeesea.minecraft.command.Box> fill = SiteGeometry.bounds(missing)
+                .map(b -> new io.github.jayessdeesea.minecraft.command.Box(b.minX(), b.minY() - deepest, b.minZ(), b.maxX(), b.maxY(), b.maxZ()));
+        Map<String, Order> orders = Tasking.soil(hands, fill, SiteGeometry.soilBorrow(chunk), holes, fetching);
         fetching.clear();
         orders.forEach((soldier, order) -> {
             if (order instanceof Order.Gather) {
@@ -105,4 +117,7 @@ final class TemplateGround {
         all.putAll(clearing);
         return all;
     }
+
+    /** How far under a template's ground a missing cell's hole is followed down to fill it from its bottom. */
+    static final int MAX_FOOTING_DEPTH = 8;
 }

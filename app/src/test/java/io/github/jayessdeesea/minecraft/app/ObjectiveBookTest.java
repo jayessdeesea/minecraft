@@ -90,6 +90,39 @@ class ObjectiveBookTest {
         assertEquals(java.util.Map.of(farm.name(), 1), new ObjectiveBook(() -> registers).openMissions(), "after a restart, at its second step");
     }
 
+    /**
+     * A step two squads worked, done, stays done when the squad that joined it is given the next: live (field703-707) a
+     * tree farm built and planted - "DONE, its 16 saplings in" - was open again after a restart at its paving, and the
+     * pavers laid cobblestone over its trees' dirt. The squad that had joined the paving, given the template, relieved
+     * the row it held a copy of - the paving's, another squad's, done that second.
+     */
+    @Test
+    void aStepDoneStaysDoneWhenASquadThatJoinedItIsGivenTheNext() {
+        Registers registers = new Registers(state.resolve("registers"));
+        ObjectiveBook book = new ObjectiveBook(() -> registers);
+        io.github.jayessdeesea.minecraft.command.FarmMission farm = io.github.jayessdeesea.minecraft.command.FarmMission.atSeaLevel(1, 3);
+        book.planned(farm, 1_000);
+        Objective first = new Objective(farm.said(farm.steps().getFirst()), new Position(24, 63, 56), "step 1", new Objective.Task.Keep());
+        Objective second = new Objective(farm.said(farm.steps().get(1)), new Position(24, 63, 56), "step 2", new Objective.Task.Keep());
+        book.given("Charlie", first, 2_000);
+        book.given("Alpha", first, 2_500);
+        book.given("Delta", first, 2_600);
+
+        book.done(farm, farm.steps().getFirst(), "nothing over y=62", 3_000);
+        book.given("Alpha", second, 3_000);
+        book.sitrep("Delta", new Report.Working("pave", 3), Optional.of(new Progress(Progress.State.STALLED, "nobody on it")), 3_500); // its copy of the row is stale
+
+        assertEquals(ObjectiveRecord.State.DONE, registers.objectives().stream().filter(r -> r.mission().equals(farm.name()) && r.step() == 0)
+                .findFirst().orElseThrow().state(), "the first step's row: " + registers.objectives());
+        assertEquals(java.util.Map.of(farm.name(), 1), new ObjectiveBook(() -> registers).openMissions(), "after a restart, at its second step");
+
+        // And one that joins a step and is given other work leaves the step its squad's: under way, not relieved.
+        book.given("Bravo", second, 4_000);
+        book.given("Bravo", FARM, 5_000);
+        assertEquals(ObjectiveRecord.State.UNDER_WAY, registers.objectives().stream().filter(r -> r.mission().equals(farm.name()) && r.step() == 1)
+                .findFirst().orElseThrow().state(), "the second step still Alpha's, under way: " + registers.objectives());
+    }
+
     private record Row(ObjectiveRecord.State state, Optional<String> why) {
     }
 

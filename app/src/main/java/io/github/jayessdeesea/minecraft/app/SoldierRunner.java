@@ -6726,7 +6726,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Breacher doorway = new Breacher(name, session, inventory);
         // Cutting steps is part of moving, like a pillar step's block: no routine has the hands for it.
         Breacher stepCutter = new Breacher(name, session, inventory);
-        Breacher lidCutter = new Breacher(name, session, inventory); // a block over the chest it's at: no chest opens under one
+        Breacher lidCutter = new Breacher(name, session, inventory); lidCutter.keepStations(false); // a block over the chest it's at: no chest opens under one - a furnace too, left standing as a workshop's it was never broken and the trip never begun (field704-707)
         Footing footing = new Footing(session, inventory);
         // What the server was last told about sprinting: a new connection starts walking.
         AtomicBoolean sprintingSent = new AtomicBoolean();
