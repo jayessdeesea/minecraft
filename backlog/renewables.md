@@ -66,10 +66,10 @@ One cycle for wheat chunks, tree chunks and the supply point; only the template 
   cobblestone at the level too, except where it can't be - a wheat farm's field cells are dirt, but not under its fence
   or its torches; a tree farm's are dirt under its sixteen trees and nowhere else. Built: the slab under a wheat farm, a
   tree farm and a supply point; a supply point's level paved; a tree farm's level paved but for the dirt under its
-  trees. Left: a wheat farm's fence line and torch cells in cobblestone at the level (its template lays dirt over all of
-  it today, and the one built is that way); a mineshaft's head given its slab and its level paved round the shaft. Both
-  are a template saying what stands at each cell - the conformance pass below - and the built wheat farm is put right
-  by it.
+  trees; a wheat farm's footings - under its fence, gates, field torches and chest - paved in cobblestone by its tenders,
+  built or building (`ChunkFarm.footingsToPave`), and what stands in a fixture's place dug out (`ChunkFarm.obstructions`).
+  Left: a mineshaft's head given its slab and its level paved round the shaft; the same two lists for the tree farm, the
+  supply point and the mineshaft's head - the conformance pass below.
 - **Birch first** (operator, 2026-11-23: wood that grows predictably): a planter takes birch if it carries any, then
   spruce, then any other (docs/military-doctrine.md § 12). Left: a tree template never planted with oak or acacia
   while a birch or spruce sapling is in the squad or the stores.

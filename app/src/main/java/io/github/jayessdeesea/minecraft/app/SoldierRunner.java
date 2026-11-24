@@ -5230,9 +5230,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         statuses.forEach(s -> planBook.of(s.name()).current().filter(d -> d instanceof Directive.Level)
                 .flatMap(d -> levelWork(s, (Directive.Level) d)).ifPresent(work -> ground.put(s.name(), work)));
         // Sent for wood, the squad works it by duty (command.WoodDuties): each woodcutter its own strip's logs.
-        Map<String, WoodDuties.Duty> woodDuties = WoodDuties.of(objectiveOf(squadName), statuses.stream().map(SoldierStatus::name).toList(),
-                dutyBook.cutOut(squadName, statuses.stream().map(SoldierStatus::name).toList(), objectiveOf(squadName),
-                        n -> gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE), at -> woodsBook.spent(chainOfCommand, at, clockwork.millis())));
+        Map<String, WoodDuties.Duty> woodDuties = dutyBook.wood(squadName, statuses.stream().map(SoldierStatus::name).toList(), objectiveOf(squadName),
+                b -> DutyBook.logsIn(world, b), n -> Optional.ofNullable(gatherers.get(n)).flatMap(Gatherer::felling).map(t -> new Position(t.x(), t.y(), t.z())).or(() -> statuses.stream().filter(st -> st.name().equals(n)).findFirst().map(SoldierStatus::position)), // by the tree it has begun, else where it stands
+                at -> woodsBook.spent(chainOfCommand, at, clockwork.millis()), clockwork.millis()); // its strips kept, a cut-out one's woodcutter alone moved
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         // A farm mission's template whose ground isn't laid: the whole squad lays it in dirt, not its tender alone (app.TemplateGround).
         chainOfCommand.farmMissions.template(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.orders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); chainOfCommand.farmMissions.trees(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.treeOrders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); // and a tree template's trunks with nothing under them
@@ -5721,8 +5721,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // A floor's paver (Objective.Task.Floor): its strip of the layer, and short of cobblestone, a draw from the stockpile holding some.
             Optional<Objective.Task.Floor> floorTask = taskOf(squadName, Objective.Task.Floor.class).filter(o -> !squadInContact).map(o -> (Objective.Task.Floor) o.task());
             int strip = i;
-            floorTask.map(f -> chainOfCommand.farmMissions.share(f.layer(), campFarm, strip, statuses.size())).ifPresentOrElse(c -> paving.put(soldierName, c), () -> paving.remove(soldierName));
-            if (floorTask.isPresent() && statuses.get(i).condition().flatMap(c -> c.kit()).filter(k -> k.stone() == 0).isPresent()
+            floorTask.map(f -> chainOfCommand.farmMissions.share(f.layer(), campFarm, strip, statuses.size())).or(() -> Optional.ofNullable(farming.get(soldierName)).filter(f -> !squadInContact).map(f -> TemplateGround.footings(world, f, 0, 1)).filter(c -> !c.isEmpty() && (statuses.get(strip).condition().flatMap(k -> k.kit()).filter(k -> k.stone() > 0).isPresent() || chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false)))).ifPresentOrElse(c -> paving.put(soldierName, c), () -> paving.remove(soldierName)); // or, keeping a farm, its footings: cobblestone under its fence and torches - with cobblestone carried or in the stores: with none a paver holds its farm's work up for nothing
+            if (paving.containsKey(soldierName) && statuses.get(i).condition().flatMap(c -> c.kit()).filter(k -> k.stone() == 0).isPresent()
                     && chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false) && stockpileFor(soldierName).isPresent()) {
                 drawingStone.add(soldierName);
             } else if (floorTask.isPresent()) {
@@ -6038,7 +6038,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Food first: a hungry soldier chasing an animal is wherever the animal is.
             // The routine with the hands says where to stand: live, a mason under way and an armourer
             // walking to a workshop each sent the soldier its own way, and it reached neither.
-            Optional<Position> stand = Optional.ofNullable(handsHeld.get(soldierName)).flatMap(h -> standOf(soldierName, h));
+            Optional<Position> stand = Optional.ofNullable(handsHeld.get(soldierName)).flatMap(h -> h == Hands.Routine.DEPOSITOR ? depositTo(soldierName, statuses) : standOf(soldierName, h)); // a depositor's stand is its chest: the walk is to a stand by it (depositTo), never the chest's cell - live (field704-711), "no route ... to within 0 of" its chest
             // Walking up to a squadmate, or onto what it threw: its height is where it is, mid-jump or
             // on a step, not ground to stand at - held to half a block of it, the giver built a step
             // to reach it. Live, givers on the keep's finished floor put down step after step for a
@@ -7595,7 +7595,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else {
                 clearer.drainTimes();
             }
-            if (gatherer.exhausted()) {
+            dutyBook.searched(name, gatherer.searchedEmpty()); if (gatherer.exhausted()) {
                 gatherFoundNothing.put(name, clockwork.millis());
             }
             hands.ifPresentOrElse(h -> handsHeld.put(name, h), () -> handsHeld.remove(name));

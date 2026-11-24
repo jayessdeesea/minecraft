@@ -156,6 +156,51 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
         return cells;
     }
 
+    /**
+     * Its footings still to pave: what its fence, gates, field torches and chest stand on is cobblestone (operator,
+     * 2026-11-23: cobblestone at the level unless it can't be - under the fence, and where the torches are; 2026-11-24:
+     * the anti-entropy should fix that). One open, under water, or of ground a hoe tills - dirt, grass, farmland: live
+     * (field712), the wheat farm's fence line and its torches' cells were dirt, so they were tilled and sown, and the
+     * posts and torches went. Rock found there is left as it is.
+     */
+    public List<BlockPos> footingsToPave(WorldView world) {
+        return footings().stream().filter(c -> !world.isCobblestone(c.x(), c.y(), c.z()) && (!world.isSolid(c.x(), c.y(), c.z())
+                || world.isWater(c.x(), c.y(), c.z()) || world.isSoil(c.x(), c.y(), c.z()) || world.isFarmland(c.x(), c.y(), c.z()))).toList();
+    }
+
+    /**
+     * What stands where its fixtures go, to be dug out (operator, 2026-11-24: blocks on fences - a compromised cell
+     * mustn't spread): a block of ground, rock or a chest in a post's or a gate's cell, anything on a post's top but its
+     * torch, anything in a field torch's cell. Live: dirt, grass and a chest in the fence line, cobblestone and a
+     * furnace on posts, cobblestone in a gate's cell and a field torch's - steps and stations left by those passing.
+     */
+    public List<BlockPos> obstructions(WorldView world) {
+        List<BlockPos> in = new ArrayList<>();
+        for (BlockPos p : fence()) {
+            if (wrong(world, p)) {
+                in.add(p);
+            }
+            BlockPos top = p.offset(0, 1, 0);
+            if (world.solidHere(top.x(), top.y(), top.z())) {
+                in.add(top);
+            }
+        }
+        gates().stream().filter(g -> wrong(world, g)).forEach(in::add);
+        for (int[] t : FIELD_TORCHES) {
+            BlockPos cell = new BlockPos(x0() + t[0], level + 1, z0() + t[1]);
+            if (world.solidHere(cell.x(), cell.y(), cell.z())) {
+                in.add(cell);
+            }
+        }
+        return in;
+    }
+
+    /** Whether a post's or gate's cell {@code c} holds a block known not to be one: ground, rock or a chest. */
+    private static boolean wrong(WorldView world, BlockPos c) {
+        return world.isSoil(c.x(), c.y(), c.z()) || world.isCobblestone(c.x(), c.y(), c.z()) || world.isStone(c.x(), c.y(), c.z())
+                || world.isChest(c.x(), c.y(), c.z());
+    }
+
     /** Whether {@code c} makes farmland as the world stands: tillable or tilled, open above. */
     static boolean farmable(WorldView world, BlockPos c) {
         return (world.isTillable(c.x(), c.y(), c.z()) || world.isFarmland(c.x(), c.y(), c.z())) && !world.isWater(c.x(), c.y(), c.z())

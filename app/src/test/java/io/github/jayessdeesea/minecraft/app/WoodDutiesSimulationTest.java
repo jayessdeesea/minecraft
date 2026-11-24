@@ -95,22 +95,33 @@ class WoodDutiesSimulationTest {
 
         clock.advance(10 * 60_000);
 
-        Map<String, WoodDuties.Duty> duties = WoodDuties.of(Optional.of(forWood), squad);
+        // Each tree is one woodcutter's - or, its strip's half shared out with the tree begun in it, two's: never the whole
+        // squad's (backlog/wood-reshare.md: a tree whose foot is cut and whose rest waits on its feller still goes with the
+        // half it stands in). And the strips don't go round: each is cut out once, a handful in all, where 28 were said.
         Pattern dug = Pattern.compile("^(\\w+) dug " + SimServer.OAK_LOG + " at (-?\\d+),(-?\\d+),(-?\\d+)$");
         Map<String, Integer> felled = new HashMap<>();
+        Map<String, java.util.Set<String>> fellers = new HashMap<>();
         for (String line : List.copyOf(server.log)) {
             Matcher m = dug.matcher(line);
             if (!m.matches()) {
                 continue;
             }
-            String who = m.group(1);
-            int x = Integer.parseInt(m.group(2));
-            int z = Integer.parseInt(m.group(4));
-            felled.merge(who, 1, Integer::sum);
-            Box strip = duties.get(who).area();
-            assertTrue(x >= strip.minX() - 1 && x <= strip.maxX() + 1 && z >= strip.minZ() - 1 && z <= strip.maxZ() + 1,
-                    who + " felled a log at " + x + ", " + z + " outside its strip " + strip);
+            felled.merge(m.group(1), 1, Integer::sum);
+            fellers.computeIfAbsent(m.group(2) + "," + m.group(4), t -> new java.util.TreeSet<>()).add(m.group(1));
         }
+        fellers.forEach((tree, who) -> assertTrue(who.size() <= 2, "the tree at " + tree + " was felled by " + who));
+        long shared = fellers.values().stream().filter(who -> who.size() == 2).count();
+        assertTrue(shared <= 2, shared + " trees felled by two: " + fellers);
+        List<String> cutOut;
+        try {
+            cutOut = java.nio.file.Files.readAllLines(java.nio.file.Path.of("target", "sim", "woodcuttersFellOnlyTheirOwnStripsAndThePlanterNone.log"))
+                    .stream().filter(l -> l.contains("is cut out") && l.contains("'s strip over")).map(l -> l.substring(l.indexOf("[Alpha]"))).toList();
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+        // Once - and once more for a strip of the wood dealt out whole a second time, logs left standing after the first.
+        assertTrue(cutOut.stream().allMatch(l -> java.util.Collections.frequency(cutOut, l) <= 2), "a strip cut out is said once a deal: " + cutOut);
+        assertTrue(cutOut.size() <= 14, "the strips don't go round: " + cutOut);
         squad.subList(0, 3).forEach(w -> assertTrue(felled.getOrDefault(w, 0) > 0, w + " felled nothing: " + felled));
         assertEquals(0, felled.getOrDefault("Dana", 0), "the planter fells none: " + felled);
     }
@@ -121,12 +132,12 @@ class WoodDutiesSimulationTest {
     }
 
     /**
-     * A woodcutter whose strip has nothing to fell makes nothing: its squad leader alarms that it's behind its share,
-     * and the ones felling aren't (operator, 2026-11-18: the squad leader alarms if the soldiers aren't completing
-     * their task in a timely way).
+     * A woodcutter whose strip has nothing to fell is moved, and only it: its squad leader, told the strip was looked
+     * over and found empty, gives it half of the strip with the most standing (operator, 2026-11-18: the squad leader
+     * closes the gap) - and it fells there, where before it stood behind its share while the strips went round.
      */
     @Test
-    void aWoodcutterWithNothingToFellIsAlarmedBehindItsShare() throws java.io.IOException {
+    void aWoodcutterWithNothingToFellIsGivenAShareOfAnothersStrip() throws java.io.IOException {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, WoodDutiesSimulationTest::woodCutOutEast, 24_000);
         List<String> squad = List.of("Alice", "Bob", "Carl", "Dana");
@@ -143,14 +154,13 @@ class WoodDutiesSimulationTest {
                         new int[]{38, SimServer.ITEM_BREAD, 16})))
                 .run();
 
-        clock.advance(4 * 60_000); // Carl's due, the others' strips still standing
+        clock.advance(6 * 60_000);
 
-        List<String> alarms = java.nio.file.Files.readAllLines(Path.of("target", "sim", "aWoodcutterWithNothingToFellIsAlarmedBehindItsShare.log"))
-                .stream().filter(l -> l.contains("[Alarm]")).toList();
-        assertTrue(alarms.stream().anyMatch(l -> l.contains("[Alarm] [Alpha] Carl behind its share: woodcutter over x 8..24")), "Carl: " + alarms);
-        assertTrue(alarms.stream().noneMatch(l -> l.contains("Alice behind") || l.contains("Bob behind")), "the ones felling: " + alarms);
-        // And its squad leader, told the strip found nothing, shares the wood again without it (command.WoodDuties.worked).
-        assertTrue(java.nio.file.Files.readAllLines(Path.of("target", "sim", "aWoodcutterWithNothingToFellIsAlarmedBehindItsShare.log")).stream()
-                .anyMatch(l -> l.contains("[Alpha] the strip over x 8..24, z -24..24 is cut out - the wood shared again without it")), "the east re-shared");
+        List<String> log = java.nio.file.Files.readAllLines(Path.of("target", "sim", "aWoodcutterWithNothingToFellIsGivenAShareOfAnothersStrip.log"));
+        List<String> cutOut = log.stream().filter(l -> l.contains("is cut out")).toList();
+        assertTrue(cutOut.stream().anyMatch(l -> l.contains("[Alpha] Carl's strip over x 8..24, z -24..24 is cut out")), "Carl's, the east: " + cutOut);
+        assertTrue(log.stream().anyMatch(l -> l.contains("[Alpha] Carl shares ")), "and given a share of another's: " + cutOut);
+        assertTrue(server.log.stream().anyMatch(l -> l.startsWith("Carl dug " + SimServer.OAK_LOG)), "and it fells there; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 }

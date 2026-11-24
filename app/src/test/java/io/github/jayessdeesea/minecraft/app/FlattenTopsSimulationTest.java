@@ -129,7 +129,7 @@ class FlattenTopsSimulationTest {
                 .map(c -> c[0] + "," + c[1] + "," + c[2]).toList(), "scaffolding only in the dig area");
         List<String> cobbled = server.log.stream().filter(e -> e.contains(" placed " + SimServer.COBBLESTONE + " at ")).filter(e -> {
             String[] at = e.substring(e.lastIndexOf(" at ") + 4).split(",");
-            return Integer.parseInt(at[1]) > FLOOR;
+            return Integer.parseInt(at[1]) > GROUND; // over the ground: at it, a farm's footings are paved in cobblestone (ChunkFarm.footingsToPave)
         }).toList();
         assertEquals(List.of(), cobbled, "no cobblestone put up for scaffolding, with dirt carried");
     }

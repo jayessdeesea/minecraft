@@ -59,7 +59,8 @@ public final class FarmSite {
     }
 
     /**
-     * The blocks {@link #work} counts to dig, and the cells it counts to fill, on {@code farm}: what its SURVEYED stage
+     * The blocks {@link #work} counts to dig, the cells of its ground it counts to fill, and its footings to pave in
+     * cobblestone, on {@code farm}: what its SURVEYED stage
      * waits on, block by block - live (field577-581) the camp's chunk farm stood at dig=103, fill=32 run after run, and
      * the count alone said nothing of what or where.
      */
@@ -80,8 +81,9 @@ public final class FarmSite {
                 dig.add(h);
             }
         }
-        farm.footings().stream().filter(c -> !world.isSolid(c.x(), c.y(), c.z()) || world.isWater(c.x(), c.y(), c.z())).forEach(fill::add);
-        return List.of(List.copyOf(dig), List.copyOf(fill));
+        // Its fixtures' footings aren't ground to fill: they're paved, the third of these; what stands in a fixture's place is dug.
+        dig.addAll(farm.obstructions(world));
+        return List.of(List.copyOf(dig), List.copyOf(fill), farm.footingsToPave(world));
     }
 
     /** The work left on {@code farm} as {@code world} has it. */
@@ -104,11 +106,8 @@ public final class FarmSite {
                 sow++;
             }
         }
-        for (BlockPos c : farm.footings()) {
-            if (!world.isSolid(c.x(), c.y(), c.z()) || world.isWater(c.x(), c.y(), c.z())) {
-                fill++; // what its fence, torches and chest stand on
-            }
-        }
+        fill += farm.footingsToPave(world).size(); // what its fence, torches and chest stand on: cobblestone
+        dig += farm.obstructions(world).size();
         for (BlockPos h : farm.holes()) {
             if (world.isWaterSource(h.x(), h.y(), h.z())) {
                 continue; // water already there: over a pond, no bucket wanted

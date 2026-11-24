@@ -536,6 +536,7 @@ class FarmMissionsTest {
         // Its task the wheat's too: live (field708), dealt "keep the tree farms", it kept the wheat farm by name with a tree
         // farm's task - "Keep the wheat farm at chunk (1, 3) (TREE_FARM)" - and the farm's fourteen posts were never put up.
         assertInstanceOf(io.github.jayessdeesea.minecraft.command.Objective.Task.Farm.class, withFarmSquad.get(1).task(), "the wheat farm's task is a farm's");
+        assertEquals("Food for the force", withFarmSquad.get(1).intent(), "and its intent the wheat's, not the tree farms' it was dealt");
 
         book.given("Bravo", given.get(1), 2_000);
         book.given("Charlie", given.get(2), 2_000);

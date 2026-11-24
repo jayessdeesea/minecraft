@@ -15,7 +15,11 @@ import java.util.Optional;
 public final class WoodDuties {
 
     /** A soldier's part in the wood. */
-    public enum Kind { WOODCUTTER, PLANTER }
+    public enum Kind {
+        WOODCUTTER, PLANTER,
+        /** A woodcutter with no strip left to work: it stands by, and fells nobody else's trees. */
+        STANDBY
+    }
 
     /** {@code soldier}'s duty: its kind and the ground it works. */
     public record Duty(String soldier, Kind kind, Box area) {
@@ -45,64 +49,82 @@ public final class WoodDuties {
 
     /**
      * The duties of {@code roster} - its soldiers in roster order - sent for wood at {@code objective}'s
-     * point; none unless the objective is for wood.
+     * point, each woodcutter on its first strip; none unless the objective is for wood.
      */
     public static Map<String, Duty> of(Optional<Objective> objective, List<String> roster) {
-        return of(objective, roster, List.of());
-    }
-
-    /**
-     * As {@link #of(Optional, List)}, with the strips its woodcutters have found cut out - {@code cutOut} - taken off the
-     * forest's edges before it's cut into strips again, so a woodcutter isn't kept on ground with nothing left to fell
-     * (operator, 2026-11-18: the squad leader closes the gap). Live (field474, field475), a squad's woodcutters were all
-     * behind their shares in a forest cut out across most of its width.
-     */
-    public static Map<String, Duty> of(Optional<Objective> objective, List<String> roster, List<Box> cutOut) {
         return objective.filter(o -> o.task().equals(new Objective.Task.Gather(Resource.WOOD)))
-                .map(o -> assign(roster, o.location(), cutOut)).orElse(Map.of());
+                .map(o -> assign(roster, o.location())).orElse(Map.of());
     }
 
     /** {@code roster}'s duties in the forest round {@code forest}: woodcutters on strips, the last its planter. */
     static Map<String, Duty> assign(List<String> roster, Position forest) {
-        return assign(roster, forest, List.of());
+        return duties(roster, forest, strips(roster, forest));
     }
 
     /**
-     * {@code roster}'s duties in the forest round {@code forest}: woodcutters on strips of what's left of it once
-     * {@code cutOut} is taken off its edges ({@link #worked}), the last its planter, over the whole.
+     * The strip each of {@code roster}'s woodcutters starts on in the forest round {@code forest}: the whole of it cut
+     * evenly across its longer side, one each, in roster order - all but the last of two or more, its planter.
      */
-    static Map<String, Duty> assign(List<String> roster, Position forest, List<Box> cutOut) {
+    public static Map<String, Box> strips(List<String> roster, Position forest) {
+        Map<String, Box> strips = new LinkedHashMap<>();
         if (roster.isEmpty()) {
-            return Map.of();
+            return strips;
         }
         Box whole = whole(forest);
         int cutters = roster.size() >= 2 ? roster.size() - 1 : 1;
-        // Across the whole forest's way, whatever's left of it: strips cut the other way would lie across the cut-out ones.
-        boolean alongX = whole.maxX() - whole.minX() >= whole.maxZ() - whole.minZ();
-        List<Box> parts = worked(whole, cutOut);
-        List<Box> strips = new java.util.ArrayList<>();
-        int[] shares = shares(parts.stream().mapToInt(p -> alongX ? p.maxX() - p.minX() + 1 : p.maxZ() - p.minZ() + 1).toArray(), cutters);
-        for (int i = 0; i < parts.size(); i++) {
-            if (shares[i] > 0) {
-                strips.addAll(parts.get(i).strips(shares[i], alongX));
-            }
+        List<Box> cut = whole.strips(cutters, whole.maxX() - whole.minX() >= whole.maxZ() - whole.minZ());
+        for (int i = 0; i < cut.size(); i++) {
+            strips.put(roster.get(i), cut.get(i));
         }
+        return strips;
+    }
+
+    /**
+     * {@code roster}'s duties with its woodcutters on {@code strips} as they stand - one with no strip stands by: it has
+     * a duty still, so the squad's own order for wood isn't its to roam the others' strips with - and, with two or more,
+     * the last its planter over the whole forest round {@code forest}.
+     */
+    public static Map<String, Duty> duties(List<String> roster, Position forest, Map<String, Box> strips) {
         Map<String, Duty> duties = new LinkedHashMap<>();
-        for (int i = 0; i < strips.size(); i++) {
-            duties.put(roster.get(i), new Duty(roster.get(i), Kind.WOODCUTTER, strips.get(i)));
-        }
+        List<String> cutters = roster.size() >= 2 ? roster.subList(0, roster.size() - 1) : roster;
+        cutters.forEach(soldier -> duties.put(soldier, strips.containsKey(soldier) ? new Duty(soldier, Kind.WOODCUTTER, strips.get(soldier))
+                : new Duty(soldier, Kind.STANDBY, whole(forest))));
         if (roster.size() >= 2) {
             String planter = roster.getLast();
-            duties.put(planter, new Duty(planter, Kind.PLANTER, whole));
+            duties.put(planter, new Duty(planter, Kind.PLANTER, whole(forest)));
         }
         return Map.copyOf(duties);
+    }
+
+    /**
+     * {@code strip} cut in two along a line between its trees - {@code trees}, each a standing tree's x and z - across its
+     * longer side, half the trees each side: the lower part, then the upper. None if its trees don't stand on two lines
+     * across it: there's no line to cut along. A strip cut out moves only its own woodcutter, onto half of the strip with
+     * the most standing; the rest keep the trees they've begun (operator, 2026-11-18: each in a specific area).
+     */
+    public static Optional<List<Box>> split(Box strip, List<int[]> trees) {
+        boolean alongX = strip.maxX() - strip.minX() >= strip.maxZ() - strip.minZ();
+        int[] at = trees.stream().mapToInt(t -> alongX ? t[0] : t[1]).distinct().sorted().toArray();
+        if (at.length < 2) {
+            return Optional.empty();
+        }
+        int line = Math.floorDiv(at[at.length / 2 - 1] + at[at.length / 2], 2); // the last cell of the lower part
+        return Optional.of(alongX
+                ? List.of(new Box(strip.minX(), strip.minY(), strip.minZ(), line, strip.maxY(), strip.maxZ()),
+                        new Box(line + 1, strip.minY(), strip.minZ(), strip.maxX(), strip.maxY(), strip.maxZ()))
+                : List.of(new Box(strip.minX(), strip.minY(), strip.minZ(), strip.maxX(), strip.maxY(), line),
+                        new Box(strip.minX(), strip.minY(), line + 1, strip.maxX(), strip.maxY(), strip.maxZ())));
     }
 
     /** {@code duties} as duty orders, their yield to {@code dump}: a woodcutter its strip, the planter the whole wood. */
     public static Map<String, DutyOrder> orders(Map<String, Duty> duties, Optional<Position> dump) {
         Map<String, DutyOrder> orders = new LinkedHashMap<>();
-        duties.forEach((soldier, d) -> orders.put(soldier, new DutyOrder(soldier,
-                d.kind() == Kind.PLANTER ? DutyOrder.Duty.PLANTER : DutyOrder.Duty.WOODCUTTER, Optional.of(d.area()), dump)));
+        duties.forEach((soldier, d) -> {
+            if (d.kind() != Kind.STANDBY) { // standing by has no producer's order: nothing is owed of it
+                orders.put(soldier, new DutyOrder(soldier,
+                        d.kind() == Kind.PLANTER ? DutyOrder.Duty.PLANTER : DutyOrder.Duty.WOODCUTTER, Optional.of(d.area()), dump));
+            }
+        });
         return Map.copyOf(orders);
     }
 
@@ -112,60 +134,5 @@ public final class WoodDuties {
         int y = (int) Math.floor(forest.y());
         int z = (int) Math.floor(forest.z());
         return new Box(x - REACH, y - BELOW, z - REACH, x + REACH, y + ABOVE, z + REACH);
-    }
-
-    /**
-     * {@code whole} less {@code cutOut}: the runs of it along its longer side - the way its strips ({@link Box#strips})
-     * are cut - that no strip found cut out covers, each a box, in order: ground no woodcutter is sent back to taken
-     * off, at an end or in the middle - a strip cut out in the middle leaves the wood in two. All of it cut out, it's
-     * {@code whole} again: the trees replanted there grow.
-     */
-    public static List<Box> worked(Box whole, List<Box> cutOut) {
-        boolean alongX = whole.maxX() - whole.minX() >= whole.maxZ() - whole.minZ();
-        int from = alongX ? whole.minX() : whole.minZ(), to = alongX ? whole.maxX() : whole.maxZ();
-        boolean[] cut = new boolean[to - from + 1];
-        for (Box c : cutOut) {
-            int a = Math.max(from, alongX ? c.minX() : c.minZ()), b = Math.min(to, alongX ? c.maxX() : c.maxZ());
-            for (int i = a; i <= b; i++) {
-                cut[i - from] = true;
-            }
-        }
-        List<Box> parts = new java.util.ArrayList<>();
-        for (int i = 0; i < cut.length; i++) {
-            if (cut[i] || i > 0 && !cut[i - 1]) {
-                continue;
-            }
-            int j = i;
-            while (j + 1 < cut.length && !cut[j + 1]) {
-                j++;
-            }
-            int a = from + i, b = from + j;
-            parts.add(alongX ? new Box(a, whole.minY(), whole.minZ(), b, whole.maxY(), whole.maxZ())
-                    : new Box(whole.minX(), whole.minY(), a, whole.maxX(), whole.maxY(), b));
-        }
-        return parts.isEmpty() ? List.of(whole) : List.copyOf(parts);
-    }
-
-    /**
-     * {@code cutters} shared over parts {@code widths} wide: one to each of the widest while there are fewer cutters than
-     * parts; else one to each and the rest to whichever has the most width a cutter.
-     */
-    static int[] shares(int[] widths, int cutters) {
-        int[] shares = new int[widths.length];
-        Integer[] widest = java.util.stream.IntStream.range(0, widths.length).boxed()
-                .sorted(java.util.Comparator.comparingInt((Integer i) -> -widths[i])).toArray(Integer[]::new);
-        for (int k = 0; k < Math.min(cutters, widths.length); k++) {
-            shares[widest[k]] = 1;
-        }
-        for (int left = cutters - widths.length; left > 0; left--) {
-            int most = 0;
-            for (int i = 1; i < widths.length; i++) {
-                if ((double) widths[i] / (shares[i] + 1) > (double) widths[most] / (shares[most] + 1)) {
-                    most = i;
-                }
-            }
-            shares[most]++;
-        }
-        return shares;
     }
 }

@@ -617,7 +617,9 @@ class FarmMissionSimulationTest {
             int now = server.block(c.x(), c.y(), c.z());
             // Its wheat may grow, and a gate on the shared line is the new farm's too: opened, its way in, as every chunk farm's gates are.
             boolean grown = b == SimServer.WHEAT_SPROUT && now >= SimServer.WHEAT_SPROUT && now <= SimServer.WHEAT_RIPE;
-            if (now != b && !grown && !(b == SimItems.GATE && now == SimItems.GATE_OPEN && c.x() == FARM.minX())) {
+            // And what its fence and torches stand on is paved in cobblestone by whoever keeps it (ChunkFarm.footingsToPave).
+            boolean paved = now == SimServer.COBBLESTONE && c.y() == GROUND;
+            if (now != b && !grown && !paved && !(b == SimItems.GATE && now == SimItems.GATE_OPEN && c.x() == FARM.minX())) {
                 changed.add(c + " " + b + " -> " + now);
             }
         });
@@ -676,7 +678,9 @@ class FarmMissionSimulationTest {
         before.forEach((c, b) -> {
             int now = server.block(c.x(), c.y(), c.z());
             boolean grown = b == SimServer.WHEAT_SPROUT && now >= SimServer.WHEAT_SPROUT && now <= SimServer.WHEAT_RIPE;
-            if (now != b && !grown && !(b == SimItems.GATE && now == SimItems.GATE_OPEN && c.x() == TREES.minX())) {
+            // And what its fence and torches stand on is paved in cobblestone by whoever keeps it (ChunkFarm.footingsToPave).
+            boolean paved = now == SimServer.COBBLESTONE && c.y() == GROUND;
+            if (now != b && !grown && !paved && !(b == SimItems.GATE && now == SimItems.GATE_OPEN && c.x() == TREES.minX())) {
                 changed.add(c + " " + b + " -> " + now);
             }
         });

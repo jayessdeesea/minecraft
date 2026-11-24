@@ -137,4 +137,75 @@ class ChunkFarmTest {
         assertEquals(4 + (posts.size() + ChunkFarm.POSTS_A_TORCH - 1) / ChunkFarm.POSTS_A_TORCH, torches.size());
         assertTrue(torches.subList(4, torches.size()).stream().allMatch(t -> posts.contains(t.offset(0, -1, 0))), "on posts' tops: " + torches);
     }
+
+    /**
+     * What its fixtures stand on is cobblestone, and what stands where they go is dug out (operator, 2026-11-24: blocks
+     * on fences, missing torches by the water, a lot of fencing gone - the area under the fence should be cobblestone,
+     * and where the torch stands). Live (field712): the fence line and the torches' cells were dirt, tilled and sown;
+     * dirt, grass and a chest stood in posts' cells, cobblestone and a furnace on posts, cobblestone in a gate's cell.
+     */
+    @Test
+    void itsFootingsArePavedAndWhatStandsInItsFixturesPlaceIsInTheWay() {
+        ChunkFarm farm = new ChunkFarm(1, 3, GROUND);
+        BlockPos post = farm.fence().get(5), gate = farm.gates().getFirst(), topped = farm.fence().get(9);
+        BlockPos torch = farm.torches().getFirst();
+        BlockPos tilled = farm.fence().get(12).offset(0, -1, 0), paved = farm.fence().get(20).offset(0, -1, 0), open = farm.fence().get(30).offset(0, -1, 0);
+        Set<BlockPos> blocks = Set.of(post, gate, topped, topped.offset(0, 1, 0), torch);
+        Set<BlockPos> soil = Set.of(post);
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos c = new BlockPos(x, y, z);
+                return y <= GROUND && !c.equals(open) || blocks.contains(c);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                BlockPos c = new BlockPos(x, y, z);
+                return y == GROUND && !c.equals(tilled) && !c.equals(paved) || soil.contains(c);
+            }
+
+            @Override
+            public boolean isFarmland(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(tilled);
+            }
+
+            @Override
+            public boolean isCobblestone(int x, int y, int z) {
+                BlockPos c = new BlockPos(x, y, z);
+                return c.equals(paved) || c.equals(gate) || c.equals(topped.offset(0, 1, 0)) || c.equals(torch);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        List<BlockPos> toPave = farm.footingsToPave(world);
+        assertEquals(farm.footings().size() - 1, toPave.size(), "every footing of dirt, the tilled and the open among them - not the one in cobblestone");
+        assertTrue(toPave.contains(tilled) && toPave.contains(open) && !toPave.contains(paved), toPave.toString());
+        assertEquals(Set.of(post, gate, topped.offset(0, 1, 0), torch), Set.copyOf(farm.obstructions(world)),
+                "dirt in a post's cell, cobblestone in a gate's, a block on a post, a block where a field torch goes - not the post under it");
+
+        FarmSite.Work work = FarmSite.work(world, farm);
+        assertEquals(FarmSite.Stage.SURVEYED, work.stage(), "its ground isn't right till they're paved and dug: " + work);
+        assertEquals(toPave, FarmSite.surveyed(world, farm).get(2), "the survey's third list");
+    }
+
+    /** A plot never holds a footing of the farm's chunk farms: nothing a fence, a gate or a torch stands on is tilled or sown. */
+    @Test
+    void aFarmsPlotNeverTakesInAChunkFarmsFootings() {
+        ChunkFarm farm = new ChunkFarm(1, 3, GROUND);
+        BlockPos footing = farm.footings().getFirst(), ground = farm.ground().getFirst();
+
+        FarmPlan plan = new FarmPlan(farm.holes().getFirst(), List.of(footing, ground), List.of(), List.of(farm));
+
+        assertEquals(List.of(ground), plan.plot());
+    }
 }

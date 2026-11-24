@@ -52,14 +52,14 @@ public final class Depositor {
     private Script script;
     private int cooldown;
     /** A stockpile its trips keep failing at - not reached, or not opened - is left longer each time. */
-    private final Setbacks<Position> trips = new Setbacks<>(COOLDOWN_TICKS, 60L * COOLDOWN_TICKS);
+    private final Setbacks<Position> trips;
     /**
      * The chests a load was carried to and nothing of it put in, each left alone longer each time - for putting in only.
      * Apart from {@link #trips}: a chest that took nothing can still be drawn from, and isn't one it can't reach. Live
      * (field703), counted with the trips that failed, a paver out of cobblestone was barred from the chest holding it and
      * said "can't reach the stockpile".
      */
-    private final Setbacks<Position> tookNothing = new Setbacks<>(COOLDOWN_TICKS, 60L * COOLDOWN_TICKS);
+    private final Setbacks<Position> tookNothing;
     private long ticks;
     private Position at;
     private Position soldierAt;
@@ -92,6 +92,10 @@ public final class Depositor {
         this.inventory = inventory;
         this.chest = new ChestWindow(session, inventory);
         this.stockpileSeen = stockpileSeen;
+        // Its waits its own, by its name: a squad turned away from one chest doesn't come back to it in step (docs/conventions.md,
+        // "A retry changes something" - wait longer and out of step).
+        this.trips = new Setbacks<>(COOLDOWN_TICKS, 60L * COOLDOWN_TICKS, name.hashCode());
+        this.tookNothing = new Setbacks<>(COOLDOWN_TICKS, 60L * COOLDOWN_TICKS, name.hashCode());
     }
 
     /** Whether a trip under way is drawing {@code material} out. */

@@ -1094,11 +1094,13 @@ under the miners, aren't wood: `ResourceSurveyor.leafy`; nor is a log a gatherer
 48 blocks across round its objective by duty, not as one body: each woodcutter has a strip of it to
 itself - no two on one tree - stands only inside it (`Gatherer`'s box), takes a load of 16 logs to the
 stockpile at a time, replants each stump it fells, and is exhausted once its strip is cut out, as an
-`Order.Gather` from a box is. A strip its woodcutter finds cut out - its gather finding nothing, after it
-was given the strip - is taken off the forest, at its end or in its middle, and the rest shared again among the
-woodcutters along the same way (`WoodDuties.worked`, `DutyBook.cutOut`): a strip cut out in the middle leaves
-the wood in two runs, the woodcutters shared over both by their widths (`WoodDuties.shares`) - no woodcutter
-kept on ground with nothing left. All of it cut out, the whole is shared again, to grow back, and the squad
+`Order.Gather` from a box is. The strips are dealt once and kept (`DutyBook.wood`). A strip its own woodcutter
+has looked over and found nothing in (`Gatherer.searchedEmpty` - given other ground, it looks that over first)
+is cut out, and that woodcutter alone is moved: onto half of the strip with the most trees standing, cut along a
+line between them (`WoodDuties.split`), whose woodcutter keeps the half its tree is in - the others' strips as they
+were. One with no strip left to share stands by (`WoodDuties.Kind.STANDBY`), felling nobody else's trees. With no
+strip left and logs still standing the wood is dealt out whole once more, five minutes on; with none standing, or
+that second deal cut out too, the squad
 leader says the wood is spent: the platoon leader's wood sightings drop it for a day, across restarts
 (`ChainOfCommand.onWoodSpent`, `WoodSightings.spent`, `WoodsBook`), and the survey leaves its trees out -
 looking for trees out to 112 blocks once every wood within its 64 is spent (`ResourceSurveyor.survey`) -
@@ -1171,8 +1173,13 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    was reached only where the ground happened to be level, and steps built out of it buried a
    third of the camp's farm. A chunk farm's ground is levelled to its template the same way: what stands over it,
    three high, dug top first, and its open or flooded cells - but its trenches - filled with dirt alone, farmland's
-   ground: its ground, and what its fence, gates, torches and chest stand on (`ChunkFarm.footings`), so a chunk floored
-   a block below has its whole level laid (`Farmer.groundToFill`, walked to; FarmSite's SURVEYED stage) before any of it
+   ground (`Farmer.groundToFill`, walked to); what its fence, gates, field torches and chest stand on
+   (`ChunkFarm.footings`) is cobblestone instead (operator, 2026-11-23, 2026-11-24), paved by whoever keeps the farm as
+   a floor's cells are (`ChunkFarm.footingsToPave`, `TemplateGround.footings`) - open, or of ground a hoe tills - so no
+   footing is tilled or sown, and none is ever in the farm's plot (`FarmPlan`); and what stands where a fixture goes -
+   ground, rock or a chest in a post's or gate's cell, anything on a post but its torch, anything in a field torch's
+   cell - is in the way, and dug (`ChunkFarm.obstructions`). A chunk floored a block below has its whole level laid and
+   its footings paved (FarmSite's SURVEYED stage) before any of it
    is tilled, then planted (`FarmPlan.withChunkGround`: a footing left among farmland had no stand a route would take) - cobbled deepslate as cobblestone, the item a soldier places as it - and what roofs a
    water hole, a step included: the pour aims down past the block over the hole, and a roofed hole isn't poured, it
    waits on that earthwork (field581-583, a step over a hole and deepslate over the ground kept the camp's chunk farm

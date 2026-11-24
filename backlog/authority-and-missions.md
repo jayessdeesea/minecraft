@@ -223,6 +223,12 @@ levels the depositor reads (`StockLevels`, `ProductionLevels`). To build:
 - **A furnace stood over a stockpile's chest** (the old hill's, field704-707): the lid's block is broken now, furnace or
   not, but where a table or furnace is put up isn't checked against a chest under it - and a lid cutter with nothing it
   will break says nothing.
+- **The stockpiles in the sky** (operator, 2026-11-24: the supply dumps in the sky are a bit weird - build supply dumps
+  and flatten the awkward structures): the stores are chests on old hilltops and pillars - (-2, 76, 72) under a furnace,
+  (38, 67, 82), (-46, 73, 44) - left where a camp once stood. Wanted: the stores moved into supply points built from
+  the template (the first at chunk (1, 2)), each old chest emptied into the nearest one and taken up, and the mound it
+  stood on cut to the ground round it - a condemned structure, as an old camp's is. With the chests cleaned out to the
+  cap, above.
 
 ## Done when
 - Each step's eval passes; `OperatorChatScenarioIT` and the live chat probe stay at full marks.

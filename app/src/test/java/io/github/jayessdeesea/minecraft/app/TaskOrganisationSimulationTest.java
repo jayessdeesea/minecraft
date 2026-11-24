@@ -307,10 +307,15 @@ class TaskOrganisationSimulationTest {
                 [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
                 List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{40, SimServer.itemOf(ItemClass.BUCKET), 1},
                         new int[]{9, SimServer.itemNamedOrMinus("oak_fence"), 64}, new int[]{10, SimServer.itemNamedOrMinus("oak_fence_gate"), 4},
-                        new int[]{11, SimServer.itemOf(ItemClass.CHEST), 1}), "0,0");
-        clock.advance(14 * 60_000);
+                        new int[]{11, SimServer.itemOf(ItemClass.CHEST), 1}, new int[]{12, SimServer.ITEM_COBBLESTONE, 64},
+                        new int[]{13, SimServer.ITEM_COBBLESTONE, 32}), "0,0");
+        clock.advance(22 * 60_000); // its footings first, then what stands on them
 
         ChunkFarm farm = new ChunkFarm(-1, 0, GROUND);
+        // What they stand on is cobblestone (operator, 2026-11-24: under the fence, and where the torches are).
+        long paved = farm.footings().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.COBBLESTONE).count();
+        assertTrue(paved >= 60, "its footings paved: " + paved + " of " + farm.footings().size()
+                + "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
         long posts = farm.fence().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimItems.FENCE).count();
         long open = farm.gates().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimItems.GATE_OPEN).count();
         long gates = farm.gates().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimItems.GATE || server.block(c.x(), c.y(), c.z()) == SimItems.GATE_OPEN).count();

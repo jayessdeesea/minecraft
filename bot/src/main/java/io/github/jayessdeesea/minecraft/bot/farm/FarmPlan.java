@@ -36,7 +36,10 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenc
     public static final int FLOW = 7;
 
     public FarmPlan {
-        plot = List.copyOf(plot);
+        // Never a footing of one of its chunk farms: what a fence, a gate or a torch stands on isn't tilled or sown,
+        // whatever plot it was first laid out with - live, a plot round the pond took in the fence line laid over it later.
+        java.util.Set<BlockPos> footings = chunks.stream().flatMap(c -> c.footings().stream()).collect(java.util.stream.Collectors.toSet());
+        plot = plot.stream().filter(c -> !footings.contains(c)).toList();
         trenches = List.copyOf(trenches);
         chunks = List.copyOf(chunks);
     }

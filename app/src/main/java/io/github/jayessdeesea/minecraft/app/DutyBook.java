@@ -46,9 +46,17 @@ final class DutyBook {
 
     private final Map<String, DutyOrder> orders = new ConcurrentHashMap<>();
     private final ShareWatch watch = new ShareWatch();
-    /** Each squad's strips found cut out, and the objective they were found on. */
-    private final Map<String, List<Box>> cutOut = new HashMap<>();
-    private final Map<String, Optional<Objective>> cutOutFor = new HashMap<>();
+    /** Each squad's woodcutters' strips as they stand, the wood and the roster they were dealt for, and when. */
+    private final Map<String, Map<String, Box>> woodStrips = new HashMap<>();
+    private final Map<String, Optional<Objective>> woodFor = new HashMap<>();
+    private final Map<String, List<String>> woodRoster = new HashMap<>();
+    private final Map<String, Long> woodDealtAt = new HashMap<>();
+    /** The squads whose wood has been dealt out whole a second time, logs standing after every strip was cut out. */
+    private final Set<String> woodRedealt = new java.util.HashSet<>();
+    /** The ground each soldier's gather last searched and found nothing in, while that stands. */
+    private final Map<String, Box> searchedEmpty = new ConcurrentHashMap<>();
+    /** How long a wood with no strip left and logs still standing waits before it's dealt out whole again. */
+    static final long REDEAL_MILLIS = 5 * 60_000;
     /** The squads whose wood, on the objective they have, is spent: every strip of it cut out. */
     private final Set<String> spentSquads = ConcurrentHashMap.newKeySet();
     /** When each producer was given the ground it works. */
@@ -176,36 +184,114 @@ final class DutyBook {
         return List.copyOf(on);
     }
 
+    /** {@code soldier}'s gather searched {@code ground} and found nothing in it - or, none, has work or no bounds. */
+    void searched(String soldier, Optional<Box> ground) {
+        ground.ifPresentOrElse(g -> searchedEmpty.put(soldier, g), () -> searchedEmpty.remove(soldier));
+    }
+
     /**
-     * The strips {@code squad}'s woodcutters - of its {@code soldiers} - have found cut out on its {@code objective}: each
-     * one's ground added once its gather found nothing in it - {@code foundNothingAt} - after it was given that ground,
-     * said once; forgotten when the objective moves. Live in the squad simulation, a gather that found nothing in the
-     * old strip marked the new one cut out the moment it was given; and live (field476), every squad marked Charlie's
-     * strips as its own.
+     * {@code squad}'s wood duties on {@code objective} at {@code now}, its {@code roster} in order: each woodcutter on the
+     * strip it holds - dealt once, evenly - and its planter over the whole. A woodcutter whose gather has looked its own
+     * strip over and found nothing ({@link #searched}) is cut out, said once, and it alone is moved: onto half of the
+     * strip with the most trees standing ({@code trees}: each standing tree's x and z in a box), cut along a line
+     * between them, whose woodcutter keeps the half it stands in ({@code at}) - the rest, and the trees they've begun,
+     * as they were. With no strip left to share it stands by. The wood is said {@code spent} once, when no strip is left
+     * and no log stands in it; with logs standing it's dealt out whole once more after {@link #REDEAL_MILLIS}, and spent
+     * when that's cut out too - what's left then nobody could reach.
+     * (backlog/wood-reshare.md: strips recomputed from what was cut out moved every woodcutter at each cut-out, a tree
+     * half felled was left outside its feller's new strip, and the wood was said spent with logs standing.)
      */
-    synchronized List<Box> cutOut(String squad, List<String> soldiers, Optional<Objective> objective, ToLongFunction<String> foundNothingAt,
-                                  java.util.function.Consumer<Position> spent) {
-        if (!objective.equals(cutOutFor.get(squad))) {
-            cutOutFor.put(squad, objective);
-            cutOut.put(squad, new ArrayList<>());
+    synchronized Map<String, WoodDuties.Duty> wood(String squad, List<String> roster, Optional<Objective> objective,
+                                                   java.util.function.Function<Box, List<int[]>> trees,
+                                                   java.util.function.Function<String, Optional<Position>> at,
+                                                   java.util.function.Consumer<Position> spent, long now) {
+        Optional<Objective> wood = objective.filter(o -> o.task().equals(new Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.WOOD)));
+        if (wood.isEmpty()) {
+            woodStrips.remove(squad);
+            woodFor.remove(squad);
+            woodRoster.remove(squad);
             spentSquads.remove(squad);
+            return Map.of();
         }
-        List<Box> found = cutOut.get(squad);
-        orders.values().stream().filter(o -> o.duty() == DutyOrder.Duty.WOODCUTTER && soldiers.contains(o.soldier())
-                        && foundNothingAt.applyAsLong(o.soldier()) > givenAt.getOrDefault(o.soldier(), Long.MAX_VALUE))
-                .flatMap(o -> o.ground().stream()).filter(g -> !found.contains(g)).toList().forEach(g -> {
-                    found.add(g);
-                    LOG.info("[{}] the strip over x {}..{}, z {}..{} is cut out - the wood shared again without it", squad, g.minX(), g.maxX(),
-                            g.minZ(), g.maxZ());
-                });
-        // Every strip cut out - the whole wood shared again - is the wood spent: said once an order, up the chain. Live
-        // (field478), said three times over as more strips were found.
-        objective.filter(o -> !found.isEmpty() && !spentSquads.contains(squad)
-                && WoodDuties.worked(WoodDuties.whole(o.location()), found).equals(List.of(WoodDuties.whole(o.location())))).ifPresent(o -> {
-            spentSquads.add(squad);
-            spent.accept(o.location());
-        });
-        return List.copyOf(found);
+        Position forest = wood.get().location();
+        if (!wood.equals(woodFor.get(squad))) {
+            spentSquads.remove(squad);
+            woodRedealt.remove(squad);
+        }
+        if (!wood.equals(woodFor.get(squad)) || !roster.equals(woodRoster.get(squad))) {
+            woodFor.put(squad, wood);
+            woodRoster.put(squad, List.copyOf(roster));
+            woodStrips.put(squad, new java.util.LinkedHashMap<>(WoodDuties.strips(roster, forest)));
+            woodDealtAt.put(squad, now);
+        }
+        Map<String, Box> strips = woodStrips.get(squad);
+        for (String cutter : List.copyOf(strips.keySet())) {
+            Box strip = strips.get(cutter);
+            if (!strip.equals(searchedEmpty.get(cutter))) {
+                continue;
+            }
+            strips.remove(cutter);
+            searchedEmpty.remove(cutter);
+            LOG.info("[{}] {}'s strip over x {}..{}, z {}..{} is cut out", squad, cutter, strip.minX(), strip.maxX(), strip.minZ(), strip.maxZ());
+            String donor = null;
+            List<int[]> most = List.of();
+            List<Box> halves = List.of();
+            for (Map.Entry<String, Box> other : strips.entrySet()) {
+                List<int[]> standing = trees.apply(other.getValue());
+                Optional<List<Box>> cut = standing.size() > most.size() ? WoodDuties.split(other.getValue(), standing) : Optional.empty();
+                if (cut.isPresent()) {
+                    donor = other.getKey();
+                    most = standing;
+                    halves = cut.get();
+                }
+            }
+            if (donor == null) {
+                LOG.info("[{}] no strip with trees to share: {} has none", squad, cutter);
+                continue;
+            }
+            Box lower = halves.get(0), upper = halves.get(1);
+            boolean inUpper = at.apply(donor).filter(p -> upper.contains((int) Math.floor(p.x()), upper.minY(), (int) Math.floor(p.z()))).isPresent();
+            strips.put(donor, inUpper ? upper : lower);
+            strips.put(cutter, inUpper ? lower : upper);
+            Box given = strips.get(cutter);
+            LOG.info("[{}] {} shares {}'s strip, the one with the most standing ({} trees): x {}..{}, z {}..{}", squad, cutter, donor, most.size(),
+                    given.minX(), given.maxX(), given.minZ(), given.maxZ());
+        }
+        if (strips.isEmpty() && !spentSquads.contains(squad)) {
+            int standing = trees.apply(WoodDuties.whole(forest)).size();
+            if (standing > 0 && !woodRedealt.contains(squad)) {
+                // Logs its woodcutters each left: looked over once more, whole, by whoever can reach them - a different try.
+                if (now - woodDealtAt.getOrDefault(squad, now) >= REDEAL_MILLIS) {
+                    woodRedealt.add(squad);
+                    strips.putAll(WoodDuties.strips(roster, forest));
+                    woodDealtAt.put(squad, now);
+                    LOG.info("[{}] every strip cut out and {} tree(s) still standing: the wood dealt out whole once more", squad, standing);
+                }
+            } else {
+                if (standing > 0) {
+                    LOG.info("[{}] the wood is spent with {} tree(s) left that nobody could reach, twice over", squad, standing);
+                }
+                spentSquads.add(squad);
+                spent.accept(forest);
+            }
+        }
+        return WoodDuties.duties(roster, forest, strips);
+    }
+
+    /** Each standing tree's x and z in {@code box} as {@code world} has it: a column with a log in it. */
+    static List<int[]> logsIn(io.github.jayessdeesea.minecraft.bot.world.WorldView world, Box box) {
+        List<int[]> found = new ArrayList<>();
+        for (int x = box.minX(); x <= box.maxX(); x++) {
+            for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                for (int y = box.minY(); y <= box.maxY(); y++) {
+                    if (world.isLog(x, y, z)) {
+                        found.add(new int[]{x, z});
+                        break;
+                    }
+                }
+            }
+        }
+        return found;
     }
 
     /** Whether {@code squad}'s wood, on the objective it has, is spent: its task done. */

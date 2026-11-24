@@ -115,6 +115,17 @@ public final class Gatherer {
         return exhausted;
     }
 
+    /** The tree it has begun, by its stump or a log of it: where its work is, wherever it stands - at the stockpile with a load, say. */
+    public synchronized Optional<BlockPos> felling() {
+        // The block it's walking to or breaking first: between trees its tree is the next one's, not yet begun but chosen.
+        return digger != null ? Optional.of(digger.spot().block()) : stump != null ? Optional.of(stump) : tree.stream().findFirst();
+    }
+
+    /** The ground it was kept within when its last search found nothing there: its strip, cut out. None while it has work, or no bounds. */
+    public synchronized Optional<Box> searchedEmpty() {
+        return exhausted ? within : Optional.empty();
+    }
+
     /** Where the soldier should be standing while it gathers, if anywhere. */
     public synchronized Optional<Position> standAt() {
         if (replanting != null && plantAt != null) {
@@ -159,6 +170,24 @@ public final class Gatherer {
      */
     public synchronized void tick(Position soldier, WorldView world, Optional<Resource> resource, Position around,
                                   boolean wanted, OptionalInt amount, Optional<Box> within) {
+        if (!within.equals(this.within)) {
+            // Other ground: looked over before anything is said of it. Live in the squad simulation, a woodcutter that had
+            // found nothing in its old strip stayed exhausted in the new one, which was marked cut out the tick after.
+            exhausted = false;
+            retry = 0;
+            // And what it left of a tree now outside its ground is the ground's new woodcutter's: it doesn't go back for it.
+            // In the squad simulation a strip's half went to another, and both worked the tree the first had begun.
+            within.ifPresent(w -> {
+                tree.removeIf(l -> !w.contains(l.x(), l.y(), l.z()));
+                if (stump != null && !w.contains(stump.x(), stump.y(), stump.z())) {
+                    stump = null;
+                }
+                // Nor the block it was on its way to break there: the walk is dropped with it.
+                if (digger != null && !w.contains(digger.spot().block().x(), digger.spot().block().y(), digger.spot().block().z())) {
+                    stop();
+                }
+            });
+        }
         this.within = within;
         if (retry > 0) {
             retry--;

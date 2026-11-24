@@ -167,7 +167,7 @@ Trying again what just failed, the same way, expects a different outcome for no 
 routine whose try fails does something different with the next, from a ladder it climbs in order:
 1. **Wait, a little longer each time, and not in step with the others** - `bot.supply.Setbacks`: the target left
    alone twice as long at each failure; given a salt - whose it is - each wait is lengthened by up to a quarter, so
-   several failed at one thing don't come back as one. No routine is salted yet (backlog/wood-reshare.md says why).
+   several failed at one thing don't come back as one. A depositor's waits are salted by its name (`Depositor`).
 2. **Another target** - the next cell, another chest, another stand, a different way round. A stand somebody's in is
    taken (`SoldierErrands.standTaken`); a trip that put nothing in isn't made again with the same load (`Depositor`).
 3. **Another means** - what would make the try work: build the chest that's wanted, clear what's in the way, draw

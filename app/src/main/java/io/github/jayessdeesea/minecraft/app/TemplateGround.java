@@ -118,6 +118,16 @@ final class TemplateGround {
         return all;
     }
 
+    /**
+     * The {@code i}th of {@code n} soldiers' share of {@code farm}'s chunk farms' footings still to pave in cobblestone
+     * ({@code ChunkFarm.footingsToPave}): every {@code n}th of them, so each is one paver's. Its squad's work whenever
+     * any stands unpaved - a farm built or building - as a floor's cells are a floor squad's.
+     */
+    static List<BlockPos> footings(WorldView world, io.github.jayessdeesea.minecraft.bot.farm.FarmPlan farm, int i, int n) {
+        List<BlockPos> all = farm.chunks().stream().flatMap(c -> c.footingsToPave(world).stream()).distinct().toList();
+        return java.util.stream.IntStream.range(0, all.size()).filter(k -> k % Math.max(1, n) == i).mapToObj(all::get).toList();
+    }
+
     /** How far under a template's ground a missing cell's hole is followed down to fill it from its bottom. */
     static final int MAX_FOOTING_DEPTH = 8;
 }

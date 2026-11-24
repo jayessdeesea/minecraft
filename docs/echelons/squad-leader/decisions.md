@@ -63,7 +63,7 @@ CANTCO` - answered by a rule per cause, said once while the cause holds (`comman
 |---|---|
 | The soldier's CANTCO at its duty - its table gone | The order re-pointed to the next standing table (the camp's, then the keep's), else up the chain: `[Alpha -> PL] Dana, baker, CANTCO: ... - no table standing to re-point it to` |
 | Its source ran dry | The next chest the stores book knows holding its makings, else up the chain: `idle: no wheat stored` |
-| Its ground worked out - a woodcutter's strip | The wood shared again without it |
+| Its ground worked out - a woodcutter's strip | That woodcutter given half of the strip with the most standing; the others' left as they are |
 | Its hands other work's - a fight (`CONTACT`), a ration run - half the spell or more | Said as the cause; not re-ordered |
 | None found | `[Gap] [Alpha -> PL]`: the duty, the yield short, and what was checked |
 

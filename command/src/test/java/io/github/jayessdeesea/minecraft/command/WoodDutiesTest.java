@@ -65,36 +65,29 @@ class WoodDutiesTest {
     }
 
     /** A strip found cut out is taken off the forest: at its end, and in its middle, leaving it in two. */
+    /** A strip is cut in two between its trees, half each side, across its longer side; with trees on one line, not at all. */
     @Test
-    void stripsCutOutAreTakenOffTheForestEndsAndMiddle() {
-        Box whole = new Box(-24, 56, -24, 24, 88, 24);
-        Box east = new Box(8, 56, -24, 24, 88, 24);
-        Box middle = new Box(-8, 56, -24, 7, 88, 24);
-        assertEquals(List.of(new Box(-24, 56, -24, 7, 88, 24)), WoodDuties.worked(whole, List.of(east)));
-        assertEquals(List.of(new Box(-24, 56, -24, -9, 88, 24)), WoodDuties.worked(whole, List.of(middle, east)));
-        assertEquals(List.of(new Box(-24, 56, -24, -9, 88, 24), new Box(8, 56, -24, 24, 88, 24)), WoodDuties.worked(whole, List.of(middle)),
-                "the middle cut out: the wood in two");
-        assertEquals(List.of(whole), WoodDuties.worked(whole, List.of(whole)), "all of it cut out: the whole again, to grow");
-        Map<String, WoodDuties.Duty> shared = WoodDuties.assign(List.of("Alice", "Bob", "Carl", "Dana"), new Position(0, 64, 0), List.of(east));
-        assertTrue(shared.get("Carl").area().maxX() <= 7, "Carl's strip off the cut-out east: " + shared.get("Carl").area());
+    void aStripIsCutInTwoBetweenItsTrees() {
+        Box strip = new Box(-8, 56, -24, 7, 88, 24);
+        List<Box> halves = WoodDuties.split(strip, List.of(new int[]{0, -20}, new int[]{3, -10}, new int[]{-2, 6}, new int[]{1, 18})).orElseThrow();
+        assertEquals(List.of(new Box(-8, 56, -24, 7, 88, -2), new Box(-8, 56, -1, 7, 88, 24)), halves, "between z=-10 and z=6, two trees each side");
+        assertEquals(Optional.empty(), WoodDuties.split(strip, List.of(new int[]{0, 5}, new int[]{4, 5})), "its trees on one line across it");
+        assertEquals(Optional.empty(), WoodDuties.split(strip, List.of()));
     }
 
-    /** With the middle cut out, the woodcutters are shared over both parts left: none sent back to the middle. */
+    /** A woodcutter with no strip stands by, with no order; the planter keeps the whole wood. */
     @Test
-    void aWoodCutOutInTheMiddleIsSharedOverBothParts() {
-        Box middle = new Box(-8, 56, -24, 7, 88, 24);
-        Map<String, WoodDuties.Duty> shared = WoodDuties.assign(List.of("Alice", "Bob", "Carl", "Dana"), new Position(0, 64, 0), List.of(middle));
-
-        List<Box> strips = shared.values().stream().filter(d -> d.kind() == WoodDuties.Kind.WOODCUTTER).map(WoodDuties.Duty::area).toList();
-        assertEquals(3, strips.size());
-        assertTrue(strips.stream().allMatch(b -> b.maxX() < -8 || b.minX() > 7), "none in the cut-out middle: " + strips);
-        assertTrue(strips.stream().anyMatch(b -> b.maxX() < -8) && strips.stream().anyMatch(b -> b.minX() > 7), "both sides worked: " + strips);
-    }
-
-    /** One cutter to each of the widest parts while they outnumber it; else each one, the rest by width. */
-    @Test
-    void cuttersAreSharedOverThePartsByWidth() {
-        assertArrayEquals(new int[]{0, 1}, WoodDuties.shares(new int[]{5, 9}, 1));
-        assertArrayEquals(new int[]{1, 2}, WoodDuties.shares(new int[]{10, 20}, 3));
+    void dutiesAreTheStripsAsTheyStandAndThePlanter() {
+        Position forest = new Position(0, 64, 0);
+        List<String> roster = List.of("Alice", "Bob", "Carl", "Dana");
+        Map<String, Box> strips = new java.util.LinkedHashMap<>(WoodDuties.strips(roster, forest));
+        assertEquals(List.of("Alice", "Bob", "Carl"), List.copyOf(strips.keySet()), "its woodcutters, the last its planter");
+        strips.remove("Bob");
+        Map<String, WoodDuties.Duty> duties = WoodDuties.duties(roster, forest, strips);
+        assertEquals(java.util.Set.of("Alice", "Bob", "Carl", "Dana"), duties.keySet());
+        assertEquals(WoodDuties.Kind.STANDBY, duties.get("Bob").kind());
+        assertEquals(Optional.empty(), duties.get("Bob").order(), "no order to fell");
+        assertEquals(java.util.Set.of("Alice", "Carl", "Dana"), WoodDuties.orders(duties, Optional.empty()).keySet(), "and no producer's order");
+        assertEquals(WoodDuties.whole(forest), duties.get("Dana").area());
     }
 }

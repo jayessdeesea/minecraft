@@ -403,8 +403,11 @@ final class FarmMissions {
             if (farm.isPresent()) {
                 FarmMission m = farm.get();
                 kept.add(m);
-                out.set(i, new Objective("Keep the " + m.what() + " at chunk (" + m.chunkX() + ", " + m.chunkZ() + ")", m.centre(m.steps().getLast()), standing.intent(),
-                        kind == FarmMission.Crop.WHEAT ? new Objective.Task.Farm() : new Objective.Task.TreeFarm())); // the farm's own task, whatever the squad was dealt
+                out.set(i, new Objective("Keep the " + m.what() + " at chunk (" + m.chunkX() + ", " + m.chunkZ() + ")", m.centre(m.steps().getLast()),
+                        // The farm's own intent and task, whatever the squad was dealt: live, the farm squad kept the wheat farm
+                        // under "Wood that grows back" (operator, 2026-11-24: a wood farm or a wheat farm?).
+                        kind == FarmMission.Crop.WHEAT ? "Food for the force" : "Wood that grows back",
+                        kind == FarmMission.Crop.WHEAT ? new Objective.Task.Farm() : new Objective.Task.TreeFarm()));
             } else if (first.isPresent()) {
                 out.set(i, first.get());
             }
@@ -568,7 +571,9 @@ final class FarmMissions {
                 ChunkFarm farm = new ChunkFarm(m.chunkX(), m.chunkZ(), step.level());
                 FarmSite.Work work = FarmSite.work(world, farm);
                 say(m, step, work.stage() + " - " + work + (work.stage() != FarmSite.Stage.SURVEYED ? "" : ", to fill "
-                        + FarmSite.surveyed(world, farm).get(1).stream().limit(6).map(c -> c.x() + "," + c.y() + "," + c.z()).toList()));
+                        + FarmSite.surveyed(world, farm).get(1).stream().limit(6).map(c -> c.x() + "," + c.y() + "," + c.z()).toList()
+                        + ", to pave " + FarmSite.surveyed(world, farm).get(2).stream().limit(6).map(c -> c.x() + "," + c.y() + "," + c.z()).toList()
+                        + ", in the way " + FarmSite.surveyed(world, farm).get(0).stream().limit(6).map(c -> c.x() + "," + c.y() + "," + c.z()).toList()));
                 yield work.stage() == FarmSite.Stage.SURVEYED ? Optional.empty() : Optional.of("the template's ground laid at y=" + step.level() + ", " + work.stage());
             }
             case TREE_TEMPLATE -> {

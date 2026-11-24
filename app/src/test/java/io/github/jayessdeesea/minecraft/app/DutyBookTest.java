@@ -141,41 +141,67 @@ class DutyBookTest {
         };
     }
 
+    private static final io.github.jayessdeesea.minecraft.command.Position FOREST = new io.github.jayessdeesea.minecraft.command.Position(0, 64, 0);
+    private static final Optional<io.github.jayessdeesea.minecraft.command.Objective> WOOD = Optional.of(new io.github.jayessdeesea.minecraft.command.Objective("Wood", FOREST, "logs",
+            new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.WOOD)));
+
     /**
-     * A squad's strips found cut out are its own woodcutters', found after each was given its strip. Live (field476),
-     * every squad marked Charlie's strips as its own.
+     * A strip its own woodcutter has looked over and found empty moves that woodcutter alone, onto half of the strip with
+     * the most standing, cut between its trees; the others' strips stand as they were (backlog/wood-reshare.md: every
+     * strip moved at each cut-out, and a tree half felled was left outside its feller's new one).
      */
     @Test
-    void aSquadsStripsCutOutAreItsOwnWoodcuttersFoundAfterTheyWereGiven() {
+    void aStripCutOutMovesOnlyItsOwnWoodcutter() {
         DutyBook book = new DutyBook();
-        io.github.jayessdeesea.minecraft.command.Box strip = new io.github.jayessdeesea.minecraft.command.Box(8, 56, -24, 24, 88, 24);
-        book.assign("Charlie", List.of("Ivy"), Map.of("Ivy", new DutyOrder("Ivy", DutyOrder.Duty.WOODCUTTER, Optional.of(strip), Optional.empty())),
-                Optional.of("WOOD"), 100);
-        Optional<io.github.jayessdeesea.minecraft.command.Objective> wood = Optional.of(new io.github.jayessdeesea.minecraft.command.Objective(
-                "Wood", new io.github.jayessdeesea.minecraft.command.Position(0, 64, 0), "logs",
-                new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.WOOD)));
+        List<String> roster = List.of("Ivy", "Jack", "Kate", "Liam");
+        // Four trees in the middle strip, Jack's, at z = -20, -10, 6 and 18; one in Kate's; none in Ivy's.
+        java.util.function.Function<io.github.jayessdeesea.minecraft.command.Box, List<int[]>> trees = b -> java.util.stream.Stream.of(new int[]{0, -20}, new int[]{0, -10},
+                new int[]{0, 6}, new int[]{0, 18}, new int[]{20, 0}).filter(t -> b.contains(t[0], b.minY(), t[1])).toList();
+        java.util.function.Function<String, Optional<io.github.jayessdeesea.minecraft.command.Position>> at = n -> Optional.of(new io.github.jayessdeesea.minecraft.command.Position(0.5, 64, 10.5));
 
-        assertEquals(List.of(), book.cutOut("Charlie", List.of("Ivy"), wood, n -> 50, at -> { }), "found nothing before it was given the strip");
-        assertEquals(List.of(), book.cutOut("Alpha", List.of("Alice"), wood, n -> 200, at -> { }), "Charlie's woodcutter isn't Alpha's");
-        assertEquals(List.of(strip), book.cutOut("Charlie", List.of("Ivy"), wood, n -> 200, at -> { }));
+        Map<String, io.github.jayessdeesea.minecraft.command.WoodDuties.Duty> first = book.wood("Charlie", roster, WOOD, trees, at, spent -> { }, 100);
+        io.github.jayessdeesea.minecraft.command.Box ivys = first.get("Ivy").area(), jacks = first.get("Jack").area(), kates = first.get("Kate").area();
+        book.searched("Jack", Optional.of(ivys));
+        assertEquals(first, book.wood("Charlie", roster, WOOD, trees, at, spent -> { }, 200), "nothing found in ground that isn't its own strip says nothing of its strip");
+
+        book.searched("Ivy", Optional.of(ivys));
+        Map<String, io.github.jayessdeesea.minecraft.command.WoodDuties.Duty> after = book.wood("Charlie", roster, WOOD, trees, at, spent -> { }, 300);
+
+        assertEquals(kates, after.get("Kate").area(), "Kate's strip as it was");
+        assertEquals(new io.github.jayessdeesea.minecraft.command.Box(jacks.minX(), jacks.minY(), -1, jacks.maxX(), jacks.maxY(), jacks.maxZ()), after.get("Jack").area(),
+                "Jack keeps the half it stands in, cut between the trees at z=-10 and z=6");
+        assertEquals(new io.github.jayessdeesea.minecraft.command.Box(jacks.minX(), jacks.minY(), jacks.minZ(), jacks.maxX(), jacks.maxY(), -2), after.get("Ivy").area(), "Ivy the other half");
+        assertEquals(io.github.jayessdeesea.minecraft.command.WoodDuties.whole(FOREST), after.get("Liam").area(), "the planter over the whole");
+        assertEquals(after, book.wood("Charlie", roster, WOOD, trees, at, spent -> { }, 400), "and it stands: cut out once");
     }
 
-    /** Every strip of a wood found cut out, its squad leader says the wood is spent - once. */
+    /** No strip left and no log standing, its squad leader says the wood is spent - once; with logs standing, not at all. */
     @Test
-    void aWoodWithEveryStripCutOutIsSaidSpentOnce() {
-        DutyBook book = new DutyBook();
-        io.github.jayessdeesea.minecraft.command.Position forest = new io.github.jayessdeesea.minecraft.command.Position(0, 64, 0);
-        io.github.jayessdeesea.minecraft.command.Box whole = io.github.jayessdeesea.minecraft.command.WoodDuties.whole(forest);
-        book.assign("Charlie", List.of("Ivy"), Map.of("Ivy", new DutyOrder("Ivy", DutyOrder.Duty.WOODCUTTER, Optional.of(whole), Optional.empty())),
-                Optional.of("WOOD"), 100);
-        Optional<io.github.jayessdeesea.minecraft.command.Objective> wood = Optional.of(new io.github.jayessdeesea.minecraft.command.Objective(
-                "Wood", forest, "logs", new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.WOOD)));
+    void aWoodIsSaidSpentOnceWhenNoStripIsLeftAndNoLogStands() {
+        List<String> roster = List.of("Ivy", "Jack");
         List<io.github.jayessdeesea.minecraft.command.Position> spent = new ArrayList<>();
+        DutyBook bare = new DutyBook();
+        io.github.jayessdeesea.minecraft.command.Box whole = bare.wood("Charlie", roster, WOOD, b -> List.of(), n -> Optional.empty(), spent::add, 100).get("Ivy").area();
+        bare.searched("Ivy", Optional.of(whole));
+        assertEquals(io.github.jayessdeesea.minecraft.command.WoodDuties.Kind.STANDBY,
+                bare.wood("Charlie", roster, WOOD, b -> List.of(), n -> Optional.empty(), spent::add, 200).get("Ivy").kind(), "Ivy has no strip: it stands by");
+        bare.wood("Charlie", roster, WOOD, b -> List.of(), n -> Optional.empty(), spent::add, 300);
+        assertEquals(List.of(FOREST), spent);
+        assertTrue(bare.spent("Charlie"));
 
-        book.cutOut("Charlie", List.of("Ivy"), wood, n -> 200, spent::add);
-        book.cutOut("Charlie", List.of("Ivy"), wood, n -> 200, spent::add);
-
-        assertEquals(List.of(forest), spent);
+        List<io.github.jayessdeesea.minecraft.command.Position> none = new ArrayList<>();
+        DutyBook standing = new DutyBook();
+        java.util.function.Function<io.github.jayessdeesea.minecraft.command.Box, List<int[]>> oneTree = b -> List.of(new int[]{0, 0});
+        standing.wood("Charlie", roster, WOOD, oneTree, n -> Optional.empty(), none::add, 100);
+        standing.searched("Ivy", Optional.of(whole));
+        standing.wood("Charlie", roster, WOOD, oneTree, n -> Optional.empty(), none::add, 200);
+        assertEquals(List.of(), none, "a log stands in it: not spent");
+        assertEquals(io.github.jayessdeesea.minecraft.command.WoodDuties.Kind.WOODCUTTER, standing.wood("Charlie", roster, WOOD, oneTree,
+                n -> Optional.empty(), none::add, 200 + DutyBook.REDEAL_MILLIS).get("Ivy").kind(), "dealt out whole once more in a while");
+        standing.searched("Ivy", Optional.of(whole));
+        standing.wood("Charlie", roster, WOOD, oneTree, n -> Optional.empty(), none::add, 300 + DutyBook.REDEAL_MILLIS);
+        assertEquals(List.of(FOREST), none.stream().map(p -> new io.github.jayessdeesea.minecraft.command.Position(p.x(), p.y(), p.z())).toList(),
+                "cut out a second time with the tree still standing: spent, what's left out of reach");
     }
 
     /** Two plots round two waters that overlap are one farm: one set of shares over both, no cell in two. */

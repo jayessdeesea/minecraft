@@ -266,7 +266,7 @@ public final class Farmer {
     static List<BlockPos> groundToFill(WorldView world, FarmPlan farm) {
         // Not a trench: its water is the farm's own (in the squad simulation, the tender filled the camp farm's trench in).
         Set<BlockPos> trenches = Set.copyOf(farm.trenches());
-        return farm.chunks().stream().flatMap(c -> java.util.stream.Stream.concat(c.ground().stream(), c.footings().stream())).distinct()
+        return farm.chunks().stream().flatMap(c -> c.ground().stream()).distinct() // not its footings: those are paved (ChunkFarm#footingsToPave)
                 .filter(g -> !trenches.contains(g))
                 .filter(g -> !world.isSolid(g.x(), g.y(), g.z()) || world.isWater(g.x(), g.y(), g.z())).toList();
     }

@@ -101,16 +101,16 @@ class TemplateGroundTest {
     }
 
     /**
-     * A footing open deeper than a block - under its east fence line, the chunk beside's, never slabbed - is filled from
-     * its bottom: live (field705-707) the wheat farm stood SURVEYED "fill=2 ... to fill [32,63,56, 32,63,59]" for two
-     * hours, eight soldiers on it reporting nothing left - a fill a block deep over an open cell fills nothing.
+     * Ground open deeper than a block is filled from its bottom: live (field705-707) the wheat farm stood SURVEYED
+     * "fill=2 ... to fill [32,63,56, 32,63,59]" for two hours, eight soldiers on it reporting nothing left - a fill a
+     * block deep over an open cell fills nothing. (Those two were footings, paved in cobblestone since - the third list.)
      */
     @Test
-    void aFootingOpenDeeperThanABlockIsFilledFromItsBottom() {
+    void groundOpenDeeperThanABlockIsFilledFromItsBottom() {
         WorldView holed = new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
-                return y <= 63 && !(x == 32 && (z == 56 || z == 59) && y >= 61);
+                return y <= 63 && !((x == 22 || x == 32) && (z == 56 || z == 59) && y >= 61);
             }
 
             @Override
@@ -123,7 +123,8 @@ class TemplateGroundTest {
                 return List.of();
             }
         };
-        assertEquals(2, FarmSite.surveyed(holed, FARM).get(1).size(), "the survey's two: " + FarmSite.surveyed(holed, FARM).get(1));
+        assertEquals(2, FarmSite.surveyed(holed, FARM).get(1).size(), "the survey's two of its ground: " + FarmSite.surveyed(holed, FARM).get(1));
+        assertEquals(2, FarmSite.surveyed(holed, FARM).get(2).size(), "and two footings, open: paved, not filled with dirt: " + FarmSite.surveyed(holed, FARM).get(2));
 
         Map<String, Order> orders = TemplateGround.orders(holed, FARM, List.of(soldier("Ivy", 64), soldier("Jack", 64)), s -> true, new HashSet<>());
 
@@ -133,8 +134,8 @@ class TemplateGroundTest {
             filled.addAll(io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toFill(holed, fill.box(), fill.except()));
         });
         assertEquals(6, filled.size(), "both columns, three cells each, bottom to level: " + filled);
-        assertTrue(filled.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(32, 63, 56))
-                && filled.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(32, 61, 59)), filled.toString());
+        assertTrue(filled.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(22, 63, 56))
+                && filled.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(22, 61, 59)), filled.toString());
     }
 
     /** A chest in reach of a soldier on a mission's task is near it and near its height: not the mine's stash 60 blocks under it. */
