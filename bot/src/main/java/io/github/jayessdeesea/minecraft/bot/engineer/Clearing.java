@@ -51,14 +51,13 @@ public final class Clearing {
 
     /**
      * What an {@code Order.Dig} of {@code box} digs: every block in it that {@link #diggable breaks}
-     * but {@code except}, in the order it's dug - a tree's logs and leaves lowest first (cut-off
+     * but what {@code kept} {@link Kept#holds holds}, in the order it's dug - a tree's logs and leaves lowest first (cut-off
      * leaves decay), everything else top down (ground is dug only from an open top). What doesn't
      * break - bedrock, a chest, a table, farmland - is left, and so is the ground under it or under a
-     * cell in {@code except}: it can't be dug from its top, and it's what that stands on. Live, a
+     * cell {@code kept} holds: it can't be dug from its top, and it's what that stands on. Live, a
      * soldier tried soil under a hut's wall every tick, its digger finding no open top.
      */
-    public static List<BlockPos> toClear(WorldView world, Box box,
-                                         Set<Cell> except) {
+    public static List<BlockPos> toClear(WorldView world, Box box, Kept kept) {
         List<BlockPos> cells = new ArrayList<>();
         for (int x = box.minX(); x <= box.maxX(); x++) {
             for (int z = box.minZ(); z <= box.maxZ(); z++) {
@@ -79,7 +78,7 @@ public final class Clearing {
                         continue;
                     }
                     boolean ground = !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty();
-                    boolean dug = !except.contains(new Cell(x, y, z)) && diggable(world, x, y, z)
+                    boolean dug = !kept.holds(x, y, z) && diggable(world, x, y, z)
                             && (!ground || clearAbove);
                     if (dug) {
                         cells.add(new BlockPos(x, y, z));
@@ -102,11 +101,6 @@ public final class Clearing {
                 .sorted(Comparator.comparingInt(BlockPos::y).thenComparingInt(BlockPos::x).thenComparingInt(BlockPos::z)).toList();
     }
 
-    /**
-     * As {@link #toClear(WorldView, Box, Set)}, or for a {@code tunnel} - the recovery drill's stair
-     * up ({@code Stairway.up}), cut under rock - every block in the box that breaks but {@code except},
-     * open top or none, lowest first.
-     */
     /**
      * The blocks in {@code box} a clear can't dig for not knowing them: solid, no log or leaves, and no break time known -
      * so no {@link #diggable} block, and left out of {@link #toClear} - but in the clear's way all the same. Said up by name,
@@ -166,15 +160,20 @@ public final class Clearing {
         return cells;
     }
 
-    public static List<BlockPos> toClear(WorldView world, Box box, Set<Cell> except, boolean tunnel) {
+    /**
+     * As {@link #toClear(WorldView, Box, Kept)}, or for a {@code tunnel} - the recovery drill's stair
+     * up ({@code Stairway.up}), cut under rock - every block in the box that breaks but what {@code kept} holds,
+     * open top or none, lowest first.
+     */
+    public static List<BlockPos> toClear(WorldView world, Box box, Kept kept, boolean tunnel) {
         if (!tunnel) {
-            return toClear(world, box, except);
+            return toClear(world, box, kept);
         }
         List<BlockPos> cells = new ArrayList<>();
         for (int x = box.minX(); x <= box.maxX(); x++) {
             for (int z = box.minZ(); z <= box.maxZ(); z++) {
                 for (int y = box.minY(); y <= box.maxY(); y++) {
-                    if (!except.contains(new Cell(x, y, z)) && world.isSolid(x, y, z) && diggable(world, x, y, z)) {
+                    if (!kept.holds(x, y, z) && world.isSolid(x, y, z) && diggable(world, x, y, z)) {
                         cells.add(new BlockPos(x, y, z));
                     }
                 }
@@ -189,9 +188,10 @@ public final class Clearing {
      * cell from where the digger stands, not level by level from an open top: a cell under rock is
      * cut from beside or below it, the head room over the digger's own head included (safe with
      * nothing over it that falls, {@link #safeFrom}). The nearest to the soldier first, the lowest
-     * among those as near, so the flight is cut step by step from its foot.
+     * among those as near, so the flight is cut step by step from its foot. Never a block {@code kept}
+     * {@link Kept#holds holds}, nor from a stand in a cell it holds.
      */
-    public static Optional<Cut> nextInTunnel(WorldView world, List<BlockPos> cover, Position soldier, Set<BlockPos> excluded,
+    public static Optional<Cut> nextInTunnel(WorldView world, List<BlockPos> cover, Position soldier, Kept kept,
                                              Predicate<BlockPos> reach) {
         Cut best = null;
         double bestScore = Double.MAX_VALUE;
@@ -200,20 +200,20 @@ public final class Clearing {
         // (field490-493), Olga stranded in a lake at y=-5 had her stair up laid and no stand for its first cut for hours.
         BlockPos here = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
         boolean afloat = world.isWater(here.x(), here.y(), here.z()) && !world.isSolid(here.x(), here.y() + 1, here.z())
-                && !excluded.contains(here);
+                && !kept.holds(here.x(), here.y(), here.z());
         // What's under its feet first, from where it stands: a pillar or a ledge's edge is dug down from on top, a block's
         // drop at a time - in the squad simulation, a soldier digging a ledge's edge down built a step back over the
         // shaft to stand on for a lower block's cut.
         BlockPos under = here.offset(0, -1, 0);
-        if (cover.contains(under) && !excluded.contains(under) && diggable(world, under.x(), under.y(), under.z())) {
+        if (cover.contains(under) && !kept.holds(under.x(), under.y(), under.z()) && diggable(world, under.x(), under.y(), under.z())) {
             return Optional.of(new Cut(under, here, world.isLog(under.x(), under.y(), under.z())));
         }
         for (BlockPos block : cover) {
-            if (excluded.contains(block) || !diggable(world, block.x(), block.y(), block.z())) {
+            if (kept.holds(block.x(), block.y(), block.z()) || !diggable(world, block.x(), block.y(), block.z())) {
                 continue;
             }
             Optional<BlockPos> stand = afloat && reach(here, block) <= REACH && safeFrom(world, here, block) ? Optional.of(here)
-                    : standFor(world, block, excluded, reach);
+                    : standFor(world, block, kept, reach);
             if (stand.isEmpty()) {
                 continue;
             }
@@ -370,6 +370,7 @@ public final class Clearing {
         int minX = level.stream().mapToInt(BlockPos::x).min().orElse(0);
         int minZ = level.stream().mapToInt(BlockPos::z).min().orElse(0);
         int maxX = level.stream().mapToInt(BlockPos::x).max().orElse(0);
+        Kept kept = Kept.ofBlocks(excluded); // built once, for every block's stand
         for (BlockPos block : cover) {
             // The list is the squad loop's, up to a cycle old: a block a squadmate has cut since is gone.
             if (excluded.contains(block) || !diggable(world, block.x(), block.y(), block.z())) {
@@ -392,7 +393,7 @@ public final class Clearing {
                 break;
             }
             Optional<BlockPos> stand = canStandHere && safeFrom(world, here, block) && reach(here, block) <= REACH
-                    ? Optional.of(here) : standFor(world, block, excluded, reach);
+                    ? Optional.of(here) : standFor(world, block, kept, reach);
             if (stand.isEmpty()) {
                 continue;
             }
@@ -466,14 +467,15 @@ public final class Clearing {
      * The nearest cell to {@code block} a soldier can stand in and reach it from. Ground is dug from
      * no more than a block below where it can be, as a hole is dug from its top: in the squad
      * simulation, a squadmate digging a stair up to one boxed in below was sent to stand in the box.
-     * Not from above only: then a mound is climbed, on blocks put down, to dig its top.
+     * Not from above only: then a mound is climbed, on blocks put down, to dig its top. Never a cell {@code kept}
+     * {@link Kept#holds holds}.
      */
-    static Optional<BlockPos> standFor(WorldView world, BlockPos block, Set<BlockPos> excluded) {
-        return standFor(world, block, excluded, stand -> true);
+    static Optional<BlockPos> standFor(WorldView world, BlockPos block, Kept kept) {
+        return standFor(world, block, kept, stand -> true);
     }
 
-    /** As {@link #standFor(WorldView, BlockPos, Set)}, a stand the soldier can {@code reach}. */
-    static Optional<BlockPos> standFor(WorldView world, BlockPos block, Set<BlockPos> excluded, Predicate<BlockPos> reach) {
+    /** As {@link #standFor(WorldView, BlockPos, Kept)}, a stand the soldier can {@code reach}. */
+    static Optional<BlockPos> standFor(WorldView world, BlockPos block, Kept kept, Predicate<BlockPos> reach) {
         boolean ground = !world.isLog(block.x(), block.y(), block.z()) && world.leaves(block.x(), block.y(), block.z()).isEmpty();
         BlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
@@ -482,7 +484,7 @@ public final class Clearing {
                 for (int dy = -(int) Math.ceil(REACH + EYES); dy <= 1; dy++) {
                     BlockPos stand = block.offset(dx, dy, dz);
                     // On the ground, not on the tree: never on the log being cut, nor up in a canopy.
-                    if (excluded.contains(stand) || !Pathfinder.standable(world, stand) || !reach.test(stand) || !safeFrom(world, stand, block)
+                    if (kept.holds(stand.x(), stand.y(), stand.z()) || !Pathfinder.standable(world, stand) || !reach.test(stand) || !safeFrom(world, stand, block)
                             || world.isLog(stand.x(), stand.y() - 1, stand.z()) || world.leaves(stand.x(), stand.y() - 1, stand.z()).isPresent()) {
                         continue;
                     }

@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.engineer.Kept;
 import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
@@ -131,6 +132,14 @@ final class KeptGround {
             }
         }
         return except;
+    }
+
+    /**
+     * The columns of {@code ground}, top to bottom: what the haul road to its floor stays out of till its last cell, so
+     * the road is cut in ground the dig isn't taking down under it.
+     */
+    static Kept site(Flatten ground) {
+        return new Kept(Set.of(), ground::contains, Kept.NONE.gateBars());
     }
 
     /**

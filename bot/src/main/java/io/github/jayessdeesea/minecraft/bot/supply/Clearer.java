@@ -280,7 +280,7 @@ public final class Clearer {
         // simulation a flatten beside a farm chose the farm's gate for its stand, "the stand ... has a block in it", again
         // and again, and its ground was never cut (live, the flattens stalled beside every built farm's line).
         Predicate<BlockPos> standable = s -> reachable.contains(s) && stands.test(world, s) && beside.test(s) && !Kept.NONE.bars(Kept.Use.STAND, world, s);
-        Optional<Clearing.Cut> cut = tunnel ? Clearing.nextInTunnel(world, cover, soldier, excluded, standable)
+        Optional<Clearing.Cut> cut = tunnel ? Clearing.nextInTunnel(world, cover, soldier, Kept.ofBlocks(excluded), standable)
                 : Clearing.next(world, cover, soldier, excluded, standable, steps);
         // Nothing on the ground reaches: the top layer from the air, on steps it builds - only with
         // blocks to build them of. Live, a hilltop over the keep stood while its builders stood under it.

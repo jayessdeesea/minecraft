@@ -35,7 +35,8 @@ standing); a **chest or workstation** (diggable by kind, uncuttable by the road,
 `bot.engineer.Kept`, pure, beside `Clearing` (built; what follows is what's left to give it):
 - `enum Use { DIG, CUT, BUILD, STAND }`
 - `record Kept(Set<Cell> cells, BiPredicate<Integer, Integer> columns, Set<Use> gateBars)` with
-  `boolean bars(Use, WorldView, BlockPos)`, `Optional<String> why(...)` for the logs, `NONE`, `and(Kept)`, `but(Cell)`.
+  `boolean bars(Use, WorldView, BlockPos)`, `Optional<String> why(...)` for the logs, `NONE`, `and(Kept)`, `but(Cell)`;
+  `holds(x, y, z)` for a caller's own cells and columns alone, and `of(cells)` for a set of cells as one.
 - The rules by kind - gate, farmland, crop, chest, workstation, the cell over a fence - are one table of kind by use
   inside it. A flatten of a farm given up digs its gates, so the gate's rule is each `Kept`'s, not the world's.
 - What a mission or a squad keeps is built for each call in `app.KeptGround` - `camp(world, Camp)`,
@@ -50,10 +51,12 @@ Built: today's answers pinned by tests; `bot.engineer.Kept` with its table of ki
 farmland is about where the digger stands; under STAND it would change `Clearer`, which stands on farmland).
 `app.KeptGround` builds the camp's keep, the ground work's, the keep's dig's and a mission's columns from arguments,
 pinned by `KeptGroundTest`; the ore a keep sets aside stays `SoldierRunner.keepwork`'s, worked out with its pickaxes.
+`AccessRoute.plan`, `Clearing.toClear`, `nextInTunnel` and `standFor` take a `Kept` where the sets and the predicate
+were, and ask it only what it `holds` - a block's kind is still asked of `Kept.NONE` where it was, so a `Kept`'s
+`gateBars` change nothing there yet; `keepOpen` and `noBuild` stay the world's (`WorldView.noBuild`), read by the table's
+own row.
 
-1. **`Kept` passed where the sets were**: `AccessRoute.plan(world, start, goal, Kept)`, `Clearing.toClear`,
-   `nextInTunnel`, `standFor`; `keepOpen` a `Kept` handed to the pathfinder if it's cheap.
-2. Docs: `GateHabit`'s comment (a shut gate is solid to `ChunkCache`), `docs/architecture.md`.
+1. Docs: `GateHabit`'s comment (a shut gate is solid to `ChunkCache`), `docs/architecture.md`.
 
 ## What it then makes one line each, in this order
 1. The haul road neither cuts nor passes a gate, and keeps off what its mission keeps.

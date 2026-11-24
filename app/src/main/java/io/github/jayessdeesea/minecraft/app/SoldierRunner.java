@@ -13,6 +13,7 @@ import static io.github.jayessdeesea.minecraft.app.Slots.setSlot;
 import static io.github.jayessdeesea.minecraft.app.Slots.turn;
 import io.github.jayessdeesea.minecraft.bot.craft.WorkLoad;
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
+import io.github.jayessdeesea.minecraft.bot.engineer.Kept;
 import io.github.jayessdeesea.minecraft.bot.engineer.Stairway;
 import io.github.jayessdeesea.minecraft.bot.engineer.AccessRoute;
 import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
@@ -1694,7 +1695,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private Optional<Order> levelWork(SoldierStatus soldier, Directive.Level level) {
         Set<Cell> except = groundExcept();
         Box dig = new Box(level.minX(), level.y(), level.minZ(), level.maxX(), level.y() + LEVEL_ABOVE, level.maxZ());
-        if (!Clearing.toClear(world, dig, except).isEmpty()) {
+        if (!Clearing.toClear(world, dig, Kept.of(except)).isEmpty()) {
             return Optional.of(new Order.Dig(dig, except));
         }
         Box fill = new Box(level.minX(), level.y() - LEVEL_BELOW, level.minZ(), level.maxX(), level.y() - 1, level.maxZ());
@@ -1714,7 +1715,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How many cells of {@code level} are still to dig or fill, as the world shows. */
     private int levelLeft(Directive.Level level) {
         Set<Cell> except = groundExcept();
-        return Clearing.toClear(world, new Box(level.minX(), level.y(), level.minZ(), level.maxX(), level.y() + LEVEL_ABOVE, level.maxZ()), except).size()
+        return Clearing.toClear(world, new Box(level.minX(), level.y(), level.minZ(), level.maxX(), level.y() + LEVEL_ABOVE, level.maxZ()), Kept.of(except)).size()
                 + Clearing.toFill(world, new Box(level.minX(), level.y() - LEVEL_BELOW, level.minZ(), level.maxX(), level.y() - 1, level.maxZ()), except).size();
     }
 
@@ -2158,7 +2159,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }
         }
-        List<BlockPos> toDig = Clearing.toClear(world, dig, except);
+        List<BlockPos> toDig = Clearing.toClear(world, dig, Kept.of(except));
         campCut = toDig;
         Box inner = Groundwork.dig(at, WALL_RADIUS - 1); // what's left inside the wall line: the levelling the wall and the rest wait on, the rings never
         int digLeft = (int) toDig.stream().filter(b -> inner.contains(b.x(), b.y(), b.z())).count();
@@ -2511,8 +2512,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (now - keepState.roadAt >= ROAD_PLAN_MILLIS || keepState.road == null) {
             keepState.roadAt = now;
             Flatten ground = chainOfCommand.flatten();
-            java.util.function.Predicate<BlockPos> inKeep = c -> ground.contains(c.x(), c.z());
-            Optional<AccessRoute> planned = AccessRoute.plan(world, depot.stand(), c -> inKeep.test(c) && Pathfinder.standable(world, c), inKeep);
+            Optional<AccessRoute> planned = AccessRoute.plan(world, depot.stand(), c -> ground.contains(c.x(), c.z()) && Pathfinder.standable(world, c), KeptGround.site(ground));
             AccessRoute was = keepState.road;
             keepState.road = planned.orElse(null);
             if (planned.isEmpty() && was != null) {
@@ -3731,7 +3731,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         switch (order) {
             case Order.Dig d -> {
                 clearing.put(soldier, d.tunnel() && !d.cells().isEmpty() ? Clearing.toCut(world, d.cells())
-                        : Clearing.toClear(world, d.box(), d.except(), d.tunnel()));
+                        : Clearing.toClear(world, d.box(), Kept.of(d.except()), d.tunnel()));
                 clearingStrip.put(soldier, d.box());
                 if (d.tunnel()) {
                     clearingTunnel.add(soldier);

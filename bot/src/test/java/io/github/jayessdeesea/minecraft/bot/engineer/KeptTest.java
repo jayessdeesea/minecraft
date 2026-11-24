@@ -270,6 +270,39 @@ class KeptTest {
         assertEquals(Set.of(), barred(columns, AIR.offset(1, 0, 0)), "the column beside it is not");
     }
 
+    /** What a caller holds is its cells and columns alone: a block's kind is no part of it, and no block is read for it. */
+    @Test
+    void holdsAnswersForACallersOwnCellsAndColumnsAndNeverByKind() {
+        Kept kept = new Kept(Set.of(new Cell(AIR.x(), AIR.y(), AIR.z())), (x, z) -> x == GROUND.x() + 1, EnumSet.allOf(Use.class));
+        reads = 0;
+
+        assertTrue(kept.holds(AIR.x(), AIR.y(), AIR.z()), "its cell");
+        assertFalse(kept.holds(AIR.x(), AIR.y() + 1, AIR.z()), "not the cell over it");
+        assertTrue(kept.holds(GROUND.x() + 1, 0, 7) && kept.holds(GROUND.x() + 1, 300, 7), "its column, top to bottom");
+        for (BlockPos kind : List.of(SHUT_GATE, OPEN_GATE, FARMLAND, CROP, CHEST, TABLE, KEPT_OPEN, WATER, GROUND)) {
+            assertFalse(kept.holds(kind.x(), kind.y(), kind.z()), "none of its own at " + kind + ", whatever stands there");
+            assertFalse(Kept.NONE.holds(kind.x(), kind.y(), kind.z()), "and nothing held by one that keeps nothing of its own");
+        }
+        assertEquals(0, reads, "the world is never read");
+    }
+
+    @Test
+    void aSetOfCellsAsAKeptKeepsThoseCellsAndWhatNoneKeeps() {
+        Cell a = new Cell(1, 70, 1);
+        Kept kept = Kept.of(Set.of(a));
+
+        assertEquals(new Kept(Set.of(a), Kept.NONE.columns(), Kept.NONE.gateBars()), kept, "its cells, no column, a gate as NONE has it");
+        assertTrue(kept.holds(1, 70, 1));
+        assertFalse(kept.holds(1, 71, 1) || kept.holds(2, 70, 1), "no column with them");
+        assertEquals(kept, Kept.ofBlocks(List.of(new BlockPos(1, 70, 1))), "the same, its cells named as blocks");
+        assertTrue(Kept.of(Set.of()) == Kept.NONE && Kept.ofBlocks(Set.of()) == Kept.NONE, "of no cells, NONE itself");
+        for (Use use : Use.values()) {
+            for (BlockPos at : List.of(SHUT_GATE, OPEN_GATE, FARMLAND, CROP, CHEST, TABLE, KEPT_OPEN, WATER, GROUND, AIR)) {
+                assertEquals(Kept.NONE.bars(use, world, at), kept.bars(use, world, at), use + " at " + at + ": by kind, as NONE");
+            }
+        }
+    }
+
     @Test
     void aGatesRuleIsEachCallers() {
         Kept flatten = new Kept(Set.of(), (x, z) -> false, Set.of());

@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.engineer.Kept;
 import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
@@ -226,5 +227,21 @@ class KeptGroundTest {
         assertTrue(kept.test(-16, -16) && kept.test(-1, -1) && kept.test(0, -5) && kept.test(-5, 0), "the chunk north-west of it, lines and all");
         BiPredicate<Integer, Integer> none = KeptGround.columns(Set.of(), own);
         assertFalse(none.test(16, 5) || none.test(0, 0), "no template: nothing kept");
+    }
+
+    /** A site's haul road keeps out of the site's columns at every height, and of nothing else; a gate is as NONE has it. */
+    @Test
+    void aSiteHoldsItsColumnsTopToBottomAndNothingElse() {
+        Flatten ground = new Flatten(0, 0, 3, 3, 63);
+        Kept site = KeptGround.site(ground);
+        for (int x = -2; x <= 5; x++) {
+            for (int z = -2; z <= 5; z++) {
+                for (int y : new int[]{-60, 63, 64, 300}) {
+                    assertEquals(ground.contains(x, z), site.holds(x, y, z), "at " + x + "," + y + "," + z);
+                }
+            }
+        }
+        assertEquals(Set.of(), site.cells());
+        assertEquals(Kept.NONE.gateBars(), site.gateBars());
     }
 }

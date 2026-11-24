@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Cell;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
@@ -94,6 +95,18 @@ public record Kept(Set<Cell> cells, BiPredicate<Integer, Integer> columns, Set<U
         gateBars = Set.copyOf(gateBars);
     }
 
+    /** A caller's {@code cells} kept and no column, with what {@link #NONE} keeps: a set of cells, as a {@code Kept}. */
+    public static Kept of(Set<Cell> cells) {
+        return cells.isEmpty() ? NONE : new Kept(cells, NO_COLUMNS, NONE.gateBars);
+    }
+
+    /** As {@link #of}, its cells named as blocks. */
+    public static Kept ofBlocks(Collection<BlockPos> blocks) {
+        Set<Cell> cells = new HashSet<>();
+        blocks.forEach(b -> cells.add(new Cell(b.x(), b.y(), b.z())));
+        return of(cells);
+    }
+
     /**
      * The table: whether a cell of {@code kind} is kept from {@code use}. A chest or a workstation is dug like any block
      * that breaks - the squad's own are a caller's cells - but no road is cut through one; farmland and a crop are a
@@ -126,6 +139,15 @@ public record Kept(Set<Cell> cells, BiPredicate<Integer, Integer> columns, Set<U
      */
     public boolean bars(Use use, Kind kind, WorldView world, int x, int y, int z) {
         return keeps(kind, use) && kind.at(world, x, y, z);
+    }
+
+    /**
+     * Whether the cell at (x, y, z) is the caller's own - one of its cells, or in one of its columns - whatever stands in
+     * it and whatever the use. For an asker that reads what a block's kind keeps itself, so it reads no cell twice: this
+     * reads no block.
+     */
+    public boolean holds(int x, int y, int z) {
+        return !cells.isEmpty() && cells.contains(new Cell(x, y, z)) || columns != NO_COLUMNS && columns.test(x, z);
     }
 
     private String barring(Use use, WorldView world, int x, int y, int z) {

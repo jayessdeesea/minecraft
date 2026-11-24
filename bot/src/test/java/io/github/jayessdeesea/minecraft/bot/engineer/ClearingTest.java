@@ -86,7 +86,7 @@ class ClearingTest {
     @Test
     void aTreeInTheCampIsCoverLogsAndLeaves() {
         Set<BlockPos> leaves = Set.of(new BlockPos(4, 69, 3), new BlockPos(2, 69, 2));
-        List<BlockPos> cover = Clearing.toClear(with(trunk(3, 3, 5), leaves), SKY, Set.of());
+        List<BlockPos> cover = Clearing.toClear(with(trunk(3, 3, 5), leaves), SKY, Kept.NONE);
 
         assertEquals(7, cover.size());
         assertEquals(new BlockPos(3, 64, 3), cover.getFirst(), "lowest first");
@@ -96,7 +96,7 @@ class ClearingTest {
     void theTreeIsFelledFromTheBottomStandingOnTheGround() {
         Set<BlockPos> logs = trunk(3, 3, 5);
         WorldView world = with(logs, Set.of());
-        List<BlockPos> cover = Clearing.toClear(world, SKY, Set.of());
+        List<BlockPos> cover = Clearing.toClear(world, SKY, Kept.NONE);
 
         Clearing.Cut cut = Clearing.next(world, cover, new Position(0.5, 64, 0.5), Set.of()).orElseThrow();
 
@@ -113,7 +113,7 @@ class ClearingTest {
     void aCutIsOnlyHandedOutFromAStandTheSoldierCanReach() {
         Set<BlockPos> logs = trunk(3, 3, 5);
         WorldView world = with(logs, Set.of());
-        List<BlockPos> cover = Clearing.toClear(world, SKY, Set.of());
+        List<BlockPos> cover = Clearing.toClear(world, SKY, Kept.NONE);
 
         assertEquals(Optional.empty(), Clearing.next(world, cover, new Position(0.5, 64, 0.5), Set.of(), stand -> false), "none it can reach");
         Clearing.Cut cut = Clearing.next(world, cover, new Position(0.5, 64, 0.5), Set.of(), stand -> stand.x() > 3).orElseThrow();
@@ -180,7 +180,7 @@ class ClearingTest {
                 return List.of();
             }
         };
-        List<BlockPos> dug = Clearing.toClear(world, new Box(0, 64, 0, 0, 70, 0), Set.of());
+        List<BlockPos> dug = Clearing.toClear(world, new Box(0, 64, 0, 0, 70, 0), Kept.NONE);
         assertTrue(dug.contains(fence), "the fence: " + dug);
         assertTrue(dug.contains(new BlockPos(0, 64, 0)), "the ground under it: " + dug);
     }
@@ -236,7 +236,7 @@ class ClearingTest {
                 return List.of();
             }
         };
-        List<BlockPos> cover = Clearing.toClear(withStep, SKY, Set.of());
+        List<BlockPos> cover = Clearing.toClear(withStep, SKY, Kept.NONE);
 
         assertEquals(step, Clearing.fromTheAir(withStep, cover, Set.of(), s -> true).orElseThrow().block(), "unknowing, the step is the top");
         assertEquals(new BlockPos(2, 65, 2), Clearing.fromTheAir(withStep, cover, Set.of(), s -> true, step::equals).orElseThrow().block(),
@@ -271,7 +271,7 @@ class ClearingTest {
                 return List.of();
             }
         };
-        List<BlockPos> cover = Clearing.toClear(withStep, SKY, Set.of());
+        List<BlockPos> cover = Clearing.toClear(withStep, SKY, Kept.NONE);
 
         assertEquals(new BlockPos(2, 65, 2), Clearing.next(withStep, cover, new Position(0.5, 64, 0.5), Set.of(), s -> true, step::equals)
                 .orElseThrow().block(), "the ground's top, not the step a block over it");
@@ -280,7 +280,7 @@ class ClearingTest {
     @Test
     void highGroundIsDugFromTheTopDown() {
         assertEquals(List.of(new BlockPos(2, 65, 2), new BlockPos(-2, 64, -2), new BlockPos(2, 64, 2)),
-                Clearing.toClear(MOUND, SKY, Set.of()), "every block of it above the camp's ground, the highest first");
+                Clearing.toClear(MOUND, SKY, Kept.NONE), "every block of it above the camp's ground, the highest first");
     }
 
     /**
@@ -327,8 +327,8 @@ class ClearingTest {
         };
 
         assertEquals(List.of(table, new BlockPos(2, 65, 2), new BlockPos(-2, 64, -2), new BlockPos(2, 64, 2)),
-                Clearing.toClear(withTable, SKY, Set.of()), "the table first, then the mound it stood on");
-        assertEquals(List.of(new BlockPos(-2, 64, -2)), Clearing.toClear(withTable, SKY, Set.of(new Cell(2, 66, 2))),
+                Clearing.toClear(withTable, SKY, Kept.NONE), "the table first, then the mound it stood on");
+        assertEquals(List.of(new BlockPos(-2, 64, -2)), Clearing.toClear(withTable, SKY, Kept.of(Set.of(new Cell(2, 66, 2)))),
                 "the squad's own table, excepted: kept, and its ground with it");
     }
 
@@ -339,7 +339,7 @@ class ClearingTest {
      */
     @Test
     void theTopLevelIsFinishedBeforeALowerBlockIsOffered() {
-        List<BlockPos> cover = Clearing.toClear(MOUND, SKY, Set.of());
+        List<BlockPos> cover = Clearing.toClear(MOUND, SKY, Kept.NONE);
         Clearing.Cut cut = Clearing.next(MOUND, cover, new Position(-3.5, 64, -2.5), Set.of()).orElseThrow();
 
         assertEquals(new BlockPos(2, 65, 2), cut.block(), "the top level, not the block beside it");
@@ -379,7 +379,7 @@ class ClearingTest {
                 return List.of();
             }
         };
-        List<BlockPos> cover = Clearing.toClear(world, new Box(-2, 64, -2, 4, 70, 4), Set.of());
+        List<BlockPos> cover = Clearing.toClear(world, new Box(-2, 64, -2, 4, 70, 4), Kept.NONE);
         Position southEast = new Position(3.5, 64, 2.5);
 
         Clearing.Cut first = Clearing.next(world, cover, southEast, Set.of()).orElseThrow();
@@ -393,7 +393,7 @@ class ClearingTest {
     @Test
     void aHutIsNotHighGround() {
         assertEquals(List.of(new BlockPos(2, 65, 2), new BlockPos(2, 64, 2)),
-                Clearing.toClear(MOUND, SKY, Set.of(new Cell(-2, 64, -2))));
+                Clearing.toClear(MOUND, SKY, Kept.of(Set.of(new Cell(-2, 64, -2)))));
     }
 
     @Test
@@ -406,12 +406,12 @@ class ClearingTest {
     @Test
     void groundUnderABlockTheDigLeavesIsLeftToo() {
         // A box one high at the ground's level: the mound's top is over it, not in it.
-        assertEquals(List.of(new BlockPos(-2, 64, -2)), Clearing.toClear(MOUND, new Box(-8, 64, -8, 8, 64, 8), Set.of()));
+        assertEquals(List.of(new BlockPos(-2, 64, -2)), Clearing.toClear(MOUND, new Box(-8, 64, -8, 8, 64, 8), Kept.NONE));
     }
 
     @Test
     void groundUnderAKeptCellIsLeft() {
-        assertEquals(List.of(new BlockPos(-2, 64, -2)), Clearing.toClear(MOUND, SKY, Set.of(new Cell(2, 65, 2))),
+        assertEquals(List.of(new BlockPos(-2, 64, -2)), Clearing.toClear(MOUND, SKY, Kept.of(Set.of(new Cell(2, 65, 2)))),
                 "the mound's top kept: the block under it stays, the other mound is dug");
     }
 
@@ -439,7 +439,7 @@ class ClearingTest {
             }
         };
 
-        assertEquals(List.of(new BlockPos(2, 65, 2), new BlockPos(2, 64, 2)), Clearing.toClear(pond, SKY, Set.of()),
+        assertEquals(List.of(new BlockPos(2, 65, 2), new BlockPos(2, 64, 2)), Clearing.toClear(pond, SKY, Kept.NONE),
                 "dug, it would let the water into the camp");
     }
 
@@ -521,7 +521,7 @@ class ClearingTest {
         Set<BlockPos> logs = trunk(3, 3, 2);
         WorldView world = with(logs, Set.of());
 
-        Clearing.Cut cut = Clearing.next(world, Clearing.toClear(world, SKY, Set.of()), new Position(0.5, 64, 0.5),
+        Clearing.Cut cut = Clearing.next(world, Clearing.toClear(world, SKY, Kept.NONE), new Position(0.5, 64, 0.5),
                 Set.of(new BlockPos(3, 64, 3))).orElseThrow();
 
         assertEquals(new BlockPos(3, 65, 3), cut.block());
@@ -607,12 +607,12 @@ class ClearingTest {
         List<BlockPos> cut = List.of(new BlockPos(0, 62, 0), new BlockPos(1, 61, 0), new BlockPos(1, 62, 0));
 
         assertEquals(Optional.empty(), Clearing.next(world, cut, soldier, Set.of()), "no open top: the level clear offers nothing");
-        Clearing.Cut first = Clearing.nextInTunnel(world, cut, soldier, Set.of(), s -> true).orElseThrow();
+        Clearing.Cut first = Clearing.nextInTunnel(world, cut, soldier, Kept.NONE, s -> true).orElseThrow();
         assertEquals(new BlockPos(0, 60, 0), first.stand(), "from where it stands");
         assertTrue(cut.contains(first.block()), "one of the cut's cells: " + first.block());
         Set<BlockPos> gravelOver = Set.of(new BlockPos(0, 63, 0));
         WorldView loose = stone(rock, gravelOver);
-        assertTrue(Clearing.nextInTunnel(loose, List.of(new BlockPos(0, 62, 0)), soldier, Set.of(), s -> true).isEmpty(),
+        assertTrue(Clearing.nextInTunnel(loose, List.of(new BlockPos(0, 62, 0)), soldier, Kept.NONE, s -> true).isEmpty(),
                 "gravel over the head room: not cut from under it");
     }
 
@@ -662,7 +662,7 @@ class ClearingTest {
         };
         Position afloat = new Position(0.5, 60.2, 0.5);
 
-        Clearing.Cut first = Clearing.nextInTunnel(world, List.of(new BlockPos(0, 62, 0)), afloat, Set.of(), s -> true).orElseThrow();
+        Clearing.Cut first = Clearing.nextInTunnel(world, List.of(new BlockPos(0, 62, 0)), afloat, Kept.NONE, s -> true).orElseThrow();
         assertEquals(lake, first.stand(), "from the water it floats in");
     }
 
@@ -764,7 +764,7 @@ class ClearingTest {
         WorldView world = gated(Set.of());
         assertTrue(Clearing.diggable(world, GATE.x(), GATE.y(), GATE.z()), "a gate is dug as a gate");
 
-        Clearing.Cut cut = Clearing.nextInTunnel(world, List.of(GATE), new Position(2.5, 64, 0.5), Set.of(), s -> true).orElseThrow();
+        Clearing.Cut cut = Clearing.nextInTunnel(world, List.of(GATE), new Position(2.5, 64, 0.5), Kept.NONE, s -> true).orElseThrow();
         assertEquals(GATE, cut.block(), "the gate offered");
         assertEquals(new BlockPos(-1, 64, 0), cut.stand(), "from the ground beside it: the stand nearest the gate, not the soldier");
     }
@@ -780,8 +780,8 @@ class ClearingTest {
         WorldView world = gated(Set.of(beside));
         Set<BlockPos> otherSides = Set.of(new BlockPos(2, 64, 0), new BlockPos(1, 64, 1), new BlockPos(1, 64, -1));
 
-        assertEquals(Optional.of(GATE), Clearing.standFor(world, beside, otherSides), "the gate's cell, the side left");
-        assertEquals(Optional.of(GATE), Clearing.standFor(world, beside, Set.of()), "and first of its four sides, all as near");
-        assertEquals(Optional.of(new BlockPos(-1, 64, 0)), Clearing.standFor(gated(Set.of()), GATE, Set.of()), "for the gate, beside it");
+        assertEquals(Optional.of(GATE), Clearing.standFor(world, beside, Kept.ofBlocks(otherSides)), "the gate's cell, the side left");
+        assertEquals(Optional.of(GATE), Clearing.standFor(world, beside, Kept.NONE), "and first of its four sides, all as near");
+        assertEquals(Optional.of(new BlockPos(-1, 64, 0)), Clearing.standFor(gated(Set.of()), GATE, Kept.NONE), "for the gate, beside it");
     }
 }

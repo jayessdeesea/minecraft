@@ -124,7 +124,7 @@ class TerrainProbeIT {
             // solid cells in its box that Clearing.toClear doesn't count, with nothing excepted.
             if (Boolean.getBoolean("probe.keep")) {
                 io.github.jayessdeesea.minecraft.command.Box dig = io.github.jayessdeesea.minecraft.command.Keep.dig();
-                Set<BlockPos> counted = new java.util.HashSet<>(io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toClear(world, dig, Set.of()));
+                Set<BlockPos> counted = new java.util.HashSet<>(io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toClear(world, dig, io.github.jayessdeesea.minecraft.bot.engineer.Kept.NONE));
                 java.util.TreeMap<Integer, Integer> perLayer = new java.util.TreeMap<>();
                 counted.forEach(c -> perLayer.merge(c.y(), 1, Integer::sum));
                 perLayer.descendingMap().forEach((y, n) -> out.append(String.format("keep y=%d: %d to dig%n", y, n)));

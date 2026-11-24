@@ -47,7 +47,7 @@ class AccessRouteTest {
     void aRouteFromTheHilltopDepotIsCarvedDownToTheFloorWithNothingPlaced() {
         BlockPos depot = new BlockPos(-6, 73, 0);
         java.util.function.Predicate<BlockPos> inKeep = c -> c.x() >= 0;
-        AccessRoute route = AccessRoute.plan(world, depot, c -> inKeep.test(c) && c.y() == 64, inKeep).orElseThrow();
+        AccessRoute route = AccessRoute.plan(world, depot, c -> inKeep.test(c) && c.y() == 64, KEEP).orElseThrow();
 
         assertEquals(depot, route.feet().getFirst());
         assertEquals(64, route.feet().getLast().y(), "down to the floor");
@@ -61,9 +61,12 @@ class AccessRouteTest {
         assertTrue(!route.toCut().isEmpty(), "the hill's face cut for it");
 
         dug.addAll(route.toCut());
-        assertTrue(AccessRoute.plan(world, depot, c -> inKeep.test(c) && c.y() == 64, inKeep).orElseThrow().cut(),
+        assertTrue(AccessRoute.plan(world, depot, c -> inKeep.test(c) && c.y() == 64, KEEP).orElseThrow().cut(),
                 "cut, the same route has nothing left to cut");
     }
+
+    /** The keep's columns, as the road's keep-out: every cell with x at 0 or past it. */
+    private static final Kept KEEP = new Kept(Set.of(), (x, z) -> x >= 0, Kept.NONE.gateBars());
 
     /** What stands in the one cell of a fence line at x=3 that a road may cross, on flat ground with feet at y=64. */
     private enum Fixture { SHUT_GATE, CHEST, TABLE }
@@ -120,8 +123,15 @@ class AccessRouteTest {
         };
     }
 
-    /** The fence line but its crossing, at every height: the road's keep-out, so the only way is through {@link #CROSSING}. */
-    private static final java.util.function.Predicate<BlockPos> LINE_BUT_CROSSING = c -> c.x() == 3 && !c.equals(CROSSING);
+    /**
+     * The fence line but its crossing, at every height: the road's keep-out, so the only way is through {@link #CROSSING}.
+     * The line's other columns whole, and the crossing's own column a cell at a time, as far up and down as a road from
+     * the crossing's height is searched for.
+     */
+    private static final Kept LINE_BUT_CROSSING = new Kept(
+            java.util.stream.IntStream.rangeClosed(CROSSING.y() - AccessRoute.DOWN, CROSSING.y() + AccessRoute.UP).filter(y -> y != CROSSING.y())
+                    .mapToObj(y -> new io.github.jayessdeesea.minecraft.command.Cell(CROSSING.x(), y, CROSSING.z())).collect(java.util.stream.Collectors.toSet()),
+            (x, z) -> x == CROSSING.x() && z != CROSSING.z(), Kept.NONE.gateBars());
 
     private static final java.util.function.Predicate<BlockPos> PAST_THE_LINE = c -> c.x() == 6 && c.y() == 64;
 
@@ -147,7 +157,7 @@ class AccessRouteTest {
      */
     @Test
     void aRoadFreeToCrossesOverAShutGateStandingOnIt() {
-        AccessRoute route = AccessRoute.plan(fenced(Fixture.SHUT_GATE), new BlockPos(0, 64, 0), PAST_THE_LINE, c -> false).orElseThrow();
+        AccessRoute route = AccessRoute.plan(fenced(Fixture.SHUT_GATE), new BlockPos(0, 64, 0), PAST_THE_LINE, Kept.NONE).orElseThrow();
 
         assertTrue(route.feet().contains(CROSSING.offset(0, 1, 0)), "over the gate: " + route.feet());
         assertEquals(List.of(CROSSING.offset(0, 1, 0)), route.toCut(), "the cell over the gate only");
@@ -165,7 +175,7 @@ class AccessRouteTest {
             assertEquals(java.util.Optional.empty(), AccessRoute.plan(world, new BlockPos(0, 64, 0), PAST_THE_LINE, LINE_BUT_CROSSING),
                     fixture + ": no road with no other way");
 
-            AccessRoute over = AccessRoute.plan(world, new BlockPos(0, 64, 0), PAST_THE_LINE, c -> false).orElseThrow();
+            AccessRoute over = AccessRoute.plan(world, new BlockPos(0, 64, 0), PAST_THE_LINE, Kept.NONE).orElseThrow();
             assertTrue(!over.feet().contains(CROSSING) && !over.toCut().contains(CROSSING), fixture + ": free to, never through it: " + over.feet());
         }
     }

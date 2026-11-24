@@ -45,10 +45,10 @@ public record AccessRoute(List<BlockPos> feet, List<BlockPos> toCut, List<BlockP
 
     /**
      * The cheapest route from {@code start} - a cell the feet stand in - to any cell {@code goal}
-     * takes, crossing no cell {@code keepOut} holds but the goal itself, and nothing liquid. Empty
+     * takes, crossing no cell {@code kept} {@link Kept#holds holds} but the goal itself, and nothing liquid. Empty
      * with none in reach of the search.
      */
-    public static Optional<AccessRoute> plan(WorldView world, BlockPos start, Predicate<BlockPos> goal, Predicate<BlockPos> keepOut) {
+    public static Optional<AccessRoute> plan(WorldView world, BlockPos start, Predicate<BlockPos> goal, Kept kept) {
         Map<BlockPos, Double> cost = new HashMap<>();
         Map<BlockPos, BlockPos> from = new HashMap<>();
         PriorityQueue<Map.Entry<BlockPos, Double>> open = new PriorityQueue<>(Map.Entry.comparingByValue());
@@ -72,7 +72,7 @@ public record AccessRoute(List<BlockPos> feet, List<BlockPos> toCut, List<BlockP
                             || next.y() > start.y() + UP || next.y() < start.y() - DOWN) {
                         continue;
                     }
-                    if (keepOut.test(next) && !goal.test(next)) {
+                    if (kept.holds(next.x(), next.y(), next.z()) && !goal.test(next)) {
                         continue;
                     }
                     Optional<Double> step = stepCost(world, at, next);

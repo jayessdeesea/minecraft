@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
+import io.github.jayessdeesea.minecraft.bot.engineer.Kept;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Box;
@@ -82,8 +83,9 @@ final class SiteClears {
         List<BlockPos> cells = new ArrayList<>();
         List<BlockPos> unknowns = new ArrayList<>();
         List<BlockPos> waters = new ArrayList<>();
+        Kept kept = Kept.of(except);
         for (Box box : boxes) {
-            cells.addAll(Clearing.toClear(world, box, except));
+            cells.addAll(Clearing.toClear(world, box, kept));
             unknowns.addAll(Clearing.unknownIn(world, box, except));
             waters.addAll(Clearing.waterIn(world, box, except));
         }
