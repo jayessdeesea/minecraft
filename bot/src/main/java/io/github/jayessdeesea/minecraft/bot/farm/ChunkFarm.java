@@ -207,7 +207,7 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
 
     /**
      * What hangs in the sky over its chunk and its fence lines - every template's, whatever stands on the grid (operator,
-     * 2026-11-24: the sky is checked for floating blocks over the template, and they're removed): each block from three
+     * 2026-11-24: the sky is checked for floating blocks over the template, and they're removed): each block from two
      * over its level up to {@link #SKY}, a step left hanging or a pillar's top. A tree's leaves and trunk aren't: a farm
      * beside overhangs its line, and a tree farm's own grow there - but a log with nothing under it is: a trunk's top left
      * when its foot was cut, which nobody fells as a tree and nothing is planted under - as far up as a hand on the
@@ -218,7 +218,7 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
         for (int dx = 0; dx <= SIDE; dx++) {
             for (int dz = 0; dz <= SIDE; dz++) {
                 int x = x0() + dx, z = z0() + dz;
-                for (int y = level + 3; y <= level + SKY; y++) {
+                for (int y = level + 2; y <= level + SKY; y++) {
                     boolean hangs = y <= level + HANGING_LOG && !world.isLog(x, y - 1, z) && !world.solidHere(x, y - 1, z);
                     if (world.solidHere(x, y, z) && (!world.isLog(x, y, z) || hangs) && world.leaves(x, y, z).isEmpty()) {
                         hanging.add(new BlockPos(x, y, z));

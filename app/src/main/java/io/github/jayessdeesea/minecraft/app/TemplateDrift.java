@@ -41,14 +41,34 @@ final class TemplateDrift {
         if (m.crop() == FarmMission.Crop.TREES) {
             for (BlockPos trunk : new TreeChunk(m.chunkX(), m.chunkZ(), m.level()).trunks()) {
                 for (BlockPos c : List.of(trunk, trunk.offset(0, 1, 0))) {
-                    if (world.solidHere(c.x(), c.y(), c.z()) && !world.isLog(c.x(), c.y(), c.z()) && world.leaves(c.x(), c.y(), c.z()).isEmpty()) {
+                    if (world.solidHere(c.x(), c.y(), c.z()) && !world.isLog(c.x(), c.y(), c.z()) && world.leaves(c.x(), c.y(), c.z()).isEmpty() && !hanging.contains(c)) {
                         hanging.add(c);
                     }
                 }
             }
         }
         hanging.addAll(misplaced(world, layout(m)));
+        clutter(m, world).stream().filter(c -> !hanging.contains(c)).forEach(hanging::add);
         return hanging;
+    }
+
+    /**
+     * The loose ground standing on {@code m}'s template, inside its fence, a block or two over its level: soil, stone,
+     * gravel or cobblestone - a step put up on the way and left - that the sky's reach starts over. Nothing of a
+     * template is ground at that height, so none of it is spared; a chest, a table, a post or a tree isn't ground.
+     */
+    static List<BlockPos> clutter(FarmMission m, WorldView world) {
+        List<BlockPos> loose = new java.util.ArrayList<>();
+        for (int x = m.minX() + 1; x <= m.minX() + 15; x++) {
+            for (int z = m.minZ() + 1; z <= m.minZ() + 15; z++) {
+                for (int y = m.level() + 1; y <= m.level() + 2; y++) {
+                    if (world.isSoil(x, y, z) || world.isStone(x, y, z) || world.isGravel(x, y, z) || world.isCobblestone(x, y, z)) {
+                        loose.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        return loose;
     }
 
     /** {@code m}'s fixtures as its template lays them out: none for a wheat or tree farm, whose ground work is its own. */

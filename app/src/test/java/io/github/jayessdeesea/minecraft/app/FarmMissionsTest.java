@@ -284,12 +284,18 @@ class FarmMissionsTest {
         java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> head = new java.util.HashSet<>();
         io.github.jayessdeesea.minecraft.bot.farm.MineHead layout = new io.github.jayessdeesea.minecraft.bot.farm.MineHead(2, 4, 63);
         layout.fixtures().values().forEach(head::addAll);
+        head.removeAll(layout.torches()); // a torch is no block: it stands in its cell, solid to nothing
         io.github.jayessdeesea.minecraft.bot.nav.BlockPos chest = layout.chests().getFirst();
         head.remove(chest);
         io.github.jayessdeesea.minecraft.bot.world.WorldView world = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
                 return y <= 63 || head.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isTorch(int x, int y, int z) {
+                return layout.torches().contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
             }
 
             @Override
@@ -312,7 +318,7 @@ class FarmMissionsTest {
         assertEquals(List.of(FarmMission.Kind.MINE), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "its head standing: the shaft again");
         io.github.jayessdeesea.minecraft.command.Objective mine = missions.objectives().getFirst();
         assertTrue(mine.task() instanceof io.github.jayessdeesea.minecraft.command.Objective.Task.Mine, "its squad's task a MINE: " + mine);
-        assertEquals(new io.github.jayessdeesea.minecraft.command.Position(40.5, ChainOfCommand.MINE_DEPTH, 72.5), mine.location(), "at the chunk's middle, its y the depth");
+        assertEquals(new io.github.jayessdeesea.minecraft.command.Position(40.5, io.github.jayessdeesea.minecraft.bot.supply.Staircase.DEEPEST, 72.5), mine.location(), "at the chunk's middle, its y the depth: the bottom");
 
         missions.mineDry(40, 72);
         missions.measure(world, null, null, null, 5_000 + 2 * FarmMissions.REVIEW_MILLIS);

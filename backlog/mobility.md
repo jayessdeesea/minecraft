@@ -61,6 +61,21 @@ sea level. Most are the keep's crew climbing what it is taking down, a step put 
 - **The camp's hill itself**: most of these climb it; backlog/camp-to-sea-level.md ends the reason for them.
 - Built: a fence is never crossed by a step beside it - nothing stands on a fence's top (`Pathfinder.standable`).
 
+## A cut-off soldier's stair, the haul road and the gates: one change (P1, 2026-11-24)
+Pete stood a day at the head of its own half-cut stair up, given a stand on the open ground past its last four cells
+(`Clearing.nextInTunnel` through `standFor`). The fix - a cell in reach is cut from where the digger stands - is
+written with its test (the patch kept beside the watch log, `pete-road-gate.patch`), and can't go in alone:
+- **The haul road cuts a gate**: `engineer.AccessRoute` lists a shut gate on its way as rock to cut. It never was cut
+  only because no stand was found for it; with the stair's fix, or with `nav.Footprint`'s two sides made one rule, one
+  is, and the farm beside loses its gate (`FarmMissionSimulationTest.aTreeFarmBuiltBesideAFarmLeavesTheFarmAsItWas`).
+  The road goes round a gate, never through or over one.
+- **A gate opened and not gone through**: `GateHabit` opens any shut gate within reach it moves toward, and one it has
+  stood still beside for ten ticks; a soldier in position beside a gate, or stopped in its cell with a CANTCO, keeps it
+  open. Opened only on its line of travel; a soldier never stops in a gate's cell or the cell before it; one held up
+  there steps clear.
+- **`Footprint`'s low side** takes the epsilon its high side has, with these.
+- Evals first: a road planned past a farm's gate; a soldier in position a block from a gate for a minute; Pete's pocket.
+
 ## Unreachable is a fault to find, not a state to report (operator, 2026-11-23)
 "Mobility-wise, everything should be reachable." The garrison has drafted 1,069 stuck cases with their ground
 (`garrison-state/worlds/`); a handful were ever registered. `StuckTriageIT` replays the newest forty, each soldier

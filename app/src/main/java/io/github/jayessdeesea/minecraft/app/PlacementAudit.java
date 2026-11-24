@@ -86,7 +86,11 @@ final class PlacementAudit {
         String routine = routines.getOrDefault(soldier, "none");
         digs.merge(routine, 1, Integer::sum);
         LOG.info("[Dig] {} breaks {} at ({}, {}, {}), {} over sea level - {}", soldier, named.at(x, y, z), x, y, z, y - SoldierRunner.SEA_LEVEL, routine);
+        loops.cell(soldier, "breaks", x, y, z, routine, clock.getAsLong());
     }
+
+    /** Each soldier's breaks and placings by cell: its report of a loop. */
+    private final LoopReports loops = new LoopReports();
 
     /** The blocks broken at sea level or over it by routine (the audit's test). */
     Map<String, Integer> digs() {
@@ -147,6 +151,7 @@ final class PlacementAudit {
                 x + face.dx, cy, z + face.dz, cy - SoldierRunner.SEA_LEVEL, routine,
                 routine.equals("route step") ? " " + stepWhy.getOrDefault(soldier, "") : "");
         long now = clock.getAsLong();
+        loops.cell(soldier, "puts", x + face.dx, cy, z + face.dz, routine, now);
         if (summarisedAt == Long.MIN_VALUE) {
             summarisedAt = now;
         } else if (now - summarisedAt >= SUMMARY_MILLIS) {

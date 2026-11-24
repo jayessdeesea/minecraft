@@ -7600,7 +7600,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             hands.ifPresentOrElse(h -> handsHeld.put(name, h), () -> handsHeld.remove(name));
             state.activity.observe(clockwork.millis(), SoldierActivity.of(status.report(), state.task), hands)
-                    .ifPresent(change -> LOG.info("[State] {}: {} (report {}, order {})", name, change.describe(), status.report(), GarrisonStatus.inWords(status.order())));
+                    .ifPresent(change -> LoopReports.changed(name, change, status.report(), GarrisonStatus.inWords(status.order())));
             // Stand-to: hands free, the soldier wears the best armour it carries and holds its best
             // weapon - not the seeds or the dirt its last job left in its hand.
             if (hands.isEmpty() && standTo.merge(name, -1, Integer::sum) <= 0) {

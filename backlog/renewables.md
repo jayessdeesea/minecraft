@@ -206,6 +206,23 @@ letting a body through a shut gate, which the real one doesn't (backlog/simulato
 - **Wanted first**: cane as a kind the force knows (`ItemClass`), found where it grows and brought back; water carried
   (`WATER_BUCKET` is a kind; nobody fills a trench yet); a harvest that cuts from the second block up and leaves the foot.
 
+### What a spot check of the built templates found (operator, 2026-11-24)
+From world snapshots of each built chunk against its layout, 17:30:
+- **Fence lines**: wheat farm (1,3) and supply point (1,2) whole - 56 posts and 8 gates each; the mineshaft (0,2) 55
+  posts, 8 gates and a wall torch standing in a post's cell at (2,64,48) - a torch in a fixture's cell is passed over as
+  a block was; taken with `TemplateDrift.misplaced`.
+- **Tree farms have no fence**: their template is trunks, a chest and nine torches. The operator's cells that don't
+  spread want one on every template - the chunk farms' fence and gates added to `TreeChunk`, with its review.
+- **Chests face as they were put** (operator: the anti-entropy should verify the chest direction): no template's
+  layout says which way a chest faces, and nothing reads it back. The layout names each chest's facing - a supply
+  point's rows their aisle, a mineshaft head's rows its mouth - the block state read (`facing`), and a chest facing
+  wrong, or one of a pair not joined to its other half, is taken up and put again from the right side.
+- **A floor held by what stands in a cell**: placeholder (0,1)'s paving stood at 1 of 256 cells with a chest and a
+  crafting table at its level - a cell to pave that holds one is emptied and taken up first, as a farm's is.
+- **A squad's formation on another template's gate**: Alpha, with nothing to do on (0,1), was spread in a wedge whose
+  slot lay in the mineshaft's mouth; its soldier stood in front of the mouth's gate ten minutes with Charlie behind
+  it. A slot isn't put inside another mission's chunk, nor on a gate's cell or the cells before it.
+
 ### Other farms
 - Nether wart and animal pens - a chicken pen first: feathers are the one part of an arrow with no other source but
   skeletons (backlog/load-plans.md).

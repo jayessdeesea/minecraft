@@ -29,6 +29,22 @@ stores hold iron.
 - A mineshaft mission may be given its depth, or a rule sends one squad's well straight to y=-52 once the force has
   iron pickaxes; its levels worked from the bottom up.
 
+## The mineshaft's stair, as it stands and as it should (operator, 2026-11-24)
+The operator: the staircase is cut wrong - not the pattern agreed - and doesn't go to a useful depth; it should follow
+the same pattern all the way down to the bottom of the world unless the digger hits water or lava, and then that is a
+conversation. A snapshot of the well at chunk (0, 2), x 5..10, z 37..42, y=63 down to 40: no four by four with its
+pillar and ring - a flight three wide at y=61..63, then open hollows six across at y=54..60 and y=44..48 where older
+digs and caves cross it, single cells at y=49..53 and y=40..43.
+- Built: a mineshaft's objective is the bottom (`Staircase.DEEPEST`; its landing y=-48), not y=16.
+- **Its well made to its pattern, top to bottom**: each level of `Staircase`'s well has its twelve-cell ring open, its
+  pillar and its walls standing, its step's floor; what is open that shouldn't be is filled, what is rock that
+  shouldn't be is cut - the stair's upkeep, and the first thing a squad given the shaft does. A well cut before keeps
+  the spiral it was cut to (`Staircase`, "mines cut before"): the one at (0, 2) is re-sited on its own pattern.
+- **Water or lava met**: the cut stops there, the squad comes up, and it is said to the operator with where and what -
+  no well sited elsewhere, no way round dug (today `Miner.hazard` leads to another site).
+- Eval: a mineshaft mission on rock with a cave across its well at one level - the well cut to its pattern through
+  it, floored and walled, to its landing; and one with lava at a level - stopped, said, the squad at its head.
+
 ## A mineshaft's shaft that is never cut (P1, live 2026-11-24)
 The operator expected the mineshaft's head to have a hole at its centre and stairs going down. The template's head is
 its fence, gates, torches and chests; the hole and the stairs are its last step, "mine the shaft ... till it's dry".

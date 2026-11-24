@@ -178,8 +178,9 @@ final class FarmMissions {
                 case STORES_TEMPLATE, MINE_HEAD, PASTURE_TEMPLATE, PLACEHOLDER_TEMPLATE -> new Objective.Task.Stores();
                 case MINE -> new Objective.Task.Mine();
             };
-            // A shaft's objective is its head's x and z and the depth to cut to: a MINE's y is a depth (NightRules.grounded).
-            io.github.jayessdeesea.minecraft.command.Position at = step.kind() == FarmMission.Kind.MINE ? new io.github.jayessdeesea.minecraft.command.Position(m.minX() + 8.5, ChainOfCommand.MINE_DEPTH, m.minZ() + 8.5) : m.centre(step);
+            // A shaft's objective is its head's x and z and the depth to cut to: a MINE's y is a depth (NightRules.grounded) - a
+            // mineshaft's the bottom of the world, one pattern all the way down (operator, 2026-11-24).
+            io.github.jayessdeesea.minecraft.command.Position at = step.kind() == FarmMission.Kind.MINE ? new io.github.jayessdeesea.minecraft.command.Position(m.minX() + 8.5, io.github.jayessdeesea.minecraft.bot.supply.Staircase.DEEPEST, m.minZ() + 8.5) : m.centre(step);
             return new Objective(m.said(step), at, "The operator's " + m.what()
                     + ", step " + (step.index() + 1) + " of " + m.steps().size() + ": " + step.task(), task);
         }).toList();
@@ -545,14 +546,14 @@ final class FarmMissions {
                 continue;
             }
             reviewDue.put(m, now + REVIEW_EVERY - Math.floorMod(java.util.Objects.hash(m.name(), now / DAY_MILLIS), DAY_MILLIS));
-            int left = Fixtures.left(world, TemplateDrift.layout(m)).values().stream().mapToInt(List::size).sum() + TemplateDrift.misplaced(world, TemplateDrift.layout(m)).size();
+            int left = Fixtures.left(world, TemplateDrift.layout(m)).values().stream().mapToInt(List::size).sum() + TemplateDrift.sky(m, world).size();
             if (left == 0) {
                 continue;
             }
             FarmMission.Step head = m.steps().stream().filter(s -> s.kind() == FarmMission.Kind.MINE_HEAD).findFirst().orElseThrow();
             missions.put(m, head.index());
             book.ifPresent(b -> b.reopen(m, head, "reviewed: " + left + " of its head's fixtures to put up", now));
-            LOG.warn("[Mission] {} reviewed - {} of its head's fixtures to put up; its head worked again", m.name(), left);
+            LOG.warn("[Mission] {} reviewed - {} of its head's fixtures to put up or blocks to clear; its head worked again", m.name(), left);
             wake.accept("a mineshaft's head wants repair");
         }
     }

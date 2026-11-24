@@ -96,8 +96,9 @@ public final class Pathfinder {
         }
         BlockPos best = here;
         double bestDistance = Double.MAX_VALUE;
-        for (int cx = (int) Math.floor(x - HALF_WIDTH); cx <= (int) Math.floor(x + HALF_WIDTH - EPSILON); cx++) {
-            for (int cz = (int) Math.floor(z - HALF_WIDTH); cz <= (int) Math.floor(z + HALF_WIDTH - EPSILON); cz++) {
+        Footprint under = Footprint.of(x, z);
+        for (int cx = under.minX(); cx <= under.maxX(); cx++) {
+            for (int cz = under.minZ(); cz <= under.maxZ(); cz++) {
                 BlockPos cell = new BlockPos(cx, here.y(), cz);
                 double distance = Math.hypot(cx + 0.5 - x, cz + 0.5 - z);
                 if (!cell.equals(here) && standable(world, cell) && distance < bestDistance) {
@@ -109,9 +110,6 @@ public final class Pathfinder {
         return best;
     }
 
-    /** Half a body's width: a player's box is 0.6 x 1.8 x 0.6. */
-    private static final double HALF_WIDTH = 0.3;
-    private static final double EPSILON = 1e-9;
     /**
      * Whether (x, y, z) is solid to a walker: a shut gate isn't, nor the cell over one - a soldier opens it as it walks
      * up and shuts it behind ({@code bot.GateHabit}), so a route goes through a gate, never round the fence. To

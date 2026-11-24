@@ -19,8 +19,21 @@ public final class ActivityTrack {
     public record Now(SoldierActivity activity, Optional<Hands.Routine> hands, long since, int changes, int returns) {
     }
 
-    /** A change of activity: what was left, after how long, for what - and whether it's a return. */
-    public record Change(SoldierActivity from, SoldierActivity to, long heldMillis, boolean returned) {
+    /** Returns inside this long are counted together: a soldier going to and fro between two activities. */
+    public static final long LOOP_MILLIS = 5 * 60_000;
+    /** So many returns inside {@link #LOOP_MILLIS} is a loop, said then and at each as many again. */
+    public static final int LOOP_RETURNS = 8;
+
+    /**
+     * A change of activity: what was left, after how long, for what - whether it's a return, and how many returns it has
+     * made inside {@link #LOOP_MILLIS}.
+     */
+    public record Change(SoldierActivity from, SoldierActivity to, long heldMillis, boolean returned, int returnsLately) {
+
+        /** Whether this return makes a loop to say: the soldier's own report that it's getting nowhere. */
+        public boolean loops() {
+            return returned && returnsLately > 0 && returnsLately % LOOP_RETURNS == 0;
+        }
 
         /** The log's line for it, less the soldier's name. */
         public String describe() {
@@ -30,6 +43,7 @@ public final class ActivityTrack {
 
     private volatile Now now;
     private SoldierActivity before;
+    private final java.util.ArrayDeque<Long> returnedAt = new java.util.ArrayDeque<>();
 
     /** What it's doing, or empty before its first tick. */
     public Optional<Now> now() {
@@ -57,6 +71,12 @@ public final class ActivityTrack {
         boolean returned = activity.equals(before) && held < RETURN_MILLIS;
         before = was.activity();
         now = new Now(activity, hands, millis, was.changes() + 1, was.returns() + (returned ? 1 : 0));
-        return Optional.of(new Change(was.activity(), activity, held, returned));
+        if (returned) {
+            returnedAt.add(millis);
+        }
+        while (!returnedAt.isEmpty() && millis - returnedAt.peek() > LOOP_MILLIS) {
+            returnedAt.poll();
+        }
+        return Optional.of(new Change(was.activity(), activity, held, returned, returnedAt.size()));
     }
 }

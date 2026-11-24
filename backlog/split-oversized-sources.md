@@ -19,6 +19,9 @@ One step a refactor pass (docs/conventions.md, "Refactor every sixteenth commit,
 `tools/ops/hotspots.sh`. On 2026-11-24 that read: `SoldierRunner` 31 changes in 64 commits at 8,042 lines, twelve times
 the next file's score; `FarmMissions` (22 changes, 896 lines) next, and the two changed together in 15 of the 64. The
 first three passes, in that order:
+0. **The cells a body's box overlaps**, one function with one rule for an edge (operator, 2026-11-24, commit 1177): position
+   and motion stay doubles, as the server's are; turning one into block cells is written out in `Body.anySolid` twice and
+   by hand in the mover, the builder and the pathfinder, and a hair's overlap on one side only held a soldier a day.
 1. **Where a soldier stands for a chest**, one function: it's decided on four paths in `SoldierRunner` today
    (`depositTo`, `chestStand`, two inline), and a fix reached three of them twice.
 2. **The keep's work by ground**, out of the runner with its state (backlog/named-work.md, the flatten): the level

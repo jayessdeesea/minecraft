@@ -195,9 +195,10 @@ class TemplateGroundTest {
                 return List.of();
             }
         };
-        assertEquals(List.of(trunk, trunk.offset(0, 1, 0)), TemplateDrift.sky(trees, world), "the two steps on its first trunk's cell");
-        assertEquals(List.of(), TemplateDrift.sky(new io.github.jayessdeesea.minecraft.command.FarmMission(2, 3, 63,
-                io.github.jayessdeesea.minecraft.command.FarmMission.Crop.PLACEHOLDER), world), "no trunk's cell on any other template");
+        assertEquals(java.util.Set.of(trunk, trunk.offset(0, 1, 0)), java.util.Set.copyOf(TemplateDrift.sky(trees, world)), "the two steps on its first trunk's cell");
+        assertEquals(2, TemplateDrift.sky(trees, world).size(), "each counted once");
+        assertEquals(List.of(trunk.offset(0, 1, 0)), TemplateDrift.sky(new io.github.jayessdeesea.minecraft.command.FarmMission(2, 3, 63,
+                io.github.jayessdeesea.minecraft.command.FarmMission.Crop.PLACEHOLDER), world), "on any other template only what is two over its level: its sky");
     }
 
     /** A step left in a post's or a gate's cell is dug before the fixture goes up: a post, and a gate, are left as they stand. */
@@ -242,6 +243,38 @@ class TemplateGroundTest {
         layout.put(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FENCE_GATE, List.of(stepInGate, gate));
 
         assertEquals(List.of(stepOnLine, stepInGate), TemplateDrift.misplaced(world, layout), "the two steps, not the post or the gate");
+    }
+
+    /** Loose ground left standing on a template, a block or two over its level, is its squad's to clear - whatever the template. */
+    @Test
+    void aStepLeftStandingOnATemplateIsClutter() {
+        io.github.jayessdeesea.minecraft.command.FarmMission stores = new io.github.jayessdeesea.minecraft.command.FarmMission(1, 2, 63,
+                io.github.jayessdeesea.minecraft.command.FarmMission.Crop.STORES);
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos step = new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(21, 64, 47),
+                over = step.offset(0, 1, 0), outside = new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(40, 64, 47);
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63 || isSoil(x, y, z);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z);
+                return at.equals(step) || at.equals(over) || at.equals(outside);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(List.of(step, over), TemplateDrift.clutter(stores, world), "the two blocks of dirt inside its fence, not the one in the chunk beside");
     }
 
     /** A fixture's footing that stands open is its squad's to pave - under what stands on the ground, not under a post-top torch. */
