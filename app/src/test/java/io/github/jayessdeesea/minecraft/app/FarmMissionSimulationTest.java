@@ -306,8 +306,8 @@ class FarmMissionSimulationTest {
 
     /**
      * The eval: a chunk given the mineshaft mission (operator, 2026-11-22: the mineshaft template - fenced, lit, chests at
-     * its head; a squad goes down it and mines it till dry). Its head's four torches and four chests in, each where the
-     * layout has it, and no gate left open; its head step DONE and its shaft's step under way; and the squad cutting down
+     * its head; a squad goes down it and mines it till dry; 2026-11-24: its chests in rows, its mouth ringed and gated). Its
+     * head's torches, chests, ring and workshop in, each where the layout has it, and no gate left open; its head step DONE and its shaft's step under way; and the squad cutting down
      * under the chunk's middle - blocks dug well below the ground.
      */
     @Test
@@ -327,16 +327,19 @@ class FarmMissionSimulationTest {
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
                 new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.ITEM_COBBLESTONE, 64},
-                new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 32},
+                new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 32}, new int[]{10, SimServer.ITEM_OAK_LOG, 64},
                 new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_COBBLESTONE, 64}))).run();
         clock.advance(120 * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aMineshaftsHeadIsPutUpAndItsSquadGoesDownIt.log"));
         String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]")).toList();
 
-        assertEquals(4, head.torches().stream().filter(t -> server.block(t.x(), t.y(), t.z()) == SimServer.TORCH).count(), "its four torches" + missionLines);
-        assertEquals(4, head.chests().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.CHEST).count(), "its head's four chests" + missionLines);
-        assertEquals(List.of(), head.grid().gates().stream().filter(g -> server.block(g.x(), g.y(), g.z()) == SimItems.GATE_OPEN).toList(), "no gate left open" + missionLines);
+        assertEquals(List.of(), head.torches().stream().filter(t -> server.block(t.x(), t.y(), t.z()) != SimServer.TORCH).toList(), "its torches, corners and ring" + missionLines);
+        assertEquals(List.of(), head.chests().stream().filter(c -> server.block(c.x(), c.y(), c.z()) != SimServer.CHEST).toList(), "its head's eight double chests" + missionLines);
+        assertEquals(List.of(), head.ring().stream().filter(c -> server.block(c.x(), c.y(), c.z()) != SimItems.FENCE).toList(), "its mouth's ring" + missionLines);
+        assertEquals(SimServer.CRAFTING_TABLE, server.block(head.table().x(), head.table().y(), head.table().z()), "its workshop's table" + missionLines);
+        assertEquals(List.of(), head.furnaces().stream().filter(c -> server.block(c.x(), c.y(), c.z()) != SimServer.FURNACE).toList(), "its two furnaces" + missionLines);
+        assertEquals(List.of(), java.util.stream.Stream.concat(head.grid().gates().stream(), java.util.stream.Stream.of(head.mouthGate())).filter(g -> server.block(g.x(), g.y(), g.z()) == SimItems.GATE_OPEN).toList(), "no gate left open" + missionLines);
         List<ObjectiveRecord> rows = new Registers(state.resolve("registers")).objectives().stream().filter(r -> r.mission().equals(MINESHAFT.name())).toList();
         // Its ground as every template's (operator, 2026-11-23): cobblestone one under its level, all of it, and at its level
         // but where the shaft has since been cut down through it.

@@ -7,6 +7,36 @@ doctrine: ATP 3-34.81 (engineer reconnaissance); FM 4-0 (Class IV)
 
 # Mining: ore at depth, and bases on the way down
 
+
+
+## The mineshaft's head: what's left of the operator's pattern (P1, 2026-11-24)
+Built: its layout (`bot.farm.MineHead` - two rows of double chests by kind, `MineHead.Bank`; its mouth ringed, gated
+and lit; a table and two furnaces by its north fence).
+- **A load goes to its kind's chest**: `Bank.of` names it; the depositor's choice of chest doesn't read it yet
+  (backlog/depot-placement.md, the same choice by row).
+- **A head built before the pattern** is brought to it by its review, as a farm's template is.
+- **A gate across the stair at its first landing**, so what spawns below stays below.
+- **Its stairs kept** - anti-entropy, as a template's: each review, every step has its floor, its headroom and its
+  walls where the well's layout has them; no water or lava beside one; its torches lit every so many steps; its ring
+  and gates stand. What's found is repaired by its squad and said with what changed it (`[Dig]`, `[Place]`).
+- **A vein met in the stairs is followed** as one met in a tunnel is: mined out along its run, the stair's floor and
+  walls put back behind it (miners keep stone for that), then the cut carried on.
+
+## A mineshaft's shaft that is never cut (P1, live 2026-11-24)
+The operator expected the mineshaft's head to have a hole at its centre and stairs going down. The template's head is
+its fence, gates, torches and chests; the hole and the stairs are its last step, "mine the shaft ... till it's dry".
+At chunk (0, 2) that step began at 07:33 and no stair was cut: "MINE: no chunk at or round x=8 z=40 a well can be cut
+down clear of water and lava - there itself, from (6, 64, 39) to y=12: no floor under step 2 at (7, 61, 38) - an open
+cave below" (`bot.supply.Miner.hazard`). A hollow under the slab ruled the whole stair out, the squad went underground
+some other way - found at y=5..55 under the chunk beside - and a hasty workshop was sited at (8, 64, 40), the shaft's mouth.
+- Built: a hollow under a step no longer rules a well out (`Staircase.siteWell`, `wet`) - its miner floors the step as
+  it floors a tunnel over a cave (`Miner`'s bridge; operator, 2026-11-24: you can go bottom up). Left: a hollow too
+  deep or wide for that bridge filled from its bottom up, as a deep footing is.
+- The shaft's mouth is the chunk's middle, in its template: its cells kept clear of workshops and chests, and the head
+  not done till its first steps are cut, so a head with no hole is seen.
+- A stair that can't be cut says so up the chain, and the squad waits at the head - it doesn't go down elsewhere.
+- Eval: a mineshaft mission over a cave a block under its slab - the stair cut through it, floored, its squad down it.
+
 ## Why
 A mine squad cuts the stairwell down, sets a level every four blocks, and runs a main tunnel and lit branches out from
 it (docs/military-doctrine.md § 16). The ore it brings up is still thin and uneven - nights of 0 ore of the 16 wanted

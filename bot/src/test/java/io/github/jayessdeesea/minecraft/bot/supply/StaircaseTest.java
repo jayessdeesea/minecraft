@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,6 +45,16 @@ class StaircaseTest {
         Staircase first = Staircase.siteWell(flat, 8, 8, 64, 16).orElseThrow();
         Staircase next = Staircase.siteWell(flat, 8, 8, 64, 16, first.head()::equals).orElseThrow();
         assertFalse(next.head().equals(first.head()), "not the dead well at " + first.head());
+    }
+
+    /** A hollow under a step doesn't send the well to another chunk: it's cut where it's sited, the step floored by its miner. */
+    @Test
+    void aHollowUnderAStepDoesNotRuleAWellOut() {
+        Staircase first = Staircase.siteWell(ground(Set.of()), 8, 8, 64, 16).orElseThrow();
+        BlockPos underTheSecondStep = first.cuts().get(1).feet().offset(0, -1, 0);
+        WorldView hollow = ground(Set.of(underTheSecondStep, underTheSecondStep.offset(0, -1, 0)));
+        assertTrue(first.blocked(hollow).orElse("").startsWith("no floor"), "the hollow is seen: " + first.blocked(hollow));
+        assertEquals(first.head(), Staircase.siteWell(hollow, 8, 8, 64, 16).orElseThrow().head(), "and the well is this chunk's still");
     }
 
     @Test

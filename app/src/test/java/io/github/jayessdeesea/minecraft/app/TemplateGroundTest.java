@@ -138,6 +138,41 @@ class TemplateGroundTest {
                 && filled.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(22, 61, 59)), filled.toString());
     }
 
+    /** What hangs in a template's sky is one soldier's to dig, the nearest: every template's sky is kept clear. */
+    @Test
+    void whatHangsInATemplatesSkyIsDugByTheNearest() {
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos hanging = new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(24, 70, 56);
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63 || new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z).equals(hanging);
+            }
+
+            @Override
+            public boolean isCobblestone(int x, int y, int z) {
+                return new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z).equals(hanging);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(List.of(hanging), FARM.sky(world), "the block seven over its level, and nothing of its ground");
+
+        Map<String, Order> orders = TemplateGround.skyOrders(world, FARM.sky(world), List.of(soldier("Ivy", 0), soldier("Jack", 0)));
+
+        assertEquals(1, orders.size(), "one soldier's: " + orders);
+        Order.Dig dig = assertInstanceOf(Order.Dig.class, orders.values().iterator().next());
+        assertTrue(dig.box().contains(24, 70, 56), "the block hanging: " + dig);
+        assertEquals(Map.of(), TemplateGround.skyOrders(world, List.of(), List.of(soldier("Ivy", 0))), "a clear sky is nobody's order");
+    }
+
     /** A chest in reach of a soldier on a mission's task is near it and near its height: not the mine's stash 60 blocks under it. */
     @Test
     void aChestInAMissionWorkersReachIsNearAndNearItsHeight() {

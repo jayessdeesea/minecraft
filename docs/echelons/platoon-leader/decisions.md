@@ -163,8 +163,11 @@ by class of supply) - each fixture made and put in the cell the layout names by 
 (`StoresChunk.stocked`). "A mineshaft at chunk (x, z)" (operator, 2026-11-22; the chat's `giveMineshaftMission`) has
 its ground made as every template's - flattened a block under its level, a slab there, its level paved (operator,
 2026-11-23) - then two phases more: its head (`bot.farm.MineHead`: the chunk
-farms' fence and gates, four torches, four chests along its south side for ore and what's worth keeping, its middle
-left clear), put up as a supply point's fixtures are; then its shaft, a `MINE` at the chunk's middle for the one squad
+farms' fence and gates and a torch inside each corner; its mouth, the well's four by four at its middle, ringed with
+fence one out, a torch on each corner post and one gate beside the cell the stair leaves from; two rows of four double
+chests facing the mouth, a kind to each - `MineHead.Bank`; a table and two furnaces by its north fence), put up as a
+supply point's fixtures are - nothing put up from a cell of the layout, a gate put from across its own line
+(`bot.supply.Fixtures`); a template's sky is kept clear of what hangs in it (`ChunkFarm.sky`, dug by the nearest of its squad); then its shaft, a `MINE` at the chunk's middle for the one squad
 on the mission, worked day and night, done when that mine is dried up - every level cut (`FarmMissions.mineDry`, told
 by the runner; a chunk no well can be sited in isn't dry, and its mission holds). Its well is sited in its own chunk,
 templated as it is (`FarmMissions.mineAt`). Where the mineshafts are is kept with the missions, in the task register's rows. Each open mission's

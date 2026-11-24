@@ -236,6 +236,23 @@ final class FarmMissions {
                 }).findFirst();
     }
 
+    /** Whether a step of {@code kind} is a template whose sky is its own to keep clear here: a wheat farm's is its site's (ChunkFarm.obstructions). */
+    private static boolean skyKept(FarmMission.Kind kind) {
+        return kind == FarmMission.Kind.TREE_TEMPLATE || kind == FarmMission.Kind.STORES_TEMPLATE || kind == FarmMission.Kind.MINE_HEAD
+                || kind == FarmMission.Kind.PASTURE_TEMPLATE;
+    }
+
+    /** What hangs in the sky over {@code m}'s chunk and its fence lines (ChunkFarm.sky). */
+    private static List<BlockPos> sky(FarmMission m, WorldView world) {
+        return new ChunkFarm(m.chunkX(), m.chunkZ(), m.level()).sky(world);
+    }
+
+    /** What hangs in the sky of the template {@code objective}'s squad is laying, for it to dig: none for any other, or with a clear sky. */
+    Optional<List<BlockPos>> inTheSky(Optional<Objective> objective, WorldView world) {
+        return worked().stream().filter(c -> skyKept(c.getValue().kind()) && objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent())
+                .map(c -> sky(c.getKey(), world)).filter(hanging -> !hanging.isEmpty()).findFirst();
+    }
+
     /** {@code m}'s animal farm, as its template lays it out. */
     private static io.github.jayessdeesea.minecraft.bot.farm.PastureChunk pasture(FarmMission m) {
         return new io.github.jayessdeesea.minecraft.bot.farm.PastureChunk(m.chunkX(), m.chunkZ(), m.level(),
@@ -488,7 +505,7 @@ final class FarmMissions {
      * planting are its foresters'), a supply point's fence, lights, workshop and first rows. Empty while it stands.
      */
     static Optional<String> drifted(WorldView world, FarmMission m) {
-        return switch (m.crop()) {
+        Optional<String> gone = switch (m.crop()) {
             case WHEAT -> {
                 FarmSite.Work work = FarmSite.work(world, new ChunkFarm(m.chunkX(), m.chunkZ(), m.level()));
                 yield work.stage() == FarmSite.Stage.SURVEYED ? Optional.of("its ground is gone in places - " + work) : Optional.empty();
@@ -513,6 +530,9 @@ final class FarmMissions {
                         .collect(Collectors.joining(", ")));
             }
         };
+        // And its sky, whatever it is but a wheat farm (its site's own) or a mine worked out.
+        boolean itsSky = m.crop() != FarmMission.Crop.WHEAT && m.crop() != FarmMission.Crop.MINE;
+        return gone.or(() -> Optional.of(sky(m, world)).filter(h -> itsSky && !h.isEmpty()).map(h -> h.size() + " block(s) hanging in its sky"));
     }
 
     /**
@@ -679,6 +699,11 @@ final class FarmMissions {
             }
         };
         if (done.isEmpty()) {
+            return;
+        }
+        List<BlockPos> hanging = skyKept(step.kind()) ? sky(m, world) : List.of();
+        if (!hanging.isEmpty()) {
+            say(m, step, hanging.size() + " block(s) hanging in its sky, to dig: " + hanging.stream().limit(6).map(b -> b.x() + "," + b.y() + "," + b.z()).toList());
             return;
         }
         LOG.info("[Mission] {}: {} - DONE, {}", m.name(), step.task(), done.get());

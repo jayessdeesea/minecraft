@@ -44,9 +44,25 @@ public final class Fixtures {
         this.name = name;
         this.inventory = inventory;
         MAKES.keySet().forEach(item -> builders.put(item, new Builder(name, session, inventory, List.of(item))));
-        // A gate faces the way it's put from: across its fence line, as a farm's are (ChunkFarm.across).
-        Optional.ofNullable(builders.get(ItemClass.FENCE_GATE)).ifPresent(b -> b.putFrom((gate, stand) ->
-                io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm.across(gate, stand.x(), stand.z())));
+        // Nothing is put up from a cell of the layout: a post put in under a soldier standing on the line fences it in. And a
+        // gate faces the way it's put from: across its fence line - the line the posts beside it in its layout run along.
+        builders.forEach((item, b) -> b.putFrom((cell, stand) -> !laidCells.contains(BlockPos.containing(stand.x(), stand.y(), stand.z()))
+                && (item != ItemClass.FENCE_GATE || across(laid, cell, stand.x(), stand.z()))));
+    }
+
+    /** The layout it was last given: where its fence runs says which way a gate in it faces. */
+    private volatile Map<ItemClass, List<BlockPos>> laid = Map.of();
+    /** Every cell of it. */
+    private volatile Set<BlockPos> laidCells = Set.of();
+
+    /**
+     * Whether a gate in {@code gate} is put from ({@code x}, {@code z}) facing across its line in {@code layout}: with a post
+     * of the layout north or south of it its line runs along z, and the stand is in the gate's own z; else its own x.
+     */
+    static boolean across(Map<ItemClass, List<BlockPos>> layout, BlockPos gate, double x, double z) {
+        List<BlockPos> fence = layout.getOrDefault(ItemClass.FENCE, List.of());
+        boolean alongZ = fence.contains(gate.offset(0, 0, 1)) || fence.contains(gate.offset(0, 0, -1));
+        return alongZ ? (int) Math.floor(z) == gate.z() : (int) Math.floor(x) == gate.x();
     }
 
     /** Whether {@code cell} is still open for a fixture: nothing in it, and ground under it. */
@@ -102,6 +118,10 @@ public final class Fixtures {
 
     /** Each tick: puts up what it carries of {@code layout}'s first kind still open; started only when {@code free}. */
     public synchronized void tick(Position soldier, WorldView world, Map<ItemClass, List<BlockPos>> layout, boolean free) {
+        if (!layout.equals(laid)) {
+            laid = layout;
+            laidCells = layout.values().stream().flatMap(List::stream).collect(java.util.stream.Collectors.toSet());
+        }
         Map<ItemClass, List<BlockPos>> left = left(world, layout);
         if (placing != null && (!left.containsKey(placing) || inventory.count(placing) == 0)) {
             stop();

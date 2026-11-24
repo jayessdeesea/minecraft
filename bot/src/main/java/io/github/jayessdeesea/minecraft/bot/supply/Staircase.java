@@ -58,7 +58,7 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
     public static final int WELL_MIN = 6, WELL_MAX = 9, PILLAR_MIN = 7, PILLAR_MAX = 8;
 
     /** The well's walkway cell the feet are in at height {@code y}, in chunk ({@code chunkX}, {@code chunkZ}). */
-    static BlockPos wellCell(int chunkX, int chunkZ, int y) {
+    public static BlockPos wellCell(int chunkX, int chunkZ, int y) {
         int[] local = WELL_RING[Math.floorMod(-y, WELL_TURN)];
         return new BlockPos(chunkX * 16 + local[0], y, chunkZ * 16 + local[1]);
     }
@@ -580,7 +580,8 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
         chunks.sort(java.util.Comparator.comparingDouble(c -> Math.hypot(c[0] * 16 + 8 - x, c[1] * 16 + 8 - z)));
         for (int[] c : chunks) {
             Optional<Staircase> well = wellAt(world, c[0], c[1], nearY, depth);
-            if (well.isPresent() && !dead.test(well.get().head()) && well.get().clear(world)) {
+            // A step over a hollow doesn't rule a well out: its miner floors it, from the hollow's bottom up (Miner's bridge).
+            if (well.isPresent() && !dead.test(well.get().head()) && well.get().wet(world).isEmpty()) {
                 return well;
             }
         }
@@ -601,6 +602,18 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
     /** Whether every step can be cut as the world shows it: no water or lava beside one, and a floor under each. */
     boolean clear(WorldView world) {
         return blocked(world).isEmpty();
+    }
+
+    /** The first step with water or lava beside it, as the world shows it: what no miner cuts through. Empty with none - a hollow under a step is floored. */
+    public Optional<String> wet(WorldView world) {
+        List<Cut> all = cuts();
+        for (int k = 0; k < steps(); k++) {
+            Optional<String> why = Miner.hazard(world, all.get(k), k).filter(w -> !w.startsWith("no floor"));
+            if (why.isPresent()) {
+                return why;
+            }
+        }
+        return Optional.empty();
     }
 
     /** Why a step can't be cut as the world shows it - the first one's water, lava or open cave - or empty if every one can. */

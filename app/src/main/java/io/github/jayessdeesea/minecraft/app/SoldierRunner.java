@@ -5018,11 +5018,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // camp's own huts are what the check is for (SquadSimulationTest's camp on a slope).
                     .filter(st -> !keepState.hands.contains(st.name()) && (keepState.hands.isEmpty() || !chainOfCommand.flatten()
                             .benchedContains((int) Math.floor(st.position().x()), (int) Math.floor(st.position().z()))))
-                    // Walled by what a squad builds with, not a tree: live, a soldier up a canopy was
-                    // taken for shut in a hut, cut a doorway out of the leaves, and fell ten blocks.
+                    // Walled by what a squad builds with, not a tree (its leaves are no hut's wall, and the way out of them a fall);
+                    // and a gate in the wall is the way out, opened, never a wall to cut beside - nor the cell over it, solid to a body as it's tall.
                     .flatMap(st -> PatrolBase.enclosing(st.position(), c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z())
-                                    && !world.isLog((int) c.x(), (int) c.y(), (int) c.z())
-                                    && world.leaves((int) c.x(), (int) c.y(), (int) c.z()).isEmpty())
+                                    && !world.isLog((int) c.x(), (int) c.y(), (int) c.z()) && !world.isGate((int) c.x(), (int) c.y(), (int) c.z())
+                                    && !world.isGate((int) c.x(), (int) c.y() - 1, (int) c.z()) && world.leaves((int) c.x(), (int) c.y(), (int) c.z()).isEmpty())
                             .map(room -> Map.entry(st.name(), room)).stream()).findFirst().ifPresent(shutIn -> {
                         LOG.warn("[{}] {} is shut in at {} - cutting a way out", squadName, shutIn.getKey(), shutIn.getValue().floor());
                         state.builtBase = shutIn.getValue();
@@ -5235,7 +5235,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 at -> woodsBook.spent(chainOfCommand, at, clockwork.millis()), clockwork.millis()); // its strips kept, a cut-out one's woodcutter alone moved
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         // A farm mission's template whose ground isn't laid: the whole squad lays it in dirt, not its tender alone (app.TemplateGround).
-        chainOfCommand.farmMissions.template(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.orders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); chainOfCommand.farmMissions.trees(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.treeOrders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); chainOfCommand.farmMissions.pasture(objectiveOf(squadName)).ifPresent(a -> ground.putAll(TemplateGround.pastureOrders(world, a, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); // and a tree template's trunks with nothing under them
+        chainOfCommand.farmMissions.template(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.orders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); chainOfCommand.farmMissions.trees(objectiveOf(squadName)).ifPresent(c -> ground.putAll(TemplateGround.treeOrders(world, c, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); chainOfCommand.farmMissions.inTheSky(objectiveOf(squadName), world).ifPresent(sky -> ground.putAll(TemplateGround.skyOrders(world, sky, statuses))); chainOfCommand.farmMissions.pasture(objectiveOf(squadName)).ifPresent(a -> ground.putAll(TemplateGround.pastureOrders(world, a, statuses, st -> chestHolding(ItemClass.DIRT, st.position()).isPresent(), state.fetchingDirt))); // and a tree template's trunks with nothing under them
         statuses.forEach(s -> policeCall.order(s, ground.containsKey(s.name()), withoutWork.alarmed(s.name()) || idleWatch.alarmed(s.name()) && s.report() instanceof Report.Cantco,
                 world, scaffolding, stepPlacedAt, activeSoldiers.values().stream().map(d -> d.status().position()).toList(),
                 Optional.ofNullable(campWallKey).map(walls::get).map(Set::copyOf).orElse(Set.of()), clockwork.millis()).ifPresent(o -> ground.put(s.name(), o)));

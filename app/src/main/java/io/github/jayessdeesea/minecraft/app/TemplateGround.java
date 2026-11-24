@@ -128,6 +128,17 @@ final class TemplateGround {
         return java.util.stream.IntStream.range(0, all.size()).filter(k -> k % Math.max(1, n) == i).mapToObj(all::get).toList();
     }
 
+    /** What hangs in a template's {@code sky} that can be dug, to the one of {@code squad} nearest it: none with nothing there. */
+    static Map<String, Order> skyOrders(WorldView world, List<BlockPos> sky, List<SoldierStatus> squad) {
+        List<BlockPos> toDig = sky.stream().filter(b -> io.github.jayessdeesea.minecraft.bot.engineer.Clearing.diggable(world, b.x(), b.y(), b.z())).toList();
+        if (toDig.isEmpty() || squad.isEmpty()) {
+            return Map.of();
+        }
+        BlockPos first = toDig.getFirst();
+        SoldierStatus nearest = squad.stream().min(java.util.Comparator.comparingDouble(st -> Math.hypot(st.position().x() - first.x(), st.position().z() - first.z()))).orElseThrow();
+        return Map.of(nearest.name(), Order.Dig.of(toDig.stream().map(b -> new Cell(b.x(), b.y(), b.z())).toList()));
+    }
+
     /**
      * {@code squad}'s orders on an animal farm's ground still to lay: dirt in every cell of it but its footings, which
      * are paved, each soldier a strip - one with none sent for a load. None once it's laid.

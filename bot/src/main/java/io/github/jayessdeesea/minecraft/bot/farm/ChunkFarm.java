@@ -201,21 +201,29 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
                 in.add(cell);
             }
         }
-        // And its sky (operator, 2026-11-24: cobblestone floating in the farm): every column of it and its fence lines,
-        // from over what the nearer checks cover up to SKY blocks over its level, clear of anything put there - a step
-        // left hanging, a pillar's top. A tree's leaves and trunk aren't: the farm beside overhangs its line.
+        sky(world).stream().filter(cell -> !in.contains(cell)).forEach(in::add);
+        return in;
+    }
+
+    /**
+     * What hangs in the sky over its chunk and its fence lines - every template's, whatever stands on the grid (operator,
+     * 2026-11-24: the sky is checked for floating blocks over the template, and they're removed): each block from three
+     * over its level up to {@link #SKY}, a step left hanging or a pillar's top. A tree's leaves and trunk aren't: a farm
+     * beside overhangs its line, and a tree farm's own grow there.
+     */
+    public List<BlockPos> sky(WorldView world) {
+        List<BlockPos> hanging = new ArrayList<>();
         for (int dx = 0; dx <= SIDE; dx++) {
             for (int dz = 0; dz <= SIDE; dz++) {
                 int x = x0() + dx, z = z0() + dz;
                 for (int y = level + 3; y <= level + SKY; y++) {
-                    BlockPos cell = new BlockPos(x, y, z);
-                    if (world.solidHere(x, y, z) && !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty() && !in.contains(cell)) {
-                        in.add(cell);
+                    if (world.solidHere(x, y, z) && !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty()) {
+                        hanging.add(new BlockPos(x, y, z));
                     }
                 }
             }
         }
-        return in;
+        return hanging;
     }
 
     /** How far over its level a farm's sky is kept clear. */

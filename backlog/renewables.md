@@ -61,6 +61,16 @@ One cycle for wheat chunks, tree chunks and the supply point; only the template 
 - Live bug (field495): Ivy jumped 123 times from (-12, 65, 71), a one-block step climbed and come back down while a
   crop at (-12, 63, 87) was started three times and never done - a routine walking it out and back.
 
+### One place for a template's chest (operator, 2026-11-24)
+Standardise where a farm's chest stands: its north-east corner, a little in from the gates so it isn't blocked - say
+local (13, 3) - for the wheat farm (local (13, 13) today), the tree farm (local (1, 1)), and the animal farms ((13, 13)).
+A built farm's old chest is emptied into the new one and taken up.
+
+### A template's fixtures put up in one go (operator, 2026-11-24)
+Watching a fence go up: a post, then the squad together again, then another post. The fixtures' routine gives the hands
+back after each cell and the squad's formation order takes the soldier to its point before the next. Wanted: a soldier
+putting a kind up keeps at it along the line - the next cell from where it stands - till it's out of that kind.
+
 ### Animals
 - **Built (2026-11-24): the template and its mission** - `bot.farm.PastureChunk`, one layout for sheep, cows, pigs and
   chickens: the slab one under its level, dirt at its level, cobblestone under its fence, gates, torches and chest;
