@@ -138,6 +138,39 @@ class TemplateGroundTest {
                 && filled.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(22, 61, 59)), filled.toString());
     }
 
+    /** A trunk standing on its ground is no part of a template's sky; its top left hanging when its foot was cut is. */
+    @Test
+    void aLogWithNothingUnderItHangsInTheSky() {
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> logs = new java.util.HashSet<>();
+        for (int y = 64; y <= 68; y++) {
+            logs.add(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(20, y, 52));
+        }
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos top = new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(26, 67, 58);
+        logs.add(top);
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63 || logs.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isLog(int x, int y, int z) {
+                return logs.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(List.of(top), FARM.sky(world), "the log three over an open cell, not the trunk on its ground");
+    }
+
     /** A fixture's footing that stands open is its squad's to pave - under what stands on the ground, not under a post-top torch. */
     @Test
     void anOpenFootingUnderAFixtureIsToPave() {
