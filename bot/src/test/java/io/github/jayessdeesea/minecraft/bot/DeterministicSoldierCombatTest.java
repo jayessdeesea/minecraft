@@ -521,6 +521,51 @@ class DeterministicSoldierCombatTest {
         assertFalse(alice.status().report() instanceof Report.InContact, alice.status().report().toString());
     }
 
+    /**
+     * One that fights hand to hand, in the air overhead and higher than a sword reaches: no fight, and its order goes on,
+     * though the ground rises under it to where a walk would come within a strike of it; come down within reach, it's
+     * fought. Live, phantoms circling took soldiers to and fro between task and fight.
+     */
+    @Test
+    void aMeleeHostileInTheAirOverheadOutOfASwordsReachIsLetBeTillItComesDown() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0));
+        alice.receiveOrder(new Order.MoveTo(0.5, GROUND, 20.5, 1, 2, Risk.LOW));
+        Position[] phantom = {new Position(4.5, GROUND + 5, 0.5)};
+        WorldView night = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < (x >= 3 ? GROUND + 2 : x == 2 ? GROUND + 1 : GROUND); // a rise of two, by a step, to the east
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, HostileMobRegistry.typeIdOf("phantom"), phantom[0]));
+            }
+        };
+
+        for (int tick = 0; tick < 10; tick++) {
+            // Over the rise as it goes, 4 off and 5 up: 3 over the ground under it.
+            Position at = alice.status().position();
+            phantom[0] = new Position(at.x() + 4, at.y() + 5, at.z());
+            alice.tick(night);
+            assertFalse(alice.status().report() instanceof Report.InContact, "tick " + tick + ": " + alice.status().report());
+            assertTrue(alice.lettingBe(), "tick " + tick + ": seen, and let be");
+        }
+        assertTrue(alice.status().position().z() > 1, "on with its order: " + alice.status().position());
+
+        Position at = alice.status().position();
+        phantom[0] = new Position(at.x() + 1.5, at.y() + 1, at.z());
+        alice.tick(night);
+
+        assertEquals(new Report.InContact(1), alice.status().report(), "down within reach: a fight");
+    }
+
     /** A creeper on its route is gone round, not walked past at arm's length (the engagement doctrine). */
     @Test
     void aRouteGoesRoundACreeperOnIt() {

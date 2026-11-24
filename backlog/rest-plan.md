@@ -1,6 +1,6 @@
 ---
 status: ready
-priority: P2
+priority: P1
 depends-on: []
 doctrine: ATP 3-21.8 (patrol base priorities of work - rest plan)
 ---
@@ -8,6 +8,10 @@ doctrine: ATP 3-21.8 (patrol base priorities of work - rest plan)
 # Rest plan: beds in the camp
 
 ## Why
+Nobody in the force sleeps, so phantoms come every night (and linger by day): on 2026-11-24 a run logged 1,197
+phantom contact lines in 26 minutes, and every squad was taken to and fro between its task and fighting. Beds used
+each night are the cure; the overhead rule in `DeterministicSoldier` only stops the flapping.
+
 A soldier makes itself a bed - wool from sheep or from the depot's string (docs/military-doctrine.md § 11) -
 and then does nothing with it. Without a bed used, a soldier killed at night respawns at the world's spawn in
 the open and is shot again (live, field421-443: Eli four times in a night), and one who hasn't slept in three

@@ -540,6 +540,10 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 && gait.position.distanceTo(threats.get(0).position()) > ATTACK_REACH && noWalkTo(world, threats.get(0).position())) {
             threats = List.of();
             response = "carries on: no way between them on foot";
+        } else if (!threats.isEmpty() && !threats.get(0).shoots() && !threats.get(0).explodes() && overhead(world, threats.get(0).position())) {
+            // In the air overhead: a walk to under it is no way to it, and till it comes down neither strikes. One on a ledge walks down.
+            threats = List.of();
+            response = "carries on: overhead, out of a sword's reach";
         }
         if (!threats.isEmpty()) {
             TrackedEntity nearest = threats.get(0);
@@ -892,6 +896,12 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                     FallAllowance.NONE, 0, false).reachesGoal();
         }
         return noWalk;
+    }
+
+    /** Whether {@code threat} flies or falls higher over the soldier's feet than a strike, feet to feet, reaches: no ground a jump under it. */
+    private boolean overhead(WorldView world, Position threat) {
+        int x = (int) Math.floor(threat.x()), y = (int) Math.floor(threat.y()), z = (int) Math.floor(threat.z());
+        return threat.y() - gait.position.y() > ATTACK_REACH && !world.isSolid(x, y - 1, z) && !world.isSolid(x, y - 2, z);
     }
 
     /** How often, in contact with an archer, it checks there's still a way to close on it. */

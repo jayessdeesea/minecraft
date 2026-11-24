@@ -668,6 +668,9 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   or no route - that's out of contact and not shooting is let be, and the work goes on: not hidden from - but by a
   soldier under half health it is, as by one with no weapon (`DeterministicSoldier.HURT_HEALTH`; live, field568,
   Eli at 1 health walked back to his cave edge in a skeleton's line between its shots and was shot dead).
+- **One that fights hand to hand, in the air overhead and higher than a sword reaches, is let be** till it comes
+  down within reach - a phantom circling: a walk to under it is no way to it (`DeterministicSoldier.overhead`). One on
+  a ledge, with ground under it, is the no-way-on-foot rule's.
 - **The combat eval matrix** (`CombatMatrixTest`; operator, 2026-11-20): one soldier against one hostile, by
   its type (zombie, skeleton, creeper, pillager), the soldier's kit (bare hands, wooden or stone sword, sword and
   shield, sword and iron) and the ground (flat, hills, forest, pond) - each hostile following as far as vanilla's
@@ -701,7 +704,7 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
 - **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the
   response changes, each hostile's type, place, distance, height off the soldier and whether it's in water;
   the soldier's health and kit; and the rule that chose the response - fights, shoots, takes cover (and why),
-  backs off, gets clear of a creeper, carries on (no way between them). And when it ends - 2 seconds with no
+  backs off, gets clear of a creeper, carries on (no way between them; overhead). And when it ends - 2 seconds with no
   hostile, so one at the edge of contact isn't said begun and over each second - how long it went on and the
   health it cost.
 - **A soldier hurt with nothing in contact says what's round it** (`[Contact] ... hurt ... with nothing in contact`):
