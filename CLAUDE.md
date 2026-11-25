@@ -23,3 +23,7 @@ rules. What is wired for Claude Code alone lives under `.claude/` and is listed 
 - `adversary-tester` is given a target and where its rule is written; what it finds with no rule to judge by is a
   question for the operator, not a test.
 - No agent commits, pushes, deploys, or sends the garrison an order.
+- Models (operator, 2026-11-25): the session that orchestrates runs on Opus; `refactor-implementer`, `adversary-tester`
+  and a symptom's first `field-tracer` on Sonnet; `equivalence-reviewer` on the top model, and so a second trace of a
+  symptom the first didn't explain, or the design of a new rule, as an agent with a written brief (`model: fable`).
+  One task a session, started from the handoff.
