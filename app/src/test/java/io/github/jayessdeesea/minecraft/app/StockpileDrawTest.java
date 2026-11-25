@@ -54,4 +54,13 @@ class StockpileDrawTest {
         assertTrue(SoldierErrands.drawsLogs(Optional.of("short of {RAW_IRON=3, LOG=1, COBBLESTONE=2}"), 0, Optional.of(new Stockpile(85, 0, 0)), CHEST),
                 "logs second in it");
     }
+
+    /** With none to dig near it, as with none carried: a furnace's cobblestone is drawn from a stockpile holding it. */
+    @Test
+    void aSoldierWithNoStoneToDigForAFurnaceDrawsCobblestone() {
+        Optional<String> noStone = Optional.of("can't make furnace: no STONE within 48 blocks");
+        assertTrue(SoldierErrands.drawsStone(noStone, 0, Optional.of(new Stockpile(212, 488, 0)), CHEST));
+        assertFalse(SoldierErrands.drawsStone(noStone, 0, Optional.of(new Stockpile(212, 0, 0)), CHEST), "none in the chest either");
+        assertFalse(SoldierErrands.drawsStone(noStone, 8, Optional.of(new Stockpile(212, 488, 0)), CHEST), "it carries a furnace's worth");
+    }
 }

@@ -171,10 +171,12 @@ final class SoldierErrands {
 
     /**
      * Whether a soldier whose making is short of cobblestone draws it from the stockpile, as one short of logs does: live
-     * (field541), four soldiers gave their stone swords up "short of COBBLESTONE=2", the camp's chests holding 896.
+     * (field541), four soldiers gave their stone swords up "short of COBBLESTONE=2", the camp's chests holding 896. And
+     * one that found none to dig, as one that found no tree draws logs: stone in the ground and cobblestone in a chest
+     * are the same making.
      */
     static boolean drawsStone(Optional<String> failure, int stone, Optional<Stockpile> seen, Optional<Position> stockpile) {
-        return stockpile.isPresent() && stone < DRAW_STONE && failure.filter(f -> shortOf(f, "COBBLESTONE")).isPresent()
+        return stockpile.isPresent() && stone < DRAW_STONE && failure.filter(f -> f.contains("no STONE") || shortOf(f, "COBBLESTONE")).isPresent()
                 && seen.map(st -> st.stone() >= DRAW_STONE).orElse(true);
     }
 

@@ -115,6 +115,19 @@ final class Gait {
         if (distance < EPSILON) {
             return;
         }
+        // A box that doesn't fit where it stands - a block put since in a column it reaches into - is refused every step
+        // that still reaches into that column, and a step is shorter than the reach: it goes to the middle of its own
+        // cell, where it fits, first. Only on its feet, and only onto a floor: over a drop it stays where it is held.
+        double middleX = Math.floor(position.x()) + 0.5;
+        double middleZ = Math.floor(position.z()) + 0.5;
+        if (onGround && !bodyFits(world, position.x(), position.y(), position.z()) && bodyFits(world, middleX, position.y(), middleZ)
+                && world.isSolid((int) Math.floor(position.x()), (int) Math.floor(position.y()) - 1, (int) Math.floor(position.z()))) {
+            double off = Math.hypot(middleX - position.x(), middleZ - position.z());
+            double toMiddle = Math.min(step, off);
+            position = new Position(position.x() + (middleX - position.x()) / off * toMiddle, position.y(),
+                    position.z() + (middleZ - position.z()) / off * toMiddle);
+            return;
+        }
         double move = Math.min(step, distance); // never overshoot - nor stall just short of the target
 
         double stepX = (dx / distance) * move;

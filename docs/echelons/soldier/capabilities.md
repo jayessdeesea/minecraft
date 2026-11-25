@@ -11,14 +11,16 @@ seconds or when stuck - a wide search asked again from the same cell to the same
 - **Walks** level ground, round anything solid, and diagonally only where both sides are clear. A
   corner it clips walking a level stretch is slid along, never jumped onto: a jump costs hunger. Stood on a
   block's edge over a drop, it steps onto the block before its route's first step (`Mover`; field609, a mine's shaft).
+  Where its box no longer fits - a block put since in a column it reaches into, a squadmate's fence - it steps to the
+  middle of its own cell first: from there no other step would fit either (`Gait.step`).
 - **Steps up one block** - a jump, only where its route rises. A fence, at 1.5 blocks, is a wall, not a step.
 - **Drops three blocks** unhurt. Further only within the fall allowance its order's risk gives it,
   and only when no route without a fall exists ([military-doctrine.md § 7](../../military-doctrine.md#7-risk-acceptance)).
 - **Swims** across water at the surface. It never enters lava or fire.
 - **Cuts a step** into a bank too high to jump, from the ground or out of water: soil by hand, stone with a pickaxe, never sand or
   gravel, never where it would tunnel or let water in.
-- **Pillars** with cobblestone or dirt it carries, beside a wall: jumps and places a block under
-  itself.
+- **Pillars** with cobblestone or dirt it carries, beside a wall: from the middle of its cell - off it, a block
+  over the cell beside stops the jump - it jumps and places a block under itself.
 - **Builds steps** with those blocks, down a sheer drop or up to ground above, when that's the
   only way that reaches its goal (`Pathfinder.stepBuild`): one block a step against ground beside
   it, two in open air. Never on farmland or a crop, which a block put down on spoils; nor does it

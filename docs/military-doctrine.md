@@ -998,7 +998,8 @@ and it went back in a minute later, the stockpile bare for the next.
 A soldier on its order's work - cutting a mine, a wood or farm duty, building the keep - never digs
 its kit's makings itself (operator, 2026-11-18: a farmer doesn't start chopping trees because it has
 no hoe; `Armourer.digsItsMakings`): it says what it's short of, and draws it from the stockpile as
-above, which the force's producers fill; what it can make of a batch meanwhile it makes - a farm's fence and chest
+above - cobblestone too when it found no stone to dig, as logs when it found no tree
+(`SoldierErrands.drawsStone`) - which the force's producers fill; what it can make of a batch meanwhile it makes - a farm's fence and chest
 from its logs, its bucket set aside for the iron (`Armourer.makeable`; live, field508-512, the chunk farm's tender
 gave up all three together, short of 3 raw iron). Live (field449), a night's mining took no ore while its
 cutters went off to dig a log and iron ore for iron pickaxes, one killed out there. A soldier bare-handed - or short of a

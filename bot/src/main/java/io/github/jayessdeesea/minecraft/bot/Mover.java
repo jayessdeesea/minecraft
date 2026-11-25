@@ -477,14 +477,16 @@ abstract class Mover {
     BlockPos placement;
 
     /**
-     * One tick of a pillar step to {@code top}: jump from the cell below it, and once the feet are
-     * clear of that cell - the server won't place a block where a body is - ask for a block there,
-     * then land on it.
+     * One tick of a pillar step to {@code top}: from the middle of the cell below it, jump, and once
+     * the feet are clear of that cell - the server won't place a block where a body is - ask for a
+     * block there, then land on it. From the middle, because the route gives headroom in that cell's
+     * column only: a body off-centre is under the column beside it too, and a block there stops the
+     * jump short of the height the block goes in at.
      */
     void pillar(WorldView world, BlockPos top) {
         BlockPos from = top.offset(0, -1, 0);
         if (pillarFrom == null) {
-            if (!gait.onGround) {
+            if (!gait.onGround || !centred(world, from)) {
                 return;
             }
             pillarFrom = from;
@@ -522,10 +524,7 @@ abstract class Mover {
             buildWait = 0;
             return false;
         }
-        double cx = here.x() + 0.5;
-        double cz = here.z() + 0.5;
-        if (Math.hypot(cx - gait.position.x(), cz - gait.position.z()) > BUILD_CENTRED) {
-            stepToward(world, cx, cz);
+        if (!centred(world, here)) {
             return true;
         }
         if (buildWait-- <= 0) {
@@ -535,8 +534,19 @@ abstract class Mover {
         return true;
     }
 
-    /** How near its cell's middle a soldier stands to build a step - a 0.6-wide body then clears the cells beside. */
+    /** How near its cell's middle a soldier stands to build a step or a pillar - a 0.6-wide body then clears the cells beside. */
     static final double BUILD_CENTRED = 0.15;
+
+    /** Whether it stands within {@link #BUILD_CENTRED} of {@code cell}'s middle - if not, takes a step toward it. */
+    boolean centred(WorldView world, BlockPos cell) {
+        double cx = cell.x() + 0.5;
+        double cz = cell.z() + 0.5;
+        if (Math.hypot(cx - gait.position.x(), cz - gait.position.z()) <= BUILD_CENTRED) {
+            return true;
+        }
+        stepToward(world, cx, cz);
+        return false;
+    }
 
     /**
      * How many blocks a route can be planned on - pillar and built steps: one per cobblestone or

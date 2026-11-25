@@ -760,7 +760,9 @@ class FarmMissionSimulationTest {
         }
         SimServer server = new SimServer(clock, FarmMissionSimulationTest::besideAFarm, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+        // The squad's own objective at its camp, east: nobody's way crosses the farm beside, and it is ground the simulated
+        // server serves - it sends the chunks round the spawn once, and a place west of x=16 is never in a soldier's world.
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(72.5, GROUND + 1, 8.5),
                 "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(TREES.centre(TREES.steps().getFirst())),
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
