@@ -233,6 +233,19 @@ class ContactEvalTest {
                 r("a bow alone, a skeleton 4 off: shot", "bow", 0, 20, "skeleton", 4, 0, "", SHOOTS),
                 r("a bow alone, a skeleton 14 off: shot", "bow", 0, 20, "skeleton", 14, 0, "", SHOOTS),
                 r("a bow alone, a skeleton 7 off, no shot: cover", "bow", 0, 20, "skeleton", 7, 0, "no-shot", COVER_UNARMED),
+                // --- An archer at hand and no getting clear of it. Liam (field739): a bow and no arrows, shut in down the mine, a
+                // skeleton 3.7 off; he stood 37 s and was shot dead. Jack (field737): in a pit at 3 health, a skeleton 2.5 to
+                // 3.3 off, his steps at it gaining nothing; his answer went between fighting and cover with its range, five times in
+                // two seconds, and he did neither. Boxed in within Contact.NEAR_AMBUSH of it, each assaults.
+                r("Liam: no melee weapon, a skeleton 3.7 off, boxed in under its fire", "bow0", 4, 20, "skeleton", 3.3, -1.7, "boxed-in under-fire begun", FIGHTS_BARE),
+                r("Liam's, not boxed in: cover", "bow0", 4, 20, "skeleton", 3.3, -1.7, "under-fire begun", COVER_UNARMED),
+                r("Jack: stone sword at 3, a skeleton 2.5 off, boxed in under its fire", "stone_sword", 0, 3, "skeleton", 2.3, 1, "boxed-in under-fire stalled", FIGHTS),
+                r("Jack's, the skeleton 3.2 off", "stone_sword", 0, 3, "skeleton", 2.7, 1.7, "boxed-in under-fire stalled", FIGHTS),
+                r("Jack's at 3.2 off, not boxed in: cover", "stone_sword", 0, 3, "skeleton", 2.7, 1.7, "under-fire stalled", COVER_EXCHANGE_LOST),
+                r("Liam's, boxed in, no walk to the skeleton: nothing to assault by", "bow0", 4, 20, "skeleton", 3.3, -1.7, "boxed-in under-fire begun pinned", COVER_UNARMED),
+                r("Jack's at 3.2 off, boxed in, no walk to it", "stone_sword", 0, 3, "skeleton", 2.7, 1.7, "boxed-in under-fire stalled pinned", COVER_EXCHANGE_LOST),
+                r("stone sword, whole, boxed in, a skeleton 10 off: no getting away, closed on", "stone_sword", 0, 20, "skeleton", 10, 0, "boxed-in under-fire begun", FIGHTS),
+                r("bare hands, boxed in, a skeleton 7 off: still cover", "none", 0, 20, "skeleton", 7, 0, "boxed-in under-fire begun", COVER_UNARMED),
                 r("a bow alone, a skeleton 5 below: shot", "bow", 0, 20, "skeleton", 6, -5, "", SHOOTS));
     }
 

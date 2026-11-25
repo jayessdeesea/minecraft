@@ -39,6 +39,9 @@ final class ContactLog {
         this.name = name;
     }
 
+    /** What the decision was told this tick (Contact.Situation.facts), for the line: the tick thread's. */
+    String facts = "";
+
     /**
      * This tick's contact: {@code threats}, nearest first, and the {@code response} the soldier chose to them - or none,
      * with no threats, which ends a contact under way.
@@ -65,8 +68,8 @@ final class ContactLog {
         }
         this.response = response;
         with = nearest;
-        LOG.info("[Contact] {} at {} ({} health; {}): {} - {}", name, where(at), fmt(health), kit(kit), response,
-                threats.stream().limit(4).map(t -> hostile(world, at, t)).collect(Collectors.joining("; ")));
+        LOG.info("[Contact] {} at {} ({} health; {}; {}): {} - {}", name, where(at), fmt(health), kit(kit),
+                facts.isEmpty() ? "no facts" : facts, response, threats.stream().limit(4).map(t -> hostile(world, at, t)).collect(Collectors.joining("; ")));
     }
 
     /**

@@ -106,6 +106,13 @@ public final class Contact {
     public record Situation(Position at, double health, Kit kit, List<TrackedEntity> threats, boolean underFire, boolean begun,
                             boolean closing, boolean boxedIn, boolean wet, boolean fit, boolean shieldUp, boolean clearing,
                             int standoff) {
+
+        /** What of this is so, in the words the table of evals names them by: a logged contact is a row. */
+        public String facts() {
+            return java.util.stream.Stream.of(underFire ? "under-fire" : "", begun ? "begun" : "", closing ? "" : "stalled",
+                    boxedIn ? "boxed-in" : "", wet ? "wet" : "", fit ? "" : "unfit", shieldUp ? "shield-up" : "", clearing ? "clearing" : "")
+                    .filter(f -> !f.isEmpty()).collect(java.util.stream.Collectors.joining(" "));
+        }
     }
 
     /**
@@ -180,6 +187,9 @@ public final class Contact {
         return List.copyOf(first);
     }
 
+    /** How near an archer a soldier with no way clear of it assaults: inside this the archer itself backs off to shoot. */
+    public static final double NEAR_AMBUSH = 4;
+
     /**
      * What the soldier does about the first of {@code s.threats()}, which must not be empty. The rules, first that
      * holds:
@@ -192,7 +202,7 @@ public final class Contact {
      * <li>One that fights hand to hand: fought unless the exchange is lost ({@link Engagement#melee}).
      * <li>An archer: let be when it's out of contact, not shooting, the soldier unhurt and no way to close on it;
      *     covered from with no melee weapon, the exchange lost ({@link Engagement#archer}), it well below, or no walk
-     *     to it; else closed on and fought.
+     *     to it; else closed on and fought. Boxed in within {@link #NEAR_AMBUSH} of it: fought, with what it has.
      * </ol>
      */
     public static Choice respond(Situation s, Ground ground) {
@@ -236,6 +246,12 @@ public final class Contact {
         boolean below = threat.y() < s.at().y() - ARCHER_BELOW;
         if (armed && range > CONTACT_RADIUS && !s.underFire() && s.health() >= HURT_HEALTH && (below || ground.pinned(threat))) {
             return Response.PAST_ARCHER;
+        }
+        // In its kill zone with no way out of it, the soldier assaults (ATP 3-21.8, react to a near ambush): cover it
+        // can't get to is no cover, and one that stands there is shot till it's dead.
+        // Not one out of a blow's reach that no walk gets to: there is nothing to assault by.
+        if (s.boxedIn() && range <= NEAR_AMBUSH && (range <= ATTACK_REACH || !ground.pinned(threat))) {
+            return armed ? Response.FIGHTS : Response.FIGHTS_BARE;
         }
         boolean lost = range > ATTACK_REACH && Engagement.archer(s.health(), s.kit(), range, s.begun(),
                 pace(s.boxedIn(), s.wet(), sprints), s.closing()) != Engagement.Kind.ENGAGE;

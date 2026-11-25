@@ -632,6 +632,12 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
 - **A soldier with a bow shoots far-away enemies** (operator, 2026-11-18) - a creeper too, from outside its
   blast (past `DeterministicSoldier.CREEPER_CLEAR`); one at arm's length is still got away from. Live, six
   soldiers were killed by creepers in melee in a few nights.
+- **Boxed in within 4 blocks of an archer, it assaults** (`Contact.NEAR_AMBUSH`; ATP 3-21.8, react to a near
+  ambush: in the kill zone with no cover to get to, assault through): hurt where it has stood a second with no step
+  taken toward cover or away, there is no getting clear of that one, and it is fought with what the soldier has - a
+  sword, or its hands - unless it is out of a blow's reach with no walk to it. Past 4 blocks the exchange says, as for
+  any soldier that can't get away: armed it closes, unarmed it keeps to what cover it has. Live, a soldier shut in down a mine with a bow and no arrows "took cover" where it stood for 37 seconds and
+  was shot dead, and one in a pit at 3 health went between fighting and cover with the archer's range and did neither.
 - **With no melee weapon an archer is fled at a sprint** - to cover in reach, else straight away - and on past
   its range, to 20 off, before the soldier goes back to its order (`DeterministicSoldier.FLED_PAST`): a walk away
   stays inside a skeleton's 15 blocks, and one that left contact at 9 off walked back into its arrows. In the

@@ -145,6 +145,7 @@ SAME: today's answer stands. CHANGE: the numbered change under "The changes" fli
 | The same, armed | fights, reckoned a zombie | Engage as forced, by its profile (40 health, 7 a blow): hurt rows move | CHANGE 3 |
 | The same, a bow alone | shoots | Backs off: arrows miss it | CHANGE 10 |
 | An archer, no melee weapon | takes cover, flees past 20 | Break contact | SAME |
+| An archer within 4 and a walk to it or in reach, the soldier boxed in (hurt where it stood a second, no step taken) | fights, armed or bare-handed (`Contact.NEAR_AMBUSH`) | Assault through: the near ambush | BUILT 2026-11-25 |
 | An archer, armed, the exchange won | fights, closing at a sprint | Engage | SAME |
 | An archer, armed, the exchange lost, not begun | takes cover | Break contact | SAME |
 | An archer, armed, a fight begun | finishes it while it outlasts the kill; else gets clear if it can | Engage, then break contact | SAME |

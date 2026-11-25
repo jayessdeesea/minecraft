@@ -510,10 +510,12 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             noWalk = false;
             noWalkCheckIn = 0;
             boxedIn = false;
+            coverStalledTicks = 0;
             stalledTicks = 0;
         }
         // Withdrawn from one that won the exchange (Engagement.withdrawal): clear of it, held there to eat and heal - not fought to
         // the death, not fled for good - till healed past its line; a fresh hostile nearer is met as any is.
+        contactLog.facts = ""; // a withdrawal's line is not this tick's decision
         if (withdrawingFrom != -1 && (threats.isEmpty() || threats.getFirst().entityId() == withdrawingFrom) && withdraw(world, near)) {
             gait.fall(world);
             return attack;
@@ -522,9 +524,11 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         String response = null;
         List<TrackedEntity> seen = threats;
         Asked asked = threats.isEmpty() ? null : new Asked(world);
-        Contact.Choice choice = threats.isEmpty() ? null : Contact.respond(new Contact.Situation(gait.position, lastReportedHealth, kit,
+        Contact.Situation situation = threats.isEmpty() ? null : new Contact.Situation(gait.position, lastReportedHealth, kit,
                 threats, underFireTicks > 0, contactTicks > BEGUN_TICKS, stalledTicks <= BEGUN_TICKS, boxedIn, wet, fitToSprint(),
-                shieldRaised(), clearingFrom == nearestId, nearestId == standoffWith ? creeperStandoff : 0), asked);
+                shieldRaised(), clearingFrom == nearestId, nearestId == standoffWith ? creeperStandoff : 0);
+        Contact.Choice choice = situation == null ? null : Contact.respond(situation, asked);
+        contactLog.facts = situation == null ? "" : situation.facts();
         if (choice != null && choice.response().letsBe()) {
             threats = List.of();
             response = choice.response().said();
@@ -595,6 +599,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 // more times in 12.
                 sprinting = canSprint();
                 double pace = sprinting ? SPRINT_STEP : STEP;
+                Position stoodAt = gait.position;
                 if (!armedForMelee()) {
                     fleeingFrom = nearest.entityId();
                 } else if (archerExchange(range) != Engagement.Kind.ENGAGE) {
@@ -605,6 +610,13 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 } else {
                     stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z(), pace);
                 }
+                // Hurt where it has stood a second with no step toward cover or away taken: that is no cover, and there
+                // is no getting clear of this one (Contact). In cover that holds it stands as still, and isn't hurt.
+                coverStalledTicks = gait.position.equals(stoodAt) ? coverStalledTicks + 1 : 0;
+                if (coverStalledTicks <= 1) {
+                    coverStalledHealth = lastReportedHealth;
+                }
+                boxedIn |= coverStalledTicks > BEGUN_TICKS && lastReportedHealth < coverStalledHealth;
                 holdCoverTicks = UNDER_FIRE_TICKS;
                 eatsInCover = threats.stream().noneMatch(t -> !t.shoots() && gait.position.distanceTo(t.position()) <= ATTACK_REACH + 1) && !lineOfSight(world, new Position(threat.x(), threat.y() + EYE_HEIGHT, threat.z()), new Position(gait.position.x(), gait.position.y() + TARGET_HEIGHT, gait.position.z()));
             } else {
@@ -733,6 +745,9 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     private double withdrawLine;
     /** Whether, withdrawing from the hostile in contact now, it can't get clear of it: it's fought, as one that can't be got away from. */
     private boolean boxedIn;
+    /** Ticks in a row with no step taken toward cover or away from the archer, and its health when they began. */
+    private int coverStalledTicks;
+    private double coverStalledHealth;
     /** Ticks closing on the hostile in contact with no ground gained: past {@link #BEGUN_TICKS}, it isn't closing, and strikes nothing. */
     private int stalledTicks;
     /** Whether the withdrawal's cover proved none - seen or shot at in it. */
