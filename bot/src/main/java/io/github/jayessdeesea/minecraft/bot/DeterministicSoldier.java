@@ -512,7 +512,10 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             boxedIn = false;
             coverStalledTicks = 0;
             stalledTicks = 0;
+            quietTicks = 0;
         }
+        // An arrow in the air near it breaks the quiet, shield or none - looked for only while an archer is the contact.
+        quietTicks = underFireTicks > 0 || !threats.isEmpty() && threats.getFirst().shoots() && !world.arrowsNear(gait.position, ARROW_WATCH).isEmpty() ? 0 : quietTicks + 1;
         // Withdrawn from one that won the exchange (Engagement.withdrawal): clear of it, held there to eat and heal - not fought to
         // the death, not fled for good - till healed past its line; a fresh hostile nearer is met as any is.
         contactLog.facts = ""; // a withdrawal's line is not this tick's decision
@@ -526,7 +529,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         Asked asked = threats.isEmpty() ? null : new Asked(world);
         Contact.Situation situation = threats.isEmpty() ? null : new Contact.Situation(gait.position, lastReportedHealth, kit,
                 threats, underFireTicks > 0, contactTicks > BEGUN_TICKS, stalledTicks <= BEGUN_TICKS, boxedIn, wet, fitToSprint(),
-                shieldRaised(), clearingFrom == nearestId, nearestId == standoffWith ? creeperStandoff : 0);
+                shieldRaised(), clearingFrom == nearestId, nearestId == standoffWith ? creeperStandoff : 0, quietTicks > Contact.QUIET_SECONDS * 20);
         Contact.Choice choice = situation == null ? null : Contact.respond(situation, asked);
         contactLog.facts = situation == null ? "" : situation.facts();
         if (choice != null && choice.response().letsBe()) {
@@ -750,6 +753,8 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     private double coverStalledHealth;
     /** Ticks closing on the hostile in contact with no ground gained: past {@link #BEGUN_TICKS}, it isn't closing, and strikes nothing. */
     private int stalledTicks;
+    /** Ticks of this contact since the soldier was last hurt or saw an arrow come (Contact.QUIET_SECONDS). */
+    private int quietTicks;
     /** Whether the withdrawal's cover proved none - seen or shot at in it. */
     private boolean coverFailed;
 

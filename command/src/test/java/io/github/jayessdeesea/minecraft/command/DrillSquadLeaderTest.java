@@ -90,6 +90,38 @@ class DrillSquadLeaderTest {
         assertEquals(Formation.WEDGE, formationOn.apply(new Report.Moving()), "another objective is another route");
     }
 
+    /**
+     * Down a mine the squad's order is one order: live (field741-742), a squad cutting a shaft was given 83 orders in
+     * 44 minutes that differed only in formation or in a point read from the gallery its point man stood in - its
+     * report going between mining and CANTCO, each survey from another gallery. From the first soldier that reports
+     * mining, the point and FILE stand till the objective is another.
+     */
+    @Test
+    void aSquadDownAMineKeepsOneOrder() {
+        DrillSquadLeader alpha = new DrillSquadLeader("Alpha");
+        Objective mine = new Objective("Mine the shaft", new Position(8.5, -59, 40.5), "ore", new Objective.Task.Mine());
+        alpha.receiveObjective(mine);
+        TerrainSurvey atTheHead = new TerrainSurvey(8, 40, 8, 32, List.of(new TerrainSurvey.Sample(8, 40, TerrainSurvey.Ground.LAND, 63, true, 0)));
+        TerrainSurvey inAGallery = new TerrainSurvey(8, 40, 8, 32, List.of(new TerrainSurvey.Sample(-30, 44, TerrainSurvey.Ground.LAND, 4, true, 0)));
+        TerrainSurvey inAnother = new TerrainSurvey(8, 40, 8, 32, List.of(new TerrainSurvey.Sample(52, 38, TerrainSurvey.Ground.LAND, 0, true, 0)));
+        java.util.function.BiFunction<Report, TerrainSurvey, SquadOrder> on = (report, survey) -> alpha.decide(
+                List.of(new SoldierStatus("Alice", new Position(8, 63, 40), new Order.Idle(), report, Optional.empty())), survey).orElseThrow();
+
+        SquadOrder approach = on.apply(new Report.Moving(), atTheHead);
+        assertEquals(Formation.WEDGE, approach.formation(), "on the way to the mine: as any move");
+        SquadOrder down = on.apply(new Report.Mining(1, 100), atTheHead);
+        assertEquals(Formation.FILE, down.formation(), "down a shaft: one file");
+        assertEquals(new Position(8.5, 63, 40.5), down.objective(), "the point as it stood when the cutting began");
+        assertEquals(down, on.apply(new Report.Cantco("can't cut the staircase further: no pickaxe"), inAGallery), "a cutter's CANTCO, a gallery's survey: the same order");
+        assertEquals(down, on.apply(new Report.Mining(40, 100), inAnother), "another gallery's survey: the same order");
+        assertEquals(down, on.apply(new Report.InPosition(), inAGallery), "nobody cutting this second: the same order");
+
+        alpha.receiveObjective(new Objective("Secure the camp", new Position(8.5, 64, 40.5), "light", new Objective.Task.Secure()));
+        assertEquals(Formation.WEDGE, on.apply(new Report.Moving(), atTheHead).formation(), "out of the mine: another objective, another order");
+        alpha.receiveObjective(mine);
+        assertEquals(Formation.WEDGE, on.apply(new Report.Moving(), atTheHead).formation(), "given the mine again: an approach, till a soldier is cutting");
+    }
+
     /** With no surveyed ground to reach, the squad holds at one place: the same order however its point man moves, till there is ground. */
     @Test
     void aSquadWithNoGroundToReachHoldsAtOnePlace() {

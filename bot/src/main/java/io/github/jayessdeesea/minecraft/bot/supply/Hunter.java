@@ -79,9 +79,9 @@ public final class Hunter {
         this.claims = claims;
     }
 
-    /** Whether there's game of the {@code kinds} wanted within {@link #radius} of {@code ground} to hunt. */
+    /** Whether there's game of the {@code kinds} wanted within {@link #radius} of {@code ground} to hunt: the force's stock isn't game. */
     public static boolean gameInSight(WorldView world, Position ground, int food, IntPredicate kinds) {
-        return world.gameNear(ground, radius(food)).stream().anyMatch(e -> kinds.test(e.typeId()) && level(ground, e));
+        return world.gameNear(ground, radius(food)).stream().anyMatch(e -> kinds.test(e.typeId()) && level(ground, e) && !world.stockAt(e.position()));
     }
 
     /** Whether {@code game} is on the hunting ground's level, not in a cave under it or a cliff over it. */
@@ -133,7 +133,7 @@ public final class Hunter {
         if (quarry == null) {
             givenUp.values().removeIf(until -> until <= ticks);
             Optional<TrackedEntity> nearest = world.gameNear(ground, radius).stream()
-                    .filter(e -> kinds.test(e.typeId()) && level(ground, e) && !givenUp.containsKey(e.entityId())
+                    .filter(e -> kinds.test(e.typeId()) && level(ground, e) && !givenUp.containsKey(e.entityId()) && !world.stockAt(e.position())
                             && claims.getOrDefault(e.entityId(), name).equals(name))
                     .min(Comparator.comparingDouble(e -> distance(soldier, e.position())));
             if (nearest.isEmpty()) {
@@ -162,6 +162,12 @@ public final class Hunter {
         }
         unseenTicks = 0;
         lastSeen = seen.get().position();
+        if (world.stockAt(lastSeen)) {
+            LOG.info("{} lets the animal at {} be: on the ground of the force's stock", name, lastSeen);
+            claims.remove(quarry, name);
+            quarry = null;
+            return OptionalInt.empty();
+        }
         if (++huntTicks > HUNT_TICKS) {
             LOG.info("{} gives up the chase at {}", name, lastSeen);
             givenUp.put(quarry, ticks + GIVEN_UP_TICKS);

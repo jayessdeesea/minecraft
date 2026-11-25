@@ -22,6 +22,43 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class RationsTest {
 
+    /**
+     * No meal with a creeper within 8, seen or not: live (field741), Ivy at 0 health began a meal with a creeper 7.8
+     * off that her sight line then lost behind a pillar two blocks high - no contact - and it blew as she finished
+     * eating. A zombie as near is the contact drill's, not this rule's.
+     */
+    @Test
+    void noMealWithACreeperWithinEightSeenOrNot() {
+        io.github.jayessdeesea.minecraft.command.Position at = new io.github.jayessdeesea.minecraft.command.Position(-11.1, 63, 8.5);
+        java.util.function.Function<List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity>, io.github.jayessdeesea.minecraft.bot.world.WorldView> field = hostiles ->
+                new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+                    @Override
+                    public boolean isSolid(int x, int y, int z) {
+                        return y < 63 || x == -11 && z == 7; // the pillar between them: sight is not asked
+                    }
+
+                    @Override
+                    public boolean isHazard(int x, int y, int z) {
+                        return false;
+                    }
+
+                    @Override
+                    public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                        return hostiles.stream().filter(h -> h.position().distanceTo(center) <= radius).toList();
+                    }
+                };
+        int creeper = io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry.typeIdOf("creeper");
+        int zombie = io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry.typeIdOf("zombie");
+        java.util.function.BiFunction<Integer, Double, List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity>> one = (type, z) ->
+                List.of(new io.github.jayessdeesea.minecraft.bot.world.TrackedEntity(1, type, new io.github.jayessdeesea.minecraft.command.Position(-11.1, 63, z)));
+
+        assertTrue(Rations.creeperNear(field.apply(one.apply(creeper, 5.5)), at), "3 off behind the pillar");
+        assertTrue(Rations.creeperNear(field.apply(one.apply(creeper, 0.7)), at), "7.8 off");
+        assertFalse(Rations.creeperNear(field.apply(one.apply(creeper, 0.0)), at), "8.5 off: clear");
+        assertFalse(Rations.creeperNear(field.apply(one.apply(zombie, 5.5)), at), "a zombie isn't a creeper");
+        assertFalse(Rations.creeperNear(field.apply(List.of()), at), "nothing near");
+    }
+
     private static final int MEAL_TICKS = 32;
 
     private final List<String> calls = new ArrayList<>();

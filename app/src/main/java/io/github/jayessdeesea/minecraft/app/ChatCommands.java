@@ -3,7 +3,9 @@ package io.github.jayessdeesea.minecraft.app;
 import io.github.jayessdeesea.minecraft.command.FarmMission;
 import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.OperatorCommands;
+import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.RegistersSaid;
+import io.github.jayessdeesea.minecraft.command.ScoutMission;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -49,6 +51,15 @@ public class ChatCommands implements OperatorCommands {
                 .filter(k -> k.animals() && k.name().equalsIgnoreCase(animal == null ? "" : animal.strip())).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("no animal farm for '" + animal + "': sheep, cow, pig or chicken"));
         return give(x, z, level, crop);
+    }
+
+    @Override
+    public String giveScoutMission(String animal, int x, int z, int toX, int toZ) {
+        ScoutMission.Animal kind = ScoutMission.Animal.named(animal)
+                .orElseThrow(() -> new IllegalArgumentException("no scouting for '" + animal + "': sheep, cow or chicken"));
+        // The level is the ground's wherever a soldier walks to: the order gives an x and a z.
+        return chain.scoutMissions.give(new ScoutMission(kind, new Position(x + 0.5, FarmMission.SEA_LEVEL + 1, z + 0.5),
+                new Position(toX + 0.5, FarmMission.SEA_LEVEL + 1, toZ + 0.5)));
     }
 
     @Override

@@ -27,7 +27,9 @@ platoon leader's to give as data.
   keep, where each soldier's strip is assigned at the site
   ([military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)). The rules' formation
   is WEDGE, FILE once the point man reports his route blocked and till he reports anything but moving, or the point man or the
-  objective is another; interval TIGHT at night and in a
+  objective is another; down a mine - from the first soldier that reports mining till the objective is another - the
+  order stands as it was, in FILE: there each soldier is placed by the mine's own rules, and a point read from the
+  gallery last surveyed places nobody; interval TIGHT at night and in a
   patrol base, NORMAL by day; risk LOW, MEDIUM for one soldier whose CANTCO says a MEDIUM route
   exists; rearm by day, out of contact, with no task - the squad holding; CANTCO only with no surveyed
   ground reachable, and the squad then holds at one place - where its point man stood when none was found -

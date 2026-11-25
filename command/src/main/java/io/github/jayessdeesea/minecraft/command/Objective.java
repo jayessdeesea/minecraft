@@ -95,6 +95,16 @@ public record Objective(String mission, Position location, String intent, Task t
                 }
             }
         }
+
+        /**
+         * Look round the location for {@code mission}'s animals and lead them to where it wants them, each soldier its
+         * own sector ({@link ScoutSectors}). The operator's mission gives it ({@link ScoutMission}), never the model.
+         */
+        record Scout(ScoutMission mission) implements Task {
+            public Scout {
+                Objects.requireNonNull(mission, "mission");
+            }
+        }
     }
 
     public Objective {

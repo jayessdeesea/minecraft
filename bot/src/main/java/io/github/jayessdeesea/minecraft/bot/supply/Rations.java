@@ -7,7 +7,10 @@ import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
+import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Condition;
+import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -98,6 +101,18 @@ public final class Rations {
     }
 
     /** Whether a soldier at {@code food} eats: at {@link #EAT_AT} or below, or below the healing level when {@code hurt}. */
+    /**
+     * How far off a creeper has to be, seen or not, for a meal: a meal holds a soldier where it stands for a second and
+     * a half, a creeper closes four blocks in that and its blast reaches six - and one whose sight line is lost behind
+     * a block or two is no contact, yet blows all the same.
+     */
+    public static final double CREEPER_CLEAR = 8;
+
+    /** Whether a creeper is within {@link #CREEPER_CLEAR} of {@code at}, whatever stands between: no meal is begun or gone on with. */
+    public static boolean creeperNear(WorldView world, Position at) {
+        return world.nearbyHostiles(at, CREEPER_CLEAR).stream().anyMatch(TrackedEntity::explodes);
+    }
+
     public static boolean wantsMeal(int food, boolean hurt) {
         return food <= EAT_AT || hurt && food < Condition.REGENERATION_FOOD;
     }

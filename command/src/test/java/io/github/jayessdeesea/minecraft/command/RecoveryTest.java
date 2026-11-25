@@ -197,6 +197,46 @@ class RecoveryTest {
         assertEquals(false, fetched.ordered("Dana"));
     }
 
+    /**
+     * A squadmate too far off to come is nobody to wait on: live (field739-742), Kate stood ten hours in a tunnel 34
+     * under the ground with no pickaxe, her stair up laid out at each restart and given to squadmates with one, 170
+     * blocks off down their own mine with no way to her. Past {@link Recovery#FETCH_REACH} none is sent - with a pickaxe
+     * or with blocks - and she digs her own cut by hand.
+     */
+    @Test
+    void aSquadmateTooFarOffToComeIsNotWaitedOn() {
+        Position tunnel = new Position(178.7, 32, 19.5);
+        Kit pick = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, true, 0, false);
+        List<Cell> cut = List.of(new Cell(178, 34, 19), new Cell(179, 33, 19), new Cell(179, 34, 19));
+        java.util.function.Function<Double, List<SoldierStatus>> squadWithJackAt = x -> List.of(
+                new SoldierStatus("Jack", new Position(x, 32, 19.5), new Order.Idle(), new Report.InPosition(),
+                        Optional.of(new Condition(20, 20, 0, Optional.of(pick)))),
+                soldier("Liam", new Position(51, 0, 38), new Report.InPosition(), 64),
+                soldier("Kate", tunnel, STUCK, 0));
+
+        Recovery far = new Recovery();
+        assertEquals(List.of(new Order.Idle(), new Order.Idle(), Recovery.dig(cut)), far.orders(squadWithJackAt.apply(7.5), IDLE, NO_STAIR, s -> Optional.of(cut)),
+                "Jack's pickaxe 171 off, Liam's blocks 130: her own cut, by hand");
+        assertEquals(true, far.ordered("Kate"));
+        assertEquals(false, far.ordered("Jack"));
+
+        Recovery near = new Recovery();
+        assertEquals(List.of(Recovery.dig(cut), new Order.Idle(), new Order.Idle()),
+                near.orders(squadWithJackAt.apply(178.7 - Recovery.FETCH_REACH + 1), IDLE, NO_STAIR, s -> Optional.of(cut)), "Jack within reach: his pickaxe, from the top");
+    }
+
+    /** Up on a ledge with nothing laid to dig, the carrier 170 off is still the one sent: it has no way down of its own. */
+    @Test
+    void oneOnALedgeIsFetchedFromHoweverFar() {
+        List<SoldierStatus> squad = List.of(
+                soldier("Alice", new Position(-160, 64, 0), new Report.InPosition(), 64),
+                soldier("Dana", new Position(7.5, 81, 0.5), STUCK, 0));
+
+        List<Order> orders = new Recovery().orders(squad, List.of(new Order.Idle(), new Order.Idle()), NO_STAIR);
+
+        assertEquals(new Order.MoveTo(7.5, 81, 0.5, Recovery.TOLERANCE, Recovery.TOLERANCE, Risk.LOW), orders.get(0));
+    }
+
     /** Stranded below with a pickaxe of its own, it digs the engineer's cut itself: a tunnel up, nobody fetched. */
     @Test
     void oneStrandedBelowWithAPickaxeTunnelsUpItself() {

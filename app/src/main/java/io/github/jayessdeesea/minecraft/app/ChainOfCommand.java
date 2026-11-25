@@ -632,6 +632,7 @@ public class ChainOfCommand implements DisposableBean {
     /** Keeps the objectives in {@code book}: the garrison's registers. */ void keepObjectives(ObjectiveBook book) { objectiveBook = Optional.of(book); farmMissions.keptIn(book); }
     /** The operator's farm missions, a step at a time (app.FarmMissions): their step under way a guardrail over the day's work. */
     final FarmMissions farmMissions = new FarmMissions(cause -> wake(cause, true));
+    final ScoutMissions scoutMissions = new ScoutMissions(cause -> wake(cause, true), this::radio, this::millis);
     /** Requests raised and settled from each cycle's SITREPs (app.RequestTracking): the soldiers' to their squad leaders, the squads' to the platoon leader. */
     private final RequestTracking requestTracking = new RequestTracking();
 
@@ -938,7 +939,7 @@ public class ChainOfCommand implements DisposableBean {
                     byDay.add(PhaseGuardrails.steady(PhaseGuardrails.noMineBeforeBuildup(byDay(objectives.get(i), statuses.get(i), shortfall, woods), phaseNow,
                             statuses.get(i).squadName(), toShortfall(PlatoonSergeant.Shortfall.FOOD, statuses.get(i), woods, flattenBuilders)), statuses.get(i)));
                 }
-                List<Objective> dayWork = farmMissions.guarded(guarded(byDay, statuses, shortfall, woods), statuses, farmSquad); // the operator's farm last
+                List<Objective> dayWork = scoutMissions.guarded(farmMissions.guarded(guarded(byDay, statuses, shortfall, woods), statuses, farmSquad), statuses, farmSquad, farmMissions::on);
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
                     Objective given = WorkArea.attach(sheltered(grounded(dayWork.get(i), statuses.get(i).soldiers()), statuses.get(i)),

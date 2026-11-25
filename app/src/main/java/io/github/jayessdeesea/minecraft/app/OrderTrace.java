@@ -162,6 +162,7 @@ final class OrderTrace {
             case Objective.Task.Keep() -> report instanceof Report.Working;
             case Objective.Task.Floor(var layer) -> report instanceof Report.Working || report instanceof Report.Fortifying;
             case Objective.Task.Stores() -> report instanceof Report.Fortifying || report instanceof Report.Rearming || report instanceof Report.Securing;
+            case Objective.Task.Scout(var mission) -> report instanceof Report.Working;
         };
     }
 
@@ -180,6 +181,7 @@ final class OrderTrace {
             case Objective.Task.Keep() -> "KEEP";
             case Objective.Task.Floor(var layer) -> "FLOOR";
             case Objective.Task.Stores() -> "STORES";
+            case Objective.Task.Scout(var mission) -> "SCOUT";
         };
     }
 

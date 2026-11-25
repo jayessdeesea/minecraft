@@ -351,6 +351,14 @@ public final class Recovery {
         return Order.Dig.of(cells);
     }
 
+    /**
+     * How far off, across, a squadmate is still sent to dig out one stranded below with a cut laid: a walk of a quarter
+     * of a minute. One further is across the map or down another mine, with as little way to the stranded as the
+     * stranded has out - and waited on, it holds the stranded one's own way out, its cut dug by hand. One up on a
+     * ledge has no such way, and is fetched from however far.
+     */
+    public static final double FETCH_REACH = 64;
+
     /** Whether {@code fetcher} can go on fetching: still in the squad, and neither stranded nor rejoining itself. */
     private boolean fetching(String fetcher, Map<String, SoldierStatus> byName) {
         SoldierStatus mate = byName.get(fetcher);
@@ -360,11 +368,12 @@ public final class Recovery {
     /**
      * The nearest squadmate fit to fetch {@code stuck} at {@code at}: one carrying {@link #BLOCKS_TO_FETCH}
      * blocks, or a pickaxe when {@code diggingWillDo}; and when {@code ledgeOnly}, one standing below
-     * the stranded one - up on a ledge, not down in a pocket.
+     * the stranded one - up on a ledge, not down in a pocket. For one with a cut laid, none further off than {@link #FETCH_REACH}.
      */
     private String nearestCarrier(String stuck, Position at, List<SoldierStatus> reported, boolean diggingWillDo, boolean ledgeOnly) {
         String best = null;
-        double bestDistance = Double.MAX_VALUE;
+        // One below with a cut laid has its own way out, by hand if it must: only a squadmate near enough to come is waited on.
+        double bestDistance = diggingWillDo ? FETCH_REACH : Double.MAX_VALUE;
         for (SoldierStatus mate : reported) {
             boolean taken = recovering.values().stream().anyMatch(e -> mate.name().equals(e.fetcher));
             double distance = Cohesion.distance(mate.position(), at);

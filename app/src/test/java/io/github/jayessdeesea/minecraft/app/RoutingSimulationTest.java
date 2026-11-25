@@ -89,6 +89,34 @@ class RoutingSimulationTest {
         assertEquals(List.of(), List.copyOf(server.log).stream().filter(l -> l.startsWith("Alice placed")).toList(), "no block placed on the way");
     }
 
+    /**
+     * Sent past the chunks it was served where it joined - 7 by 7 round its spawn, as a server's view - a soldier is
+     * served the ground ahead as it walks, as a server does, and arrives: 120 blocks out, more than seven chunks. Ground
+     * never served reads as solid, and it stopped at the edge with no route.
+     */
+    @Test
+    void aSoldierWalksPastTheChunksItJoinedIn() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position far = new Position(120.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Far out", far, "There",
+                new Objective.Task.None())), squadLeader(far),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16})))
+                .run();
+
+        clock.advance(4 * 60_000);
+
+        PlayerPosition alice = server.position("Alice");
+        assertTrue(Math.hypot(alice.x() - 120.5, alice.z() - 0.5) <= 6, "Alice 120 blocks out: at " + alice + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+        assertEquals(List.of(), List.copyOf(server.log).stream().filter(l -> l.startsWith("Alice placed") || l.startsWith("Alice dug")).toList(), "nothing placed or dug on the way");
+    }
+
     /** Flat, with a stone wall three high across x=6 from z=-60 to 60, a gap in it at z=30. */
     static int wallWithAFarGap(int x, int y, int z) {
         return x == 6 && y > GROUND && y <= GROUND + 3 && Math.abs(z) <= 60 && z != 30 ? SimServer.STONE : SquadSimulationTest.flat(x, y, z);

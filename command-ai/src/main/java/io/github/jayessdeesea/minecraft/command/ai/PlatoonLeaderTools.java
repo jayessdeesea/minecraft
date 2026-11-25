@@ -200,6 +200,16 @@ final class PlatoonLeaderTools {
         return command("giveAnimalFarmMission " + animal + " " + x + " " + z + (y == null ? "" : " " + y), () -> commands.giveAnimalFarmMission(animal, x, z, level));
     }
 
+    @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "giveScoutMission", description = "A command - only when the operator asks for it in this turn. Sends "
+            + "one squad to look for animals of a kind - sheep, cows or chickens - round a block, 32 blocks out each way, each soldier a sector of "
+            + "its own, and lead what they find to another block on the kind's food: wheat for sheep and cows, seeds for chickens. An animal isn't "
+            + "led over water: where the land ends is said back. It ends when its squad is back, or after a day. Quote its result.")
+    String giveScoutMission(@ToolParam(description = "which animal: sheep, cow or chicken") String animal,
+                            @ToolParam(description = "the x of the block to look round") int x, @ToolParam(description = "the z of the block to look round") int z,
+                            @ToolParam(description = "the x of the block to bring them to") int toX, @ToolParam(description = "the z of the block to bring them to") int toZ) {
+        return command("giveScoutMission " + animal + " " + x + " " + z + " " + toX + " " + toZ, () -> commands.giveScoutMission(animal, x, z, toX, toZ));
+    }
+
     @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "giveTemplateMission", description = "A command - only when the operator asks for it in this turn. Gives the "
             + "mission for a template named in words on the chunk a block is in. 'placeholder': the chunk flattened, cobblestone one under its "
             + "level and at its level, fenced with gates, lit - ground held for whatever is put there later, and a safe way across meanwhile. "

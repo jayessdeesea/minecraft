@@ -234,6 +234,14 @@ public interface WorldView {
         return playersNear(center, radius);
     }
 
+    /**
+     * Whether an animal at {@code at} is the force's stock - brought in and kept where it stands - not game: it is never
+     * hunted, for food, wool or feathers. A view told of no stock has none.
+     */
+    default boolean stockAt(Position at) {
+        return false;
+    }
+
     /** Where the dropped items within {@code radius} of {@code center} are, nearest first. A view that tracks no entities sees none. */
     default List<TrackedEntity> gameNear(Position center, double radius) {
         return List.of();

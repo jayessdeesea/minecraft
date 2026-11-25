@@ -19,6 +19,8 @@ class HunterTest {
     private static final int COW = 30;
 
     private final List<TrackedEntity> game = new ArrayList<>();
+    /** Where the force keeps the animals it brought in: within 16 of it one is stock. */
+    private final List<Position> stockKept = new ArrayList<>();
 
     private final WorldView field = new WorldView() {
         @Override
@@ -40,7 +42,34 @@ class HunterTest {
         public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
             return List.of();
         }
+
+        @Override
+        public boolean stockAt(Position at) {
+            return stockKept.stream().anyMatch(p -> Math.hypot(p.x() - at.x(), p.z() - at.z()) <= 16);
+        }
     };
+
+    /**
+     * An animal the force brought in is stock, not game (operator, 2026-11-25: scouting brings animals back): in the
+     * squad simulation a squad led two sheep to its camp and, the mission over, killed both for wool. Starving or
+     * not, it isn't seen as game and isn't chased; one off that ground still is.
+     */
+    @Test
+    void anAnimalTheForceBroughtInIsStockAndNeverHunted() {
+        game.add(new TrackedEntity(7, COW, new Position(5.5, 64, 0.5)));
+        stockKept.add(new Position(8.5, 64, 4.5));
+        Position camp = new Position(0.5, 64, 0.5);
+        Hunter hunter = new Hunter("Alice");
+
+        assertFalse(Hunter.gameInSight(field, camp, Hunter.STARVING_FOOD, kind -> true), "no game in sight");
+        hunter.tick(camp, camp, Hunter.STARVING_RADIUS, kind -> true, field, true, 10);
+        assertFalse(hunter.active(), "not chased");
+
+        game.add(new TrackedEntity(8, COW, new Position(-20.5, 64, 0.5)));
+        assertTrue(Hunter.gameInSight(field, camp, Hunter.STARVING_FOOD, kind -> true), "one off the stock's ground is game");
+        hunter.tick(camp, camp, Hunter.STARVING_RADIUS, kind -> true, field, true, 10);
+        assertEquals(java.util.Optional.of(new Position(-20.5, 64, 0.5)), hunter.standAt(), "and it's the one chased");
+    }
 
     @Test
     void aStarvingSoldierLooksTwiceAsFarFromItsHuntingGround() {

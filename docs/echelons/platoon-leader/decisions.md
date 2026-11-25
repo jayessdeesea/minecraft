@@ -153,7 +153,15 @@ would have chosen (`CampTrees.take`), and after a restart too, read back from it
 `giveAnimalFarmMission` - sheep, cow, pig or chicken) is the same mission in three phases: flattened a block under its
 level, floored there, then its template (`bot.farm.PastureChunk`, one layout whatever is kept): dirt at its level laid
 by its squad (`TemplateGround.pastureOrders`), cobblestone under its fence, gates, torches and chest, then those put up
-(`bot.supply.Fixtures`) - done when nothing of its ground or fixtures is left. The animals are not this mission's. "A supply point at
+(`bot.supply.Fixtures`) - done when nothing of its ground or fixtures is left. The animals are not this mission's: a **scout mission** brings them
+(operator, 2026-11-25; the chat's `giveScoutMission` - sheep, cow or chicken, a block to look round and a block to bring
+them to; `command.ScoutMission`, `app.ScoutMissions`). One squad is put on it - the one on it already, else the last in
+the order of battle that isn't the farm squad nor on a farm mission's step - as its `SCOUT` task; its soldiers take a
+sector each of the ground 32 blocks out each way (`command.ScoutSectors`) and lead what they find back on the kind's
+food. It ends when every soldier of the squad is done - or has had none of the food for three minutes - with its outcome
+said to the operator: how many were brought of how many found, who had no food, and where the land ends; or after a
+day, FAILED. Its squad shelters the night as any does, each soldier's herder held where it was and gone on with at dawn. Where its animals are wanted is stock's ground from the moment it's given, and an animal farm's chunk
+always: nothing there is hunted. It is kept in memory - a restart drops an open one. "A supply point at
 chunk (x, z)" (operator, 2026-11-22; the chat's `giveSupplyPointMission`) is the same again, in four phases: the chunk
 flattened a block under its level, a cobblestone slab laid there as under every template, its level paved in cobblestone
 over that (operator, 2026-11-23: stone at the level where a farm has dirt), then the supply point's template on it (`bot.farm.StoresChunk`:

@@ -107,6 +107,8 @@ public final class Crafter {
     private boolean threatened;
     private int cooldown;
     private String failure;
+    /** Whether a step of the run under way found no slot free for what it makes: the run ends failed. */
+    private boolean noRoom;
     private Position soldier;
     private WorldView world;
     private int windowId = -1;
@@ -252,6 +254,15 @@ public final class Crafter {
             if (steps.isEmpty()) {
                 return Outcome.IDLE;
             }
+            // What's made is taken into the pack, and wants a slot to go in: with none free the server leaves it in the
+            // grid, and the run waits on an inventory that never comes. Said, and tried again once the pack has room.
+            if (!slotFree()) {
+                failure = "can't make " + describe(wanted) + ": no room in its pack for it";
+                LOG.warn("{} {} - {}", name, failure, inventory.summary());
+                cooldown = COOLDOWN_TICKS;
+                return Outcome.FAILED;
+            }
+            noRoom = false;
             plan = next;
             plannedOn = inReach;
             this.wanted = Map.copyOf(wanted);
@@ -263,7 +274,9 @@ public final class Crafter {
                     // The plan didn't make what it found standing: gone out of reach, it's planned again.
                     new Guard("a station it planned on still in reach", () -> plannedOn.stream()
                             .allMatch(s -> usable(this.world, this.soldier, s).isPresent())),
-                    new Guard("a hostile near", () -> !this.threatened || finishingWeapon())));
+                    new Guard("a hostile near", () -> !this.threatened || finishingWeapon()),
+                    // A step's make took the last free slot - planks, sticks - and the next has nowhere to go.
+                    new Guard("room in its pack for what it makes", () -> !noRoom)));
         }
         return switch (script.tick()) {
             case Script.Status.Running() -> Outcome.WORKING;
@@ -273,6 +286,12 @@ public final class Crafter {
                 yield Outcome.MADE;
             }
             case Script.Status.Interrupted(String step, String guard) -> {
+                if (noRoom) {
+                    failure = "can't make " + describe(this.wanted) + ": no room in its pack for it";
+                    LOG.warn("{} {} at '{}' - {}", name, failure, step, inventory.summary());
+                    end(COOLDOWN_TICKS);
+                    yield Outcome.FAILED;
+                }
                 if (!asked.equals(this.wanted)) {
                     // What changed, so a run dropped over and over shows why: live, a loaf was
                     // started and dropped 518 times, and the log never said what it was asked instead.
@@ -314,6 +333,11 @@ public final class Crafter {
         return steps;
     }
 
+    /** Whether the pack has a slot with nothing in it. */
+    private boolean slotFree() {
+        return java.util.stream.IntStream.rangeClosed(Inventory.MAIN_FIRST, Inventory.HOTBAR_LAST).anyMatch(slot -> inventory.itemAt(slot) < 0);
+    }
+
     /** A batch in rounds, each as many crafts at once as the stacks allow, each confirmed by more of what it makes. */
     private Step craft(Batch batch, boolean atTable) {
         Recipe recipe = batch.recipe();
@@ -325,6 +349,10 @@ public final class Crafter {
             } else {
                 close(); // the grid's clicks go nowhere while another window is open
                 window = 0;
+            }
+            if (!slotFree()) {
+                noRoom = true;
+                return new Expect("room in its pack for " + recipe.makes(), () -> false);
             }
             int crafts = (batch.yield() - made[0] + recipe.yield() - 1) / recipe.yield();
             int before = inventory.count(recipe.makes());

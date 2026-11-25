@@ -111,7 +111,11 @@ In short:
 
 ## Keeping itself going
 These are routines, one at a time by priority ([routines.md](routines.md)).
-- **Eats and hunts** when hungry ([military-doctrine.md § 4](../../military-doctrine.md#4-reports-upward)).
+- **Eats and hunts** when hungry ([military-doctrine.md § 4](../../military-doctrine.md#4-reports-upward)) - never an
+  animal the force brought in: within 16 blocks of where a scout mission wanted them, or of an animal farm's middle, it is
+  stock (`WorldView.stockAt`). No meal with a creeper within 8 blocks, seen or not (`Rations.creeperNear`).
+- **Scouts for animals and leads them in** on its squad's scout mission (`bot.supply.Herder`): its own sector of the
+  ground, the kind's food in hand, none led over water - where the land ends it says.
 - **Makes its kit** by the equipment ladder, when the squad leader allows it, and **stands to**
   with free hands: best armour on, best weapon in hand ([military-doctrine.md § 11](../../military-doctrine.md#11-pre-combat-checks)).
 - **Picks up** what lies near it once nothing threatens: string, feathers, a dead squadmate's kit.

@@ -32,6 +32,15 @@ final class Slots {
         return inventory.setSlot(slot, new int[]{item.get().itemId(), item.get().count()}, named);
     }
 
+    /** {@code it} in {@code set} exactly while {@code in}: membership that follows a condition, cycle by cycle. */
+    static <T> void member(java.util.Set<T> set, T it, boolean in) {
+        if (in) {
+            set.add(it);
+        } else {
+            set.remove(it);
+        }
+    }
+
     /** One routine's turn at the soldier's hands. */
     static Hands.Turn turn(BooleanSupplier active, Consumer<Boolean> tick) {
         return new Hands.Turn() {

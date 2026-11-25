@@ -51,6 +51,8 @@ public final class Contact {
         GETS_CLEAR("gets clear: the exchange lost, hand to hand"),
         /** An archer out of contact, not shooting, that can't be closed on: let be, and the work goes on. */
         PAST_ARCHER("carries on: an archer out of contact, not shooting, with no way to close on it"),
+        /** An archer that hasn't shot in {@link #QUIET_SECONDS} s, with no walk to it: it has no shot, and is no contact. */
+        QUIET_ARCHER("carries on: an archer with no shot in " + QUIET_SECONDS + " s and no way to close on it"),
         /** An archer out-fights a bare hand from any range: out of its sight, and kept out. */
         COVER_UNARMED("takes cover: an archer, and no melee weapon"),
         /** The crossing under its fire and the blows to kill it outlast the soldier. */
@@ -77,7 +79,7 @@ public final class Contact {
 
         /** Whether the hostile is no contact at all: the soldier follows its order as if it weren't there. */
         public boolean letsBe() {
-            return this == NO_WAY || this == OVERHEAD;
+            return this == NO_WAY || this == OVERHEAD || this == QUIET_ARCHER;
         }
 
         /** Whether it gets out of an archer's sight. */
@@ -102,15 +104,17 @@ public final class Contact {
      * @param shieldUp  whether its shield is raised - no sprint under it, till the bow brings it down
      * @param clearing  whether it's already getting clear of the first hostile, a creeper it came within the blast of
      * @param standoff  ticks that creeper has held it backing off so far
+     * @param quiet     whether this contact has gone {@link #QUIET_SECONDS} s with the soldier neither hurt nor seeing an arrow come
      */
     public record Situation(Position at, double health, Kit kit, List<TrackedEntity> threats, boolean underFire, boolean begun,
                             boolean closing, boolean boxedIn, boolean wet, boolean fit, boolean shieldUp, boolean clearing,
-                            int standoff) {
+                            int standoff, boolean quiet) {
 
         /** What of this is so, in the words the table of evals names them by: a logged contact is a row. */
         public String facts() {
             return java.util.stream.Stream.of(underFire ? "under-fire" : "", begun ? "begun" : "", closing ? "" : "stalled",
-                    boxedIn ? "boxed-in" : "", wet ? "wet" : "", fit ? "" : "unfit", shieldUp ? "shield-up" : "", clearing ? "clearing" : "")
+                    boxedIn ? "boxed-in" : "", wet ? "wet" : "", fit ? "" : "unfit", shieldUp ? "shield-up" : "", clearing ? "clearing" : "",
+                    quiet ? "quiet" : "")
                     .filter(f -> !f.isEmpty()).collect(java.util.stream.Collectors.joining(" "));
         }
     }
@@ -189,6 +193,12 @@ public final class Contact {
 
     /** How near an archer a soldier with no way clear of it assaults: inside this the archer itself backs off to shoot. */
     public static final double NEAR_AMBUSH = 4;
+    /**
+     * How long an archer that hasn't hurt the soldier nor loosed an arrow it saw is taken to have no shot at it. Held in
+     * cover from one no walk reaches, the soldier is held for good: the archer shuffles in and out of the contact
+     * radius, the answer goes between cover and carrying on with it, and the soldier's squad stays in contact.
+     */
+    public static final int QUIET_SECONDS = 30;
 
     /**
      * What the soldier does about the first of {@code s.threats()}, which must not be empty. The rules, first that
@@ -200,7 +210,8 @@ public final class Contact {
      * <li>A creeper: gone past outside its blast, got clear of within it, closed on once it has held the soldier there.
      * <li>One fought only at hand, and no weapon: backed off from.
      * <li>One that fights hand to hand: fought unless the exchange is lost ({@link Engagement#melee}).
-     * <li>An archer: let be when it's out of contact, not shooting, the soldier unhurt and no way to close on it;
+     * <li>An archer: no contact once it hasn't shot in {@link #QUIET_SECONDS} s, no walk reaches it and the soldier isn't hurt; let be when
+     *     it's out of contact, not shooting, the soldier unhurt and no way to close on it;
      *     covered from with no melee weapon, the exchange lost ({@link Engagement#archer}), it well below, or no walk
      *     to it; else closed on and fought. Boxed in within {@link #NEAR_AMBUSH} of it: fought, with what it has.
      * </ol>
@@ -242,6 +253,9 @@ public final class Contact {
         if (!nearest.shoots()) {
             Engagement.Kind exchange = Engagement.melee(s.health(), s.kit(), range, s.begun(), pace(s.boxedIn(), false, sprints));
             return exchange != Engagement.Kind.ENGAGE ? Response.GETS_CLEAR : armed ? Response.FIGHTS : Response.FIGHTS_BARE;
+        }
+        if (s.quiet() && !s.underFire() && s.health() >= HURT_HEALTH && ground.pinned(threat)) {
+            return Response.QUIET_ARCHER;
         }
         boolean below = threat.y() < s.at().y() - ARCHER_BELOW;
         if (armed && range > CONTACT_RADIUS && !s.underFire() && s.health() >= HURT_HEALTH && (below || ground.pinned(threat))) {

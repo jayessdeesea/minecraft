@@ -49,6 +49,14 @@ public interface OperatorCommands {
     }
 
     /**
+     * A squad sent to look round block ({@code x}, {@code z}) for {@code animal} - sheep, cow or chicken - and lead what
+     * it finds to block ({@code toX}, {@code toZ}). Not every implementation gives it.
+     */
+    default String giveScoutMission(String animal, int x, int z, int toX, int toZ) {
+        throw new UnsupportedOperationException("no scout missions here");
+    }
+
+    /**
      * The farm mission open on chunk ({@code chunkX}, {@code chunkZ}) cancelled: its phases not done closed SUPERSEDED,
      * {@code reason} kept in each row's why, none deleted - and not taken up again after a restart.
      */

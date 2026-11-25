@@ -356,7 +356,8 @@ class FarmMissionSimulationTest {
         }
         assertEquals(List.of(ObjectiveRecord.State.DONE, ObjectiveRecord.State.DONE, ObjectiveRecord.State.DONE, ObjectiveRecord.State.DONE),
                 rows.stream().filter(r -> r.step() < 4).map(ObjectiveRecord::state).toList(), "its ground and its head done: " + rows + missionLines);
-        assertEquals(ObjectiveRecord.State.UNDER_WAY, rows.stream().filter(r -> r.step() == 4).findFirst().orElseThrow().state(), "its shaft under way: " + rows + missionLines);
+        // Two hours on, its squad is down it still, or has cut every level and its ore: with one order down the mine it mines it dry inside them.
+        assertTrue(List.of(ObjectiveRecord.State.UNDER_WAY, ObjectiveRecord.State.DONE).contains(rows.stream().filter(r -> r.step() == 4).findFirst().orElseThrow().state()), "its shaft under way, or mined dry: " + rows + missionLines);
         long below = 0;
         for (int x = MINESHAFT.minX(); x <= MINESHAFT.minX() + 15; x++) {
             for (int z = MINESHAFT.minZ(); z <= MINESHAFT.minZ() + 15; z++) {

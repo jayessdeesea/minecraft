@@ -335,6 +335,7 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
             case Objective.Task.Keep() -> "KEEP";
             case Objective.Task.Floor(var layer) -> "FLOOR"; // the farm mission's, never the model's to give
             case Objective.Task.Stores() -> "STORES"; // the supply point mission's, never the model's to give
+            case Objective.Task.Scout(var mission) -> "SCOUT"; // the operator's scout mission's, never the model's to give
         };
         // The mission in quotes, its ground apart: written as "<mission> at <place>", the model copied
         // the whole of it into its next mission, and the place grew a clause with every decision.

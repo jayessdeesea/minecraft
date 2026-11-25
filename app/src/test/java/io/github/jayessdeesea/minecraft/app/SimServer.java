@@ -389,16 +389,13 @@ final class SimServer {
             }
         }
 
+        /** The chunks this soldier has been sent: those in view of where it joined, and of where it has walked since. */
+        private final SimChunks served = new SimChunks();
+
         void join() {
             listeners.onRegistry().accept("minecraft:world_clock", List.of("minecraft:overworld"));
             listeners.onRegistry().accept("minecraft:enchantment", List.of());
-            int cx = Math.floorDiv((int) Math.floor(position.x()), 16);
-            int cz = Math.floorDiv((int) Math.floor(position.z()), 16);
-            for (int dx = -VIEW; dx <= VIEW; dx++) {
-                for (int dz = -VIEW; dz <= VIEW; dz++) {
-                    listeners.onChunkUpdate().accept(chunk(cx + dx, cz + dz));
-                }
-            }
+            served.comeIntoView(position.x(), position.z(), VIEW).forEach(c -> listeners.onChunkUpdate().accept(chunk(c[0], c[1])));
             listeners.onPlayerPosition().accept(position);
             sendInventory();
             listeners.onHealth().accept(new HealthUpdate(20, 20));
@@ -479,6 +476,7 @@ final class SimServer {
         @Override
         public void reportPosition(double x, double y, double z, float yaw, float pitch, boolean onGround) {
             position = new PlayerPosition(x, y, z);
+            served.comeIntoView(x, z, VIEW).forEach(c -> listeners.onChunkUpdate().accept(chunk(c[0], c[1]))); // as it crosses a chunk line
             // Trampling, as vanilla's farmland: landing on it from more than half a block turns it to
             // dirt (vanilla: a chance of the fall less half a block; here always).
             peakY = Math.max(peakY, y);

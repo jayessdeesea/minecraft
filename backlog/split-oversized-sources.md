@@ -9,10 +9,10 @@ doctrine: docs/conventions.md (source files under 1000 lines); docs/echelons/ten
 
 ## Why
 The operator's (2026-11-18): source files stay under 1000 lines. `ArchitectureTest.OVER_THE_LIMIT` lists the files
-over it, each capped at its length then, to shrink to under. One is left: `app.SoldierRunner`, 7943 lines, most of it
+over it, each capped at its length then, to shrink to under. One is left: `app.SoldierRunner`, 7928 lines, most of it
 two methods - `orderSquad` (the squad loop, about 1300 lines) and `onJoined` (each soldier's tick, about 1200). Three
-more sit at the limit, where the next edit fails the build: `bot.DeterministicSoldier` (989), `app.ChainOfCommand`
-(998) and the test `app.SimServer` (1000 - the ratchet fails a file past 1000 that isn't listed).
+more sit at the limit, where the next edit fails the build: `bot.DeterministicSoldier` (971), `app.ChainOfCommand`
+(999) and the test `app.SimServer` (998 - the ratchet fails a file past 1000 that isn't listed).
 
 ## How it's worked
 One step a refactor pass (docs/conventions.md, "Refactor every sixteenth commit, between profiles"), chosen by

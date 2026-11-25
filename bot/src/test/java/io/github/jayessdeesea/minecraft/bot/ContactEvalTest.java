@@ -244,6 +244,16 @@ class ContactEvalTest {
                 r("Jack's at 3.2 off, not boxed in: cover", "stone_sword", 0, 3, "skeleton", 2.7, 1.7, "under-fire stalled", COVER_EXCHANGE_LOST),
                 r("Liam's, boxed in, no walk to the skeleton: nothing to assault by", "bow0", 4, 20, "skeleton", 3.3, -1.7, "boxed-in under-fire begun pinned", COVER_UNARMED),
                 r("Jack's at 3.2 off, boxed in, no walk to it", "stone_sword", 0, 3, "skeleton", 2.7, 1.7, "boxed-in under-fire stalled pinned", COVER_EXCHANGE_LOST),
+                // --- An archer with no shot. Alice (field742): down a gallery, a skeleton 7.3 to 9.3 off through the rock
+                // with no walk to it and not one arrow in 32 minutes - cover inside the contact radius, carrying on outside
+                // it, back and forth every few seconds, her squad in contact all the while and its recovery drill held.
+                r("Alice: a skeleton 7.7 off, no walk to it, not shooting, the contact new: cover", "stone_sword+bow0", 3, 20, "skeleton", 7.4, -2, "begun stalled pinned", COVER_EXCHANGE_LOST),
+                r("Alice's, 30 s on and not an arrow: no contact", "stone_sword+bow0", 3, 20, "skeleton", 7.4, -2, "begun stalled pinned quiet", QUIET_ARCHER),
+                r("Alice's, quiet, the skeleton outside the contact radius: no contact still", "stone_sword+bow0", 3, 20, "skeleton", 8.6, -2, "begun stalled pinned quiet", QUIET_ARCHER),
+                r("Alice's, quiet, at 4 health: cover still - hurt, one more arrow is not chanced", "stone_sword+bow0", 3, 4, "skeleton", 7.4, -2, "begun stalled pinned quiet", COVER_NO_ROUTE),
+                r("Alice's, quiet, no melee weapon: no contact", "bow0", 3, 20, "skeleton", 7.4, -2, "begun stalled pinned quiet", QUIET_ARCHER),
+                r("Alice's, quiet till an arrow comes: cover", "stone_sword+bow0", 3, 20, "skeleton", 7.4, -2, "under-fire begun stalled pinned", COVER_EXCHANGE_LOST),
+                r("quiet, but a walk to it: its answer as ever", "stone_sword+bow0", 3, 20, "skeleton", 7.4, -2, "begun stalled quiet", COVER_EXCHANGE_LOST),
                 r("stone sword, whole, boxed in, a skeleton 10 off: no getting away, closed on", "stone_sword", 0, 20, "skeleton", 10, 0, "boxed-in under-fire begun", FIGHTS),
                 r("bare hands, boxed in, a skeleton 7 off: still cover", "none", 0, 20, "skeleton", 7, 0, "boxed-in under-fire begun", COVER_UNARMED),
                 r("a bow alone, a skeleton 5 below: shot", "bow", 0, 20, "skeleton", 6, -5, "", SHOOTS));
@@ -349,6 +359,7 @@ class ContactEvalTest {
                 "backs off: no weapon against one that fights only at hand",
                 "gets clear: the exchange lost, hand to hand",
                 "carries on: an archer out of contact, not shooting, with no way to close on it",
+                "carries on: an archer with no shot in 30 s and no way to close on it",
                 "takes cover: an archer, and no melee weapon",
                 "takes cover: an archer, the exchange lost",
                 "takes cover: an archer 4.0 or more below",
@@ -365,7 +376,7 @@ class ContactEvalTest {
         TrackedEntity one = new TrackedEntity(1, HostileMobRegistry.typeIdOf(hostile), new Position(across, 64 + up, 0));
         Contact.Situation situation = new Contact.Situation(at, health, kit(weapon, armour), List.of(one), said.contains("under-fire"),
                 said.contains("begun"), !said.contains("stalled"), said.contains("boxed-in"), said.contains("wet"),
-                !said.contains("unfit"), said.contains("shield-up"), said.contains("clearing"), standoff);
+                !said.contains("unfit"), said.contains("shield-up"), said.contains("clearing"), standoff, said.contains("quiet"));
         return Contact.respond(situation, new Contact.Ground() {
             @Override
             public boolean noWalkTo(Position p) {

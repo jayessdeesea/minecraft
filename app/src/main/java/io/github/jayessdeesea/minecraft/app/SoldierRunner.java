@@ -730,6 +730,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Optional<TreeFarm> grove = campTrees.grove(world, at, campFarm, clockwork.millis()).or(() -> TreeFarm.site(world, at, CAMP_RADIUS)); // close (CampTrees); right after food (operator, 2026-11-14), with the keep's
         chunkLedger.measure(world, campFarm, campTrees.chunk(), clockwork.millis()); // the platoon leader's chunk register, as the world shows it
         chainOfCommand.farmMissions.measure(world, campFarm, campFarms, campTrees, clockwork.millis()); world.farmlandGivenUp(chainOfCommand.farmMissions.farmlandGivenUp()); // the operator's farm measured, its chunk's farmland given up
+        world.stockKept(chainOfCommand.scoutMissions.stockKept(chainOfCommand.farmMissions.built())); // animals brought in are stock, not game
         TreeFarm keepTrees = campTrees.chunk().isPresent() ? null : keepState.grove; // not walked 200 blocks to while the camp has its own
         long trees = grove.map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).count()).orElse(0L)
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
@@ -3733,21 +3734,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 clearing.put(soldier, d.tunnel() && !d.cells().isEmpty() ? Clearing.toCut(world, d.cells())
                         : Clearing.toClear(world, d.box(), Kept.of(d.except()), d.tunnel()));
                 clearingStrip.put(soldier, d.box());
-                if (d.tunnel()) {
-                    clearingTunnel.add(soldier);
-                } else {
-                    clearingTunnel.remove(soldier);
-                }
+                Slots.member(clearingTunnel, soldier, d.tunnel());
                 filling.remove(soldier);
                 groundGather.remove(soldier);
             }
             case Order.Fill f -> {
                 filling.put(soldier, Stream.concat(Clearing.waterIn(world, f.box(), f.except()).stream(), Clearing.toFill(world, f.box(), f.except()).stream()).toList()); // its water first, the fill counts it floor
-                if (f.stoneOnly()) {
-                    stoneFilling.add(soldier);
-                } else {
-                    stoneFilling.remove(soldier);
-                }
+                Slots.member(stoneFilling, soldier, f.stoneOnly());
                 if (f.material() == Order.Fill.Material.SOIL) {
                     soilFilling.add(soldier);
                 } else {
@@ -4633,7 +4626,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .filter(st -> from.y() < st.head().y() - MINE_BELOW && Math.hypot(from.x() - st.head().x(), from.z() - st.head().z()) <= MINE_GALLERY_REACH).findFirst();
             // But a sealed cave - closed, all under the ground, none of it by a mine's stairs - is dug out of (operator, 2026-11-20; field497, Eli at y=20).
             boolean offItsStairs = closedPocket(from, walkable) && walkable.stream().allMatch(c -> buried(new Position(c.x() + 0.5, c.y(), c.z() + 0.5))) && mine.map(m -> walkable.stream().noneMatch(c -> Math.hypot(c.x() - m.head().x(), c.z() - m.head().z()) <= MINE_STAIR_REACH)).orElse(true);
-            if (cells <= CUT_OFF_CELLS || mine.isEmpty() && (below || buried) || offItsStairs) {
+            if (cells <= CUT_OFF_CELLS || (mine.isEmpty() || cutOff.cutOff(s.name(), now)) && (below || buried) || offItsStairs) { // CutOff: in no mine's galleries
                 walksSaid.remove(s.name());
                 return Recovery.stranded(s) ? s : new SoldierStatus(s.name(), s.position(), s.order(), new Report.Cantco(String.format(Locale.ROOT,
                         "no route from (%.0f, %.0f, %.0f): cut off in a pocket of %d cells", from.x(), from.y(), from.z(), cells)), s.condition());
@@ -5621,11 +5614,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             long now = clockwork.millis();
             // The recovery drill's order - its own stair or cut, or a squadmate's - over its ground work:
             // live, a builder in a dead end at the mine's bottom kept its strip's dig over the stair out.
-            if (state.recovery.recovering(soldierName)) {
-                recovering.add(soldierName);
-            } else {
-                recovering.remove(soldierName);
-            }
+            Slots.member(recovering, soldierName, state.recovery.recovering(soldierName));
             Order work = state.recovery.ordered(soldierName) ? null : ground.get(soldierName);
             if (work != null && !state.relieved(soldierName, keepState.hands.contains(soldierName) ? keepTask(work) : groundTask(work), now)) {
                 // The task's now, not the upkeep's: left the upkeep's, the upkeep would drop it again
@@ -5689,11 +5678,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // The stockpile first, when it was last seen holding a load: one squad's quarrying is another's wall.
                 boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() >= WALL_BLOCKS_LOAD).orElse(false)
                         && stockpileFor(soldierName).isPresent();
-                if (stocked && diggingForWall.contains(soldierName)) {
-                    drawingStone.add(soldierName);
-                } else {
-                    drawingStone.remove(soldierName);
-                }
+                Slots.member(drawingStone, soldierName, stocked && diggingForWall.contains(soldierName));
                 if (bricks != null && diggingForWall.contains(soldierName) && !stocked) {
                     // Nothing to build with: dirt, dug outside the wall so the ground inside stays whole -
                     // each mason on its own side, so one pit isn't dug out under all of them.
@@ -5856,6 +5841,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 continue;
             }
             Order given = eased.get(i);
+            // On the operator's scouting: where its herder walks (app.ScoutMissions), and no game hunted - the animals are the mission's.
+            Optional<Order> scouting = chainOfCommand.scoutMissions.order(squadName, i, statuses, objectiveOf(squadName), world, squadInContact, huntAllowed);
+            if (scouting.isPresent()) { byName.get(soldierName).receiveOrder(scouting.get()); continue; }
             // On patrol: round the objective's ground, waypoint to waypoint, each soldier at its own
             // point of the round - moving, on watch. Contact takes over as it always does.
             if (!patrolRound.isEmpty() && !squadInContact && !(given instanceof Order.Place)) {
@@ -6814,11 +6802,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // while draws looked only in the main depot's - and three soldiers wore none.
             MetalPool.Plan own = MetalPool.plan(inventory, rung, chainOfCommand.stores());
             int rawCarried = inventory.count(ItemClass.RAW_IRON) + inventory.count(ItemClass.RAW_COPPER);
-            if (smelter && rawCarried + inventory.count(ItemClass.IRON_INGOT) + inventory.count(ItemClass.COPPER_INGOT) > 0) {
-                smelterCarries.add(name);
-            } else {
-                smelterCarries.remove(name);
-            }
+            Slots.member(smelterCarries, name, smelter && rawCarried + inventory.count(ItemClass.IRON_INGOT) + inventory.count(ItemClass.COPPER_INGOT) > 0);
             // The smelter draws raw ore - all the nearest chest holds of one metal, up to a stack - and
             // keeps it to smelt; the ingots it makes go in as anyone's do.
             Optional<ItemClass> toSmelt = !smelter || rawCarried > 0 ? Optional.empty()
@@ -7091,7 +7075,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }));
             turns.put(Hands.Routine.RATIONS, turn(rations::active, free -> {
                 rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD),
-                        status.condition().map(c -> c.health() < Condition.MAX_HEALTH).orElse(false), free && (!threatened || soldier.eatsInCover()),
+                        status.condition().map(c -> c.health() < Condition.MAX_HEALTH).orElse(false), free && (!threatened || soldier.eatsInCover()) && !Rations.creeperNear(world, status.position()),
                         soldier.yaw(), soldier.pitch());
                 // Its pack kept for what's worth more: surplus seeds thrown away, between meals.
                 // A mine's cutter keeps only its backfill's bulk: the ore comes first (the rules of a mine).
@@ -7127,7 +7111,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Position huntGround = huntGrounds.getOrDefault(name, status.position());
             int food = status.condition().map(Condition::food).orElse(Condition.MAX_FOOD);
             boolean gameNear = (hungry || shortOfFood) && Hunter.gameInSight(world, huntGround, food, quarry);
-            boolean huntWanted = (hungry || wantsFeathers || wantsWool || shortOfFood && gameNear) && huntAllowed.contains(name) && !inContact;
+            boolean huntWanted = (hungry || wantsFeathers || wantsWool || shortOfFood && gameNear) && huntAllowed.contains(name) && !inContact && !chainOfCommand.scoutMissions.scouts(name);
             // Short with no means of its own - no wheat to bake, no game in sight - it's the squad's
             // to solve: a squadmate shares, or the squad asks for food (Class I RED).
             boolean stockpiledFood = chainOfCommand.stockpile().map(st -> st.rations() > 0).orElse(false) && stockpileFor(name).isPresent();
@@ -7135,15 +7119,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean foodlessNow = shortOfFood && inventory.count(ItemClass.WHEAT) < 3 && !gameNear && !stockpiledFood;
             FarmPlan forage = foragers.plotFor(name, world, status.position(), taskOf(definition.squad(), Objective.Task.Forage.class).isPresent()
                     && dutyBook.of(name).filter(DutyOrder::farm).isEmpty() && eating != null && eating.rations() < Subsistence.BASIC_LOAD).orElse(null);
-            if (foodlessNow && forage == null) {
-                foodless.add(name);
-            } else {
-                foodless.remove(name);
-            }
+            Slots.member(foodless, name, foodlessNow && forage == null);
             // And a meal carried comes before either: live, a soldier on a stone run back to back sat at food 0 with two rations in its pack.
             boolean foodCalls = huntWanted && !hunter.active()
                     && Hunter.gameInSight(world, huntGround, food, quarry)
-                    || !rations.active() && !threatened && inventory.slotOf(ItemClass.FOOD) >= 0
+                    || !rations.active() && !threatened && inventory.slotOf(ItemClass.FOOD) >= 0 && !Rations.creeperNear(world, status.position())
                     && Rations.wantsMeal(food, status.condition().map(c -> c.health() < Condition.MAX_HEALTH).orElse(false));
             turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), huntGround,
                     Hunter.radius(food), quarry, world, free && huntWanted,
@@ -7152,6 +7132,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         LOG.info("{} strikes the animal it hunts, entity {}", name, target);
                         session.attack(target);
                     })));
+            turns.put(Hands.Routine.HERDER, chainOfCommand.scoutMissions.turn(name, unitOf(name, definition.squad()), session, inventory, status.position(), world, threatened));
             turns.put(Hands.Routine.ARMOURER, turn(armourer::active,
                     free -> armourer.tick(status.position(), world, free ? craftable : Set.of(), threatened, workshop, dutyBook.table(name))));
             turns.put(Hands.Routine.BUILDER, turn(() -> fort != null && fort.allInside() && !builder.done(), free -> {
@@ -7258,6 +7239,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     depositor.tickDraw(status.position(), chestHolding(ItemClass.DIRT, status.position()), ItemClass.DIRT, Tasking.LOAD, free && !threatened);
                 } else if (farmer.outOfSeeds() && chestHolding(ItemClass.SEEDS, status.position()).isPresent()) { // its sowing's seeds, drawn (field603)
                     depositor.tickDraw(status.position(), chestHolding(ItemClass.SEEDS, status.position()), ItemClass.SEEDS, SEEDS_DRAWN, free && !threatened);
+                } else if (chainOfCommand.scoutMissions.draws(name).flatMap(k -> chestHolding(k, status.position())).isPresent()) { // its scouting's food, drawn
+                    ItemClass lure = chainOfCommand.scoutMissions.draws(name).orElseThrow();
+                    depositor.tickDraw(status.position(), chestHolding(lure, status.position()), lure, ScoutMissions.FOOD_DRAWN, free && !threatened);
                 } else if (unstash.isPresent()) {
                     depositor.tickDraw(status.position(), Optional.of(unstash.get().chest()), unstash.get().ore(), unstash.get().carry(),
                             free && !threatened);
@@ -7595,6 +7579,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     : stuckInWater ? new Report.Cantco(String.format(Locale.ROOT, "no route from (%d, %d, %d) out of the water",
                             ax, (int) Math.floor(at.y()), az))
                     : hunter.active() ? new Report.Hunting()
+                    : chainOfCommand.scoutMissions.report(name).isPresent() ? chainOfCommand.scoutMissions.report(name).get()
                     // A ground-work command is reported as itself, between one cut and the next too: live,
                     // a soldier keeping the camp between cuts reported its lamplighter's CANTCO, raised anew
                     // each cycle. A dirt run from the drill has no gather objective behind it.

@@ -19,21 +19,22 @@ squad's state, recomputed every squad cycle.
 | 4 | `RATIONS` (`Rations`) | Eats. | Hungry, with food carried. |
 | 5 | `SEALER` (`Builder`) | Puts blocks in the water round it, sources first, to stop the flow and climb out. | Stuck in water. |
 | 6 | `HUNTER` (`Hunter`) | Kills an animal for meat. | Hungry by day with nothing to eat ([§ 4](../../military-doctrine.md#4-reports-upward)). |
-| 7 | `ARMOURER` (`Armourer`, `Crafter`) | Makes the next rung of the equipment ladder; its walk to a table, furnace or the workshop holds the hands too, given up after 60 s with it no nearer. | Out of contact: the weapon or pickaxe it has none of on its own, the ladder with the squad leader's `rearm` ([§ 11](../../military-doctrine.md#11-pre-combat-checks)). |
-| 8 | `BUILDER` (`Builder`) | Walls and roofs a patrol base round the squad. | `PATROL_BASE`, all the squad inside the outline ([§ 14](../../military-doctrine.md#14-patrol-base)). |
-| 9 | `FIXTURES` (`Fixtures`, `Builder`) | Puts up a template's fixtures - fence posts, gates, torches, a table, furnaces, chests - each in the cell its layout names, a kind at a time; what it's short of its armourer makes. | Its squad's objective a supply point's template (`STORES`). |
-| 10 | `PLACING` (`Builder`) | Fills a structure the engineer laid out, cell by cell, standing where each needs. | `Order.Place` ([orders](orders.md)). |
-| 11 | `DEPOSITOR` (`Depositor`) | Takes a full load to the stockpile chest. | A full load of logs or cobblestone. |
-| 12 | `HANDOVER` (`Handover`) | Throws logs, food or a spare weapon to a squadmate. | Cross-levelling ([§ 13](../../military-doctrine.md#13-cross-leveling)). |
-| 13 | `MINER` (`Miner`) | Cuts the spiral staircase a step at a time, mining ore beside it. | `MINE`: the squad's first soldier with a pickaxe ([§ 16](../../military-doctrine.md#16-mining-down)). |
-| 14 | `CLEARER` (`Clearer`, `Digger`) | Digs every block of its box: trees from the foot up, ground from the top down. | `Order.Dig` ([orders](orders.md), [§ 15](../../military-doctrine.md#15-securing-the-camp)). |
-| 15 | `FILLER` (`Filler`, `Builder`) | Fills the open cells of its box, lowest first. | `Order.Fill`. Out of blocks, an `Order.Gather` of SOIL instead. |
-| 16 | `MASON` (`Mason`) | Builds the wall round a camp. | `FORTIFY` ([§ 15](../../military-doctrine.md#15-securing-the-camp)). Out of blocks, it digs dirt first (`GATHERER`). |
-| 17 | `LAMPLIGHTER` (`Lamplighter`) | Puts torches on the dark ground. | `SECURE`. |
-| 18 | `FARMER` (`Farmer`) | Tills, plants and harvests the farm. | `FARM`; on `FORAGE`, its plot of the ripe wheat round the camp (`Forage`). |
-| 19 | `FORESTER` (`Forester`) | Plants saplings. | `TREE_FARM`. |
-| 20 | `GATHERER` (`Gatherer`, `Digger`) | Chops logs, quarries stone, digs dirt. | `WOOD`/`STONE` (Gather), an `Order.Gather`, or a routine short of material ([§ 12](../../military-doctrine.md#12-gathering-materials)). |
-| 21 | `SCAVENGER` (`Scavenger`) | Picks up dropped items nearby. | Nothing threatening. |
+| 7 | `HERDER` (`Herder`, `app.ScoutMissions`) | Leads animals in on their food: walks its sector's legs, goes up to the kind's animals with the food in hand, walks them to where they're wanted at the pace they keep. The hands are its own while the food is to be in hand. | Its squad on the operator's scout mission (`SCOUT`), the kind's food carried - drawn from a chest first by its `DEPOSITOR` when it has none. |
+| 8 | `ARMOURER` (`Armourer`, `Crafter`) | Makes the next rung of the equipment ladder; its walk to a table, furnace or the workshop holds the hands too, given up after 60 s with it no nearer. | Out of contact: the weapon or pickaxe it has none of on its own, the ladder with the squad leader's `rearm` ([§ 11](../../military-doctrine.md#11-pre-combat-checks)). |
+| 9 | `BUILDER` (`Builder`) | Walls and roofs a patrol base round the squad. | `PATROL_BASE`, all the squad inside the outline ([§ 14](../../military-doctrine.md#14-patrol-base)). |
+| 10 | `FIXTURES` (`Fixtures`, `Builder`) | Puts up a template's fixtures - fence posts, gates, torches, a table, furnaces, chests - each in the cell its layout names, a kind at a time; what it's short of its armourer makes. | Its squad's objective a supply point's template (`STORES`). |
+| 11 | `PLACING` (`Builder`) | Fills a structure the engineer laid out, cell by cell, standing where each needs. | `Order.Place` ([orders](orders.md)). |
+| 12 | `DEPOSITOR` (`Depositor`) | Takes a full load to the stockpile chest. | A full load of logs or cobblestone. |
+| 13 | `HANDOVER` (`Handover`) | Throws logs, food or a spare weapon to a squadmate. | Cross-levelling ([§ 13](../../military-doctrine.md#13-cross-leveling)). |
+| 14 | `MINER` (`Miner`) | Cuts the spiral staircase a step at a time, mining ore beside it. | `MINE`: the squad's first soldier with a pickaxe ([§ 16](../../military-doctrine.md#16-mining-down)). |
+| 15 | `CLEARER` (`Clearer`, `Digger`) | Digs every block of its box: trees from the foot up, ground from the top down. | `Order.Dig` ([orders](orders.md), [§ 15](../../military-doctrine.md#15-securing-the-camp)). |
+| 16 | `FILLER` (`Filler`, `Builder`) | Fills the open cells of its box, lowest first. | `Order.Fill`. Out of blocks, an `Order.Gather` of SOIL instead. |
+| 17 | `MASON` (`Mason`) | Builds the wall round a camp. | `FORTIFY` ([§ 15](../../military-doctrine.md#15-securing-the-camp)). Out of blocks, it digs dirt first (`GATHERER`). |
+| 18 | `LAMPLIGHTER` (`Lamplighter`) | Puts torches on the dark ground. | `SECURE`. |
+| 19 | `FARMER` (`Farmer`) | Tills, plants and harvests the farm. | `FARM`; on `FORAGE`, its plot of the ripe wheat round the camp (`Forage`). |
+| 20 | `FORESTER` (`Forester`) | Plants saplings. | `TREE_FARM`. |
+| 21 | `GATHERER` (`Gatherer`, `Digger`) | Chops logs, quarries stone, digs dirt. | `WOOD`/`STONE` (Gather), an `Order.Gather`, or a routine short of material ([§ 12](../../military-doctrine.md#12-gathering-materials)). |
+| 22 | `SCAVENGER` (`Scavenger`) | Picks up dropped items nearby. | Nothing threatening. |
 
 Each routine has unit tests against a fake server that answers as the real one does
 (`FakeCraftingServer`, `FakeChestServer`, and the per-routine tests in `bot.supply`).

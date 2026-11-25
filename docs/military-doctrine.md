@@ -638,6 +638,11 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   sword, or its hands - unless it is out of a blow's reach with no walk to it. Past 4 blocks the exchange says, as for
   any soldier that can't get away: armed it closes, unarmed it keeps to what cover it has. Live, a soldier shut in down a mine with a bow and no arrows "took cover" where it stood for 37 seconds and
   was shot dead, and one in a pit at 3 health went between fighting and cover with the archer's range and did neither.
+- **An archer with no shot is no contact** (`Contact.QUIET_SECONDS`): one no walk reaches, that hasn't hurt the soldier
+  nor had an arrow in the air near it in 30 seconds, is let be at any range by a soldier at 10 health or more, and the
+  soldier's work - and its squad's - goes on; an arrow, and it is contact again. Hurt, it keeps its cover. Live, a soldier down a gallery was held 32 minutes by a skeleton through the rock:
+  cover inside the contact radius, carrying on outside it, as the skeleton shuffled across the line, her squad in
+  contact all the while.
 - **With no melee weapon an archer is fled at a sprint** - to cover in reach, else straight away - and on past
   its range, to 20 off, before the soldier goes back to its order (`DeterministicSoldier.FLED_PAST`): a walk away
   stays inside a skeleton's 15 blocks, and one that left contact at 9 off walked back into its arrows. In the
@@ -662,7 +667,9 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
 - **A lost exchange is a withdrawal, not a flight** (`Engagement.withdrawal`, `DeterministicSoldier.withdraw`): the
   soldier breaks contact - to cover from an archer, till cover proves none by its being seen or shot in it, else the
   heading that gains most - and keeps going while the hostile is near and in sight, or follows; clear of it, it holds
-  where it is. Held there out of contact, the runner's rations are eaten - and in cover from an archer that can't see
+  where it is. Held there out of contact, the runner's rations are eaten - never with a creeper within 8 blocks, seen
+  or not (`Rations.creeperNear`: a meal holds a soldier still a second and a half; live, one at 0 health began hers with
+  a creeper 7.8 off behind a pillar, and it blew as she finished) - and in cover from an archer that can't see
   it, nothing within a blow of it, hurt (`DeterministicSoldier.eatsInCover`; live, field666, Eli sat a minute in cover at
   1 health with 12 rations uneaten and was shot dead) - not in the open of a fight, so a soldier in a long one goes hungry - in the combat matrix three archer cells on hills fell to 83% when the body stopped eating mid-fight,
   as no live soldier does) and it heals; past its line - the health it would close at, not begun, with the margin

@@ -31,6 +31,8 @@ public final class Hands {
         SEALER,
         /** Killing an animal for food, with nothing left to eat. */
         HUNTER,
+        /** Leading animals in on their food, on its squad's scouting. */
+        HERDER,
         /** Making its own kit: a weapon, tools, armour. */
         ARMOURER,
         /** Walling in a patrol base. */

@@ -247,7 +247,9 @@ farm's and the wood's duties, routing), each under the 1000-line limit:
   one finished too fast is refused (`SimItems.dugTooFast`); a bucket's pour traces its ray as the server does, stopping
   at the first block that's neither air nor water - a crop or grass included (`SimBuckets`). Its animals stand where
   they spawn till a player within 10 blocks holds their kind's food, then walk after it, a block up or down, never
-  into water or off a drop (`SimAnimals`); `AnimalScoutEvalTest` walks `bot.supply.Herder` against them. What it
+  into water or off a drop (`SimAnimals`); `AnimalScoutEvalTest` walks `bot.supply.Herder` against them, and
+  `ScoutMissionSimulationTest` a squad on the operator's mission. A soldier is sent the chunks in view of where it
+  joins and those that come into view as it walks, each once, none unloaded behind it (`SimChunks`). What it
   doesn't model throws, naming the action.
 - **The platoon leader and squad leader are scripted**: a `PlatoonLeader` that hands out a fixed objective, and
   a `ChatModel` that answers a fixed `SquadOrder`.

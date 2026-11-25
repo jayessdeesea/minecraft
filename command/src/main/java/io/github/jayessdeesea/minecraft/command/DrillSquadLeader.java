@@ -17,8 +17,9 @@ import java.util.stream.Stream;
  *       stands, so a far objective is reached spot by spot. Not the objective itself when it's beyond
  *       the survey: behind a cliff or a ravine, that's an order nobody can reach.</li>
  *   <li><b>How:</b> WEDGE, the default for moving; FILE once the point man reports his route
- *       blocked (ATP 3-21.8: single file through close terrain). TIGHT at night and in a patrol
- *       base, NORMAL by day.</li>
+ *       blocked (ATP 3-21.8: single file through close terrain). Down a mine - from the first soldier that
+ *       reports mining - the order as it stood, in FILE, till the objective is another: the mine's rules place
+ *       each soldier there. TIGHT at night and in a patrol base, NORMAL by day.</li>
  *   <li><b>Risk:</b> LOW, and MEDIUM for one soldier whose CANTCO says a MEDIUM route exists - a
  *       stuck soldier freed for half his health at most.</li>
  *   <li><b>Rearm:</b> by day, out of contact - the squad's, over once no soldier has been in one for the settle time
@@ -56,6 +57,14 @@ public final class DrillSquadLeader implements SquadLeader, DecidesByRules {
     /** An objective given since the last decision: the reports at the next are of the last one's route. */
     private volatile boolean objectiveNew;
     private volatile Objective heldFor;
+    /**
+     * Where the squad's order points down {@link #minedFor}'s mine, from the first soldier of it that reported mining
+     * till the objective is another. Down a mine each soldier is placed by the mine's own rules - a cutter at its stand,
+     * the rest at the head or the landing - so the squad's order is one order, in file: a point read from whichever
+     * gallery was last surveyed, or a formation from a cutter's last report, is a new order every time and places nobody.
+     */
+    private volatile Position minedAt;
+    private volatile Objective minedFor;
 
     public DrillSquadLeader(String name) {
         this.name = name;
@@ -110,7 +119,15 @@ public final class DrillSquadLeader implements SquadLeader, DecidesByRules {
             heldAt = soldiers.getFirst().position();
             heldFor = current;
         }
-        Position at = point.orElse(heldAt);
+        if (minedFor != null && !current.equals(minedFor)) {
+            minedFor = null; // out of that mine: given it again, the squad is down it again when a soldier says so
+        }
+        if (current.task() instanceof Objective.Task.Mine && !current.equals(minedFor) && soldiers.stream().anyMatch(s -> s.report() instanceof Report.Mining)) {
+            minedAt = point.orElse(heldAt);
+            minedFor = current;
+        }
+        boolean downAMine = current.equals(minedFor);
+        Position at = downAMine ? minedAt : point.orElse(heldAt);
         boolean night = time != null && time.dark();
         // The squad's contact, over only once it has settled: a soldier's own report goes on and off between a contact's bursts.
         boolean inContact = squadInContact || soldiers.stream().anyMatch(s -> s.report() instanceof Report.InContact);
@@ -124,7 +141,7 @@ public final class DrillSquadLeader implements SquadLeader, DecidesByRules {
             routeBlockedFor = null;
         }
         boolean blocked = pointMan.name().equals(routeBlockedFor);
-        Formation formation = blocked && !(current.task() instanceof Objective.Task.Keep) ? Formation.FILE : Formation.WEDGE;
+        Formation formation = downAMine || blocked && !(current.task() instanceof Objective.Task.Keep) ? Formation.FILE : Formation.WEDGE;
         Interval interval = night || current.patrolBase() ? Interval.TIGHT : Interval.NORMAL;
         Map<String, Risk> soldierRisk = new HashMap<>();
         soldiers.stream().skip(1).filter(s -> s.report() instanceof Report.Cantco(String why) && why.contains("(MEDIUM risk)"))

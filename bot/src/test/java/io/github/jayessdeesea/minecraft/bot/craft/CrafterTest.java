@@ -115,6 +115,24 @@ class CrafterTest {
         assertEquals(1, server.count(ItemClass.RAW_COPPER), "the copper taken out, not left in the way");
     }
 
+    /**
+     * A pack with no slot free takes nothing made: in the squad simulation a mine's cutter with every slot full crafted
+     * a pickaxe with nowhere for it to go. Not begun, and said why.
+     */
+    @Test
+    void withNoSlotFreeNothingIsMadeAndItSaysSo() {
+        workshop();
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            server.give(slot, ItemClass.LOG, 64);
+        }
+
+        Outcome outcome = run(Map.of(Recipe.WOODEN_PICKAXE, 1), t -> false, 400);
+
+        assertEquals(Outcome.FAILED, outcome);
+        assertEquals("can't make 1 wooden pickaxe: no room in its pack for it", crafter.failure().orElse(""));
+        assertEquals(0, server.logged("opened CRAFTING_TABLE"));
+    }
+
     @Test
     void aSwordAndAPickaxeAtOneOpeningOfTheTable() {
         workshop();

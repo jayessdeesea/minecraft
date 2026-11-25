@@ -147,6 +147,22 @@ public final class WorldModel implements WorldView {
         return farmlandGivenUp.contains(io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm.key(Math.floorDiv(x, 16), Math.floorDiv(z, 16)));
     }
 
+    /** How near a place the force keeps animals one counts as stock: a chunk's corner from its middle, and the walk round a pen. */
+    public static final double STOCK_RADIUS = 16;
+
+    /** Where the force keeps the animals it has brought in, set each cycle (stockAt). */
+    private volatile List<Position> stockKept = List.of();
+
+    /** {@code places} the ones the force keeps animals at from now. */
+    public void stockKept(List<Position> places) {
+        stockKept = List.copyOf(places);
+    }
+
+    @Override
+    public boolean stockAt(Position at) {
+        return stockKept.stream().anyMatch(p -> Math.hypot(p.x() - at.x(), p.z() - at.z()) <= STOCK_RADIUS);
+    }
+
     @Override
     public String describeAt(int x, int y, int z) {
         return chunks.describeAt(x, y, z);
