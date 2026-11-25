@@ -54,6 +54,42 @@ class DrillSquadLeaderTest {
         assertEquals(List.of(), bravo.decide(squad, terrain).orElseThrow().changes(), "on other work the detachment stands");
     }
 
+    /**
+     * FILE once the point man reports his route blocked, and till he reports anything but moving, the point man is
+     * another, or the objective is: his report goes between CANTCO and moving with each try at the route, and the
+     * formation doesn't go with it.
+     */
+    @Test
+    void aBlockedRouteIsFileTillThePointManIsInPosition() {
+        DrillSquadLeader bravo = new DrillSquadLeader("Bravo");
+        TerrainSurvey terrain = new TerrainSurvey(40, 56, 8, 32, List.of(new TerrainSurvey.Sample(40, 56, TerrainSurvey.Ground.LAND, 64, true, 0)));
+        Objective camp = new Objective("Secure the camp", new Position(40.5, 64, 56.5), "light", new Objective.Task.Secure());
+        java.util.function.Function<Report, Formation> formationOn = report -> bravo.decide(
+                List.of(new SoldierStatus("Dana", new Position(10, 64, 10), new Order.Idle(), report, Optional.empty())), terrain).orElseThrow().formation();
+        bravo.receiveObjective(camp);
+
+        assertEquals(Formation.WEDGE, formationOn.apply(new Report.Moving()));
+        assertEquals(Formation.FILE, formationOn.apply(new Report.Cantco("no route from (10, 64, 10) to within 0 of (40, 64, 56)")));
+        assertEquals(Formation.FILE, formationOn.apply(new Report.Moving()), "trying the route again: still blocked");
+        assertEquals(Formation.FILE, formationOn.apply(new Report.Cantco("no route from (10, 64, 10) to within 0 of (40, 64, 56)")));
+        assertEquals(Formation.WEDGE, formationOn.apply(new Report.InPosition()), "through");
+        assertEquals(Formation.WEDGE, formationOn.apply(new Report.Moving()));
+
+        formationOn.apply(new Report.Cantco("no route"));
+        assertEquals(Formation.WEDGE, formationOn.apply(new Report.Idle()), "at something else: not on that route");
+
+        formationOn.apply(new Report.Cantco("no route"));
+        assertEquals(Formation.WEDGE, bravo.decide(List.of(new SoldierStatus("Eli", new Position(12, 64, 10), new Order.Idle(), new Report.Moving(), Optional.empty())),
+                terrain).orElseThrow().formation(), "another point man's route is another route");
+
+        formationOn.apply(new Report.Cantco("no route"));
+        bravo.receiveObjective(camp);
+        assertEquals(Formation.FILE, formationOn.apply(new Report.Moving()), "the same objective given again changes nothing");
+        bravo.receiveObjective(new Objective("Secure the ford", new Position(80.5, 64, 56.5), "light", new Objective.Task.Secure()));
+        assertEquals(Formation.WEDGE, formationOn.apply(new Report.Cantco("no route")), "a CANTCO still standing from the last objective's route");
+        assertEquals(Formation.WEDGE, formationOn.apply(new Report.Moving()), "another objective is another route");
+    }
+
     /** With no surveyed ground to reach, the squad holds at one place: the same order however its point man moves, till there is ground. */
     @Test
     void aSquadWithNoGroundToReachHoldsAtOnePlace() {

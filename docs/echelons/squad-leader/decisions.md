@@ -26,7 +26,8 @@ platoon leader's to give as data.
   survey is an order nobody can reach behind a cliff or a ravine. Always the objective itself on the
   keep, where each soldier's strip is assigned at the site
   ([military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)). The rules' formation
-  is WEDGE, FILE once the point man reports his route blocked; interval TIGHT at night and in a
+  is WEDGE, FILE once the point man reports his route blocked and till he reports anything but moving, or the point man or the
+  objective is another; interval TIGHT at night and in a
   patrol base, NORMAL by day; risk LOW, MEDIUM for one soldier whose CANTCO says a MEDIUM route
   exists; rearm by day, out of contact, with no task - the squad holding; CANTCO only with no surveyed
   ground reachable, and the squad then holds at one place - where its point man stood when none was found -

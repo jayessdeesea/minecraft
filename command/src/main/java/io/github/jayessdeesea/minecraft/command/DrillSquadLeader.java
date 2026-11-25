@@ -47,6 +47,14 @@ public final class DrillSquadLeader implements SquadLeader, DecidesByRules {
     private volatile boolean squadInContact;
     /** Where the squad holds while no surveyed ground toward {@link #heldFor} can be reached: a place, kept till some can. */
     private volatile Position heldAt;
+    /**
+     * The point man whose route is blocked, by name, or null: from his CANTCO till he reports anything but moving - in
+     * position, at work. His report goes between CANTCO and moving with each try at the route, and a formation that went
+     * with it was a new order each time. Another point man's route is another route.
+     */
+    private volatile String routeBlockedFor;
+    /** An objective given since the last decision: the reports at the next are of the last one's route. */
+    private volatile boolean objectiveNew;
     private volatile Objective heldFor;
 
     public DrillSquadLeader(String name) {
@@ -60,6 +68,9 @@ public final class DrillSquadLeader implements SquadLeader, DecidesByRules {
 
     @Override
     public void receiveObjective(Objective objective) {
+        if (!objective.equals(this.objective)) {
+            objectiveNew = true;
+        }
         this.objective = objective;
     }
 
@@ -103,7 +114,16 @@ public final class DrillSquadLeader implements SquadLeader, DecidesByRules {
         boolean night = time != null && time.dark();
         // The squad's contact, over only once it has settled: a soldier's own report goes on and off between a contact's bursts.
         boolean inContact = squadInContact || soldiers.stream().anyMatch(s -> s.report() instanceof Report.InContact);
-        boolean blocked = soldiers.getFirst().report() instanceof Report.Cantco;
+        SoldierStatus pointMan = soldiers.getFirst();
+        if (objectiveNew) {
+            objectiveNew = false;
+            routeBlockedFor = null;
+        } else if (pointMan.report() instanceof Report.Cantco) {
+            routeBlockedFor = pointMan.name();
+        } else if (!(pointMan.report() instanceof Report.Moving)) {
+            routeBlockedFor = null;
+        }
+        boolean blocked = pointMan.name().equals(routeBlockedFor);
         Formation formation = blocked && !(current.task() instanceof Objective.Task.Keep) ? Formation.FILE : Formation.WEDGE;
         Interval interval = night || current.patrolBase() ? Interval.TIGHT : Interval.NORMAL;
         Map<String, Risk> soldierRisk = new HashMap<>();
