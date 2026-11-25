@@ -24,6 +24,14 @@ public interface SquadLeader {
     void receiveTime(TimeOfDay time);
 
     /**
+     * Whether the squad is in contact, as its shell works it out from each SITREP ({@link SquadContact}): from its first
+     * soldier's contact till none has been in one for the settle time - not on and off with one soldier's report. For a
+     * leader that decides by it; a model is shown its soldiers' reports and makes of them what it does.
+     */
+    default void receiveContact(boolean squadInContact) {
+    }
+
+    /**
      * Each of its soldiers' standing plans, as kept: what it last made each of them, and what each
      * still has to do first; and, by soldier, how its work order stands - under way and what's left,
      * or lately timed out and why ({@link WorkOrders}; docs/military-doctrine.md § 18).

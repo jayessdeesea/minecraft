@@ -61,8 +61,7 @@ Paths: `app/`, `bot/`, `command/` are each module's `src/main/java/io/github/jay
   `Gait`; the rest derive.
 - **A15 "On its cell".** `hypot < 0.6 && |dy| < 0.6` in six routines; `Farmer:868` and `Mason:495` with other
   tolerances. Home: one static on `Body` or `Footprint`, the tolerance an argument.
-- **A25 One name, two values.** `SQUAD_PERIOD_MILLIS` is 20,000 in `app/SquadCommand.java:39` and 1,000 in
-  `app/SoldierRunner.java:227`. `VERTICAL_TOLERANCE` is 3, 3, 3 and 1 across four `command` classes. A block's cell is
+- **A25 One name, two values.** `VERTICAL_TOLERANCE` is 3, 3, 3 and 1 across four `command` classes. A block's cell is
   both `command.Cell` and `bot.nav.BlockPos` (19 conversions; `(int) Math.floor` 107 times beside
   `BlockPos.containing`).
 

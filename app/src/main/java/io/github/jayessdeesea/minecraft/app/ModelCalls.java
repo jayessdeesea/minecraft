@@ -15,6 +15,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Load is also shed here: a routine decision - one nothing new asked for - is skipped while
  * {@link #MAX_IN_FLIGHT} or more are under way, so the urgent ones (a contact, a CANTCO, a new
  * order) aren't queued behind it.
+ *
+ * <p>Only what a model decides passes through here ({@link Pace}): a leader deciding by standing rules
+ * has no queue to wait in, isn't counted in flight and is never shed.
  */
 final class ModelCalls {
 

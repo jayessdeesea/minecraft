@@ -21,7 +21,8 @@ import java.util.stream.Stream;
  *       base, NORMAL by day.</li>
  *   <li><b>Risk:</b> LOW, and MEDIUM for one soldier whose CANTCO says a MEDIUM route exists - a
  *       stuck soldier freed for half his health at most.</li>
- *   <li><b>Rearm:</b> by day, out of contact, and with no task - the squad holding. A squad given work does the work
+ *   <li><b>Rearm:</b> by day, out of contact - the squad's, over once no soldier has been in one for the settle time
+ *       ({@link SquadContact}) - and with no task - the squad holding. A squad given work does the work
  *       (operator, 2026-11-22: soldiers do nothing without a command): its soldiers climb no kit ladder on a task, only
  *       make the weapon or the pickaxe they have none of.</li>
  *   <li><b>Task organisation:</b> plans as they stand, but for two: on a mission's ground work - a flatten, a floor, a
@@ -33,7 +34,7 @@ import java.util.stream.Stream;
  * detachment asked for in the mission's words, "post Bob as a lookout" - it doesn't guess at: the
  * platoon leader gives detachments as data (backlog/fleet-command.md).
  */
-public final class DrillSquadLeader implements SquadLeader {
+public final class DrillSquadLeader implements SquadLeader, DecidesByRules {
 
     /** How far above or below the point's height the squad may end up. */
     static final double VERTICAL_TOLERANCE = 3;
@@ -43,6 +44,10 @@ public final class DrillSquadLeader implements SquadLeader {
     private volatile TimeOfDay time;
     private volatile Map<String, Plan> plans = Map.of();
     private volatile Report report = new Report.Idle();
+    private volatile boolean squadInContact;
+    /** Where the squad holds while no surveyed ground toward {@link #heldFor} can be reached: a place, kept till some can. */
+    private volatile Position heldAt;
+    private volatile Objective heldFor;
 
     public DrillSquadLeader(String name) {
         this.name = name;
@@ -64,6 +69,11 @@ public final class DrillSquadLeader implements SquadLeader {
     }
 
     @Override
+    public void receiveContact(boolean squadInContact) {
+        this.squadInContact = squadInContact;
+    }
+
+    @Override
     public void receivePlans(Map<String, Plan> plans, Map<String, String> workOrders) {
         this.plans = Map.copyOf(plans);
     }
@@ -81,9 +91,18 @@ public final class DrillSquadLeader implements SquadLeader {
         }
         Optional<Position> point = point(current, terrain);
         report = point.isPresent() ? new Report.Moving() : new Report.Cantco("no surveyed ground the squad can reach toward the objective");
-        Position at = point.orElse(soldiers.getFirst().position());
+        // With nowhere to go the squad holds where its point man stood when that was found, not where he stands each
+        // time it's asked: asked every SITREP, an order that followed him would be a new order each second.
+        if (point.isPresent()) {
+            heldAt = null;
+        } else if (heldAt == null || !current.equals(heldFor)) {
+            heldAt = soldiers.getFirst().position();
+            heldFor = current;
+        }
+        Position at = point.orElse(heldAt);
         boolean night = time != null && time.dark();
-        boolean inContact = soldiers.stream().anyMatch(s -> s.report() instanceof Report.InContact);
+        // The squad's contact, over only once it has settled: a soldier's own report goes on and off between a contact's bursts.
+        boolean inContact = squadInContact || soldiers.stream().anyMatch(s -> s.report() instanceof Report.InContact);
         boolean blocked = soldiers.getFirst().report() instanceof Report.Cantco;
         Formation formation = blocked && !(current.task() instanceof Objective.Task.Keep) ? Formation.FILE : Formation.WEDGE;
         Interval interval = night || current.patrolBase() ? Interval.TIGHT : Interval.NORMAL;

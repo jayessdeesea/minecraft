@@ -1384,7 +1384,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }).ifPresent(dawn -> {
                     nightsMining();
                     LOG.info("[AAR] {}\n  {}\n  {}\n  {}\n  {}", dawn.review(), String.join("\n  ", chainOfCommand.requestReview()),
-                            String.join("\n  ", registerReview()), String.join("\n  ", faults.review()), String.join("\n  ", foodLedger.review()));
+                            String.join("\n  ", registerReview()), String.join("\n  ", Faults.review(faults, chainOfCommand.faults)), String.join("\n  ", foodLedger.review()));
                     LOG.info("[Scoreboard] {}", scoreboard.add(dawn.score()));
                 });
         List<Present> present = new ArrayList<>();

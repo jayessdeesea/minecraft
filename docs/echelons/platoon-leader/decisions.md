@@ -236,9 +236,11 @@ holds.
 
 ## When it decides
 When woken, never on a clock (what's next for it: backlog/authority-and-missions.md, step 5): at once on an operator's mission or
-remark, dawn, dusk and dusk near, a squad with no objective, and an escort attached or ended; and,
-if a minute has passed since its last decision, on a squad's task finished or stalled, its Class I
-RED, or its squad leader's CANTCO. Contact wakes nobody: it's the squad's to handle, and live, a new
+remark, dawn, dusk and dusk near, a squad with no objective, and an escort attached or ended; and
+on a squad's task finished or stalled, its Class I RED, or its squad leader's CANTCO - at the SITREP
+that carries it, or for a model in its place once a minute has passed since its last decision
+([architecture.md](../../architecture.md#latency-architecture--why-the-hierarchy-is-stratified-by-timescale-not-just-rank)).
+Contact wakes nobody: it's the squad's to handle, and live, a new
 contact every few seconds at night asked the platoon leader every ten. Each wake is a log line with
 its cause, `[PL] wakes: dusk near`; a day with nothing asked has only dawn's. At dusk and dawn it's shown
 no standing order to keep: the last phase's work lapses, and every squad is given the next

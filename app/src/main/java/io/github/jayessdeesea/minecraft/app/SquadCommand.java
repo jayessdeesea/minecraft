@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.command.Role;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
+import io.github.jayessdeesea.minecraft.command.SquadContact;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
@@ -30,13 +31,12 @@ import java.util.stream.Collectors;
  * One squad's half of {@link ChainOfCommand}: its squad leader, its own decision thread, the
  * objective and order it's working to, and its escort if the operator attached it to a player.
  * {@code ChainOfCommand} decides when the platoon leader thinks and hands objectives down; this decides
- * when its squad leader thinks.
+ * when its squad leader thinks, at the {@link Pace} of what decides for it.
  */
 final class SquadCommand {
 
     private static final Logger LOG = LogManager.getLogger(SquadCommand.class);
 
-    private static final long SQUAD_PERIOD_MILLIS = 20_000;
     /** How far the principal moves before the squad leader is given its new position. */
     static final double ESCORT_RETASK_DISTANCE = 8;
     /**
@@ -60,7 +60,11 @@ final class SquadCommand {
     // The reports last answered - a decision is triggered early only when these change.
     private volatile Report reportAnswered = new Report.Idle();
     private volatile Set<String> cantcosAnswered = Set.of();
-    /** The soldiers in contact when the squad leader last decided - a new one is a contact report. */
+    /** The squad's contact, carried SITREP to SITREP: over once it has settled - the squad loop's thread writes. */
+    private volatile SquadContact contact = SquadContact.NONE;
+    /** The soldiers whose contact began since the squad leader last decided, and is still on: each a contact report to a rule. */
+    private volatile Set<String> contactsUnanswered = Set.of();
+    /** The soldiers in contact when the squad leader last decided - to a model, one in contact who isn't among them is a contact report. */
     private volatile Set<String> contactsAnswered = Set.of();
     /** The player this squad is escorting, or null - set by the operator's thread. */
     private volatile String escort;
@@ -99,19 +103,29 @@ final class SquadCommand {
     private final ModelCalls modelCalls;
 
     SquadCommand(String name, SquadLeader squadLeader, Consumer<String> radio, ModelCalls modelCalls) {
-        this(name, squadLeader, radio, modelCalls, Clockwork.REAL);
+        this(name, squadLeader, radio, modelCalls, Clockwork.REAL, new Faults(Clockwork.REAL::millis));
     }
 
-    SquadCommand(String name, SquadLeader squadLeader, Consumer<String> radio, ModelCalls modelCalls, Clockwork clockwork) {
+    SquadCommand(String name, SquadLeader squadLeader, Consumer<String> radio, ModelCalls modelCalls, Clockwork clockwork, Faults faults) {
         this.modelCalls = modelCalls;
         this.name = name;
         this.squadLeader = squadLeader;
         this.radio = radio;
         this.clockwork = clockwork;
         this.thread = clockwork.thread("squad-leader-" + name);
+        this.pace = Pace.of(squadLeader);
+        this.faults = faults;
     }
 
     private final Clockwork clockwork;
+    /** How often its squad leader is asked, and where its decision runs: a rule's pace, or a model's. */
+    private final Pace pace;
+    /** The chain of command's: a rule's failed decision or survey fails alone, logged and counted, and is in the dawn review. */
+    private final Faults faults;
+    /** The terrain round its point man, as a rule's decisions read it: taken on the survey's clock, not theirs. */
+    private final Surveyed<TerrainSurvey> surveyed = new Surveyed<>(survey -> new Position(survey.originX() + 0.5, 0, survey.originZ() + 0.5));
+    /** Whether its squad leader's report was a CANTCO at its last decision: said once under an order that stands. */
+    private volatile boolean cantcoSaid;
 
     /**
      * The squad's report upward. Holding its sealed patrol base, the squad is doing what it was
@@ -243,12 +257,23 @@ final class SquadCommand {
         newObjective = true;
     }
 
-    /** A SITREP from this squad's soldiers: decides whether its squad leader should think now. */
+    /**
+     * A SITREP from this squad's soldiers: decides whether its squad leader should think now - on a new objective,
+     * at its {@link Pace}'s routine look, or on a soldier's new CANTCO or contact once its pace's gap has passed.
+     */
     void onSitrep(List<SoldierStatus> squad, Supplier<TerrainSurvey> terrain, Optional<Position> principalAt,
-                  boolean holdingBase, long now, long minGapMillis) {
+                  boolean holdingBase, long now) {
         this.holdingBase = holdingBase;
+        contact = contact.seen(squad, now);
+        squadLeader.receiveContact(contact.under());
+        // Kept before anything returns: a contact that begins on a SITREP with no decision is still to be reported.
+        Set<String> contacts = squad.stream().filter(s -> s.report() instanceof Report.InContact)
+                .map(SoldierStatus::name).collect(Collectors.toUnmodifiableSet());
+        Set<String> began = contact.began();
+        Set<String> unanswered = contactsUnanswered;
+        contactsUnanswered = contacts.stream().filter(s -> began.contains(s) || unanswered.contains(s)).collect(Collectors.toUnmodifiableSet());
         if (holdingBase) {
-            return; // the order is being met: no model call, and no terrain survey from inside a box
+            return; // the order is being met: no decision, and no terrain survey from inside a box
         }
         String principal = escort;
         if (principal != null) {
@@ -258,23 +283,34 @@ final class SquadCommand {
                 .map(SoldierStatus::name).collect(Collectors.toUnmodifiableSet());
         boolean newSoldierCantco = !cantcosAnswered.containsAll(cantcos);
         // A soldier newly in contact is a contact report: the squad leader decides now whether to
-        // fight, bypass or break contact, not at its next scheduled look.
-        Set<String> contacts = squad.stream().filter(s -> s.report() instanceof Report.InContact)
-                .map(SoldierStatus::name).collect(Collectors.toUnmodifiableSet());
-        boolean newSoldierContact = !contactsAnswered.containsAll(contacts);
-        if (objective != null && (newObjective || now - lastDecisionMillis >= SQUAD_PERIOD_MILLIS
-                || ((newSoldierCantco || newSoldierContact) && now - lastDecisionMillis >= minGapMillis))) {
+        // fight, bypass or break contact, not at its next scheduled look. Newly, to a rule, is by the squad's contact
+        // (SquadContact): one in and out of it between a contact's bursts is in the one contact, reported once. To a
+        // model it is as it was - one in contact who wasn't at its last decision: its gap keeps the bursts apart.
+        boolean newSoldierContact = pace.settlesContact() ? !contactsUnanswered.isEmpty() : !contactsAnswered.containsAll(contacts);
+        Objective toward = objective;
+        if (toward != null && (newObjective || now - lastDecisionMillis >= pace.periodMillis()
+                || ((newSoldierCantco || newSoldierContact) && now - lastDecisionMillis >= pace.reportGapMillis()))) {
+            // The ground the decision reads: a model's own survey as it decides, a rule's the last one kept for this objective.
+            Optional<Supplier<TerrainSurvey>> ground = pace.survey(surveyed, name + "'s terrain survey", terrain, point(squad, toward), toward, now,
+                    thread, faults);
+            if (ground.isEmpty()) {
+                // A rule's survey for this objective isn't in: the next SITREP decides on it. One that failed is tried again on
+                // the survey's clock, and till then there's no decision, as a model's has none when its survey fails: ground not
+                // surveyed isn't ground that can't be reached, and deciding on it would send a CANTCO up that nothing bears out.
+                return;
+            }
             if (newSoldierContact && !newObjective) {
                 LOG.info("[{}] contact report: {} in contact - the squad leader decides now", name, contacts);
             }
-            // A routine look, with nothing new to answer, waits while the models are backed up.
+            // A routine look, with nothing new to answer, waits while the models are backed up - a model's does.
             boolean routine = !newObjective && !newSoldierCantco && !newSoldierContact;
-            if (routine && modelCalls.shed(name + "'s squad leader")) {
+            if (routine && pace.sheds(modelCalls, name + "'s squad leader")) {
                 return;
             }
             cantcosAnswered = cantcos;
+            contactsUnanswered = Set.of();
             contactsAnswered = contacts;
-            decide(squad, terrain, now);
+            decide(squad, ground.get(), now);
         }
     }
 
@@ -320,35 +356,63 @@ final class SquadCommand {
             return;
         }
         lastDecisionMillis = now;
+        boolean answersObjective = newObjective;
         newObjective = false;
-        ModelCalls.Ticket ticket = modelCalls.queued(name + "'s squad leader");
-        thread.execute(() -> {
-            ticket.started();
+        Pace.Deciding deciding = pace.deciding(name + "'s squad leader", modelCalls, faults);
+        deciding.run(thread, () -> {
+            deciding.started();
             try {
-                long started = clockwork.millis();
-                TerrainSurvey survey = terrain.get();
-                long reachable = survey.samples().stream().filter(TerrainSurvey.Sample::reachable).count();
-                squadLeader.decide(squad, survey).ifPresent(decided -> {
-                    LOG.info("[{} -> squad] ({} ms, {}, terrain {}/{} reachable) FRAGO: move to ({}, {}, {}) in {} at {} interval, {} risk{}. Intent: {}",
-                            name, clockwork.millis() - started, ChainOfCommand.phase(time), reachable, survey.samples().size(),
-                            Math.round(decided.objective().x()), Math.round(decided.objective().y()), Math.round(decided.objective().z()),
-                            decided.formation(), decided.interval(), decided.risk(), soldierRisk(decided), decided.intent());
-                    radio.accept("[" + name + " -> squad] FRAGO: " + decided.formation() + " to " + DayWorkRules.at(decided.objective())
-                            + ", " + decided.risk() + " risk" + soldierRisk(decided) + ". Intent: " + decided.intent());
-                    if (squadLeader.report() instanceof Report.Cantco cantco) {
-                        LOG.warn("[{} -> PL] CANTCO: {}", name, cantco.reason());
-                        radio.accept("[" + name + " -> PL] CANTCO: " + cantco.reason());
-                    }
-                    order = decided;
-                    lastFragoMillis = clockwork.millis();
-                });
+                give(squad, terrain, answersObjective);
             } catch (RuntimeException e) {
-                LOG.error("[{}] no decision - squad keeps its last order: {}", name, e.getMessage(), e);
+                deciding.failed(e, () -> LOG.error("[{}] no decision - squad keeps its last order: {}", name, e.getMessage(), e));
             } finally {
-                ticket.finished();
+                deciding.finished();
                 busy.set(false);
             }
         });
+    }
+
+    /**
+     * Asks the squad leader, and gives the squad its order - if it is one. An order that stands ({@link Pace#stands})
+     * is neither said, logged nor given again: the squad loop works each order object's plan changes once, and the same
+     * order a second time would be worked again. Its CANTCO goes up with each order said, and when it first has one.
+     */
+    private void give(List<SoldierStatus> squad, Supplier<TerrainSurvey> terrain, boolean answersObjective) {
+        long started = clockwork.millis();
+        TerrainSurvey survey = terrain.get();
+        long reachable = survey.samples().stream().filter(TerrainSurvey.Sample::reachable).count();
+        squadLeader.decide(squad, survey).ifPresent(decided -> {
+            boolean stands = pace.stands(decided, order, answersObjective);
+            if (!stands) {
+                LOG.info("[{} -> squad] ({} ms, {}, terrain {}/{} reachable) FRAGO: move to ({}, {}, {}) in {} at {} interval, {} risk{}. Intent: {}",
+                        name, clockwork.millis() - started, ChainOfCommand.phase(time), reachable, survey.samples().size(),
+                        Math.round(decided.objective().x()), Math.round(decided.objective().y()), Math.round(decided.objective().z()),
+                        decided.formation(), decided.interval(), decided.risk(), soldierRisk(decided), decided.intent());
+                radio.accept("[" + name + " -> squad] FRAGO: " + decided.formation() + " to " + DayWorkRules.at(decided.objective())
+                        + ", " + decided.risk() + " risk" + soldierRisk(decided) + ". Intent: " + decided.intent());
+            }
+            Report up = squadLeader.report();
+            if (up instanceof Report.Cantco cantco && (!stands || !cantcoSaid)) {
+                LOG.warn("[{} -> PL] CANTCO: {}", name, cantco.reason());
+                radio.accept("[" + name + " -> PL] CANTCO: " + cantco.reason());
+            }
+            cantcoSaid = up instanceof Report.Cantco;
+            if (!stands) {
+                order = decided;
+            }
+            lastFragoMillis = clockwork.millis(); // the order confirmed is the order given: an order's trace waits on this
+        });
+    }
+
+    /**
+     * Where the squad's survey is taken from, near enough to tell how far that has moved: the soldier nearest the
+     * objective across the ground who isn't being recovered. The squad loop picks its point man the same way, within a
+     * height of the objective besides - so this is at most a soldier's place in the formation off.
+     */
+    private static Position point(List<SoldierStatus> squad, Objective toward) {
+        return squad.stream().filter(s -> !(s.report() instanceof Report.Recovering)).map(SoldierStatus::position)
+                .min(java.util.Comparator.comparingDouble(p -> Cohesion.distance(p, toward.location())))
+                .orElse(squad.isEmpty() ? toward.location() : squad.getFirst().position());
     }
 
     /** ", Carol at MEDIUM risk" for each per-soldier override, in name order; empty if none. */

@@ -34,8 +34,11 @@ build running is the one last deployed. A pass that finds the last one's work br
      `[Verify]` (a task's count not falling), `couldn't` and `gives up` lines, crowding alerts. Each is somebody not
      accomplishing what it was sent to do: dug into from its count and its reason, not waited on.
    - **Orders, followed or not.** An order is followed down the chain: what was given (`[PL -> squad]`, the squad
-     leader's FRAGO, a soldier's `[Register] ... on <task>`), whether it was taken (WILCO, CANTCO, "no decision -
-     keeping the current objectives", a `[Guardrail]` putting a squad on something else), and how long from given to
+     leader's FRAGO, a soldier's `[Register] ... on <task>`), whether it was taken (WILCO, CANTCO, a decision
+     that failed - by rules, `[Fault] PL's decision failed` or `[Fault] Alpha's squad leader's decision failed`, once with
+     its stack and then `[Fault] ALARM` a minute while it lasts, and in the dawn review; by a model, "no decision - keeping
+     the current objectives" or "no decision - squad keeps its last order" each time - a `[Guardrail]` putting a squad on
+     something else), and how long from given to
      worked. Three things are dug into, each as a blocker is: an order **not followed** - given and never worked, or
      overridden every cycle; one that **takes too long** - given at dawn and its squad on it an hour later, a mission
      opened and nobody on it; and one **mangled or unclear** - cut short, over-long, naming a place or a thing that

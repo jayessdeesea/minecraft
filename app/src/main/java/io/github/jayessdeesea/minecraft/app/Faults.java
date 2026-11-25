@@ -57,16 +57,22 @@ final class Faults {
         try {
             task.run();
         } catch (RuntimeException e) {
-            fault(what, e);
+            failed(what, e);
             return;
         }
+        ran(what);
+    }
+
+    /** {@code what} ran through, for a task that catches its own failure and says so with {@link #failed}: its recovery is said. */
+    void ran(String what) {
         Fault ended = current.remove(what);
         if (ended != null) {
             LOG.info("[Fault] {} runs again, after failing {} times: {}", what, ended.count, ended.signature);
         }
     }
 
-    private void fault(String what, RuntimeException e) {
+    /** {@code what} failed with {@code e}: logged with its stack the first time, counted after, summed up once a {@link #SUMMARY_MILLIS}. */
+    void failed(String what, RuntimeException e) {
         long now = clock.getAsLong();
         String signature = signature(e);
         tally.merge(what + " - " + signature, 1, Integer::sum);
@@ -93,9 +99,16 @@ final class Faults {
 
     /** The dawn review's faults since the last one: each task's, and how often; then cleared. */
     List<String> review() {
+        return review(this);
+    }
+
+    /** The same over {@code all} of them as one - the squad loop's and the chain of command's. */
+    static List<String> review(Faults... all) {
         List<String> lines = new ArrayList<>();
-        tally.forEach((fault, count) -> lines.add("  fault: " + fault + " x" + count));
-        tally.clear();
+        for (Faults faults : all) {
+            faults.tally.forEach((fault, count) -> lines.add("  fault: " + fault + " x" + count));
+            faults.tally.clear();
+        }
         if (lines.isEmpty()) {
             lines.add("  no faults");
         }

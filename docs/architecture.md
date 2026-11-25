@@ -10,11 +10,53 @@ facts drive the entire control-loop design:
 
 - **Soldiers run deterministic, non-LLM code every tick.** Movement, pathing, combat reflexes —
   plain Java, no model call, full stop. This loop cannot afford LLM latency.
-- **Squad leaders invoke the LLM periodically** (interval TBD — start conservative, e.g. every
-  few seconds or triggered by a notable squad-level event) to (re)issue orders to their soldiers.
-  Soldiers keep executing the last order between invocations.
-- **The platoon leader invokes the LLM even less frequently**, issuing higher-level objectives down to
-  squad leaders.
+- **A leader is paced by what decides for it** (`app.Pace`, built once for each leader from
+  `minecraft.squad-leader.decides-with` and `minecraft.platoon-leader.decides-with`: a leader that
+  is `command.DecidesByRules` gets the rules' pace, any other a model's). The waits belong to the
+  model, not to the rank:
+
+  | | Standing rules (the default) | A model |
+  |---|---|---|
+  | Squad leader's routine look | every SITREP - the squad loop's second | every 20 seconds |
+  | Squad leader, on a soldier's new CANTCO or contact | that SITREP | not within 8 seconds of its last decision |
+  | Platoon leader, on a request (a task done or stalled, Class I RED, a squad leader's CANTCO) | that SITREP | not within a minute of its last decision |
+  | Where the decision runs | the squad leader's where it's asked, on the squad loop's thread: its order stands before that SITREP's orders go out. The platoon leader's on its own thread, started at once: its objectives are there for the next SITREP | on the echelon's own thread, queued, timed and alarmed on (`app.ModelCalls`); a routine one is shed while 3 are in flight |
+  | The squad leader's terrain survey (a flood of the ground its point man can reach) | on the survey's own clock (`app.Surveyed`), on the squad leader's thread: every 20 seconds, or sooner once the point man is 16 blocks from where the last was taken or the objective is another. A decision reads the last one taken | one each decision, taken as it decides, on its thread |
+  | The platoon leader's resource surveys (what each squad sees to gather) | one each decision, on its thread | the same |
+
+  A rule answers in microseconds, so nothing is gained by making it wait and a report waits for
+  nothing: a soldier's CANTCO, a squad's task done, are answered in the SITREP that carries them.
+  A model's answer takes seconds and is paid for, so it's asked on a slow clock - the higher the
+  echelon, the less often - and the soldiers keep executing the last order between its answers.
+- **A decision waits on nothing, but what it reads that costs a search has a clock of its own.**
+  The pathfinder's flood is the costliest thing a decision asks for, and the squad loop gives
+  every soldier its orders each second: no search runs on its thread, and none runs once a
+  decision. So a rule's decision between two surveys reads ground up to 20 seconds old, taken up
+  to 16 blocks from where the point man now stands. The move is measured from where the survey
+  says it was taken to the soldier nearest the objective across the ground; the squad loop picks
+  the point man it surveys from the same way and within a height of the objective besides, so
+  the two can differ by a soldier's place in the formation - or, a squad spread over heights, by
+  more: so another is due for a move only once that soldier is 16 blocks from where the survey
+  was taken and from where he stood when it was asked for. A survey is never read for another
+  objective than the one it was taken for: under a new objective, and for a squad's very first
+  decision, the decision is left to the next SITREP, when that survey is in - one order, from
+  that objective's ground. A survey that fails is tried again on the same 20 seconds, not each
+  SITREP; meanwhile the last one taken for the objective is read, and with none there's no
+  decision and the squad keeps its last order, as a model's has none when its survey fails -
+  ground not surveyed isn't ground that can't be reached. What changes faster than the ground -
+  the soldiers' reports, their positions, the objective - is read fresh from the SITREP.
+- **A rule asked every second gives an order only when it differs.** A rule's order equal to
+  the standing one is neither sent, logged nor handed to the squad loop again (`Pace.stands`;
+  the loop works an order's plan changes once for each order it's handed), as the platoon
+  leader's objective equal to the standing one "holds". A model's every decision is said, as it
+  always was. Two orders alternating second by second are a rule's bug, to be fixed in the rule:
+  no wait is put back to hide one. A contact that comes and goes each second is one contact,
+  reported once and ordered on at its start and its end (`command.SquadContact`); a task state
+  or a squad leader's CANTCO that flickers each second still wakes the platoon leader each time
+  (`DecisionPaceTest` pins each count).
+- **A decision that fails, fails alone.** A rule's is the chain of command's `app.Faults`':
+  its stack once, counted after, an alarm a minute while it lasts, in the dawn review. A model's
+  is logged each time, "no decision - ...", as it's asked seconds apart.
 
 This is deliberate: intelligence is stratified by decision timescale as much as by rank. Don't
 collapse this — e.g. don't have a soldier call an LLM per-tick "just for this one decision"; that

@@ -59,13 +59,13 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * The LLM echelons' imperative shell: decides <em>when</em> the platoon leader and each squad leader
- * think, runs their model calls off every soldier-facing thread, and hands each squad's
- * {@link SquadOrder} to {@code SoldierRunner}'s squad loop. Cadence follows docs/architecture.md's latency
- * architecture - the higher the echelon, the less often - plus events: a new objective, or a
- * <em>new</em> CANTCO from below (docs/military-doctrine.md §3), triggers a decision early, so
- * push-back is answered in seconds rather than at the next routine interval. A CANTCO that's still
- * standing after the echelon has answered it waits for the routine interval - re-asking every few
+ * The leading echelons' imperative shell: decides <em>when</em> the platoon leader and each squad leader
+ * think, and hands each squad's {@link SquadOrder} to {@code SoldierRunner}'s squad loop. Each is paced by
+ * what decides for it ({@link Pace}; docs/architecture.md's latency architecture): a rule is asked at the
+ * SITREP that brings something to decide on, where it's asked; a model on a slow clock - the higher the
+ * echelon, the less often - off every soldier-facing thread, plus events: a new objective, or a
+ * <em>new</em> CANTCO from below (docs/military-doctrine.md §3), triggers its decision early. A CANTCO
+ * still standing after a model has answered it waits for the routine interval - re-asking every few
  * seconds about the same report just churns orders.
  *
  * <p>One platoon leader commands every squad in the {@link Roster} at once, so it can split the work
@@ -74,28 +74,20 @@ import java.util.stream.Collectors;
  * instead (see {@link SquadCommand}).
  *
  * <p>Every exchange is logged like a radio net - orders down, reports up - so a run reads as a
- * transcript of how doctrine-shaped communication plays out between LLM agents. Orders and
+ * transcript of how doctrine-shaped communication plays out between the echelons. Orders and
  * CANTCOs are also keyed out over the {@linkplain #setRadio radio}: in game chat, so anyone
  * watching in a Minecraft client sees the net too. SITREPs stay in the log - one every few seconds
  * would trip the server's chat spam kick.
  *
- * <p>A failed model call (malformed reply, model down) is logged loudly and the squad keeps its
- * last order - doctrine's "soldiers keep executing the last order" - and the next scheduled
- * decision tries again.
+ * <p>A failed decision (a rule's bug, a model's malformed reply, a model down) is logged loudly and
+ * counted ({@link Faults}), and the squad keeps its last order - doctrine's "soldiers keep executing
+ * the last order" - and the next decision tries again.
  */
 @Component
 public class ChainOfCommand implements DisposableBean {
 
     private static final Logger LOG = LogManager.getLogger(ChainOfCommand.class);
 
-    /** Least time between decisions, however many CANTCOs arrive - stops a stuck soldier spamming the model. */
-    private static final long MIN_GAP_MILLIS = 8_000;
-    /**
-     * The least time between the platoon leader's decisions that a request or a CANTCO wakes it for:
-     * it thinks on a slow clock - live, when every new contact woke it, it was asked every ten seconds
-     * at night to rewrite the same order. Contact is the squad's drill to handle, and wakes nobody.
-     */
-    private static final long WAKE_GAP_MILLIS = 60_000;
     /** Vanilla chat's own limit is 256 characters. */
     static final int CHAT_LINE_LIMIT = 250;
 
@@ -138,6 +130,10 @@ public class ChainOfCommand implements DisposableBean {
     private final Map<String, List<ResourceSite>> resourcesSeen =
             new ConcurrentHashMap<>();
     private final ExecutorService platoonLeaderThread;
+    /** How soon a request wakes the platoon leader again, and where its decision runs: a rule's pace, or a model's. */
+    private final Pace pace;
+    /** A rule's failed decisions and surveys, each echelon's: each fails alone, logged and counted, and is asked again. */
+    final Faults faults; // read by the squad loop for the dawn review
     /** The clock and threads everything here runs on: the real ones, or a simulation's. */
     final Clockwork clockwork; // read by the operator's chat for the registers' "for how long"
     private final AtomicBoolean platoonLeaderBusy = new AtomicBoolean();
@@ -150,14 +146,15 @@ public class ChainOfCommand implements DisposableBean {
      * Why the platoon leader is to decide next, if it is (backlog/fleet-command.md: it wakes on events,
      * not on a clock, as a commander is told what he's asked to be told): an operator order, dawn,
      * dusk and dusk near, a squad with no objective, an escort attached or ended - at once - and a
-     * squad's task finished or stalled, its Class I RED, or its squad leader's CANTCO, at most a
-     * minute after the last decision. Each wake is logged with its cause ({@code [PL] wakes:}).
-     * Otherwise it sleeps, and the platoon runs on its standing orders.
+     * squad's task finished or stalled, its Class I RED, or its squad leader's CANTCO, once its pace's
+     * gap since the last decision has passed: none for rules, a minute for a model ({@link Pace}). Contact
+     * is the squad's drill to handle, and wakes nobody. Each wake is logged with its cause
+     * ({@code [PL] wakes:}). Otherwise it sleeps, and the platoon runs on its standing orders.
      */
     private final java.util.Set<String> wakeCauses = java.util.Collections.synchronizedSet(new java.util.LinkedHashSet<>());
     private volatile boolean wakeAtOnce;
 
-    /** Asks the platoon leader to decide, for {@code cause}; {@code atOnce} at the next SITREP, else at most a minute after its last. */
+    /** Asks the platoon leader to decide, for {@code cause}; {@code atOnce} at the next SITREP, else once its pace's gap since its last has passed. */
     private void wake(String cause, boolean atOnce) {
         wakeCauses.add(cause);
         wakeAtOnce |= atOnce;
@@ -226,9 +223,11 @@ public class ChainOfCommand implements DisposableBean {
         this.shelterAtNight = shelterAtNight;
         this.clockwork = clockwork;
         this.platoonLeaderThread = clockwork.thread("platoon-leader");
+        this.pace = Pace.of(platoonLeader);
+        this.faults = new Faults(clockwork::millis);
         for (Roster.Squad squad : roster.squads()) {
             squads.put(squad.name(), new SquadCommand(squad.name(), squadLeaders.apply(squad.name()), this::transmit,
-                    modelCalls, clockwork));
+                    modelCalls, clockwork, faults));
         }
     }
 
@@ -841,8 +840,8 @@ public class ChainOfCommand implements DisposableBean {
     }
 
     /**
-     * Called with every present squad's SITREP (formation order, point man first) every second.
-     * Cheap: at most kicks off model calls on the echelons' own threads and returns.
+     * Called with every present squad's SITREP (formation order, point man first) every second. Cheap: a squad
+     * leader's rules decide here; a search or a model's call is at most kicked off on its echelon's own thread ({@link Pace}).
      */
     public void onSitreps(List<Sitrep> sitreps) {
         if (sitreps.isEmpty()) {
@@ -872,12 +871,12 @@ public class ChainOfCommand implements DisposableBean {
                 wake(sitrep.squad() + " has no objective", true);
             }
         }
-        if (!underPlatoonLeader.isEmpty() && !wakeCauses.isEmpty() && (wakeAtOnce || now - lastPlatoonLeaderMillis >= WAKE_GAP_MILLIS)) {
+        if (!underPlatoonLeader.isEmpty() && !wakeCauses.isEmpty() && (wakeAtOnce || now - lastPlatoonLeaderMillis >= pace.wakeGapMillis())) {
             askPlatoonLeader(underPlatoonLeader, now);
         }
         for (Sitrep sitrep : sitreps) {
             SquadCommand squad = squads.get(sitrep.squad());
-            squad.onSitrep(sitrep.soldiers(), sitrep.terrain(), sitrep.principalAt(), sitrep.holdingBase(), now, MIN_GAP_MILLIS);
+            squad.onSitrep(sitrep.soldiers(), sitrep.terrain(), sitrep.principalAt(), sitrep.holdingBase(), now);
             squad.takeEscortEnded().ifPresent(principal -> {
                 // Back under the platoon leader, who decides for it now rather than at its routine interval.
                 missionVersion.incrementAndGet();
@@ -900,9 +899,9 @@ public class ChainOfCommand implements DisposableBean {
         wakeAtOnce = false;
         lastPlatoonLeaderMillis = now;
         int missionAsked = missionVersion.get();
-        ModelCalls.Ticket ticket = modelCalls.queued("PL");
-        platoonLeaderThread.execute(() -> {
-            ticket.started();
+        Pace.Deciding deciding = pace.deciding("PL", modelCalls, faults);
+        deciding.onItsThread(platoonLeaderThread, () -> {
+            deciding.started();
             try {
                 long started = clockwork.millis();
                 List<SquadStatus> statuses = sitreps.stream().map(s -> new SquadStatus(s.squad(),
@@ -975,9 +974,9 @@ public class ChainOfCommand implements DisposableBean {
                 traces.stream().filter(t -> t.version == missionAsked)
                         .forEach(t -> t.decided(decided, decidedAt).forEach(line -> traced(t.operator, line)));
             } catch (RuntimeException e) {
-                LOG.error("[PL] no decision - keeping the current objectives: {}", e.getMessage(), e);
+                deciding.failed(e, () -> LOG.error("[PL] no decision - keeping the current objectives: {}", e.getMessage(), e));
             } finally {
-                ticket.finished();
+                deciding.finished();
                 platoonLeaderBusy.set(false);
             }
         });

@@ -167,8 +167,8 @@ java -jar app/target/app.jar
 This connects four squads of four (`app.Roster`, from `minecraft.roster`): Alpha (`Alice`, `Bob`,
 `Carol`, `Gus`), Bravo (`Dana`, `Eli`, `Fran`, `Hal`), Charlie (`Ivy`, `Jack`, `Kate`, `Liam`) and
 Delta (`Mia`, `Ned`, `Olga`, `Pete`), the first of each its point man, each under its own squad
-leader (standing rules unless `minecraft.squad-leader.decides-with: model`), all under one LLM
-platoon leader (`ChainOfCommand`). Offline mode needs no accounts, only names; the dev server's
+leader (standing rules unless `minecraft.squad-leader.decides-with: model`), all under one
+platoon leader (the same, by `minecraft.platoon-leader.decides-with`; `ChainOfCommand`). Offline mode needs no accounts, only names; the dev server's
 `max-players` is 20. The log reads as a radio net: `[PL -> Alpha] OPORD`,
 `[Bravo -> squad] FRAGO`, `[Alpha -> PL] CANTCO`, and each squad's SITREP every 5 seconds.
 Orders and CANTCOs also appear in game chat (section 4), spoken by Alice as the radio operator. Soldiers reconnect on their own if a connection dies, and keep trying - every 5 seconds, backing off
@@ -179,7 +179,9 @@ starts as `minecraft.platoon-leader.mission` in `application.yml`.
 Platoon leader: waited 0 ms, ran 5600 ms, 1 ahead of it when queued`. One that waited 5 seconds to start,
 took 20 seconds all told, or was queued behind three others logs as `[Model] ALARM`. With three
 or more in flight, a squad leader's routine look - nothing new to answer - is skipped that cycle
-(`routine decision shed`), so a contact or a CANTCO isn't queued behind it.
+(`routine decision shed`), so a contact or a CANTCO isn't queued behind it. A leader deciding by
+standing rules isn't in this queue and logs no `[Model]` line: it decides in the SITREP that asks
+(`app.Pace`).
 
 **Giving orders from game chat.** A player named in `minecraft.operators` (comma-separated, empty
 by default) can replace the mission by typing `!mission <text>` in plain chat. The platoon leader answers

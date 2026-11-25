@@ -14,7 +14,7 @@ import java.util.Optional;
  * above that is the chain of command's rules over what's given, as they were over a model's draft, and they outrank
  * it: the operator's missions a squad a step, the shortfalls, the night.
  */
-public final class DrillPlatoonLeader implements PlatoonLeader {
+public final class DrillPlatoonLeader implements PlatoonLeader, DecidesByRules {
 
     private volatile Optional<Foothold> foothold = Optional.empty();
 

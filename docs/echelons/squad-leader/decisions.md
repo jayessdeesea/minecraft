@@ -29,7 +29,11 @@ platoon leader's to give as data.
   is WEDGE, FILE once the point man reports his route blocked; interval TIGHT at night and in a
   patrol base, NORMAL by day; risk LOW, MEDIUM for one soldier whose CANTCO says a MEDIUM route
   exists; rearm by day, out of contact, with no task - the squad holding; CANTCO only with no surveyed
-  ground reachable.
+  ground reachable, and the squad then holds at one place - where its point man stood when none was found -
+  till some is. The squad's contact lasts from its first soldier's till none has been in one for 10 seconds
+  (`command.SquadContact`; [military-doctrine.md § 8](../../military-doctrine.md#8-actions-on-contact-and-the-react-to-contact-drill)):
+  rearming waits on that, and a soldier's contact is a contact report once in it (to a model in its place, as
+  before: a soldier in contact who wasn't at its last decision).
 - **How:** formation (`WEDGE`, `FILE`, `LINE`) and interval (`TIGHT`, `NORMAL`, `EXTENDED`;
   [military-doctrine.md § 2](../../military-doctrine.md#2-formations-and-intervals)).
 - **Vertical tolerance:** how far from the point's height the squad may end up.
@@ -72,5 +76,12 @@ A share with nothing in it to work is no spell and isn't behind; a baker idle fo
 spell with work in it has run.
 
 ## When it decides
-Every 20 seconds while the squad has an objective, at once on a new objective, and at once on a
-contact report. Never with no objective. Soldiers keep their last order between decisions.
+Every SITREP while the squad has an objective - each second - so a soldier's CANTCO and a contact report are
+answered in the SITREP that carries them, and a new objective in the next, once the ground is surveyed for it.
+Never with no objective, nor while the squad
+holds its sealed patrol base. An order equal to the standing one isn't given again: it's said, and logged,
+when it changes. The terrain it reads is the last survey taken, on the survey's own clock - 20 seconds, or
+sooner once the point man has moved 16 blocks or the objective is another - not one a decision. A model in
+its place decides on a slower clock
+([architecture.md](../../architecture.md#latency-architecture--why-the-hierarchy-is-stratified-by-timescale-not-just-rank)),
+and the soldiers keep their last order between its decisions.

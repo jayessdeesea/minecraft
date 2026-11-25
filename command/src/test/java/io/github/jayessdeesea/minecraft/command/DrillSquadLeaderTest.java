@@ -53,4 +53,22 @@ class DrillSquadLeaderTest {
         bravo.receiveObjective(new Objective("Secure the camp", chunk, "light", new Objective.Task.Secure()));
         assertEquals(List.of(), bravo.decide(squad, terrain).orElseThrow().changes(), "on other work the detachment stands");
     }
+
+    /** With no surveyed ground to reach, the squad holds at one place: the same order however its point man moves, till there is ground. */
+    @Test
+    void aSquadWithNoGroundToReachHoldsAtOnePlace() {
+        DrillSquadLeader bravo = new DrillSquadLeader("Bravo");
+        TerrainSurvey none = new TerrainSurvey(40, 56, 8, 32, List.of(new TerrainSurvey.Sample(40, 56, TerrainSurvey.Ground.LAND, 64, false, 0)));
+        TerrainSurvey some = new TerrainSurvey(40, 56, 8, 32, List.of(new TerrainSurvey.Sample(40, 56, TerrainSurvey.Ground.LAND, 64, true, 0)));
+        bravo.receiveObjective(new Objective("Secure the camp", new Position(40.5, 64, 56.5), "light", new Objective.Task.Secure()));
+
+        SquadOrder first = bravo.decide(List.of(new SoldierStatus("Dana", new Position(10, 64, 10), new Order.Idle(), new Report.Idle(), Optional.empty())), none).orElseThrow();
+        SquadOrder second = bravo.decide(List.of(new SoldierStatus("Dana", new Position(12, 64, 11), new Order.Idle(), new Report.Idle(), Optional.empty())), none).orElseThrow();
+
+        assertEquals(new Position(10, 64, 10), first.objective(), "where its point man stood when no ground was found");
+        assertEquals(first, second, "and the same order a second later, the point man two blocks on");
+        assertEquals(new Position(40.5, 64, 56.5), bravo.decide(List.of(new SoldierStatus("Dana", new Position(12, 64, 11), new Order.Idle(), new Report.Idle(), Optional.empty())), some).orElseThrow().objective());
+        assertEquals(new Position(12, 64, 11), bravo.decide(List.of(new SoldierStatus("Dana", new Position(12, 64, 11), new Order.Idle(), new Report.Idle(), Optional.empty())), none).orElseThrow().objective(),
+                "a hold after ground was found is a new one");
+    }
 }

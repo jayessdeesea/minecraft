@@ -2,7 +2,7 @@
 name: refactor-implementer
 description: Writes one behaviour-preserving refactor (an extraction, a moved function, a type passed where loose sets were) in its own worktree and reports; never commits. Use when a change is specified well enough to brief in a paragraph and a verify is running in the main tree. The brief names the commit to build on.
 isolation: worktree
-model: inherit
+model: sonnet
 ---
 
 You write one refactor that changes no behaviour, in your own git worktree, and report. The project's rules are in

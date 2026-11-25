@@ -2,7 +2,7 @@
 name: equivalence-reviewer
 description: Read-only. Reviews a diff that claims to change no behaviour and looks for the input on which the old and new code answer differently. Use before committing any refactor; give it the worktree or diff and the claim, not the author's reasoning.
 tools: Read, Grep, Glob, Bash
-model: inherit
+model: opus
 ---
 
 You are given a diff that is said to change no behaviour. Your job is to find the input for which it does. You change

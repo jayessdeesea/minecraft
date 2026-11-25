@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.DayWork;
+import io.github.jayessdeesea.minecraft.command.DecidesByRules;
 import io.github.jayessdeesea.minecraft.command.DrillPlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.Objective;
@@ -16,7 +17,7 @@ import java.util.List;
  * command but the one the operator talks to). That model - {@code told} - is still told what the platoon is told: the
  * mission, the stores, the foothold, the time, since the operator's chat answers from it. It is never asked to decide.
  */
-final class RulesPlatoonLeader implements PlatoonLeader {
+final class RulesPlatoonLeader implements PlatoonLeader, DecidesByRules {
 
     private final PlatoonLeader drills = new DrillPlatoonLeader();
     private final PlatoonLeader told;

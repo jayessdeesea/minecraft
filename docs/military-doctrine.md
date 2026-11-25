@@ -118,8 +118,9 @@ those that poison or are too precious to eat (`tools/item-class-generator`).
 *Requests up the chain, timed* (`app.RequestLedger`). A soldier asks its squad leader for help by
 reporting CANTCO with its reason; a squad asks the platoon leader by its task's progress (DONE or
 STALLED) and by its Class I RED. There's no queue to wait in: each SITREP carries them, every
-second to the squad leader's drills and every squad-leader cycle, and to the platoon leader,
-which the request wakes, at most a minute after its last decision. Each request is
+second, to the squad leader and its drills, and to the platoon leader, which the request wakes -
+both decide in that SITREP (a model in either's place waits as docs/architecture.md's latency
+section gives). Each request is
 logged when raised (`[Request] Bob of Alpha -> squad leader: CANTCO: ...`). It's answered when the
 echelon it went to changes the order it was about: the soldier's to another kind, or to a place
 more than 4 blocks off (a formation's places shift a block or two every cycle, which answers
@@ -600,6 +601,14 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
 | **React to contact** (battle drill) | The rest of the unit moves to support the element in contact. The leader then decides whether to assault, bypass or break contact. | ATP 3-21.8 (battle drills) |
 
 *How we use it:*
+- **A squad's contact is over once it has settled, not between its bursts.** The squad is in contact from
+  its first soldier's contact until none of its soldiers has been in one for 10 seconds
+  (`command.SquadContact.SETTLE_MILLIS`), long enough that a phantom's passes or a skeleton's bursts are one
+  contact; consolidation and reorganisation - the squad leader's rearming - follow that, and each soldier's
+  contact is a contact report to a squad leader by rules once in it (`app.SquadCommand`). Live, a soldier alone went
+  between fighting and not 262 times in an hour of night. The squad loop's own drills still read each
+  soldier's report as it stands that second (`SoldierRunner`'s `squadInContact`, `ReactToContact`,
+  `LinkUp`, `CrossLevel`).
 - **Off the open before dusk.** The night's rule starts ninety seconds before dark, the walk from the
   keep's site to the mine and down its stairs (`ChainOfCommand.SHELTER_LEAD_TICKS`; operator,
   2026-11-17; live, two were shot on the open flatten floor after dusk).
