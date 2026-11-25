@@ -85,7 +85,7 @@ class ArchitectureTest {
      * and come off this list once under (backlog/split-oversized-sources.md).
      */
     static final Map<String, Integer> OVER_THE_LIMIT = Map.of(
-            "app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java", 7986);
+            "app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java", 7943);
 
     /**
      * The state `SoldierRunner` holds, counted as its declarations at class level - fields and constants, a line each,
@@ -93,9 +93,9 @@ class ArchitectureTest {
      * every sixteenth commit, between profiles"). State added there is state every change has to read past; a new one belongs in the
      * class whose work it is. The cap comes down with each extraction - the test says when.
      */
-    static final int RUNNER_FIELDS = 673;
+    static final int RUNNER_FIELDS = 664;
     /** Lines over {@value #LONG} characters in the main sources: no new one, and the count only comes down. */
-    static final int LONG_LINES = 58;
+    static final int LONG_LINES = 57;
     static final int LONG = 200;
     /** How far under a cap a count may fall before the cap has to follow it down. */
     static final int SLACK = 5;

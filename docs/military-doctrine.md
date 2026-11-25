@@ -1131,7 +1131,7 @@ The supply point's chest is also the stockpile; with no supply point set up, the
 chest of the soldier's workshop (§11), fitted by the first soldier with a full load and nowhere to
 put it, or a producer with its yield whose duty order has no dump yet (a camp just moved) - crafted from 8 planks at
 the workshop's table, placed in its cell. A soldier with a full load walks it over - to
-the nearest cell within reach of the chest it can stand in and get to (`SoldierRunner.chestStand`), not the chest's own
+the nearest cell within reach of the chest it can stand in and get to (`app.ChestStand`), not the chest's own
 cell, which no one can stand in - and puts in
 the material it has a full load of (`bot.supply.Depositor`), and the rations beyond its basic load
 (§4, Class I) - only that, so a soldier quarrying stone keeps the logs for its next pickaxe, which

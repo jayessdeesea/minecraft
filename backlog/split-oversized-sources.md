@@ -9,7 +9,7 @@ doctrine: docs/conventions.md (source files under 1000 lines); docs/echelons/ten
 
 ## Why
 The operator's (2026-11-18): source files stay under 1000 lines. `ArchitectureTest.OVER_THE_LIMIT` lists the files
-over it, each capped at its length then, to shrink to under. One is left: `app.SoldierRunner`, 8070 lines, most of it
+over it, each capped at its length then, to shrink to under. One is left: `app.SoldierRunner`, 7943 lines, most of it
 two methods - `orderSquad` (the squad loop, about 1300 lines) and `onJoined` (each soldier's tick, about 1200). Three
 more sit at the limit, where the next edit fails the build: `bot.DeterministicSoldier` (989), `app.ChainOfCommand`
 (998) and the test `app.SimServer` (1000 - the ratchet fails a file past 1000 that isn't listed).
@@ -22,8 +22,11 @@ first three passes, in that order:
 0. **The cells a body's box overlaps**, one function with one rule for an edge (operator, 2026-11-24, commit 1177): position
    and motion stay doubles, as the server's are; turning one into block cells is written out in `Body.anySolid` twice and
    by hand in the mover, the builder and the pathfinder, and a hair's overlap on one side only held a soldier a day.
-1. **Where a soldier stands for a chest**, one function: it's decided on four paths in `SoldierRunner` today
-   (`depositTo`, `chestStand`, two inline), and a fix reached three of them twice.
+1. **Where a soldier stands for a chest**: the search and a depositor's stand are out (`app.ChestStand`, its table
+   `ChestStandTest`). Left: with no stand found, the two callers disagree - a depositor's goes to the mine's landing or
+   the chest's cell (`SoldierRunner.noStandFor`), the routine's stand a few lines up (`standOf(...)` for a `DEPOSITOR`)
+   to its workshop's stand, else stays if in reach, else the chest's own cell, never the landing. Which is right is
+   to decide, then one fallback; and `ChestStand` still reads the squad's soldiers through the runner's wrapper.
 2. **The keep's work by ground**, out of the runner with its state (backlog/named-work.md, the flatten): the level
    plan, its shares, its foreman and pace - a class a squad leader's process will own.
 3. **A mission's measures**, out of `FarmMissions` (its drift check is out: `app.TemplateDrift`, 2026-11-24): what each step counts as left, one function a kind, shared by the

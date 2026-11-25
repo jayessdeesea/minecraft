@@ -6000,7 +6000,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (stand.isEmpty() && depositors.containsKey(soldierName)) {
                 SoldierStatus self = statuses.get(i);
                 Depositor own = depositors.get(soldierName);
-                stand = own.dumping() ? own.standAt() : own.standAt().map(chest -> chestStand(self.position(), chest).orElseGet(() -> Depositor.withinReach(self.position(), chest) ? self.position() : noStandFor(chest))); // in reach where it stands - in leaves, on a heap, no stand found from there - it stands: live (field704-705), soldiers a block from a chest were ordered into its cell for hours
+                stand = ChestStand.depositorStand(own, Optional.of(self.position()), this::chestStand, this::noStandFor); // in reach where it stands - in leaves, on a heap, no stand found from there - it stands: live (field704-705), soldiers a block from a chest were ordered into its cell for hours
             }
             if (stand.isEmpty()) {
                 stand = storeWalks.getOrDefault(soldierName, Optional.empty());
@@ -6047,12 +6047,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
     }
 
-    /**
-     * Where a soldier at {@code from} stands to reach the chest at {@code chest}: the nearest cell
-     * within reach of it that the soldier can stand in and get to - on foot, on its blocks or
-     * cutting steps. Not the chest's own cell, which nobody stands in: live, a chest walled on
-     * three sides left every trip to it short of reach, and the day's loads in the soldiers' packs.
-     */
     /** Where {@code soldier} stands for a load it carries to a chest, while its depositor has its hands. */
     private Optional<Position> depositTo(String soldier, List<SoldierStatus> statuses) {
         if (handsHeld.get(soldier) != Hands.Routine.DEPOSITOR || !depositors.containsKey(soldier)) {
@@ -6060,7 +6054,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         Optional<Position> here = statuses.stream().filter(s -> s.name().equals(soldier)).findFirst().map(SoldierStatus::position);
         Depositor own = depositors.get(soldier);
-        return own.dumping() ? own.standAt() : own.standAt().map(chest -> here.flatMap(h -> chestStand(h, chest)).orElseGet(() -> here.filter(h -> Depositor.withinReach(h, chest)).orElseGet(() -> noStandFor(chest))));
+        return ChestStand.depositorStand(own, here, this::chestStand, this::noStandFor);
     }
 
     /**
@@ -6074,45 +6068,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     private Optional<Position> chestStand(Position from, Position chest) {
-        BlockPos feet = BlockPos.containing(from.x(), from.y(), from.z());
-        int cx = (int) Math.floor(chest.x()), cy = (int) Math.floor(chest.y()), cz = (int) Math.floor(chest.z());
-        int span = Math.max(Math.abs(cx - feet.x()), Math.abs(cz - feet.z())) + CHEST_STAND_ACROSS + 2;
-        Set<BlockPos> reachable = Pathfinder.climbs(world, feet, span, CHEST_STAND_BUDGET, 0, false).keySet();
-        BlockPos best = null;
-        double bestDistance = Double.MAX_VALUE;
-        for (int dx = -CHEST_STAND_ACROSS; dx <= CHEST_STAND_ACROSS; dx++) {
-            for (int dz = -CHEST_STAND_ACROSS; dz <= CHEST_STAND_ACROSS; dz++) {
-                // No lower than a step under the chest: a stand two down is a pit reached by a drop with no
-                // walk out of it. Live, three soldiers of three squads were sent into one by the camp's
-                // chest, taken for shut in, and cut their way out sideways under the camp.
-                for (int dy = -1; dy <= 1; dy++) {
-                    BlockPos cell = new BlockPos(cx + dx, cy + dy, cz + dz);
-                    Position centre = new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
-                    // Not on a chest: one is less than a block high, so a stand on it is never quite
-                    // reached, and a body on it shuts its lid. Live, the farm squad's soldier was sent
-                    // onto the chest beside the camp's stockpile, failed five walks to it in a row, and stood with its load.
-                    // In reach wherever in the stand the walk stops - 0.3 of its centre - not only from its
-                    // centre: live, a walk ended 3.5 blocks off, a hair past reach, and the load wasn't put in.
-                    boolean reachedFromAll = Depositor.withinReach(new Position(centre.x() - 0.3, centre.y(), centre.z() - 0.3), chest)
-                            && Depositor.withinReach(new Position(centre.x() + 0.3, centre.y(), centre.z() - 0.3), chest)
-                            && Depositor.withinReach(new Position(centre.x() - 0.3, centre.y(), centre.z() + 0.3), chest)
-                            && Depositor.withinReach(new Position(centre.x() + 0.3, centre.y(), centre.z() + 0.3), chest);
-                    if (!reachable.contains(cell) || !reachedFromAll || world.isChest(cell.x(), cell.y() - 1, cell.z())) {
-                        continue;
-                    }
-                    double distance = Math.hypot(centre.x() - from.x(), centre.z() - from.z()) + Math.abs(centre.y() - from.y()) + (SoldierErrands.standTaken(centre, from, activeSoldiers.values().stream().map(d -> d.status().position()).toList()) ? 1_000 : 0); // another soldier's stand is the last chosen, not ruled out: with every stand taken the walk went to the chest's own cell, and seven stood round one chest, each keeping the others' stands taken (field704)
-                    if (distance < bestDistance) {
-                        best = cell;
-                        bestDistance = distance;
-                    }
-                }
-            }
-        }
-        return Optional.ofNullable(best).map(c -> new Position(c.x() + 0.5, c.y(), c.z() + 0.5));
+        return ChestStand.at(world, from, chest, activeSoldiers.values().stream().map(d -> d.status().position()).toList());
     }
-
-    /** How far across from a chest a stand to reach it is looked for, and how far the flood for it goes. */
-    static final int CHEST_STAND_ACROSS = 3, CHEST_STAND_BUDGET = 20_000;
 
     /**
      * Whether the wall's cell {@code c}, round a wall centred at ({@code cx}, {@code cz}), is dirt
