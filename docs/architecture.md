@@ -245,8 +245,10 @@ farm's and the wood's duties, routing), each under the 1000-line limit:
   ground tilled and sown, wheat that ripens a stage every 10 seconds (far faster than the server's
   random ticks) - and refusing what's out of reach. A dig is timed by the tool in hand, as the server times it, and
   one finished too fast is refused (`SimItems.dugTooFast`); a bucket's pour traces its ray as the server does, stopping
-  at the first block that's neither air nor water - a crop or grass included (`SimBuckets`). What it doesn't model
-  throws, naming the action.
+  at the first block that's neither air nor water - a crop or grass included (`SimBuckets`). Its animals stand where
+  they spawn till a player within 10 blocks holds their kind's food, then walk after it, a block up or down, never
+  into water or off a drop (`SimAnimals`); `AnimalScoutEvalTest` walks `bot.supply.Herder` against them. What it
+  doesn't model throws, naming the action.
 - **The platoon leader and squad leader are scripted**: a `PlatoonLeader` that hands out a fixed objective, and
   a `ChatModel` that answers a fixed `SquadOrder`.
 

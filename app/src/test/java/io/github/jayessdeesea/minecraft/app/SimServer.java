@@ -102,8 +102,8 @@ final class SimServer {
     private int nextEntity = 1000;
     /** Each zombie: [x, y, z, health, cooldown] by entity ID. */
     private final Map<Integer, double[]> zombies = new LinkedHashMap<>();
-    /** Sheep, standing where they spawned: x, y, z, health. */
-    private final Map<Integer, double[]> sheep = new LinkedHashMap<>();
+    /** The animals: each stands where it spawned till it is led (SimAnimals). */
+    final SimAnimals animals = new SimAnimals(this::block);
     /** Deaths by soldier, for a scenario to count. */
     final Map<String, Integer> deaths = new HashMap<>();
 
@@ -167,11 +167,15 @@ final class SimServer {
 
     /** A sheep grazing at the given cell's feet, seen by every soldier at once: killed, it gives its killer a white wool and a mutton. */
     int spawnSheep(double x, double y, double z) {
+        return spawnAnimal(io.github.jayessdeesea.minecraft.bot.world.EntityTracker.SHEEP_TYPE_ID, x, y, z);
+    }
+
+    /** An animal of {@code type} at the given cell's feet, seen by every soldier at once. */
+    int spawnAnimal(int type, double x, double y, double z) {
         int id = nextEntity++;
-        sheep.put(id, new double[]{x, y, z, 8});
-        players.values().forEach(p -> p.listeners.onEntitySpawn()
-                .accept(new EntityUpdate(id, UUID.randomUUID(), io.github.jayessdeesea.minecraft.bot.world.EntityTracker.SHEEP_TYPE_ID, x, y, z)));
-        log.add("a sheep spawned at " + x + "," + y + "," + z);
+        animals.spawn(id, type, x, y, z, 8);
+        players.values().forEach(p -> p.listeners.onEntitySpawn().accept(new EntityUpdate(id, UUID.randomUUID(), type, x, y, z)));
+        log.add((type == io.github.jayessdeesea.minecraft.bot.world.EntityTracker.SHEEP_TYPE_ID ? "a sheep" : "an animal of type " + type) + " spawned at " + x + "," + y + "," + z);
         return id;
     }
 
@@ -215,6 +219,8 @@ final class SimServer {
     private void tick() {
         dayTicks++;
         zombies();
+        animals.follow(players.values().stream().filter(p -> p.health > 0).map(p -> new SimAnimals.Tempter(p.position.x(), p.position.y(), p.position.z(),
+                p.heldItem().flatMap(ItemClassRegistry::classOf))).toList(), (id, a) -> players.values().forEach(p -> p.listeners.onEntityMove().accept(new EntityMove(id, a[0], a[1], a[2]))));
         grow();
         furnaces.forEach((at, f) -> {
             int[] state = burning.computeIfAbsent(at, a -> new int[2]);
@@ -328,7 +334,6 @@ final class SimServer {
             }
         }
     }
-
 
 
 
@@ -507,22 +512,17 @@ final class SimServer {
 
         @Override
         public void attack(int entityId) {
-            double[] s = sheep.get(entityId);
-            if (s != null) {
-                if (Math.hypot(s[0] - position.x(), s[2] - position.z()) > 3.5) {
-                    log.add(name + " REFUSED: attack on " + entityId + " out of reach");
-                    return;
-                }
-                s[3] -= heldItem().map(i -> i == ITEM_WOODEN_SWORD ? 4 : 1).orElse(1);
-                if (s[3] <= 0) {
-                    sheep.remove(entityId);
-                    players.values().forEach(p -> p.listeners.onEntitiesRemoved().accept(List.of(entityId)));
-                    // Its drops walked onto at once: the hunter stands over them.
-                    give(itemOf(ItemClass.WOOL));
-                    give(itemNamedOrMinus("mutton"));
-                    sync();
-                    log.add(name + " killed sheep " + entityId);
-                }
+            SimAnimals.Hit hit = animals.hit(entityId, position.x(), position.z(), heldItem().map(i -> i == ITEM_WOODEN_SWORD ? 4 : 1).orElse(1));
+            if (hit == SimAnimals.Hit.OUT_OF_REACH) {
+                log.add(name + " REFUSED: attack on " + entityId + " out of reach");
+            } else if (hit == SimAnimals.Hit.KILLED) {
+                players.values().forEach(p -> p.listeners.onEntitiesRemoved().accept(List.of(entityId)));
+                give(itemOf(ItemClass.WOOL)); // its drops walked onto at once: the hunter stands over them
+                give(itemNamedOrMinus("mutton"));
+                sync();
+                log.add(name + " killed sheep " + entityId);
+            }
+            if (hit != SimAnimals.Hit.NONE) {
                 return;
             }
             double[] z = zombies.get(entityId);
