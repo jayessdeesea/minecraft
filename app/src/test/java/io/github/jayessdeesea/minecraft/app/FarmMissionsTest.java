@@ -705,4 +705,91 @@ class FarmMissionsTest {
         assertTrue(westOfOne.stream().noneMatch(c -> c.x() >= 96), "nothing on the ground of the template east of it");
         assertEquals(256, westOfOne.stream().filter(c -> c.x() >= 80 && c.x() <= 95 && c.z() >= 80 && c.z() <= 95).count(), "its own chunk whole");
     }
+
+    private static final io.github.jayessdeesea.minecraft.bot.farm.FarmPlan NO_FARM = new io.github.jayessdeesea.minecraft.bot.farm.FarmPlan(
+            new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(0, 63, 0), List.of());
+
+    private static io.github.jayessdeesea.minecraft.command.SoldierStatus paver(String name, double x, double y, double z,
+                                                                                 io.github.jayessdeesea.minecraft.command.Report report) {
+        return new io.github.jayessdeesea.minecraft.command.SoldierStatus(name, new io.github.jayessdeesea.minecraft.command.Position(x, y, z),
+                new io.github.jayessdeesea.minecraft.command.Order.Idle(), report, java.util.Optional.empty());
+    }
+
+    /** The cells of chunk (0, 0)'s layer at y=63 in columns x {@code from}..{@code to}. */
+    private static java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> columns(int from, int to) {
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells = new java.util.HashSet<>();
+        for (int x = from; x <= to; x++) {
+            for (int z = 0; z <= 15; z++) {
+                cells.add(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, 63, z));
+            }
+        }
+        return cells;
+    }
+
+    /** With none of a squad in the recovery drill, a floor is dealt a quarter of the chunk each, west to east in the squad's order, none another's. */
+    @Test
+    void aFloorIsDealtAStripEachInTheSquadsOrder() {
+        FarmMissions missions = new FarmMissions(cause -> { });
+        FarmMission floor = FarmMission.atSeaLevel(0, 0);
+        missions.give(floor, 1_000);
+        List<io.github.jayessdeesea.minecraft.command.SoldierStatus> squad = List.of(
+                paver("Ann", 1.5, 64, 8.5, new io.github.jayessdeesea.minecraft.command.Report.Idle()),
+                paver("Bob", 5.5, 64, 8.5, new io.github.jayessdeesea.minecraft.command.Report.Moving()),
+                paver("Cat", 9.5, 64, 8.5, new io.github.jayessdeesea.minecraft.command.Report.Cantco("no cobblestone")),
+                paver("Dan", 40.5, 70, 8.5, new io.github.jayessdeesea.minecraft.command.Report.Idle()));
+
+        List<io.github.jayessdeesea.minecraft.command.SoldierStatus> crew = new SquadState().crew(squad);
+        for (int k = 0; k < squad.size(); k++) {
+            assertEquals(columns(4 * k, 4 * k + 3), java.util.Set.copyOf(missions.share(floor.layer(63), NO_FARM, crew, squad.get(k).name()).orElseThrow()),
+                    squad.get(k).name() + "'s strip");
+        }
+    }
+
+    /**
+     * A paver the recovery drill has - stranded in a cave off the chunk, its stair out its work - is dealt none of the
+     * floor, and the three others are dealt the whole layer: a strip held by one that can't come is cells nobody paves,
+     * and a floor that never finishes. Out of the drill it's dealt in again, each a quarter as before.
+     */
+    @Test
+    void aPaverInTheRecoveryDrillIsLeftOutAndTheRestAreDealtTheWholeFloor() {
+        FarmMissions missions = new FarmMissions(cause -> { });
+        FarmMission floor = FarmMission.atSeaLevel(0, 0);
+        missions.give(floor, 1_000);
+        io.github.jayessdeesea.minecraft.command.SoldierStatus bob = paver("Bob", 5.5, 64, 8.5, new io.github.jayessdeesea.minecraft.command.Report.Idle());
+        io.github.jayessdeesea.minecraft.command.SoldierStatus cat = paver("Cat", 9.5, 64, 8.5, new io.github.jayessdeesea.minecraft.command.Report.Idle());
+        io.github.jayessdeesea.minecraft.command.SoldierStatus dan = paver("Dan", 13.5, 64, 8.5, new io.github.jayessdeesea.minecraft.command.Report.Idle());
+        List<io.github.jayessdeesea.minecraft.command.SoldierStatus> stranded = List.of(
+                paver("Ann", -24.5, 61, 8.5, new io.github.jayessdeesea.minecraft.command.Report.Cantco("no route from (-25, 61, 8) to (2, 64, 8)")), bob, cat, dan);
+        List<io.github.jayessdeesea.minecraft.command.Order> idle = java.util.Collections.nCopies(4, new io.github.jayessdeesea.minecraft.command.Order.Idle());
+        SquadState state = new SquadState();
+        for (int report = 0; report < SoldierRunner.STRANDED_REPORTS; report++) {
+            state.recovery.orders(stranded, idle, s -> java.util.Optional.empty());
+        }
+        assertTrue(state.recovery.recovering("Ann"), "the drill has her");
+
+        List<io.github.jayessdeesea.minecraft.command.SoldierStatus> crew = state.crew(stranded);
+        assertEquals(java.util.Optional.empty(), missions.share(floor.layer(63), NO_FARM, crew, "Ann"), "none hers, and she's no paver, while the drill has her");
+        assertEquals(columns(0, 4), java.util.Set.copyOf(missions.share(floor.layer(63), NO_FARM, crew, "Bob").orElseThrow()), "the cells left in her columns, x 0..3, are Bob's");
+        assertEquals(columns(5, 9), java.util.Set.copyOf(missions.share(floor.layer(63), NO_FARM, crew, "Cat").orElseThrow()));
+        assertEquals(columns(10, 15), java.util.Set.copyOf(missions.share(floor.layer(63), NO_FARM, crew, "Dan").orElseThrow()));
+
+        List<io.github.jayessdeesea.minecraft.command.SoldierStatus> back = List.of(
+                paver("Ann", 1.5, 64, 8.5, new io.github.jayessdeesea.minecraft.command.Report.Idle()), bob, cat, dan);
+        state.recovery.orders(back, idle, s -> java.util.Optional.empty());
+        List<io.github.jayessdeesea.minecraft.command.SoldierStatus> whole = state.crew(back);
+        for (int k = 0; k < back.size(); k++) {
+            assertEquals(columns(4 * k, 4 * k + 3), java.util.Set.copyOf(missions.share(floor.layer(63), NO_FARM, whole, back.get(k).name()).orElseThrow()),
+                    back.get(k).name() + "'s strip, all four dealt");
+        }
+    }
+
+    /** One of a crew past the floor's last strip - more pavers than it has columns - is a paver with no cells, as it was. */
+    @Test
+    void aPaverPastTheFloorsLastStripHasNoCells() {
+        FarmMissions missions = new FarmMissions(cause -> { });
+        List<io.github.jayessdeesea.minecraft.command.SoldierStatus> seventeen = java.util.stream.IntStream.range(0, 17)
+                .mapToObj(k -> paver("S" + k, 1.5, 64, 8.5, new io.github.jayessdeesea.minecraft.command.Report.Idle())).toList();
+        assertEquals(columns(15, 15), java.util.Set.copyOf(missions.share(FarmMission.atSeaLevel(0, 0).layer(63), NO_FARM, seventeen, "S15").orElseThrow()));
+        assertEquals(java.util.Optional.of(List.of()), missions.share(FarmMission.atSeaLevel(0, 0).layer(63), NO_FARM, seventeen, "S16"));
+    }
 }

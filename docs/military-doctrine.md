@@ -2249,14 +2249,21 @@ chunk's template (§ 12), which puts dirt under each tree - cobblestone at the l
   (field668-682), a superseded mission's y=67 template stood in the camp's farm, was sown, and the operator's
   sea-level flatten cut round its wheat.
 - **Floored in cobblestone** at that level, every cell, natural stone included, but a template's (`Objective.Task.Floor`,
-  `Mason.pave`): each paver its strip of the layer, the nearest cell first, stood for from the cell beside it a block
+  `Mason.pave`): each paver its strip of the layer (`FarmMissions.share`), the nearest cell first, stood for from the cell beside it a block
   up; a cell solid and not cobblestone dug out with the tool carried for it - the best pickaxe for rock, the fastest
   shovel for soil, in hand before the dig and timed for it - and its cobblestone put back in the one job, so
   no hole stands open below sea level; an open one built; a paver out of cobblestone draws a load from the stockpile
   while it holds some. Done when every cell is cobblestone.
+- **A soldier in the recovery drill is dealt no work** (`SquadState.hands`; § 7): its way out is its work till it's
+  out, and a strip dealt to it is cells nobody works and a step that never finishes. A floor's strips
+  (`FarmMissions.share`) and a template's ground and sky are dealt among the rest of its squad (`SquadState.crew`), whose
+  strips cover the whole ground; out of the drill it is dealt in again. One left out of a floor is no paver: it draws
+  no cobblestone for it and keeps none back. With the drill holding every soldier of the squad a floor and a template's
+  ground are dealt to all of it, so the ground is never nobody's; the keep's and a flatten's hands, the same soldiers
+  left out, are then none, and it has no orders. Which strip is a hand's, by its place in that crew, is `Tasking.strip`.
 - **The template** at the farm's level on the floor: its dirt laid on the cobblestone, its water holes' floor the
   cobblestone under them, its crop a block over (§ 12, the camp's farm). While any of its ground is missing, laying it is
-  the whole squad's (operator, 2026-11-22; `app.TemplateGround`): each soldier a strip of the missing cells in dirt
+  the whole squad's (operator, 2026-11-22; `app.TemplateGround`): each soldier the recovery drill hasn't a strip of the missing cells in dirt
   (`Tasking.soil`), the holes left open, the task "lay the farm's ground" on the squad's register; one short of dirt draws
   a load from the nearest chest holding some, and with none in any chest is sent for a load from the ground east of the
   chunk over its level. Laid, the chunk is its one tender's again. Live (field692), a floored chunk wanted 247 cells of

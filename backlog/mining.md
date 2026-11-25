@@ -45,6 +45,102 @@ digs and caves cross it, single cells at y=49..53 and y=40..43.
 - Eval: a mineshaft mission on rock with a cave across its well at one level - the well cut to its pattern through
   it, floored and walled, to its landing; and one with lava at a level - stopped, said, the squad at its head.
 
+## A mining shift: drawn for, cached at its floor, closed out (operator, 2026-11-24)
+The operator: supplies go down the mine, and having them is a prerequisite - as it is when tending the sheep. Torches,
+pickaxes, shovels; in time buckets, gravel, specialised pickaxes. The excess is dropped in a chest at the floor being
+worked; the miners mine, coming back to it with ore worth keeping and for more torches; and when the platoon leader
+says stop, they go back to that chest, take what is useful, get rid of the cobblestone and dirt, come up, and put the
+goods in the stores. And the digger lights as it goes: nobody is sent to light the way.
+
+This is a task with an end (backlog/chunk-tasks.md): the same phases a tend has, named for a mine.
+
+- **DRAW - the prerequisite, before anyone goes down.** A mine's load is a list by kind and count for a shift: torches,
+  pickaxes (one in hand, one spare), a shovel, food; later a water bucket, gravel or other fill, a pickaxe of the tier
+  the level's ore needs. Drawn at the head's rows (`MineHead.Bank`), made at its workshop where the stores are short,
+  and what can't be had said up as a shortfall before the shift starts - not found out at the face
+  (backlog/kit-readiness.md). The load is one table, by task: a shepherd's is the same table with other rows.
+- **CACHE - a chest at the floor.** At the foot of the stair on the level being worked, in the pattern's place (a recess
+  off the landing): the squad's first act on reaching its floor is to put it up and put down what it carries beyond a
+  working load - the spare tools, the torches past a stack, the fill. A level's chest is the level's: named by its
+  mine and level, found again by the next shift.
+- **WORK - the face, in trips.** The digger sets a torch as part of the cut, at the pattern's places (a stair's pillar
+  every so many steps, a gallery's wall every so many cells), from the torches it carries. A pack filling, or torches
+  or a pickaxe running out, is a trip to the floor's chest and back, not to the surface: ore and what is worth keeping
+  in, torches and a tool out. Cobblestone and dirt past what the shift's own steps and fills need are not carried.
+- **CLOSE - on the platoon leader's word.** Mining stops when it is told to (a squad works till it is told
+  differently): each miner back to the floor's chest; what is useful taken up - ore, ingots, flint, the tools with
+  wear left; cobblestone and dirt past the stores' cap thrown away there or left for the level's fills; up the stair;
+  the goods put in their rows at the head; and DONE said with what was brought up, what was used, and what the level
+  still holds.
+
+Built on what is there: the head's banks by kind (`MineHead.Bank.of`), the stores' caps on cobblestone and dirt
+(`SoldierErrands.capped`, `Pack`), the workshop at the head. Not there: a load by task; a chest at a level; a torch in
+`Miner` at all; a stop that is an order rather than dusk; a close-out.
+
+Evals:
+- A squad ordered to mine with no torches in the stores and logs and coal to make them: torches made and drawn before
+  the first step down; with nothing to make them of: CANTCO said at the head, nobody down.
+- A level reached: its chest up at the landing's recess, spares in it, each miner down to a working load.
+- 64 cells of gallery cut: lit to the pattern, no cell of it dark enough to spawn on, no soldier ever given "light".
+- A pack full at the face: the trip is to the floor's chest and back, its length that of the gallery, not the stair.
+- "Stop" given mid-shift: every miner up within the stair's climb and the gallery's walk, ore in the head's ore row,
+  no cobblestone past the cap put in, the level's chest holding what was left for it, DONE said with the counts.
+- A miner cut off from the floor's chest at "stop": said, and the squad's recovery is its own task, not silence.
+
+Doctrine: a load drawn and checked before the line of departure (pre-combat checks and inspections, ATP 3-21.8); a
+cache forward of the base for what the element can't carry at work (the patrol's cache); consolidation and
+reorganisation on the word to cease work - account for people and kit, redistribute, report.
+
+Decided by this: the mine keeps its levels ("once we get to our floor") - a stair to its pattern, and floors off it.
+Open: how far a level's galleries run from its stair before another stair is worth cutting (today 192 blocks of main
+tunnel; Kate and Liam were 120 to 180 from the head).
+
+## A mine's ground, covered whole, and its ledger (operator, 2026-11-24)
+The operator: mines are on alternate chunks, so the pattern should get all the blocks; and the soldiers say when a
+floor is complete - both sides - so the platoon leader marks it done and orders the next day's work from it.
+
+**A mine's ground is its cluster.** `command.BasePlan` puts a mineshaft where chunk x and z are both even, one a
+two-by-two cluster: so each mine owns the 32 by 32 columns of its cluster, from its floor's top level down, and the
+mines' grounds tile the base with no column shared and none left out. A gallery never leaves its mine's ground (today
+a main tunnel runs up to 192 blocks under other clusters).
+
+**A floor, so that every block of its ground is seen** - cut or bared on a face, so no ore is passed:
+- The stair's landing is at the well, in the cluster's north-west chunk. A floor is two high: y and y + 1.
+- The **main tunnel** runs east-west through the landing's row, from the ground's west edge to its east: 32 long.
+  West of the stair is the floor's west side, east its east side.
+- **Branches** run north and south off it to the ground's edges, every second column: a branch, one column of rock,
+  a branch. Every block of the two layers is then a branch's cell or a branch's wall.
+- **Floors every three**: y, y + 1 cut, y + 2 left - and the branches of alternate floors one column over. The layer
+  left is the ceiling of the floor under it over that floor's branches, and the floor of the one over it under its
+  branches: between them every column of it.
+- So every block of the ground from the top floor to the bottom is seen, for a third of it cut: about 1,060 cells a
+  floor (32 by 2 of main tunnel, 16 branches of 31 by 2), 530 a side.
+- The cheaper pattern, today's spacing kept inside the ground (a branch every third column, floors every fourth):
+  about 750 cells a floor, a sixth of the ground cut, the two layers cut all seen and a third of the layers between -
+  a vein of two or more is still met, a single block can be passed. To choose by depth: the every-block pattern where
+  diamonds are, the cheaper above.
+- The top floor is no nearer the surface than the templates' footings and the caves under them allow (a floor under
+  a template's slab is how three soldiers came up through one): a depth to settle, and no gallery above it.
+- Water or lava met in a branch: that branch stops there, is walled, and is said with its place; the side goes on.
+
+**The ledger: a mine's floors, by side.** One register the platoon leader keeps (`command`'s registers, saved with the
+missions), a row a mine's floor and side:
+- its state - NOT BEGUN, STAIR DOWN TO IT, CACHED (its chest up), BEING CUT (with the next branch to cut: the checkpoint,
+  said at each branch's end), COMPLETE, or STOPPED AT (a place, and water or lava);
+- what it yielded, by kind, counted at each trip to the floor's chest and at the close;
+- who said it and when.
+A soldier's report of a branch done and of a side complete is a report's type with its mine, floor and side - never a
+sentence read back. The squad leader passes it up; the platoon leader marks it, and "complete" is checked once by the
+next soldier through (a side said complete with a branch uncut is reopened: check the outcome of what is ordered).
+Each morning the platoon leader orders from the ledger: the shallowest floor not complete, a side to a pair of
+miners, the stair cut on to the next floor when both sides of the one above are complete or stopped. A shift ended by
+"stop" leaves its checkpoint; the next takes it up at that branch.
+
+Evals: a mine's ground cut to the pattern in the simulation - every block of it a cell cut or the face of one; no
+cell cut outside the ground; a shift stopped at branch 5 of a side - the next begins at branch 5; a side said complete
+with a branch left - reopened; lava in a branch - that branch STOPPED AT, the side complete without it, the operator
+told; four squads, two mines, three mornings - no floor ordered twice, none skipped.
+
 ## A mineshaft's shaft that is never cut (P1, live 2026-11-24)
 The operator expected the mineshaft's head to have a hole at its centre and stairs going down. The template's head is
 its fence, gates, torches and chests; the hole and the stairs are its last step, "mine the shaft ... till it's dry".

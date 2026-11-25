@@ -20,7 +20,9 @@ import io.github.jayessdeesea.minecraft.command.FlattenPlan;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Slopes;
+import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
+import io.github.jayessdeesea.minecraft.command.Tasking;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -366,10 +368,18 @@ final class FarmMissions {
         return missions.keySet().stream().filter(m -> m.chunkX() == Math.floorDiv(layer.minX(), 16) && m.chunkZ() == Math.floorDiv(layer.minZ(), 16)).findFirst();
     }
 
-    /** The {@code i}th of {@code n} pavers' share of {@code layer}: a strip of it each, west to east or north to south, none another's. */
-    List<BlockPos> share(Box layer, FarmPlan campFarm, int i, int n) {
-        List<Box> strips = layer.strips(Math.max(1, n));
-        return i < strips.size() ? floorCells(strips.get(i), campFarm) : List.of();
+    /**
+     * {@code soldier}'s share of {@code layer} among {@code crew}, those of its squad a floor is dealt to
+     * ({@code SquadState.crew}): a strip of it each by its place among them, west to east or north to south
+     * ({@link Tasking#strip}), none another's, and no cells for one past the last strip. None at all for one not of the
+     * crew, which is then no paver: nothing of a paver's is its, no draw of cobblestone for the floor.
+     */
+    Optional<List<BlockPos>> share(Box layer, FarmPlan campFarm, List<SoldierStatus> crew, String soldier) {
+        int i = crew.stream().map(SoldierStatus::name).toList().indexOf(soldier);
+        if (i < 0) {
+            return Optional.empty();
+        }
+        return Optional.of(i < layer.strips(crew.size()).size() ? floorCells(Tasking.strip(layer, i, crew.size()), campFarm) : List.of());
     }
 
     /**

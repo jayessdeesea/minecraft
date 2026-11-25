@@ -66,6 +66,24 @@ final class SquadState {
     int[] stairsFor;
     /** The recovery drill: who's stranded, the stair laid out for each, and who's fetching. */
     final Recovery recovery = new Recovery(STRANDED_REPORTS);
+
+    /**
+     * Those of {@code squad} work is dealt to: none the recovery drill has. Its way out is its work till it's out, and a
+     * strip or a rectangle dealt to it is ground nobody works.
+     */
+    List<SoldierStatus> hands(List<SoldierStatus> squad) {
+        return squad.stream().filter(s -> !recovery.recovering(s.name())).toList();
+    }
+
+    /**
+     * As {@link #hands}, for a ground dealt in strips by a soldier's place in its squad - a floor, a template's ground:
+     * the whole squad when the drill has every one of it, so the ground is never nobody's.
+     */
+    List<SoldierStatus> crew(List<SoldierStatus> squad) {
+        List<SoldierStatus> hands = hands(squad);
+        return hands.isEmpty() ? squad : hands;
+    }
+
     /** Soldiers the recovery drill is sending down on their own - said once a spell. */
     final Set<String> escaping = new HashSet<>();
     /** Torches left to put down round a SECURE objective, at the last check: -1 before the first. */

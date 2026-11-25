@@ -27,4 +27,33 @@ class SquadStateTest {
         assertFalse(state.spareDigTill(0, 92_000, List.of("Dana", "Hal")));
         assertEquals(Set.of(), state.digSpare, "done: none spare");
     }
+
+    /**
+     * Work is dealt to none the recovery drill has; a ground dealt in strips, to the whole squad when the drill has every
+     * one of it.
+     */
+    @Test
+    void workIsDealtToNoneTheRecoveryDrillHas() {
+        SquadState state = new SquadState();
+        io.github.jayessdeesea.minecraft.command.Report stuck = new io.github.jayessdeesea.minecraft.command.Report.Cantco("no route from (7, 81, 0) to (0, 64, 0)");
+        java.util.function.BiFunction<String, io.github.jayessdeesea.minecraft.command.Report, io.github.jayessdeesea.minecraft.command.SoldierStatus> at =
+                (name, report) -> new io.github.jayessdeesea.minecraft.command.SoldierStatus(name, new io.github.jayessdeesea.minecraft.command.Position(7.5, 81, 0.5),
+                        new io.github.jayessdeesea.minecraft.command.Order.Idle(), report, java.util.Optional.empty());
+        List<io.github.jayessdeesea.minecraft.command.SoldierStatus> one = List.of(at.apply("Dana", stuck), at.apply("Hal", new io.github.jayessdeesea.minecraft.command.Report.Idle()));
+        List<io.github.jayessdeesea.minecraft.command.Order> idle = java.util.Collections.nCopies(2, new io.github.jayessdeesea.minecraft.command.Order.Idle());
+
+        assertEquals(one, state.hands(one), "nobody in the drill: every hand");
+        for (int report = 0; report < SoldierRunner.STRANDED_REPORTS; report++) {
+            state.recovery.orders(one, idle, s -> java.util.Optional.empty());
+        }
+        assertEquals(List.of("Hal"), state.hands(one).stream().map(io.github.jayessdeesea.minecraft.command.SoldierStatus::name).toList());
+        assertEquals(state.hands(one), state.crew(one));
+
+        List<io.github.jayessdeesea.minecraft.command.SoldierStatus> both = List.of(at.apply("Dana", stuck), at.apply("Hal", stuck));
+        for (int report = 0; report < SoldierRunner.STRANDED_REPORTS; report++) {
+            state.recovery.orders(both, idle, s -> java.util.Optional.empty());
+        }
+        assertEquals(List.of(), state.hands(both), "the drill has both: no hands");
+        assertEquals(both, state.crew(both), "a ground in strips is still the whole squad's");
+    }
 }

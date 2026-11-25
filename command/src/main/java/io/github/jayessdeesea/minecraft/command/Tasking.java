@@ -29,6 +29,16 @@ public final class Tasking {
     }
 
     /**
+     * The {@code i}th of {@code n} hands' strip of {@code ground}, by its place in its crew: how this drill's orders and
+     * a floor's cells are dealt. More hands than strips - a ground narrower than the crew - they go round again. A dig
+     * dealt to the nearest hand ({@link #allocate}) and a site's shares between squads cut their own strips.
+     */
+    public static Box strip(Box ground, int i, int n) {
+        List<Box> strips = ground.strips(Math.max(1, n));
+        return strips.get(i % strips.size());
+    }
+
+    /**
      * Each of {@code hands}'s command for the keep ({@link Keep}): a strip of {@code dig} each while
      * there's any, then a strip of {@code fill} each, in cobblestone only - {@code hands}' blocks
      * counting cobblestone alone. A soldier short of it has no command here: its cobblestone comes
@@ -40,19 +50,17 @@ public final class Tasking {
             return orders;
         }
         if (dig.isPresent()) {
-            List<Box> strips = dig.get().strips(hands.size());
             for (int i = 0; i < hands.size(); i++) {
-                orders.put(hands.get(i).name(), new Order.Dig(strips.get(i % strips.size()), except));
+                orders.put(hands.get(i).name(), new Order.Dig(strip(dig.get(), i, hands.size()), except));
             }
             return orders;
         }
         if (fill.isEmpty()) {
             return orders;
         }
-        List<Box> strips = fill.get().strips(hands.size());
         for (int i = 0; i < hands.size(); i++) {
             if (hands.get(i).blocks() >= LOW) {
-                orders.put(hands.get(i).name(), new Order.Fill(strips.get(i % strips.size()), except, true));
+                orders.put(hands.get(i).name(), new Order.Fill(strip(fill.get(), i, hands.size()), except, true));
             }
         }
         return orders;
@@ -68,12 +76,11 @@ public final class Tasking {
         if (hands.isEmpty() || fill.isEmpty()) {
             return orders;
         }
-        List<Box> strips = fill.get().strips(hands.size());
         for (int i = 0; i < hands.size(); i++) {
             Hand hand = hands.get(i);
             boolean fetching = gathering.contains(hand.name()) ? hand.blocks() < LOAD : hand.blocks() < LOW;
             orders.put(hand.name(), fetching ? new Order.Gather(Resource.SOIL, borrow, LOAD)
-                    : new Order.Fill(strips.get(i % strips.size()), except, Order.Fill.Material.SOIL));
+                    : new Order.Fill(strip(fill.get(), i, hands.size()), except, Order.Fill.Material.SOIL));
         }
         return orders;
     }
@@ -115,10 +122,9 @@ public final class Tasking {
         if (!everyHand || dig.isEmpty() || hands.isEmpty()) {
             return allocate(hands, feet, radius, dig, fill, except, gathering);
         }
-        List<Box> strips = dig.get().strips(hands.size());
         Map<String, Order> orders = new LinkedHashMap<>();
         for (int i = 0; i < hands.size(); i++) {
-            orders.put(hands.get(i).name(), new Order.Dig(strips.get(i % strips.size()), except));
+            orders.put(hands.get(i).name(), new Order.Dig(strip(dig.get(), i, hands.size()), except));
         }
         return orders;
     }
@@ -148,13 +154,12 @@ public final class Tasking {
         if (fill.isEmpty()) {
             return orders;
         }
-        List<Box> strips = fill.get().strips(hands.size());
         for (int i = 0; i < hands.size(); i++) {
             Hand hand = hands.get(i);
             boolean fetching = gathering.contains(hand.name()) ? hand.blocks() < LOAD : hand.blocks() < LOW;
             orders.put(hand.name(), fetching
                     ? new Order.Gather(Resource.SOIL, Groundwork.borrowPit(feet, radius, i), LOAD)
-                    : new Order.Fill(strips.get(i % strips.size()), except));
+                    : new Order.Fill(strip(fill.get(), i, hands.size()), except));
         }
         return orders;
     }
