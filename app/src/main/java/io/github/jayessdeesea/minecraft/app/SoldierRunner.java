@@ -6793,16 +6793,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // And on the keep, the logs for it carried: the depot's chest goes up as soon as a builder has
             // them, not when its pack happens to fill (operator, 2026-11-14: a flattening campaign starts
             // with its supply depot). Live, builders carried 20 logs past a depot with no chest for days.
-            boolean depotLogs = flattenWorks.holds(name) && inventory.count(ItemClass.LOG) >= DEPOT_LOGS;
+            boolean depotLogs = SupplyTrips.depotLogs(flattenWorks.holds(name), inventory);
             // A mine's chest is the stash's, fitted for ore only, from logs to spare beyond a pickaxe's
             // handles or a chest carried down: in the squad simulation a miner spent its logs on it,
             // climbed out for wood for a pickaxe, and stood at the top.
             boolean atMine = working != null && mineOfChest(chestCentre(working)).isPresent();
             // Or a producer with its yield and no dump yet, the camp's chest not standing (field503: 83 harvests, nothing stockpiled).
-            boolean undumped = dutyBook.of(name).filter(o -> o.dump().isEmpty()).isPresent() && inventory.count(ItemClass.WHEAT) + inventory.count(ItemClass.LOG) >= Subsistence.BREAD_WHEAT;
-            boolean fitStore = (atMine ? stashOre && (inventory.count(ItemClass.CHEST) > 0 || inventory.count(ItemClass.LOG) >= STASH_LOGS)
-                    : fullLoad || depotLogs || Depositor.surplusFood(inventory) || poolOre || undumped) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
-                    && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
+            boolean undumped = SupplyTrips.undumped(dutyBook.of(name), inventory);
+            boolean fitStore = SupplyTrips.fitStore(atMine, stashOre, inventory, fullLoad, depotLogs, poolOre, undumped, supplyPoint.isEmpty(), shop,
+                    () -> shop.get().chestStands(world), threatened, fort == null, () -> chestFits.barred(name, fitNow));
             // The main depot's by its stand, not the object: it's sited again each squad cycle.
             Workshop mainDepot = flattenWorks.forSoldier(name).workshop;
             if (flattenWorks.holds(name) && shop.isPresent() && mainDepot != null && shop.get().stand().equals(mainDepot.stand())) {
@@ -6845,7 +6844,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Optional<Position> deposit = (flattenWorks.holds(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile)
                         : dutyBook.dump(name, world).or(() -> stockpile)).filter(notFull);
                 Set<ItemClass> surplus = (flattenWorks.holds(name) && !depositor.active() || depositor.dumping()) && !chainOfCommand.farmMissions.on(objectiveOf(unitOf(name, definition.squad()))) ? surplusKinds(chestsSeen.values(), deposit) : Set.of(); // on a mission its cobblestone and dirt are the slab's and the ground's, never surplus (PavingRateIT: a squad with full packs dumped the cobblestone its slab wanted and stood)
-                boolean dumpNow = fullLoad && surplus.stream().anyMatch(c -> inventory.count(c) > Depositor.KEEP);
+                boolean dumpNow = SupplyTrips.dumpNow(fullLoad, surplus, inventory);
                 if (bakes && tickNow % 1200 == 0) LOG.info("[Baker] {}: {} wheat carried, a chest holding wheat {}, hands {}, free {}, threatened {}, fortifying {}, drawing {}", name, inventory.count(ItemClass.WHEAT), chestHolding(ItemClass.WHEAT, status.position()).map(Object::toString).orElse("none known"), handsHeld.get(name), free, threatened, fort != null, depositor.active()); // field640-655: no baker drew wheat
                 Optional<Makings> makings = makingsDrawn(farmer.outOfSeeds(), planting.containsKey(name) && forester.outOfSaplings(),
                         chainOfCommand.scoutMissions.draws(name), k -> chestHolding(k, status.position()).filter(c -> !depositor.barred(c)).isPresent());
@@ -6861,87 +6860,41 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         furnace.ifPresent(f -> furnacesSwept.put(BlockPos.containing(f.x(), f.y(), f.z()), clockwork.millis()));
                     }
                     depositor.tickEmpty(status.position(), furnace, free && !threatened && fort == null);
-                } else if (carried != null && Subsistence.short_(carried.rations()) && chestHolding(ItemClass.FOOD, status.position()).isPresent()) {
-                    // No rations: bread first, from the nearest chest holding some - not after metal and stone, nor only its own depot's. Live (field568), Eli drew iron and cobblestone all run, shot dead at 1 health.
-                    depositor.tickDraw(status.position(), chestHolding(ItemClass.FOOD, status.position()), ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened);
-                } else if (soilFilling.contains(name) && filling.containsKey(name) && inventory.count(ItemClass.DIRT) < Tasking.LOW && chestHolding(ItemClass.DIRT, status.position()).isPresent()) { // its fill's dirt, drawn from the nearest chest holding some (operator, 2026-11-22)
-                    depositor.tickDraw(status.position(), chestHolding(ItemClass.DIRT, status.position()), ItemClass.DIRT, Tasking.LOAD, free && !threatened);
-                } else if (makings.isPresent()) { // its sowing's seeds, its planting's saplings, its scouting's food, drawn (SoldierErrands.makingsDrawn)
-                    depositor.tickDraw(status.position(), chestHolding(makings.get().kind(), status.position()), makings.get().kind(), makings.get().count(), free && !threatened);
-                } else if (unstash.isPresent()) {
-                    depositor.tickDraw(status.position(), Optional.of(unstash.get().chest()), unstash.get().ore(), unstash.get().carry(),
-                            free && !threatened);
-                } else if (keepState.climbDrawing.contains(name)) {
-                    // From the nearest chest holding stone, as metal and logs are drawn.
-                    depositor.tickDraw(status.position(), metalChest(ItemClass.COBBLESTONE, status.position()).or(() -> stockpile),
-                            ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
-                } else if (drawingStone.contains(name) || keepState.drawing.contains(name)) {
-                    depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
-                } else if (drawsLogs(armourer.failure().or(chestFitter::failure).or(() -> torchShort), inventory.count(ItemClass.LOG), chainOfCommand.stores(), logsAt)
-                        || depositor.drawing(ItemClass.LOG)) {
-                    depositor.tickDraw(status.position(), logsAt.or(depositor::chestAt), ItemClass.LOG, DRAW_LOGS, free && !threatened
-                            && drawsLogs(armourer.failure().or(chestFitter::failure).or(() -> torchShort), inventory.count(ItemClass.LOG), chainOfCommand.stores(), logsAt));
-                } else if (drawsStone(armourer.failure(), inventory.count(ItemClass.COBBLESTONE), chainOfCommand.stores(), stockpile)) {
-                    depositor.tickDraw(status.position(), metalChest(ItemClass.COBBLESTONE, status.position()).or(() -> stockpile), ItemClass.COBBLESTONE,
-                            DRAW_STONE, free && !threatened);
-                } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
-                    depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
-                            && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));
-                } else if (depositor.drawing(ItemClass.WHEAT) || dutyBook.drawsWheat(name, inventory.count(ItemClass.WHEAT))) {
-                    // The baker's wheat: from the chest its duty order names, when and how much by its batch (command.BakerDuty: the squad leader's, not the soldier's).
-                    depositor.tickDraw(status.position(), dutyBook.of(name).flatMap(DutyOrder::source).or(depositor::chestAt), ItemClass.WHEAT,
-                            dutyBook.wheatDrawnTo(name), free && !threatened && fort == null && dutyBook.drawsWheat(name, inventory.count(ItemClass.WHEAT)));
-                } else if (depositor.drawing(ItemClass.STRING) || bedString(inventory) > 0
-                        && chestHolding(ItemClass.STRING, status.position()).isPresent()) {
-                    // A bed's string from the depot, for a soldier without one (operator, 2026-11-18: beds, for a
-                    // safe respawn): the night's spiders' string is stored there, four to a wool.
-                    depositor.tickDraw(status.position(), chestHolding(ItemClass.STRING, status.position()).or(depositor::chestAt), ItemClass.STRING,
-                            inventory.count(ItemClass.STRING) + bedString(inventory), free && !threatened && fort == null && bedString(inventory) > 0);
-                } else if (metalDraw.isPresent() || MetalPool.METALS.stream().anyMatch(depositor::drawing)) {
-                    ItemClass ore = metalDraw.map(MetalPool.Draw::ore)
-                            .orElseGet(() -> MetalPool.METALS.stream().filter(depositor::drawing).findFirst().orElseThrow());
-                    Optional<Position> holding = metalDraw.flatMap(d -> metalChest(d.ore(), status.position())).or(depositor::chestAt);
-                    depositor.tickDraw(status.position(), holding, ore, metalDraw.map(MetalPool.Draw::carry).orElse(inventory.count(ore)),
-                            free && !threatened && fort == null && metalDraw.isPresent());
                 } else {
-                    Set<ItemClass> pooled = new HashSet<>(metal.stock());
-                    pooled.removeIf(kind -> StockLevels.atMost(kind, k -> stockedAt(k, Optional.empty()))); // copper past 256 (StockLevels)
-                    if (stashOre) {
-                        pooled.addAll(STASHED);
+                    Optional<SupplyTrips.Draw> draw = SupplyTrips.draw(new SupplyTrips.DrawCase(depositor, dutyBook, name, inventory, carried, free && !threatened,
+                            free && !threatened && fort == null, k -> chestHolding(k, status.position()), k -> metalChest(k, status.position()),
+                            () -> soilFilling.contains(name) && filling.containsKey(name), makings, unstash,
+                            () -> keepState.climbDrawing.contains(name), () -> drawingStone.contains(name) || keepState.drawing.contains(name), stockpile,
+                            () -> drawsLogs(armourer.failure().or(chestFitter::failure).or(() -> torchShort), inventory.count(ItemClass.LOG), chainOfCommand.stores(), logsAt),
+                            logsAt, () -> drawsStone(armourer.failure(), inventory.count(ItemClass.COBBLESTONE), chainOfCommand.stores(), stockpile),
+                            () -> drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile), metalDraw));
+                    if (draw.isPresent()) {
+                        depositor.tickDraw(status.position(), draw.get().chest(), draw.get().kind(), draw.get().count(), draw.get().go());
+                    } else {
+                        Set<ItemClass> pooled = SupplyTrips.pooled(metal.stock(), stashOre, k -> stockedAt(k, Optional.empty()));
+                        // What it carries past its work's load goes in too (LoadPlan: field505, Gus 11 shovels, Dana 5 swords): a trip of its own once it's a few slots.
+                        Optional<LoadPlan> plan = Optional.of(cutting.containsKey(name) ? LoadPlan.MINING : LoadPlan.FLATTENING);
+                        boolean surplusTrip = SupplyTrips.surplusTrip(upgradeAllowed.getOrDefault(name, false), plan, inventory);
+                        // The depot's kinds past what the pack keeps go in with it while the depot's under its
+                        // most (StockLevels) - not into a mine's stash - and a reserve run short is a trip of its own.
+                        Map<ItemClass, Integer> packKept = SupplyTrips.packKept(planting.containsKey(name), flattenWorks.holds(name) || paving.containsKey(name),
+                                cutting.containsKey(name), dutyBook.is(name, DutyOrder.Duty.HARVESTER));
+                        boolean toDepot = deposit.flatMap(this::mineOfChest).isEmpty();
+                        boolean stockTrip = toDepot && StockLevels.reserveShort(inventory, packKept, k -> stockedAt(k, deposit));
+                        // A flatten builder's load into the nearest depot standing a chest (FlattenWork.outposts).
+                        // Not to a chest known full: a trip there fails, and is made again. Live (field285), with
+                        // the depots' rows filled with cobblestone, the crew's ticks were 38% depositor - trip
+                        // after failed trip (deposit, above). With every chest it could go to full, its
+                        // cobblestone and dirt go to the dump (surplusKinds), the rest carried on full.
+                        boolean downForTheNight = SupplyTrips.downForTheNight(nightBelow.get(unitOf(name, definition.squad())), status.position().y(), MINE_BELOW, stashOre);
+                        boolean breadWanted = toDepot && !StockLevels.atMost(ItemClass.FOOD, k -> stockedAt(k, Optional.empty()));
+                        depositor.storesFood(breadWanted); depositor.keepsStone(paving.containsKey(name) || SoldierErrands.capped(ItemClass.COBBLESTONE, chainOfCommand.stores())); // nor past the stores' cap: kept, and the pack throws away what's over its own (field704: 33,342 held; a chest's most of 256 was by chest, and the depositor's own cobblestone load asked nobody) depositor.keepsFood(bakes ? Subsistence.BASIC_LOAD : Subsistence.CARRY_MOST); // a baker's bread the stores' past its own load (field664: 162 carried, none stored)
+                        depositor.tick(status.position(), deposit, SupplyTrips.tripGoes(depositor, free, fullLoad, poolOre, stashOre, surplusTrip,
+                                        () -> SoldierErrands.stocks(upgradeAllowed.getOrDefault(name, false), dutyBook.of(name).isPresent()), stockTrip, breadWanted,
+                                        threatened, fort == null, downForTheNight, recovering, name), pooled,
+                                inv -> SupplyTrips.slots(flattenWorks.holds(name), planting.containsKey(name), paving.containsKey(name), toDepot, inv, plan, packKept,
+                                        k -> SupplyTrips.stored(k, chainOfCommand.stores(), planting.containsKey(name), () -> stockedAt(k, deposit))));
                     }
-                    // What it carries past its work's load goes in too (LoadPlan: field505, Gus 11 shovels, Dana 5 swords): a trip of its own once it's a few slots.
-                    Optional<LoadPlan> plan = Optional.of(cutting.containsKey(name) ? LoadPlan.MINING : LoadPlan.FLATTENING);
-                    boolean surplusTrip = upgradeAllowed.getOrDefault(name, false) && plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
-                    // The depot's kinds past what the pack keeps go in with it while the depot's under its
-                    // most (StockLevels) - not into a mine's stash - and a reserve run short is a trip of its own.
-                    Map<ItemClass, Integer> packKept = planting.containsKey(name) ? SoldierErrands.PLANTER_CARRIED : flattenWorks.holds(name) || paving.containsKey(name) ? KEEP_PACK
-                            : cutting.containsKey(name) ? MINE_CARRIED
-                            : dutyBook.is(name, DutyOrder.Duty.HARVESTER) ? HARVESTER_CARRIED : CARRIED;
-                    boolean toDepot = deposit.flatMap(this::mineOfChest).isEmpty();
-                    boolean stockTrip = toDepot && StockLevels.reserveShort(inventory, packKept, k -> stockedAt(k, deposit));
-                    // A flatten builder's load into the nearest depot standing a chest (FlattenWork.outposts).
-                    // Not to a chest known full: a trip there fails, and is made again. Live (field285), with
-                    // the depots' rows filled with cobblestone, the crew's ticks were 38% depositor - trip
-                    // after failed trip (deposit, above). With every chest it could go to full, its
-                    // cobblestone and dirt go to the dump (surplusKinds), the rest carried on full.
-                    // Not up out of the mine by night for a load - the stash's ore goes in below; the rest
-                    // waits for day. Live, the night shift's loads were for the camp's chest 85 blocks off and up the stairs, into the dark.
-                    Integer nightFloor = nightBelow.get(unitOf(name, definition.squad()));
-                    boolean downForTheNight = nightFloor != null && status.position().y() < nightFloor - MINE_BELOW && !stashOre;
-                    boolean breadWanted = toDepot && !StockLevels.atMost(ItemClass.FOOD, k -> stockedAt(k, Optional.empty()));
-                    depositor.storesFood(breadWanted); depositor.keepsStone(paving.containsKey(name) || SoldierErrands.capped(ItemClass.COBBLESTONE, chainOfCommand.stores())); // nor past the stores' cap: kept, and the pack throws away what's over its own (field704: 33,342 held; a chest's most of 256 was by chest, and the depositor's own cobblestone load asked nobody) depositor.keepsFood(bakes ? Subsistence.BASIC_LOAD : Subsistence.CARRY_MOST); // a baker's bread the stores' past its own load (field664: 162 carried, none stored)
-                    // Not while the recovery drill has it: its way out is its work, as for the supply run. Live
-                    // (field424), Eli on his stair up from y=-43 set off for the depot 49 times in ten minutes, each
-                    // trip taking his hands from the stair and dropped as no longer wanted.
-                    depositor.tick(status.position(), deposit, free && (fullLoad || poolOre || stashOre || surplusTrip || depositor.pastHalfway()
-                                    || SoldierErrands.stocks(upgradeAllowed.getOrDefault(name, false), dutyBook.of(name).isPresent()) && (stockTrip || breadWanted && depositor.surplusFood())) && !threatened && fort == null && !downForTheNight && !recovering.contains(name), pooled,
-                            inv -> {
-                                List<Integer> slots = SoldierErrands.tripSlots(flattenWorks.holds(name), planting.containsKey(name), inv, plan.map(p -> p.surplus(inv)).orElse(List.of()));
-                                if (toDepot) {
-                                    StockLevels.toStore(inv, packKept, k -> SoldierErrands.capped(k, chainOfCommand.stores()) ? Integer.MAX_VALUE : k == ItemClass.SAPLING && !planting.containsKey(name) ? 0 : stockedAt(k, deposit)).stream().filter(s -> !slots.contains(s)).forEach(slots::add); // saplings put back whatever's held (operator, 2026-11-25)
-                                }
-                                return paving.containsKey(name) ? slots.stream().filter(sl -> ItemClassRegistry.classOf(inv.itemAt(sl)).filter(ItemClass.COBBLESTONE::equals).isEmpty()).toList() : slots; // a paver's cobblestone is its work's: never put in (in the squad simulation one drew a chest's 627 and put 625 back, round and round)
-                            });
                 }
             }));
             storeWalks.put(name, fitStore && !atStand(status.position(), shop.get())

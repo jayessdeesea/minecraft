@@ -34,6 +34,9 @@ first three passes, in that order:
    placeholder's, and the mine's are left): what each step counts as left, one function a kind, shared by the
    count that's said and the orders that are given - they've disagreed three times (the flatten's columns, the wheat
    farm's posts, the tree farm's paving).
+4. **The depositor's decisions**, out of the runner's tick (`app.SupplyTrips`, 2026-11-26): when a chest is fitted, a dump, which draw
+   (food, dirt, makings, stash, stone, logs, wheat, string, metal) and whether and what a trip stores. Left in the runner: the
+   dump and empty branches, the fitting itself, and the orders put to the depositor.
 
 And with each file passed through, its comments cut down to the rule and its reason (docs/conventions.md, "A comment
 is the rule and its reason").
