@@ -47,7 +47,8 @@ final class ObjectiveBook {
         }
         // A mission's step, PLANNED when the mission was given: its own row under way, not a new one.
         Optional<ObjectiveRecord> planned = registers.get().objectives().stream().filter(r -> step(r, objective)
-                && r.state() != ObjectiveRecord.State.DONE && r.state() != ObjectiveRecord.State.UNDER_WAY).findFirst(); // relieved, it's taken up again
+                && r.state() != ObjectiveRecord.State.DONE && r.state() != ObjectiveRecord.State.UNDER_WAY
+                && r.state() != ObjectiveRecord.State.PAUSED).findFirst(); // relieved, it's taken up again; paused, only by a resume
         // A mission's step another squad has under way is joined, not written again: one row a step, its squad the first on it.
         Optional<ObjectiveRecord> joined = planned.isPresent() ? Optional.empty() : registers.get().objectives().stream()
                 .filter(r -> step(r, objective) && r.state() == ObjectiveRecord.State.UNDER_WAY).findFirst();
@@ -177,6 +178,34 @@ final class ObjectiveBook {
             open.values().removeIf(o -> o.id() == r.id()); // its squad's, and each that joined it
         });
         LOG.info("[Objectives] {}: relieved - {}", mission.name(), why);
+    }
+
+    /**
+     * {@code mission}'s steps not done PAUSED at {@code now}, {@code why} (operator, 2026-11-25): held - open, not done and not
+     * superseded - with no squad on them, until {@link #resumed}. The row is where the pause is kept, across restarts.
+     */
+    synchronized void paused(FarmMission mission, String why, long now) {
+        registers.get().objectives().stream().filter(r -> r.mission().equals(mission.name()) && r.state() != ObjectiveRecord.State.DONE
+                && r.state() != ObjectiveRecord.State.SUPERSEDED && r.state() != ObjectiveRecord.State.PAUSED).forEach(r -> {
+            registers.get().update(r.now(ObjectiveRecord.State.PAUSED, Optional.empty(), Optional.of(why), now));
+            open.values().removeIf(o -> o.id() == r.id()); // its squad's, and each that joined it
+        });
+        LOG.info("[Objectives] {}: PAUSED - {}", mission.name(), why);
+    }
+
+    /** Each mission with a step PAUSED, and why: read once, at a restart (FarmMissions' MinePauses holds them after). */
+    synchronized Map<FarmMission, String> paused() {
+        Map<FarmMission, String> held = new java.util.LinkedHashMap<>();
+        registers.get().objectives().stream().filter(r -> r.state() == ObjectiveRecord.State.PAUSED)
+                .forEach(r -> FarmMission.named(r.mission()).ifPresent(m -> held.putIfAbsent(m, r.why().orElse("no reason kept"))));
+        return held;
+    }
+
+    /** {@code mission}'s paused steps taken up again at {@code now}: PLANNED, no squad yet. */
+    synchronized void resumed(FarmMission mission, long now) {
+        registers.get().objectives().stream().filter(r -> r.mission().equals(mission.name()) && r.state() == ObjectiveRecord.State.PAUSED)
+                .forEach(r -> registers.get().update(r.now(ObjectiveRecord.State.PLANNED, Optional.empty(), Optional.of("resumed"), now)));
+        LOG.info("[Objectives] {}: resumed", mission.name());
     }
 
     /** Each mission with a step not done - a step's squad relieved, the step stays open - and its first step not done. */

@@ -62,6 +62,11 @@ public interface OperatorCommands {
      */
     String cancelMission(int chunkX, int chunkZ, String reason);
 
+    /** The mission PAUSED on chunk ({@code chunkX}, {@code chunkZ}) - a mineshaft whose stairs were stopped - taken up again. */
+    default String resumeMission(int chunkX, int chunkZ) {
+        throw new UnsupportedOperationException("no missions to resume here");
+    }
+
     /** The platoon's mission replaced by {@code mission}: {@code !mission}. */
     String replacePlatoonMission(String mission);
 

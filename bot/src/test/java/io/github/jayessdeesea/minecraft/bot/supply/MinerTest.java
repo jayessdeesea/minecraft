@@ -281,6 +281,47 @@ class MinerTest {
         assertTrue(!dug.containsAll(stairs.cells(4)), "the step by the water stays uncut");
     }
 
+    /**
+     * Stairs cut to the bottom and flooded since, from step 5 down: the stairs are closed at the water and it's said, not
+     * walked into - nobody sent to a stand under water, again and again (docs/military-doctrine.md, water or lava a cut meets).
+     */
+    @Test
+    void stairsFloodedAfterTheyWereCutAreClosedAtTheWater() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 12);
+        for (int k = 0; k < stairs.steps(); k++) {
+            dug.addAll(stairs.cells(k));
+            if (k >= 4) {
+                water.addAll(stairs.cells(k));
+            }
+        }
+
+        Miner.Progress progress = dig(stairs, 3000);
+
+        assertInstanceOf(Miner.Progress.Stopped.class, progress);
+        assertTrue(((Miner.Progress.Stopped) progress).why().contains("beside step 5"), progress.toString());
+    }
+
+    /** Stairs closed for water beside a step, and the water gone since (drained, blocked, the mine resumed): its cutter cuts on. */
+    @Test
+    void stairsClosedForWaterAreCutOnOnceTheWaterIsGone() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 12);
+        water.add(stairs.step(4).offset(0, 0, -1));
+        assertInstanceOf(Miner.Progress.Stopped.class, dig(stairs, 3000));
+        Miner closed = last;
+
+        water.clear();
+        Position at = new Position(0.5, GROUND, 0.5);
+        Miner.Progress progress = null;
+        for (int tick = 0; tick < 30000 && !(progress instanceof Miner.Progress.Done); tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            progress = closed.tick(at, world, stairs, true);
+            assertTrue(!(progress instanceof Miner.Progress.Stopped), "closed again at tick " + tick + ": " + progress);
+            at = closed.standAt().orElse(at);
+        }
+        assertInstanceOf(Miner.Progress.Done.class, progress, "cut to the bottom");
+    }
+
     @Test
     void minesOreBesideTheStairsWithAPickaxeGoodEnoughButLeavesWhatItCantHarvest() {
         Staircase stairs = new Staircase(HEAD, GROUND - 6);

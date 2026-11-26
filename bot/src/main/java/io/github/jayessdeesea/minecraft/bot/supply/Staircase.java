@@ -292,6 +292,14 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
                 && !world.isChest(cell.x(), cell.y(), cell.z());
     }
 
+    /**
+     * Whether {@code cell} of a step holds water or lava: cut, and flooded since. A step flooded is no way down, so it
+     * reads as not cut - the stairs' cutter meets the water there, blocks it or closes the stairs, and says so.
+     */
+    public static boolean flooded(WorldView world, BlockPos cell) {
+        return world.isHazard(cell.x(), cell.y(), cell.z());
+    }
+
     /** Where a soldier stands to work at the landing: the main tunnel's first cell, between the recesses. */
     public BlockPos landingStand() {
         int[] out = outward();
@@ -345,7 +353,7 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
     public int stepsCut(WorldView world) {
         for (int k = 0; k < steps(); k++) {
             for (BlockPos cell : cells(k)) {
-                if (uncut(world, cell)) {
+                if (uncut(world, cell) || flooded(world, cell)) {
                     return k;
                 }
             }
@@ -362,7 +370,7 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
     public boolean landingCut(WorldView world) {
         for (int k = 0; k < steps(); k++) {
             for (BlockPos cell : cells(k)) {
-                if (uncut(world, cell)) {
+                if (uncut(world, cell) || flooded(world, cell)) {
                     return false;
                 }
             }

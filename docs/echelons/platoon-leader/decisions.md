@@ -180,7 +180,12 @@ chests facing the mouth, a kind to each - `MineHead.Bank`; a table and two furna
 supply point's fixtures are - nothing put up from a cell of the layout, a gate put from across its own line
 (`bot.supply.Fixtures`); a template's sky is kept clear of what hangs in it (`ChunkFarm.sky`, dug by the nearest of its squad); then its shaft, a `MINE` at the chunk's middle for the one squad
 on the mission, worked day and night, done when that mine is dried up - every level cut (`FarmMissions.mineDry`, told
-by the runner; a chunk no well can be sited in isn't dry, and its mission holds). Its well is sited in its own chunk,
+by the runner; a chunk no well can be sited in isn't dry, and its mission holds). Its stairs stopped - water or lava
+beside a step, a step flooded since it was cut (`Staircase.flooded`), a danger area - the mission is **PAUSED** (operator,
+2026-11-25; `FarmMissions.minePaused`, `app.MinePauses`): its row PAUSED with why and no squad, kept across restarts - not a
+dead well, not mined dry - left out of the steps worked and of the count against the squads, and the platoon leader woken,
+so its squad is given other work at once and the plan its next mission; taken up again only when the operator resumes it
+(the chat's `resumeMission`), its stairs read afresh - a close lifted once the water is gone from that step. Its well is sited in its own chunk,
 templated as it is (`FarmMissions.mineAt`). Where the mineshafts are is kept with the missions, in the task register's rows. Each open mission's
 phase under way is worked at once, a squad each - a wheat farm's floor and a tree farm's flatten together - but one
 flatten at a time, the first given, since the squads flatten one ground (`FarmMissions.worked`). A mission carried on at
@@ -290,7 +295,8 @@ turn is a model call through the same `ChatClient` (`command.ai.PlatoonLeaderCha
 - **What it may do: commands, as tools** (`command.OperatorCommands`, `app.ChatCommands`), each one of the operator's
   own orders through the chain of command - the same WILCO on the net, order trace and checks as from game chat:
   `giveFarmMission`, `giveTreeFarmMission`, `giveSupplyPointMission` and `giveMineshaftMission` (`ChainOfCommand.onOperatorFarm`), `cancelMission` (`onOperatorCancel`), `replacePlatoonMission`
-  (`onOperatorMission`), `escort` (`onOperatorEscort`) and `setFlattenGround` (`onOperatorFlatten`). None writes,
+  (`onOperatorMission`), `escort` (`onOperatorEscort`) and `setFlattenGround` (`onOperatorFlatten`). `resumeMission` takes a paused
+  mission up again in the missions' register (`FarmMissions.resume`), its platoon leader woken - no order on the net. None writes,
   edits or deletes a register's row: the rows are the chain of command's to keep. The prompt and each command's
   description say it's used only when the operator asks for it in this turn. What each command did is said as it
   computed it - its result is the reply's `done`, shown on the page under the model's words.

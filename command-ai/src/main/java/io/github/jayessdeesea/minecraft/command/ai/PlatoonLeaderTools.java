@@ -101,7 +101,7 @@ final class PlatoonLeaderTools {
             + "and its objective: the chunk it's oriented on.")
     String tasks(@ToolParam(required = false, description = "only this squad's, e.g. Charlie") String squad,
                  @ToolParam(required = false, description = "OPEN (the default) for those still being carried out, ALL, or one state: "
-                         + "PLANNED, UNDER_WAY, DONE, CANTCO, RELIEVED, SUPERSEDED") String state,
+                         + "PLANNED, UNDER_WAY, DONE, CANTCO, RELIEVED, SUPERSEDED, PAUSED") String state,
                  @ToolParam(required = false, description = "only a mission's whose name holds this, e.g. 'chunk (1, 3)'") String mission) {
         return read("tasks squad=" + squad + " state=" + state + " mission=" + mission, () -> RegistersSaid.tasks(registers.tasks(),
                 Optional.ofNullable(squad), Optional.ofNullable(state), Optional.ofNullable(mission), registers.now()));
@@ -229,6 +229,13 @@ final class PlatoonLeaderTools {
                          @ToolParam(description = "the mission's chunk z: 'a farm at chunk (1, 3)' is 3") int chunkZ,
                          @ToolParam(description = "the operator's reason, in their words") String reason) {
         return command("cancelMission " + chunkX + " " + chunkZ + " \"" + reason + "\"", () -> commands.cancelMission(chunkX, chunkZ, reason));
+    }
+
+    @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "resumeMission", description = "A command - only when the operator asks for it in this turn. Takes up "
+            + "again a mission PAUSED on a chunk - a mineshaft whose stairs were stopped by water or lava - so a squad is put on it again. Quote its result.")
+    String resumeMission(@ToolParam(description = "the mission's chunk x, as its name says it: 'a mineshaft at chunk (0, 2)' is 0") int chunkX,
+                         @ToolParam(description = "the mission's chunk z: 'a mineshaft at chunk (0, 2)' is 2") int chunkZ) {
+        return command("resumeMission " + chunkX + " " + chunkZ, () -> commands.resumeMission(chunkX, chunkZ));
     }
 
     @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "replacePlatoonMission", description = "A command - only when the operator asks for it in this turn. Replaces the "

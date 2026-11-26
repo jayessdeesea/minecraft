@@ -189,13 +189,14 @@ public final class Miner {
     }
 
     /**
-     * The first of {@code cuts} still to cut, skipping any in a {@code blocked} tunnel and any whose
+     * The first of {@code cuts} still to cut, or a step flooded since it was ({@link Staircase#flooded}), skipping any in a {@code blocked} tunnel and any whose
      * standing cell isn't open yet - a branch off a stretch of main tunnel that was given up.
      */
     static OptionalInt firstUncut(WorldView world, List<Staircase.Cut> cuts, Set<Integer> blocked) {
         for (int k = 0; k < cuts.size(); k++) {
             Staircase.Cut cut = cuts.get(k);
-            if (blocked.contains(cut.tunnel()) || cut.cells().stream().noneMatch(c -> cut.toCut(world, c))) {
+            if (blocked.contains(cut.tunnel())
+                    || cut.cells().stream().noneMatch(c -> cut.toCut(world, c) || cut.tunnel() < 0 && Staircase.flooded(world, c))) {
                 continue;
             }
             BlockPos stand = cut.stand();
@@ -436,8 +437,12 @@ public final class Miner {
                 stairsClosedAt = Integer.MAX_VALUE;
             }
             if (cut.tunnel() < 0 && stairsClosed != null && next.getAsInt() >= stairsClosedAt) {
-                stop();
-                return new Progress.Stopped(stairsClosed);
+                if (hazard(world, cuts.get(stairsClosedAt), stairsClosedAt).filter(h -> !h.startsWith("no floor")).isPresent()) {
+                    stop();
+                    return new Progress.Stopped(stairsClosed);
+                }
+                stairsClosed = null; // what closed them is gone - drained, blocked, the mine resumed: cut on
+                stairsClosedAt = Integer.MAX_VALUE;
             }
             Optional<String> hazard = hazard(world, cut, next.getAsInt());
             if (hazard.isEmpty()) {

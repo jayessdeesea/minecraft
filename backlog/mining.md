@@ -41,7 +41,10 @@ digs and caves cross it, single cells at y=49..53 and y=40..43.
   shouldn't be is cut - the stair's upkeep, and the first thing a squad given the shaft does. A well cut before keeps
   the spiral it was cut to (`Staircase`, "mines cut before"): the one at (0, 2) is re-sited on its own pattern.
 - **Water or lava met**: the cut stops there, the squad comes up, and it is said to the operator with where and what -
-  no well sited elsewhere, no way round dug (today `Miner.hazard` leads to another site).
+  no well sited elsewhere, no way round dug. Built for a mineshaft mission: the stairs closed, the mission PAUSED, its
+  crew put on another mine (docs/echelons/platoon-leader/decisions.md). Left: the breach blocked and the step let drain
+  before the stairs close (a stair kept: rule proposed 2026-11-25, the operator's to settle), and the keep's mine, which
+  still takes a stopped well for a dead one.
 - Eval: a mineshaft mission on rock with a cave across its well at one level - the well cut to its pattern through
   it, floored and walled, to its landing; and one with lava at a level - stopped, said, the squad at its head.
 

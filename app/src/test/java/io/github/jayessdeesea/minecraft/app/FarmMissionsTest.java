@@ -327,6 +327,38 @@ class FarmMissionsTest {
     }
 
     /**
+     * A mineshaft whose stairs are stopped by water that won't block is PAUSED (operator, 2026-11-25): no squad on it, not
+     * done, not superseded - kept so across a restart - and taken up again when resumed.
+     */
+    @Test
+    void aMineshaftPausedIsHeldAcrossARestartTillResumed() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMission shaft = new FarmMission(2, 4, 63, FarmMission.Crop.MINE);
+        for (FarmMission.Step step : shaft.steps()) {
+            registers.add(new ObjectiveRecord(0, shaft.name(), step.index(), step.task(), 2, 4, java.util.Optional.of("Charlie"),
+                    step.index() < 4 ? ObjectiveRecord.State.DONE : ObjectiveRecord.State.UNDER_WAY, 0, java.util.Optional.empty()));
+        }
+        FarmMissions missions = new FarmMissions(cause -> { });
+        missions.keptIn(new ObjectiveBook(() -> registers));
+        assertEquals(List.of(FarmMission.Kind.MINE), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "its shaft worked");
+
+        assertTrue(missions.minePaused(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(40, 64, 72), "water or lava beside step 15 at (40, 48, 72)", 1_000));
+
+        assertEquals(List.of(), missions.worked(), "paused: no squad put on it");
+        ObjectiveRecord row = registers.objectives().stream().filter(r -> r.step() == 4).findFirst().orElseThrow();
+        assertEquals(ObjectiveRecord.State.PAUSED, row.state());
+        assertEquals(java.util.Optional.of("water or lava beside step 15 at (40, 48, 72)"), row.why());
+        FarmMissions restarted = new FarmMissions(cause -> { });
+        restarted.keptIn(new ObjectiveBook(() -> registers));
+        assertEquals(List.of(), restarted.worked(), "still paused after a restart");
+        assertTrue(new ObjectiveBook(() -> registers).openMissions().containsKey(shaft.name()), "and still open: not done, not superseded");
+
+        assertEquals(java.util.Optional.of(shaft), restarted.resume(2, 4, 2_000));
+        assertEquals(List.of(FarmMission.Kind.MINE), restarted.worked().stream().map(e -> e.getValue().kind()).toList(), "resumed: its shaft worked again");
+        assertEquals(java.util.Optional.empty(), restarted.resume(2, 4, 3_000), "nothing paused to resume");
+    }
+
+    /**
      * A flatten whose chunk is cut and whose slopes hold columns nobody cuts is done with them left, and says which
      * (field697-698: a tree farm's chunk flat for five hours, nine columns ten blocks out up a hill handed from one soldier
      * to another every two minutes). Not at once: only when their count has stood a quarter of an hour.

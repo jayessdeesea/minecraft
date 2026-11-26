@@ -327,4 +327,35 @@ class StaircaseTest {
         assertTrue(first.toCut(chested, chest), "the chest in the step is to cut");
         assertTrue(Miner.firstUncut(chested, mine).equals(java.util.OptionalInt.of(0)), "and the first step is uncut again");
     }
+
+    /** A step with water or lava in it is no way down: the stairs read cut only to above it, and the landing not cut. */
+    @Test
+    void aFloodedStepIsNotCut() {
+        Set<BlockPos> open = new HashSet<>();
+        for (int k = 0; k < stairs.steps(); k++) {
+            open.addAll(stairs.cells(k));
+        }
+        open.addAll(stairs.landing());
+        Set<BlockPos> wet = new HashSet<>(stairs.cells(4));
+        WorldView flooded = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < 64 && !open.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return wet.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(stairs.steps(), stairs.stepsCut(ground(open)), "dry, every step reads cut");
+        assertEquals(4, stairs.stepsCut(flooded), "flooded at step 5, four read cut");
+        assertFalse(stairs.landingCut(flooded), "and the landing isn't reached");
+        assertEquals(java.util.OptionalInt.of(4), Miner.firstUncut(flooded, stairs), "the flooded step is the next to work");
+    }
 }

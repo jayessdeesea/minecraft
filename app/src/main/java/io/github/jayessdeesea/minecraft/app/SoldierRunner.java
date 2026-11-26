@@ -5040,7 +5040,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         }
                     });
                 });
-                if (blockedBy.isPresent() && driedUp.add(state.stairs.head())) {
+                if (blockedBy.isPresent() && !chainOfCommand.farmMissions.minePaused(state.stairs.head(), blockedBy.get(), now) && driedUp.add(state.stairs.head())) {
                     deadWell(state.stairs.head());
                     String why = blockedBy.get();
                     LOG.warn("[Outcome] the mine at {} is blocked at y={}: {} - SHORT", state.stairs.head(), state.stairs.bottom(), why);

@@ -79,7 +79,7 @@ final class FarmMissions {
         // The latest order for a chunk is the one worked: one at another level, still open, relieved - live (field668), a
         // mission given at the wrong level had no other way to be put right.
         for (FarmMission old : missions.keySet().stream().filter(m -> !m.equals(mission) && m.chunkX() == mission.chunkX() && m.chunkZ() == mission.chunkZ()).toList()) {
-            missions.remove(old);
+            missions.remove(old); pauses.resume(old);
             book.ifPresent(b -> b.relieved(old, "superseded by " + mission.name(), now));
             LOG.info("[Mission] {} superseded by {}", old.name(), mission.name());
         }
@@ -103,7 +103,7 @@ final class FarmMissions {
         load();
         Optional<FarmMission> open = missions.keySet().stream().filter(m -> m.chunkX() == chunkX && m.chunkZ() == chunkZ).findFirst();
         open.ifPresent(m -> {
-            missions.remove(m);
+            missions.remove(m); pauses.resume(m);
             book.ifPresent(b -> b.relieved(m, why, now));
             LOG.info("[Mission] {} cancelled - {}", m.name(), why);
             wake.accept("the operator's farm cancelled");
@@ -143,6 +143,7 @@ final class FarmMissions {
      * flatten one ground ({@code ChainOfCommand.flatten}); a later mission's flatten waits for it.
      */
     synchronized List<Map.Entry<FarmMission, FarmMission.Step>> worked() {
+        load();
         List<Map.Entry<FarmMission, FarmMission.Step>> worked = new ArrayList<>();
         boolean flattening = false;
         // The farms' steps before the others', each in the order given: food and wood are what the rest is built on
@@ -150,6 +151,9 @@ final class FarmMissions {
         List<Map.Entry<FarmMission, Integer>> farmsFirst = missions.entrySet().stream()
                 .sorted(java.util.Comparator.comparingInt(e -> e.getKey().crop() == FarmMission.Crop.WHEAT || e.getKey().crop() == FarmMission.Crop.TREES ? 0 : 1)).toList();
         for (Map.Entry<FarmMission, Integer> e : farmsFirst) {
+            if (pauses.paused(e.getKey())) {
+                continue;
+            }
             FarmMission.Step step = e.getKey().steps().get(e.getValue());
             if (step.kind() == FarmMission.Kind.FLATTEN) {
                 if (flattening) {
@@ -273,6 +277,36 @@ final class FarmMissions {
         dry.add(ChunkFarm.key(Math.floorDiv(x, 16), Math.floorDiv(z, 16)));
     }
 
+    /** The missions PAUSED (MinePauses; docs/echelons/platoon-leader/decisions.md, the mineshaft). */
+    private final MinePauses pauses = new MinePauses();
+
+    /**
+     * A mine's stairs at {@code head} stopped, {@code why}: a mineshaft mission's shaft there is PAUSED - its row too - not a
+     * dead well, not mined dry, and true; false with no mission's shaft there, for the keep's or camp's mine to move on.
+     */
+    synchronized boolean minePaused(io.github.jayessdeesea.minecraft.bot.nav.BlockPos head, String why, long now) {
+        load();
+        int x = Math.floorDiv(head.x(), 16), z = Math.floorDiv(head.z(), 16);
+        Optional<FarmMission> shaft = missions.keySet().stream().filter(m -> m.chunkX() == x && m.chunkZ() == z && mineAt(x, z)).findFirst();
+        shaft.filter(m -> pauses.pause(m, why)).ifPresent(m -> {
+            book.ifPresent(b -> b.paused(m, why, now));
+            wake.accept("a mineshaft paused"); // its squad given other work now, not at the next dawn
+        });
+        return shaft.isPresent();
+    }
+
+    /** The mission on chunk ({@code chunkX}, {@code chunkZ}) taken up again, if it was paused: the one resumed. */
+    synchronized Optional<FarmMission> resume(int chunkX, int chunkZ, long now) {
+        load();
+        Optional<FarmMission> was = missions.keySet().stream().filter(m -> m.chunkX() == chunkX && m.chunkZ() == chunkZ && pauses.paused(m)).findFirst();
+        was.ifPresent(m -> {
+            pauses.resume(m);
+            book.ifPresent(b -> b.resumed(m, now));
+            wake.accept("a mission resumed");
+        });
+        return was;
+    }
+
     /** Whether a mineshaft mission's shaft is being worked under chunk ({@code chunkX}, {@code chunkZ}): the one templated chunk a well is sited in. */
     synchronized boolean mineAt(int chunkX, int chunkZ) {
         return missions.entrySet().stream().anyMatch(e -> e.getKey().chunkX() == chunkX && e.getKey().chunkZ() == chunkZ
@@ -297,7 +331,7 @@ final class FarmMissions {
             return;
         }
         load();
-        if (missions.size() >= squads) {
+        if (missions.keySet().stream().filter(m -> !pauses.paused(m)).count() >= squads) {
             return;
         }
         Set<Long> taken = new HashSet<>();
@@ -729,7 +763,7 @@ final class FarmMissions {
             }
             LOG.info("[Mission] {}: {} - next", m.name(), next.task());
         } else {
-            missions.remove(m);
+            missions.remove(m); pauses.resume(m);
             said.remove(m);
             built.add(m);
             if (step.kind() == FarmMission.Kind.TREE_TEMPLATE) {
@@ -940,6 +974,7 @@ final class FarmMissions {
         }
         loaded = true;
         reshape(book.get());
+        pauses.restore(book.get().paused());
         book.get().openMissions().forEach((name, step) -> FarmMission.named(name).ifPresent(m -> {
             missions.putIfAbsent(m, step);
             LOG.info("[Mission] {} carried on from the register, at step {}", m.name(), step + 1);

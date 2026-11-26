@@ -88,6 +88,12 @@ public class ChatCommands implements OperatorCommands {
     }
 
     @Override
+    public String resumeMission(int chunkX, int chunkZ) {
+        return chain.farmMissions.resume(chunkX, chunkZ, chain.millis()).map(m -> "WILCO: " + m.name() + " resumed - its shaft open to a squad again.")
+                .orElse("CANTCO: no mission is paused on " + RegistersSaid.chunkSaid(chunkX, chunkZ) + " - nothing resumed.");
+    }
+
+    @Override
     public String replacePlatoonMission(String mission) {
         if (mission == null || mission.isBlank()) {
             throw new IllegalArgumentException("an empty mission");

@@ -23,8 +23,11 @@ import java.util.Optional;
 public record ObjectiveRecord(long id, String mission, int step, String task, int chunkX, int chunkZ, Optional<String> squad,
                               State state, long changedAt, Optional<String> why) {
 
-    /** How an objective stands: RELIEVED when the squad's given another before it's done; SUPERSEDED, a mission's order replaced. */
-    public enum State { PLANNED, UNDER_WAY, DONE, CANTCO, RELIEVED, SUPERSEDED }
+    /**
+     * How an objective stands: RELIEVED when the squad's given another before it's done; SUPERSEDED, a mission's order
+     * replaced; PAUSED, held with no squad on it till taken up again (operator, 2026-11-25).
+     */
+    public enum State { PLANNED, UNDER_WAY, DONE, CANTCO, RELIEVED, SUPERSEDED, PAUSED }
 
     public ObjectiveRecord {
         Objects.requireNonNull(mission, "mission");

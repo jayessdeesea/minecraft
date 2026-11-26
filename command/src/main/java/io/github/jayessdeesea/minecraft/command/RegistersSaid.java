@@ -198,7 +198,8 @@ public final class RegistersSaid {
     }
 
     private static boolean live(ObjectiveRecord r) {
-        return r.state() == ObjectiveRecord.State.PLANNED || r.state() == ObjectiveRecord.State.UNDER_WAY || r.state() == ObjectiveRecord.State.CANTCO;
+        return r.state() == ObjectiveRecord.State.PLANNED || r.state() == ObjectiveRecord.State.UNDER_WAY || r.state() == ObjectiveRecord.State.CANTCO
+                || r.state() == ObjectiveRecord.State.PAUSED; // held, still open
     }
 
     private static String standing(Operation o) {
