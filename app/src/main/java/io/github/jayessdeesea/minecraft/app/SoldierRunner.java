@@ -7620,6 +7620,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private Optional<Recipe> nextRung(String name, Inventory inventory, Position at) {
         String squad = soldierDefinitions.stream().filter(d -> d.name().equals(name)).findFirst().orElseThrow().squad();
+        var armourOrdered = ladder.ordered(name, squad, inventory, chainOfCommand.stores(), // the platoon leader's armour check
+                camp == null || Ladder.authorised(Recipe.IRON_CHESTPLATE, campLevel), clockwork.millis());
         // A keep builder's work load before the protection ladder past its floor (operator, 2026-11-14:
         // kit by role, protection and work apart): a stone sword, then the pickaxes and shovels its share
         // of the dig wears out (bot.craft.WorkLoad), then the rest. Live, builders climbed through copper
@@ -7631,44 +7633,42 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     && Ladder.bestMelee(inventory) >= ItemClassRegistry.meleeRank("stone_sword");
             Optional<Recipe> work = floored ? WorkLoad.builder(inventory, share) : Optional.empty();
             if (work.isPresent()) {
-                rungsWanted.put(name, Ladder.rungOf(work.get()));
+                ladder.rungsWanted.put(name, Ladder.rungOf(work.get()));
                 return work;
             }
         }
         if (!rearmAllowed.getOrDefault(name, false)) {
-            rungsWanted.remove(name);
+            ladder.rungsWanted.remove(name);
             return Optional.empty();
         }
-        // The squad climbs together: nobody works above the lowest rung a squadmate is working toward,
-        // so the first up the ladder doesn't dig out the ore the rest need for theirs.
-        int highest = soldierDefinitions.stream().filter(d -> d.squad().equals(squad) && !d.name().equals(name))
-                .map(d -> rungsWanted.get(d.name())).filter(Objects::nonNull)
-                .mapToInt(Integer::intValue).min().orElse(Ladder.RUNGS - 1);
+        // The squad climbs together - nobody works above the lowest rung a squadmate is working toward, so the first up doesn't dig out the ore the rest need - but to armour ordered.
+        int highest = soldierDefinitions.stream().filter(d -> d.squad().equals(squad) && !d.name().equals(name)).map(d -> ladder.rungsWanted.get(d.name()))
+                .filter(Objects::nonNull).mapToInt(Integer::intValue).min().orElse(Ladder.RUNGS - 1), ceiling = armourOrdered.isEmpty() ? highest : Math.max(highest, Ladder.BASIC_LOAD);
         Map<ItemClass, Integer> setAside = Map.of(ItemClass.COBBLESTONE, stoneSetAside.getOrDefault(name, 0));
         // A station a walk away counts: the armourer goes to it rather than make another.
         Set<Workstation> inReach = armourers.get(name).stationsNear(world, at);
         // Or ore the stockpile holds, to draw (bot.supply.MetalPool): the force's pooled copper makes
         // a piece for whoever it completes one for, though there's none in reach to dig.
         boolean nearStockpile = stockpileFor(name).isPresent();
-        Optional<Stockpile> pool = chainOfCommand.stockpile();
-        Predicate<ItemClass> canDig = material ->
-                setAside.getOrDefault(material, 0) == 0 && Armourer.canDig(material, inventory, world, at, treeClaims)
-                        || nearStockpile && pool.map(st -> material == ItemClass.RAW_COPPER ? st.rawCopper()
-                        : material == ItemClass.RAW_IRON ? st.rawIron() : 0).orElse(0) > 0;
-        // Past no rung the camp's level doesn't authorise (docs/military-doctrine.md § 11, basis of issue); with no camp there's no level to go by.
-        Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig,
-                upgradeAllowed.getOrDefault(name, false) ? highest : Math.min(highest, Ladder.BASIC_LOAD),
-                camp == null ? Optional.empty() : Optional.of(campLevel), r -> (cutting.containsKey(name) ? LoadPlan.MINING : LoadPlan.FLATTENING).putsAway(r, inventory)); // nor what its load puts away
-        Optional<Recipe> made = upgradeAllowed.getOrDefault(name, false) ? next : next.filter(r -> SoldierErrands.madeOnMission(r.makes(), inventory.meleeWeapons(), inventory.count(ItemClass.PICKAXE), SoldierErrands.carried(r, inventory::count)));
-        made.ifPresentOrElse(r -> rungsWanted.put(name, Ladder.rungOf(r)), () -> rungsWanted.remove(name));
+        Predicate<ItemClass> canDig = material -> setAside.getOrDefault(material, 0) == 0 && Armourer.canDig(material, inventory, world, at, treeClaims)
+                || nearStockpile && LadderOrders.pooled(material, chainOfCommand.stockpile(), chainOfCommand.stores(), !armourOrdered.isEmpty()) > 0;
+        // Past no rung the camp's level doesn't authorise (§ 11, basis of issue; no camp, no level), nor what its load puts away, nor, armour ordered, any but armour
+        // past its squad's climb; on a task, past what one on a task doesn't make (SoldierErrands.madeOnMission) - passed over, not barring armour above - but pieces ordered.
+        boolean upgrade = upgradeAllowed.getOrDefault(name, false);
+        Optional<Recipe> made = Ladder.upTo(inventory, setAside, inReach, canDig, upgrade ? ceiling : Math.min(ceiling, Ladder.BASIC_LOAD),
+                camp == null ? Optional.empty() : Optional.of(campLevel), r -> (cutting.containsKey(name) ? LoadPlan.MINING : LoadPlan.FLATTENING).putsAway(r, inventory)
+                || !armourOrdered.isEmpty() && r.makes() != ItemClass.ARMOUR && Ladder.rungOf(r) > highest
+                || !upgrade && !LadderOrders.makes(armourOrdered, r) && !SoldierErrands.madeOnMission(r.makes(), inventory.meleeWeapons(),
+                inventory.count(ItemClass.PICKAXE), SoldierErrands.carried(r, inventory::count)));
+        made.ifPresentOrElse(r -> ladder.rungsWanted.put(name, Ladder.rungOf(r)), () -> ladder.rungsWanted.remove(name));
         return made;
     }
 
     /** Each squad's staircase, while it has one - squad loops write, the site measure reads. */
     private final Map<String, Staircase> squadStairs = new ConcurrentHashMap<>();
 
-    /** The rung of the ladder each soldier is working toward, by name, while it is - tick loops write and read. */
-    private final Map<String, Integer> rungsWanted = new ConcurrentHashMap<>();
+    /** Each soldier's rung of the ladder wanted, and the platoon leader's armour orders - tick loops write and read. */
+    private final LadderOrders ladder = new LadderOrders();
 
     /**
      * How long the same line from the same sender counts as one hearing: every connection gets a

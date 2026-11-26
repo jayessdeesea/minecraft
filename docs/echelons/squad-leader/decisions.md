@@ -44,7 +44,8 @@ platoon leader's to give as data.
   ([military-doctrine.md § 7](../../military-doctrine.md#7-risk-acceptance)).
 - **Rearm:** whether soldiers may climb the kit ladder - armour, spares, buckets, the tool load - and make a trip for
   their load's surplus. Given only to a squad holding with no task (operator, 2026-11-22: soldiers do nothing without a
-  command); without it a soldier makes only the weapon or the pickaxe it has none of.
+  command); without it a soldier makes only the weapon or the pickaxe it has none of, and armour as
+  [military-doctrine.md § 11](../../military-doctrine.md#11-pre-combat-checks) says - the platoon leader's armour check's.
 - **Intent**, in words, logged with the order.
 - **Detachments called in** on a mission's ground work - a flatten, a floor, a supply point's template: every soldier
   on a role from an older order comes back to the squad (`DrillSquadLeader.changes`).
@@ -77,6 +78,12 @@ CANTCO` - answered by a rule per cause, said once while the cause holds (`comman
 A share with nothing in it to work is no spell and isn't behind; a baker idle for want of wheat is said up the chain once
 (`[Alpha -> PL] Dana, baker, idle: no wheat stored`) and shown in the squad's progress, the platoon leader's view, till a
 spell with work in it has run.
+
+## Its soldiers' inventories, passed up
+For the platoon leader's armour check, each soldier's inventory - its armour, the copper and iron it carries, its pack's
+room - is read and said in the squad leader's name, and the order that comes back goes to the soldier; no `SquadOrder`
+carries either
+([platoon-leader/decisions.md](../platoon-leader/decisions.md#armour-the-pre-combat-check)).
 
 ## When it decides
 Every SITREP while the squad has an objective - each second - so a soldier's CANTCO and a contact report are

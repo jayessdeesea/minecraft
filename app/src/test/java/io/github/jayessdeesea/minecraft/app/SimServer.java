@@ -313,7 +313,9 @@ final class SimServer {
         return total;
     }
 
-    /** Wears the pickaxes {@code name} carries down to {@code left} uses each. */
+    /** The item in {@code name}'s window slot {@code slot} - 5 to 8 its armour, head first - or -1 with none. */
+    int itemAt(String name, int slot) { return players.get(name).slots[slot] == null ? -1 : players.get(name).slots[slot][0]; }
+
     /** {@code name} killed outright, by {@code cause}: it respawns at spawn, as any death. */
     void kill(String name, String cause) {
         players.get(name).hurt(20, cause);
