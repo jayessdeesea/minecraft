@@ -12,7 +12,7 @@ import java.util.Optional;
  * <p>What it gives a squad is the standing work: tend what's built - the squads in the order of battle turn about, one
  * to the wheat, the next to the trees - at the camp, once there is one; before that, hold where it stands. Everything
  * above that is the chain of command's rules over what's given, as they were over a model's draft, and they outrank
- * it: the operator's missions a squad a step, the shortfalls, the night.
+ * it: the operator's missions a squad a step, the reviews of what's built ({@link ReviewOrders}), the shortfalls, the night.
  */
 public final class DrillPlatoonLeader implements PlatoonLeader, DecidesByRules {
 

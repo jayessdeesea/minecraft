@@ -141,14 +141,14 @@ class FarmMissionsTest {
         io.github.jayessdeesea.minecraft.command.Objective idle = new io.github.jayessdeesea.minecraft.command.Objective("Hold the camp",
                 new io.github.jayessdeesea.minecraft.command.Position(24, 64, 88), "nothing else to do");
         List<io.github.jayessdeesea.minecraft.command.SquadStatus> squads = List.of(squad("Alpha"), squad("Bravo"), squad("Charlie"));
-        List<io.github.jayessdeesea.minecraft.command.Objective> day = missions.guarded(List.of(steps.getFirst(), idle, idle), squads, java.util.Optional.empty());
+        List<io.github.jayessdeesea.minecraft.command.Objective> day = missions.guarded(List.of(steps.getFirst(), idle, idle), squads, java.util.Optional.empty(), java.util.Set.of(), false);
         assertEquals(steps.getFirst(), day.getFirst(), "Alpha keeps the floor");
         assertEquals(1, day.stream().filter(steps.get(1)::equals).count(), "one squad on the trees' flatten: " + day);
         assertEquals(1, day.stream().filter(idle::equals).count(), "the third left to its own order");
 
         // After a restart no squad's standing order says which step it had: the register does, and that squad goes back on it.
         new ObjectiveBook(() -> registers).given("Alpha", steps.get(1), 2_000);
-        List<io.github.jayessdeesea.minecraft.command.Objective> restarted = missions.guarded(List.of(idle, idle, idle), squads, java.util.Optional.empty());
+        List<io.github.jayessdeesea.minecraft.command.Objective> restarted = missions.guarded(List.of(idle, idle, idle), squads, java.util.Optional.empty(), java.util.Set.of(), false);
         assertEquals(steps.get(1), restarted.get(0), "Alpha, on the trees' flatten in the register, keeps it - not the last squad free: " + restarted);
     }
 
@@ -231,26 +231,51 @@ class FarmMissionsTest {
                 return List.of();
             }
         };
+        io.github.jayessdeesea.minecraft.command.Objective hold = new io.github.jayessdeesea.minecraft.command.Objective("Hold", new io.github.jayessdeesea.minecraft.command.Position(0, 64, 0), "");
+        assertEquals(List.of(hold), restarted.guarded(List.of(hold), List.of(squadAt("Bravo", 40, 70)), java.util.Optional.empty(), java.util.Set.of(), false),
+                "no review dealt before the first measure: nothing's known yet of when");
         restarted.measure(world, null, null, campTrees, 5_000);
 
         assertEquals(java.util.Optional.of(new io.github.jayessdeesea.minecraft.bot.farm.TreeChunk(1, 4, 63)), campTrees.chunk());
         assertEquals(List.of(), restarted.worked(), "the mission itself done: nothing worked");
         assertEquals(java.util.Set.of(trees), restarted.built(), "and read back as built, for the review");
 
-        // The review (operator, 2026-11-22: once built, the construction might drift - who reviews and fixes it?): its chest and
-        // torches gone, looked at again - not before the review's due - its template is opened again, and kept so.
+        // The review (operator, 2026-11-22: once built, the construction might drift - who reviews and fixes it?;
+        // 2026-11-26: anti-entropy is ordered by the platoon leader): its chest and torches gone. In sight, nobody ordered
+        // to it, it isn't looked over; built before the restart it's due within the first day - the chunks built spread over
+        // it - and the squad near it is ordered there.
         standing[0] = false;
-        long due = restarted.reviewDue(trees).orElseThrow();
-        assertTrue(due > 5_000 + 3 * FarmMissions.DAY_MILLIS && due <= 5_000 + FarmMissions.REVIEW_EVERY, "looked over when first seen, and due again inside four days: " + due);
-        restarted.measure(world, null, null, campTrees, due - FarmMissions.REVIEW_MILLIS);
-        assertEquals(List.of(), restarted.worked(), "not looked over again before the review is due");
-        restarted.measure(world, null, null, campTrees, due);
+        restarted.measure(world, null, null, campTrees, 6_000);
+        assertEquals(List.of(), restarted.worked(), "in sight, but no review ordered: not looked over");
+        io.github.jayessdeesea.minecraft.command.Objective idle = new io.github.jayessdeesea.minecraft.command.Objective("Hold", new io.github.jayessdeesea.minecraft.command.Position(0, 64, 0), "");
+        assertEquals(List.of(idle, idle), restarted.guarded(List.of(idle, idle), List.of(squadAt("Alpha", 300, 300), squadAt("Bravo", 40, 70)),
+                java.util.Optional.empty(), java.util.Set.of("Bravo"), false), "a squad on the operator's scouting isn't sent");
+        long dayOn = 6_000 + io.github.jayessdeesea.minecraft.command.ReviewOrders.DAY_MILLIS;
+        restarted.measure(world, null, null, campTrees, dayOn);
+        List<io.github.jayessdeesea.minecraft.command.Objective> day = restarted.guarded(List.of(idle, idle), List.of(squadAt("Alpha", 300, 300), squadAt("Bravo", 40, 70)),
+                java.util.Optional.empty(), java.util.Set.of(), false);
+        assertEquals(BuiltReviews.objective(trees), day.get(1), "Bravo, near it, ordered to review it - Alpha out of reach: " + day);
+        assertEquals(idle, day.get(0));
+        restarted.measure(world, null, null, campTrees, java.util.Map.of("Bravo", List.of(new io.github.jayessdeesea.minecraft.command.Position(40, 64, 140))), dayOn + 1_000);
+        assertEquals(List.of(), restarted.worked(), "not looked over before its squad's at it");
+        restarted.measure(world, null, null, campTrees, java.util.Map.of("Bravo", List.of(new io.github.jayessdeesea.minecraft.command.Position(20.5, 64, 70.5))), dayOn + 2_000);
         assertEquals(List.of(FarmMission.Kind.TREE_TEMPLATE), restarted.worked().stream().map(e -> e.getValue().kind()).toList(), "its template worked again");
         ObjectiveRecord template = registers.objectives().stream().filter(r -> r.step() == 3).findFirst().orElseThrow();
         assertEquals(ObjectiveRecord.State.PLANNED, template.state(), "open again in the register: " + template);
+        List<io.github.jayessdeesea.minecraft.command.Objective> repair = restarted.guarded(List.of(idle, idle), List.of(squadAt("Alpha", 300, 300), squadAt("Bravo", 20, 70)),
+                java.util.Optional.empty(), java.util.Set.of(), false);
+        assertEquals(restarted.objectives().getFirst(), repair.get(1), "the repair the task of the squad whose review found it, not the last squad free: " + repair);
         assertTrue(template.why().orElse("").startsWith("reviewed: its chest is gone; 9 of its 9 torches gone"), "with what was found: " + template);
     }
 
+
+    /** A squad of one soldier standing at block ({@code x}, {@code z}). */
+    private static io.github.jayessdeesea.minecraft.command.SquadStatus squadAt(String name, double x, double z) {
+        return new io.github.jayessdeesea.minecraft.command.SquadStatus(name, new io.github.jayessdeesea.minecraft.command.Report.InPosition(),
+                List.of(new io.github.jayessdeesea.minecraft.command.SoldierStatus(name + "-1", new io.github.jayessdeesea.minecraft.command.Position(x, 64, z),
+                        new io.github.jayessdeesea.minecraft.command.Order.Idle(), new io.github.jayessdeesea.minecraft.command.Report.InPosition(), java.util.Optional.empty())),
+                List.of(), java.util.Optional.empty(), false);
+    }
 
     private static io.github.jayessdeesea.minecraft.command.SquadStatus squad(String name) {
         return new io.github.jayessdeesea.minecraft.command.SquadStatus(name, new io.github.jayessdeesea.minecraft.command.Report.InPosition(), List.of(), List.of(), java.util.Optional.empty(), false);
@@ -540,17 +565,17 @@ class FarmMissionsTest {
         List<io.github.jayessdeesea.minecraft.command.Objective> day = squads.stream().map(s -> new io.github.jayessdeesea.minecraft.command.Objective("Keep the wheat farms",
                 new io.github.jayessdeesea.minecraft.command.Position(0.5, 64, 0.5), "Food for the force", new io.github.jayessdeesea.minecraft.command.Objective.Task.Farm())).toList();
 
-        missions.guarded(day, squads, java.util.Optional.of("Alpha"));
+        missions.guarded(day, squads, java.util.Optional.of("Alpha"), java.util.Set.of(), false);
         assertEquals(List.of(), missions.worked(), "no plan: nothing given unasked");
 
         missions.works(io.github.jayessdeesea.minecraft.command.BasePlan.ROUND_THE_ORIGIN);
-        missions.guarded(day, squads, java.util.Optional.of("Alpha"));
-        missions.guarded(day, squads, java.util.Optional.of("Alpha"));
-        missions.guarded(day, squads, java.util.Optional.of("Alpha"));
+        missions.guarded(day, squads, java.util.Optional.of("Alpha"), java.util.Set.of(), false);
+        missions.guarded(day, squads, java.util.Optional.of("Alpha"), java.util.Set.of(), false);
+        missions.guarded(day, squads, java.util.Optional.of("Alpha"), java.util.Set.of(), false);
         List<String> open = registers.objectives().stream().filter(r -> r.state() != ObjectiveRecord.State.DONE).map(ObjectiveRecord::mission).distinct().toList();
         assertEquals(java.util.Set.of("a mineshaft at chunk (0, 2) at y=63", "a supply point at chunk (1, 2) at y=63"), java.util.Set.copyOf(open),
                 "the wheat farm's cluster: its mineshaft, then the supply point beside it; two open for the two squads but the farm's, and no third");
-        List<io.github.jayessdeesea.minecraft.command.Objective> given = missions.guarded(day, squads, java.util.Optional.of("Alpha"));
+        List<io.github.jayessdeesea.minecraft.command.Objective> given = missions.guarded(day, squads, java.util.Optional.of("Alpha"), java.util.Set.of(), false);
         assertEquals("Keep the wheat farm at chunk (1, 3)", given.getFirst().mission(), "the farm squad tends what's built, by name");
         assertTrue(given.subList(1, 3).stream().anyMatch(o -> o.mission().startsWith("a mineshaft at chunk (0, 2)")), "a squad on the plan's mission: " + given);
     }
@@ -580,7 +605,7 @@ class FarmMissionsTest {
                 new io.github.jayessdeesea.minecraft.command.Objective("Keep the tree farms", camp, "Wood that grows back", new io.github.jayessdeesea.minecraft.command.Objective.Task.TreeFarm()),
                 new io.github.jayessdeesea.minecraft.command.Objective("Keep the wheat farms", camp, "Food for the force", new io.github.jayessdeesea.minecraft.command.Objective.Task.Farm()));
 
-        List<io.github.jayessdeesea.minecraft.command.Objective> given = missions.guarded(day, squads, java.util.Optional.empty());
+        List<io.github.jayessdeesea.minecraft.command.Objective> given = missions.guarded(day, squads, java.util.Optional.empty(), java.util.Set.of(), false);
 
         String flatten = "a tree farm at chunk (2, 3) at y=63: flatten chunk (2, 3), x 32..47 z 48..63 to y=62";
         assertEquals(List.of("Keep the wheat farm at chunk (1, 3)", flatten, flatten), given.stream().map(io.github.jayessdeesea.minecraft.command.Objective::mission).toList(),
@@ -588,7 +613,7 @@ class FarmMissionsTest {
         assertEquals(wheat.centre(wheat.steps().getLast()), given.getFirst().location(), "at the farm's chunk, not the camp");
 
         // With a farm squad, the wheat is its - whatever standing work it was dealt - and the others join the step.
-        List<io.github.jayessdeesea.minecraft.command.Objective> withFarmSquad = missions.guarded(day, squads, java.util.Optional.of("Bravo"));
+        List<io.github.jayessdeesea.minecraft.command.Objective> withFarmSquad = missions.guarded(day, squads, java.util.Optional.of("Bravo"), java.util.Set.of(), false);
         assertEquals(List.of(flatten, "Keep the wheat farm at chunk (1, 3)", flatten), withFarmSquad.stream().map(io.github.jayessdeesea.minecraft.command.Objective::mission).toList());
         // Its task the wheat's too: live (field708), dealt "keep the tree farms", it kept the wheat farm by name with a tree
         // farm's task - "Keep the wheat farm at chunk (1, 3) (TREE_FARM)" - and the farm's fourteen posts were never put up.

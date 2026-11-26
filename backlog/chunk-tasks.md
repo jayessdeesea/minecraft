@@ -12,8 +12,7 @@ wheat, collect and replant - divided among the squad; then it says it is done, s
 something else.
 
 Today a built farm is "kept": a standing objective with no end, its squad on it all day whether there is work or not;
-the anti-entropy is a review on a clock of its own (`FarmMissions.review`), which opens a template's step again and
-takes whichever squad is free; and a squad with nothing to do stands at its point - live, four soldiers idle on a
+the anti-entropy is a review ordered on a clock of its own (`command.ReviewOrders`), apart from the tends; and a squad with nothing to do stands at its point - live, four soldiers idle on a
 paving held by one cell, three farm keepers with nothing ripe.
 
 ## Done when
@@ -39,8 +38,9 @@ paving held by one cell, three farm keepers with nothing ripe.
   (`command.DrillPlatoonLeader`) gives that squad the next task from one list - a mission's open step, or a chunk to
   tend - by what is most due: a step that food or wood waits on, a chunk not checked for longest, a crop that is ripe
   by its own clock. No squad holds a chunk with nothing to do on it; none stands idle while a task is open.
-- **The review's clock is the same list**: a chunk tended today has had its check; one no squad has been near in four
-  days is given as a tend when a squad is free and near - the jitter is which day, not a second mechanism.
+- **The review's clock is the same list**: a chunk tended today has had its check; the review ordered by
+  `command.ReviewOrders` (due at three days, to the nearest free squad within eight chunks) becomes a tend's CHECK
+  given from the one list - not a second mechanism.
 - **A squad works till it is told differently** (operator, 2026-11-24): dusk ends nothing by itself. At dusk the
   platoon leader says what each squad does - carry on, or another task - and the squad does that; a task taken off a
   squad is handed back with what is left of it.
@@ -51,7 +51,7 @@ paving held by one cell, three farm keepers with nothing ripe.
 - Live: the status says for each squad its task, its phase and what is left; no "no task" by day with a task open.
 
 ## Notes
-- This replaces `FarmMissions.atTheFarms` (a squad "keeps" a farm) and folds `FarmMissions.review` into the list.
+- This replaces `FarmMissions.atTheFarms` (a squad "keeps" a farm) and folds the reviews (`app.BuiltReviews`) into the list.
 - The loops the soldiers report (`LoopReports`) and a tend that makes no progress are the same question, asked of the
   squad: a task whose measure hasn't moved in a quarter hour is said, with what it waits on.
 

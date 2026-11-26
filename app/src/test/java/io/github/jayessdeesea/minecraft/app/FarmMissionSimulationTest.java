@@ -522,16 +522,21 @@ class FarmMissionSimulationTest {
         assertEquals(List.of(0, 1, 2, 3), rows.stream().map(ObjectiveRecord::step).toList(), "the mission's four steps: " + rows);
         assertTrue(rows.stream().allMatch(r -> r.state() == ObjectiveRecord.State.DONE), "each DONE: " + rows + missionLines);
 
-        // The review (operator, 2026-11-22: who reviews what's built, and fixes it?): a chest and a torch gone from the built
-        // supply point - its template is opened again, and they're put back.
+        // The review (operator, 2026-11-22: who reviews what's built, and fixes it?; 2026-11-26: anti-entropy is ordered by
+        // the platoon leader): a chest and a torch gone from the built supply point - Alpha, near it, ordered to review it
+        // when it's due, finds them gone; its template is opened again, Alpha's to repair, and they're put back.
         BlockPos chest = template.chests(io.github.jayessdeesea.minecraft.bot.farm.StoresChunk.Row.FOOD).get(4);
         BlockPos torch = template.torches().get(4);
         server.set(chest.x(), chest.y(), chest.z(), SimServer.AIR);
         server.set(torch.x(), torch.y(), torch.z(), SimServer.AIR);
-        clock.advance(FarmMissions.REVIEW_EVERY + 15 * 60_000); // a built template nobody keeps is looked over inside four days
+        clock.advance(FarmMissions.REVIEW_EVERY + 15 * 60_000); // a built template is reviewed inside four days
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         List<String> after = Files.readAllLines(Path.of("target", "sim", "aSupplyPointIsFlattenedPavedLitAndItsFirstRowsPutUp.log")).stream()
                 .filter(l -> l.contains("[Mission]") && (l.contains("reviewed") || l.contains("DONE") || l.contains("done"))).toList();
+        List<String> reviews = Files.readAllLines(Path.of("target", "sim", "aSupplyPointIsFlattenedPavedLitAndItsFirstRowsPutUp.log")).stream()
+                .filter(l -> l.contains("[Review]")).toList();
+        assertTrue(reviews.stream().anyMatch(l -> l.contains("Alpha ordered to review " + STORES.name())), "the review ordered to the squad near it: " + reviews);
+        assertTrue(reviews.stream().anyMatch(l -> l.contains("Alpha reviewed " + STORES.name() + " - drifted; its repair Alpha's")), "and made by it: " + reviews);
         assertTrue(after.stream().anyMatch(l -> l.contains("reviewed - back at")), "the review found it: " + after);
         assertEquals(SimServer.CHEST, server.block(chest.x(), chest.y(), chest.z()), "the chest put back: " + after);
         assertEquals(SimServer.TORCH, server.block(torch.x(), torch.y(), torch.z()), "the torch put back: " + after);

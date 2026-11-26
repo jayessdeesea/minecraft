@@ -939,7 +939,7 @@ public class ChainOfCommand implements DisposableBean {
                     byDay.add(PhaseGuardrails.steady(PhaseGuardrails.noMineBeforeBuildup(byDay(objectives.get(i), statuses.get(i), shortfall, woods), phaseNow,
                             statuses.get(i).squadName(), toShortfall(PlatoonSergeant.Shortfall.FOOD, statuses.get(i), woods, flattenBuilders)), statuses.get(i)));
                 }
-                List<Objective> dayWork = scoutMissions.guarded(farmMissions.guarded(guarded(byDay, statuses, shortfall, woods), statuses, farmSquad), statuses, farmSquad, farmMissions::on);
+                List<Objective> dayWork = scoutMissions.guarded(farmMissions.guarded(guarded(byDay, statuses, shortfall, woods), statuses, farmSquad, scoutMissions.scouting(), sheltering()), statuses, farmSquad, farmMissions::on);
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
                     Objective given = WorkArea.attach(sheltered(grounded(dayWork.get(i), statuses.get(i).soldiers()), statuses.get(i)),

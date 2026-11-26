@@ -227,16 +227,44 @@ hour, the step is done with them left and named (`SLOPE_PATIENCE_MILLIS`) - the 
 template, a supply point as three steps - open, or built - has its rows made the steps it has now, PLANNED, and is worked again from its flatten; what
 is done already measures done at once (`FarmMissions.reshape`, `Registers.retask`).
 
-**What's built is reviewed** (operator, 2026-11-22: once the sites are built the construction might drift - who reviews
-and fixes it?): each mission done, its chunk in sight - the force near it, no outpost with nobody there - is measured against its
-layout again (`FarmMissions.review`): one a squad keeps every five minutes, the first thing done with it; any other when
-first seen and then inside every four garrison days, up to a day early by its name and the day, so the sites aren't
-all looked over at once (operator, 2026-11-24); a mineshaft whose shaft is being worked has its head looked over the
-same way, and a head short of its layout is put up again before the mining goes on, and one whose structure has gone has its template phase opened again - a repair, a squad's task
-as the build was, the register's row saying what was found ("reviewed: back at FENCED - to put up again: 1 torch, 1
-chest"). Structure, not the crop's own cycle (`TemplateDrift.drifted`): a wheat farm's ground - its tilling, sowing and
-fixtures are its tender's; a tree chunk's chest and torches - felling and planting are its foresters'; a supply point's
-fence, lights, workshop and first rows.
+**What's built is reviewed, by order** (operator, 2026-11-22: once the sites are built the construction might drift -
+who reviews and fixes it?; 2026-11-26: anti-entropy is ordered by the platoon leader). Each constructed chunk - a
+mission done - is reviewed at least once every four garrison days, by a squad the platoon leader orders there by where
+the squads stand (`command.ReviewOrders`, at each decision, after the missions' steps are dealt):
+- **Due at three days** since its last review - or since it was built; one built before a restart comes due in the first
+  day after, spread by its name so the chunks built don't all fall due, and urgent, at once - so a squad has a day to
+  come free. The longest unreviewed first. A mine mined dry isn't reviewed: nothing of its own stands to drift.
+- **To the nearest squad within eight chunks** - its nearest soldier, chunks counted the most of the two ways; as near,
+  the first in the order of battle. Nobody within eight, it waits: no outpost is walked to with nobody near it.
+- **A free squad** - tending, holding, its standing work - never the farm squad, which keeps the food, nor one on the
+  operator's scouting, which outranks the review and takes the squad off one it holds. At three and a
+  half days a squad on a mission's step is taken off it for the review, a free one first, said
+  (`[Guardrail] Alpha taken off ... to review ...`); half a day is left to walk there and look. By night no squad is
+  taken off its step for one: it would spend the night in the shelter, not at the review.
+- **One review a squad, and a review held till made**: its squad is held on it before any step is dealt, and counts
+  against the plan's missions - never more open than squads to work them. Not made in a day of its order, it is given
+  up, said as an outcome missed, and dealt to another squad - not back to the one that gave it up for a day after, and
+  never once it has given it up twice: a third try would be the same as the two before. A review dropped - its squad
+  held or gone, its chunk given again - is said. A chunk gone past four days with no review ordered - nobody near it,
+  each squad near held or given it up, whatever the cause - is an alert, once a day (`[Alert] ... unreviewed ... past
+  four days`). A review past its day is given up though its squad is held by then.
+  None is dealt before the first measure after a start: nothing is known yet of when.
+- **Made when its squad stands at the chunk** - a soldier of it within four blocks, and within eight of its level, not
+  down a shaft under it; a tree farm's review is walked to at its corner, its centre's ground being the canopy - and the
+  chunk in sight: measured
+  against its layout (`TemplateDrift.drifted`), said (`[Review] Alpha reviewed a placeholder at chunk (0, 1) at y=63 -
+  as built`) and the platoon leader woken. One whose structure has gone has its template phase opened again - a
+  repair, the task of the squad whose review found it - the register's row saying what was found ("reviewed: back at
+  FENCED - to put up again: 1 torch, 1 chest").
+
+A squad that keeps a farm reviews it as it goes, every five minutes, the first thing done with it - and that look ends a
+review ordered there, said (`[Review] Bravo's review of ... made by its keepers`), and the look itself is said
+(`[Review] its keepers reviewed ...`); a mineshaft whose
+shaft is being worked has its head looked over the same way, and a head short of its layout is put up again before the
+mining goes on (`FarmMissions.review`). Structure, not the crop's own cycle (`TemplateDrift.drifted`): a wheat farm's
+ground - its tilling, sowing and fixtures are its tender's; a tree chunk's chest and torches - felling and planting are
+its foresters'; a supply point's fence, lights, workshop and first rows. When each chunk was last reviewed is held in
+memory: a restart makes every one due in the first day after.
 
 The step under way has one squad on it, by a guardrail after the platoon leader's decision and the day's own
 (`FarmMissions.guarded`): the squad already on it, else one given its task already (the flatten's squad, say), else

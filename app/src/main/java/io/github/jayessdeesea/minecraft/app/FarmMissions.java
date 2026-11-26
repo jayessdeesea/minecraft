@@ -19,6 +19,8 @@ import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.FlattenPlan;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Objective;
+import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.ReviewOrders;
 import io.github.jayessdeesea.minecraft.command.Slopes;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
@@ -79,10 +81,11 @@ final class FarmMissions {
         // The latest order for a chunk is the one worked: one at another level, still open, relieved - live (field668), a
         // mission given at the wrong level had no other way to be put right.
         for (FarmMission old : missions.keySet().stream().filter(m -> !m.equals(mission) && m.chunkX() == mission.chunkX() && m.chunkZ() == mission.chunkZ()).toList()) {
-            missions.remove(old); pauses.resume(old);
+            missions.remove(old); pauses.resume(old); reviews.forget(old);
             book.ifPresent(b -> b.relieved(old, "superseded by " + mission.name(), now));
             LOG.info("[Mission] {} superseded by {}", old.name(), mission.name());
         }
+        built.stream().filter(m -> m.chunkX() == mission.chunkX() && m.chunkZ() == mission.chunkZ()).forEach(reviews::forget);
         built.removeIf(m -> m.chunkX() == mission.chunkX() && m.chunkZ() == mission.chunkZ());
         if (missions.containsKey(mission)) {
             LOG.info("[Mission] {} is open already, at step {}", mission.name(), missions.get(mission) + 1);
@@ -103,7 +106,7 @@ final class FarmMissions {
         load();
         Optional<FarmMission> open = missions.keySet().stream().filter(m -> m.chunkX() == chunkX && m.chunkZ() == chunkZ).findFirst();
         open.ifPresent(m -> {
-            missions.remove(m); pauses.resume(m);
+            missions.remove(m); pauses.resume(m); reviews.forget(m);
             book.ifPresent(b -> b.relieved(m, why, now));
             LOG.info("[Mission] {} cancelled - {}", m.name(), why);
             wake.accept("the operator's farm cancelled");
@@ -173,23 +176,26 @@ final class FarmMissions {
 
     /** The objective a squad on each step worked is given: the step as said down the chain, at the chunk, its task. */
     List<Objective> objectives() {
-        return worked().stream().map(c -> {
-            FarmMission m = c.getKey();
-            FarmMission.Step step = c.getValue();
-            Objective.Task task = switch (step.kind()) {
-                case FLATTEN -> new Objective.Task.Keep();
-                case FLOOR -> new Objective.Task.Floor(m.layer(step.level()));
-                case FARM_TEMPLATE -> new Objective.Task.Farm();
-                case TREE_TEMPLATE -> new Objective.Task.TreeFarm();
-                case STORES_TEMPLATE, MINE_HEAD, PASTURE_TEMPLATE, PLACEHOLDER_TEMPLATE -> new Objective.Task.Stores();
-                case MINE -> new Objective.Task.Mine();
-            };
-            // A shaft's objective is its head's x and z and the depth to cut to: a MINE's y is a depth (NightRules.grounded) - a
-            // mineshaft's the bottom of the world, one pattern all the way down (operator, 2026-11-24).
-            io.github.jayessdeesea.minecraft.command.Position at = step.kind() == FarmMission.Kind.MINE ? new io.github.jayessdeesea.minecraft.command.Position(m.minX() + 8.5, io.github.jayessdeesea.minecraft.bot.supply.Staircase.DEEPEST, m.minZ() + 8.5) : m.centre(step);
-            return new Objective(m.said(step), at, "The operator's " + m.what()
-                    + ", step " + (step.index() + 1) + " of " + m.steps().size() + ": " + step.task(), task);
-        }).toList();
+        return worked().stream().map(FarmMissions::objective).toList();
+    }
+
+    /** The objective a squad on {@code c}'s step is given. */
+    private static Objective objective(Map.Entry<FarmMission, FarmMission.Step> c) {
+        FarmMission m = c.getKey();
+        FarmMission.Step step = c.getValue();
+        Objective.Task task = switch (step.kind()) {
+            case FLATTEN -> new Objective.Task.Keep();
+            case FLOOR -> new Objective.Task.Floor(m.layer(step.level()));
+            case FARM_TEMPLATE -> new Objective.Task.Farm();
+            case TREE_TEMPLATE -> new Objective.Task.TreeFarm();
+            case STORES_TEMPLATE, MINE_HEAD, PASTURE_TEMPLATE, PLACEHOLDER_TEMPLATE -> new Objective.Task.Stores();
+            case MINE -> new Objective.Task.Mine();
+        };
+        // A shaft's objective is its head's x and z and the depth to cut to: a MINE's y is a depth (NightRules.grounded) - a
+        // mineshaft's the bottom of the world, one pattern all the way down (operator, 2026-11-24).
+        Position at = step.kind() == FarmMission.Kind.MINE ? new Position(m.minX() + 8.5, io.github.jayessdeesea.minecraft.bot.supply.Staircase.DEEPEST, m.minZ() + 8.5) : m.centre(step);
+        return new Objective(m.said(step), at, "The operator's " + m.what()
+                + ", step " + (step.index() + 1) + " of " + m.steps().size() + ": " + step.task(), task);
     }
 
     /**
@@ -200,7 +206,7 @@ final class FarmMissions {
      * review found, reopened and had dug away, every ten minutes.
      */
     synchronized boolean atItsLevel(Objective objective) {
-        io.github.jayessdeesea.minecraft.command.Position at = objective.location();
+        Position at = objective.location();
         return java.util.stream.Stream.concat(
                 missions.entrySet().stream().filter(e -> e.getKey().steps().get(e.getValue()).kind() != FarmMission.Kind.FLATTEN)
                         .map(e -> e.getKey().centre(e.getKey().steps().get(e.getValue()))),
@@ -420,16 +426,22 @@ final class FarmMissions {
      * {@code day}'s objectives with a squad on each step worked ({@link #worked}) that none holds (operator, 2026-11-21):
      * the squad already on it; else one given its task already - the flatten's squad, say - which is put on the step as
      * said; else the last in the order of battle but the farm squad and those holding another mission's step. Each move
-     * said.
+     * said. Then the reviews of what's built, none to the farm squad nor those {@code scouting}, nor by {@code night} to a
+     * squad on a step ({@link BuiltReviews#deal}).
      */
-    List<Objective> guarded(List<Objective> day, List<SquadStatus> statuses, Optional<String> farmSquad) {
-        fromThePlan(statuses.size() - (farmSquad.isPresent() ? 1 : 0));
+    List<Objective> guarded(List<Objective> day, List<SquadStatus> statuses, Optional<String> farmSquad, Set<String> scouting, boolean night) {
+        Set<String> notSent = new HashSet<>(scouting);
+        farmSquad.ifPresent(notSent::add);
+        // A squad on a review keeps it till it's made or given up - no step dealt to it - and is no squad for the plan's next.
+        Set<Integer> held = reviewing(statuses, notSent), onSteps = new HashSet<>();
+        fromThePlan(statuses.size() - (farmSquad.isPresent() ? 1 : 0) - held.size());
         List<Objective> out = new ArrayList<>(day);
-        Set<Integer> held = new HashSet<>();
-        for (Objective step : objectives()) {
+        for (Map.Entry<FarmMission, FarmMission.Step> w : worked()) {
+            Objective step = objective(w);
             int on = out.indexOf(step);
-            if (on >= 0) {
+            if (on >= 0 && !held.contains(on)) {
                 held.add(on);
+                onSteps.add(on);
                 continue;
             }
             List<Integer> movable = new ArrayList<>();
@@ -444,18 +456,42 @@ final class FarmMissions {
             }
             // The squad on it already; else the one the register has on it - a restart re-deals nothing (live, two squads
             // swapped a mineshaft and a flatten at every deploy, a walk each way); else one doing that kind of work; else the last.
+            // A repair goes to the squad whose review found it (operator, 2026-11-26: put right what the review finds).
             int k = movable.stream().filter(i -> statuses.get(i).standing().filter(step::equals).isPresent()).findFirst()
+                    .or(() -> repairer(w.getKey()).flatMap(by -> movable.stream().filter(i -> statuses.get(i).squadName().equals(by)).findFirst()))
                     .or(() -> book.flatMap(b -> b.squadOn(step.mission())).flatMap(on_ -> movable.stream().filter(i -> statuses.get(i).squadName().equals(on_)).findFirst()))
                     .or(() -> movable.stream().filter(i -> out.get(i).task().getClass() == step.task().getClass()).findFirst())
                     .orElse(movable.getLast());
             LOG.warn("[Guardrail] the operator's farm - {} put on '{}', not '{}'", statuses.get(k).squadName(), step.mission(), out.get(k).mission());
             out.set(k, step);
             held.add(k);
+            onSteps.add(k);
         }
+        deal(out, statuses, held, onSteps, notSent, night);
         if (plan.isPresent()) {
             atTheFarms(out, statuses, held, farmSquad);
         }
         return out;
+    }
+
+    /** The squads, by their place in {@code statuses}, on the reviews ordered and standing; none before the first measure. */
+    private synchronized Set<Integer> reviewing(List<SquadStatus> statuses, Set<String> notSent) {
+        load();
+        List<String> names = statuses.stream().map(SquadStatus::squadName).toList();
+        return (measured ? reviews.standing(built, measuredAt) : List.<ReviewOrders.Order>of()).stream().filter(o -> !notSent.contains(o.squad()))
+                .map(o -> names.indexOf(o.squad())).filter(i -> i >= 0).collect(Collectors.toCollection(HashSet::new));
+    }
+
+    /** The reviews dealt ({@link BuiltReviews#deal}): none before the first measure, when nothing's known of when. */
+    private synchronized void deal(List<Objective> out, List<SquadStatus> statuses, Set<Integer> held, Set<Integer> onSteps, Set<String> notSent, boolean night) {
+        if (measured) {
+            reviews.deal(out, statuses, held, onSteps, notSent, night, built, measuredAt);
+        }
+    }
+
+    /** The squad whose review found {@code m} drifted, while its repair is worked. */
+    private synchronized Optional<String> repairer(FarmMission m) {
+        return reviews.repairer(m);
     }
 
     /**
@@ -506,6 +542,11 @@ final class FarmMissions {
      * ({@code trees}) from then on.
      */
     synchronized void measure(WorldView world, FarmPlan campFarm, CampFarm farms, CampTrees trees, long now) {
+        measure(world, campFarm, farms, trees, Map.of(), now);
+    }
+
+    /** As {@link #measure(WorldView, FarmPlan, CampFarm, CampTrees, long)}, {@code squads} where each squad's soldiers stand. */
+    synchronized void measure(WorldView world, FarmPlan campFarm, CampFarm farms, CampTrees trees, Map<String, List<Position>> squads, long now) {
         load();
         Set<Long> chunks = new HashSet<>();
         book.ifPresent(b -> b.registers().chunks().stream().filter(c -> c.kind() == ChunkRecord.Kind.WHEAT || c.kind() == ChunkRecord.Kind.TREES
@@ -515,6 +556,7 @@ final class FarmMissions {
         }
         made = Set.copyOf(chunks);
         measuredAt = now;
+        measured = true;
         recheck(world, campFarm, now);
         if (trees != null) {
             treeChunk().ifPresent(trees::take);
@@ -522,26 +564,24 @@ final class FarmMissions {
         for (Map.Entry<FarmMission, FarmMission.Step> under : worked()) {
             measure(world, campFarm, farms, now, under.getKey(), under.getValue());
         }
-        review(world, now);
+        review(world, squads, now);
         alarmStalled(now);
     }
 
     /** The missions done, their templates standing: what the review looks over. */
     private final Set<FarmMission> built = new java.util.LinkedHashSet<>();
-    /** How often the review runs: what a squad keeps is looked over each time, the rest when it's due. */
+    /** How often what a squad keeps is looked over, and a mineshaft's head while its shaft is worked. */
     static final long REVIEW_MILLIS = 5 * 60_000;
     private long reviewedAt = Long.MIN_VALUE;
-    /** A garrison day and night; and how long a built template nobody is working goes between looks, at most. */
-    static final long DAY_MILLIS = 20 * 60_000, REVIEW_EVERY = 4 * DAY_MILLIS;
-    /** When each built template is next due a look: by mission, never one time for all. */
+    /** A garrison day and night; and how long a built template goes between reviews, at most: {@link ReviewOrders}'. */
+    static final long DAY_MILLIS = ReviewOrders.DAY_MILLIS, REVIEW_EVERY = ReviewOrders.EVERY;
+    /** When each mineshaft's head is next due a look while its shaft is worked: by mission, never one time for all. */
     private final Map<FarmMission, Long> reviewDue = new java.util.HashMap<>();
+    /** The reviews of what's built, ordered to the squads near it. */
+    private final BuiltReviews reviews = new BuiltReviews();
     /** The built farms a squad was last given to keep. */
     private Set<FarmMission> tended = Set.of();
 
-    /** When {@code m} is next looked over, once it has been. */
-    synchronized Optional<Long> reviewDue(FarmMission m) {
-        return Optional.ofNullable(reviewDue.get(m));
-    }
 
     /** The templates built and not open again, for whoever asks what stands. */
     synchronized Set<FarmMission> built() {
@@ -550,36 +590,29 @@ final class FarmMissions {
 
     /**
      * The review (operator, 2026-11-22: once the sites are built the construction might drift - who reviews and fixes
-     * it?): a template built and in sight - the force near it, no remote outpost with nobody there - is measured against
-     * its layout again, and one whose structure has gone ({@link TemplateDrift#drifted}) has its template step opened again - a repair,
-     * a squad's task as the build was, kept in the register with what was found. One a squad keeps is looked over every
-     * {@link #REVIEW_MILLIS}, as the first thing done with it; any other when first seen and then inside every
-     * {@link #REVIEW_EVERY}, up to a day early by its name and the day, so the sites aren't all looked over at once
-     * (operator, 2026-11-24).
+     * it?; 2026-11-26: anti-entropy is ordered by the platoon leader): a template built is measured against its layout
+     * again when the squad ordered to review it ({@link BuiltReviews}) stands at it, and one a squad keeps every
+     * {@link #REVIEW_MILLIS}, the first thing done with it - in sight, both. One whose structure has gone
+     * ({@link TemplateDrift#drifted}) has its template step opened again - a repair, the task of the squad whose review
+     * found it - kept in the register with what was found.
      */
-    private void review(WorldView world, long now) {
-        if (reviewedAt != Long.MIN_VALUE && now - reviewedAt < REVIEW_MILLIS) {
-            return;
+    private void review(WorldView world, Map<String, List<Position>> squads, long now) {
+        boolean kept = reviewedAt == Long.MIN_VALUE || now - reviewedAt >= REVIEW_MILLIS;
+        if (kept) {
+            reviewedAt = now;
         }
-        reviewedAt = now;
-        for (FarmMission m : List.copyOf(built)) {
-            if (!world.isLoaded(m.minX(), m.minZ()) || !world.isLoaded(m.minX() + 15, m.minZ() + 15)) {
-                continue; // not in sight: looked at next time
-            }
-            if (!tended.contains(m) && now < reviewDue.getOrDefault(m, Long.MIN_VALUE)) {
-                continue;
-            }
-            reviewDue.put(m, now + REVIEW_EVERY - Math.floorMod(java.util.Objects.hash(m.name(), now / DAY_MILLIS), DAY_MILLIS));
-            Optional<String> gone = TemplateDrift.drifted(world, m);
-            if (gone.isEmpty()) {
-                continue;
-            }
+        for (BuiltReviews.Found found : reviews.look(world, built, kept ? tended : Set.of(), squads, now)) {
+            FarmMission m = found.mission();
             FarmMission.Step last = m.steps().getLast();
             built.remove(m);
             missions.put(m, last.index());
-            book.ifPresent(b -> b.reopen(m, last, "reviewed: " + gone.get(), now));
-            LOG.warn("[Mission] {} reviewed - {}; its template worked again", m.name(), gone.get());
+            book.ifPresent(b -> b.reopen(m, last, "reviewed: " + found.gone(), now));
+            LOG.warn("[Mission] {} reviewed - {}; its template worked again", m.name(), found.gone());
             wake.accept("a template built wants repair");
+        }
+        reviews.made().ifPresent(wake);
+        if (!kept) {
+            return;
         }
         // A mineshaft whose shaft is being worked keeps its head too: a head built to an older pattern, or broken since, is
         // put up again before the mining goes on - its head step opened, its shaft's after it.
@@ -712,6 +745,7 @@ final class FarmMissions {
             missions.remove(m); pauses.resume(m);
             said.remove(m);
             built.add(m);
+            reviews.built(m, now);
             if (step.kind() == FarmMission.Kind.TREE_TEMPLATE) {
                 treesMade = Optional.of(new TreeChunk(m.chunkX(), m.chunkZ(), step.level()));
             }
@@ -859,6 +893,7 @@ final class FarmMissions {
     private final Map<FarmMission, Long> movedAt = new java.util.HashMap<>();
     private final Set<FarmMission> stalled = new HashSet<>();
     private long measuredAt;
+    private boolean measured;
 
     /**
      * The alarm for a mission making no progress (operator, 2026-11-23: blocking on that one block seems very wrong -

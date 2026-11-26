@@ -131,6 +131,11 @@ final class ScoutMissions {
         return kept;
     }
 
+    /** The squads put on the open missions: no review takes them off. */
+    synchronized Set<String> scouting() {
+        return Set.copyOf(squadOn.values());
+    }
+
     /** The missions open now, as given. */
     synchronized List<ScoutMission> open() {
         return List.copyOf(open.keySet());
