@@ -19,7 +19,7 @@ Paths: `app/`, `bot/`, `command/` are each module's `src/main/java/io/github/jay
 ## Fix first
 1. **A1 - a resource's item, load and dig target**: already wrong in two arms, and `default` hides the next.
 2. **A2 - a CANTCO's reason compared as text**: nine behaviours hang on prefixes of log sentences.
-3. **B1 with A11 - a ground per mission**: `KeepState` by name; the blocker backlog/named-work.md names.
+3. **B1 with A11 - a ground per mission**: `FlattenWork` by name; the blocker backlog/named-work.md names.
 4. **A6, A7, A8 - one `Chunk` value and one `Template` interface**: abstraction (2); a new template costs nine switches.
 5. **A3, A4, A5 - one `Body`**: standable, reach, eyes, box.
 
@@ -98,7 +98,7 @@ Paths: `app/`, `bot/`, `command/` are each module's `src/main/java/io/github/jay
 
 ### No longer true
 - **B1 There is one ground to flatten.** `FarmMissions:140` "one flatten at a time", `:323` `findFirst`;
-  `ChainOfCommand:507` `flatten()`; `SoldierRunner:456` one `KeepState` (274 uses), holding one plan, workshop, road
+  `ChainOfCommand:507` `flatten()`; `SoldierRunner.flattenWork` one `FlattenWork`, holding one plan, workshop, road
   and foreman. `BasePlan` gives up to 63 chunks; the code works one. backlog/named-work.md.
 - **B2 "The camp's X".** `campStairs`, `campFarm`, `campTrees`, `campGround`, `campWorkshop`, `campMines`, `stockpile`,
   `keepMine`; `FarmMissions:55,567,950` keep the last tree farm made as the camp's (wheat is a list, trees are not).
@@ -116,7 +116,7 @@ Paths: `app/`, `bot/`, `command/` are each module's `src/main/java/io/github/jay
 - **B7 Javadoc saying what the code no longer does.** `FarmMission:16-23,92`, `FarmMissions:40,45`,
   `SoldierRunner:5238`, `MineSites:26`.
 - **B8 Code for cases that can't arise.** `Keep.FILL = false` and the fill branch and state behind it
-  (`SoldierRunner:2312`, `KeepState:169`, `SquadState:87`); `SoldierRunner:6369` `walkable`, uncalled; three constants
+  (`SoldierRunner:2312`, `FlattenWork.fillLeftBySquad`, `SquadState:87`); `SoldierRunner:6369` `walkable`, uncalled; three constants
   never read (`CampFarm:46`, `SoldierRunner:3692,3694`).
 - **B9 No fallbacks.** Three `@Value` defaults (`ChainOfCommand:250,463,515`); unknown time read as day, five times;
   an empty squad held at (0, 0, 0) (`DrillPlatoonLeader:58`); `default ->` over an enum in three classes.

@@ -11,7 +11,7 @@ worked at a time, whatever the squads free: live (field701), a tree farm's flatt
 tree farm, a supply point and a mineshaft waited behind it. The rule isn't a choice of the missions' - `FarmMissions.worked`
 skips a second flatten because there is one ground to flatten in the whole garrison:
 - `ChainOfCommand.flatten()` is one `Flatten` - the first flattening mission's, else the configured site.
-- `SoldierRunner.keepState` is one `KeepState`: one level plan and its boxes (`KeepState.Plan`), one set of hands and
+- `SoldierRunner.flattenWork` is one `FlattenWork` (the ground's state; `keepState` holds the platoon's wood party and each builder's fights): one level plan and its boxes (`FlattenWork.Plan`), one set of hands and
   where each works, one depot and workshop and chest row, one foreman, one pace and run, one haul road, one table of
   column tops. Every squad on a `Keep` task is a share of that one ground ("the keep: 572 blocks to dig ... in its
   share x=4..43").
@@ -21,7 +21,7 @@ hands, still one ground.
 **The abstraction is what's wrong** (operator, 2026-11-23: there may be an objective to flatten something, but there
 is no global "what are we flattening"; everything is named - docs/conventions.md, "Work is named"). The same shape, one
 field for "the" thing where the force has many, in `SoldierRunner` and `ChainOfCommand`: the ground to flatten
-(`flatten`, `keepState`, `keepLevel`); the camp's mine and the keep's (`campStairs`, `campMine`, `campMineSite`,
+(`flatten`, `flattenWork`, `keepLevel`); the camp's mine and the keep's (`campStairs`, `campMine`, `campMineSite`,
 `keepMine` - a mineshaft mission near the camp was taken for the camp's and never cut, backlog/mining.md); the camp's
 farm and tree chunk (`campFarm`, `campFarms`, `campTrees` - a mission's tree chunk has to "take" the camp's); the camp's
 workshop, wall, ground and level (`campWorkshop`, `campWalled`, `campGround`, `campLevel`); the farm squad.
@@ -42,7 +42,7 @@ workshop, wall, ground and level (`campWorkshop`, `campWalled`, `campGround`, `c
 - Live: the tree farm's flatten and the next mission's fall together, a squad each.
 
 ## Notes
-- `SoldierRunner` is at its line cap (8042) and holds some 270 uses of `keepState`, `levelPlan` and
+- `SoldierRunner` is at its line cap (8042) and holds some 270 uses of `flattenWork`, `keepState`, `levelPlan` and
   `chainOfCommand.flatten()`: the per-ground state is a class of its own (the keep's work lifted out with it), not a map
   threaded through the runner. backlog/split-oversized-sources.md.
 - The flatten first, since it's what holds the base back; then the mines; then the farms and groves; the camp's own

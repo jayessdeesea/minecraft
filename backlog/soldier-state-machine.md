@@ -71,6 +71,6 @@ interruptions). This item is the state those two leave behind, and the evals it 
   (`StuckEvalsTest`).
 
 ## Notes
-The keep's state is out of the runner as a holder (`app.KeepState`, 55 fields); its works
+The keep's state is out of the runner as holders (`app.FlattenWork`, one ground's, and `app.KeepState`, the wood party's and the builders'); its works
 (`keepwork`, `foremansNet`) follow it. Then the families in backlog/split-oversized-sources.md's
 order, each taking its maps into the soldier's state as it goes.
