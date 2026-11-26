@@ -72,5 +72,5 @@ interruptions). This item is the state those two leave behind, and the evals it 
 
 ## Notes
 The keep's state is out of the runner as holders (`app.FlattenWork`, one ground's, and `app.KeepState`, the wood party's and the builders'); its works
-(`keepwork`, `foremansNet`) follow it. Then the families in backlog/split-oversized-sources.md's
+(`keepwork`, `foremansNet`) follow it: the haul road, column tops, borrow pit's side, ore errand, smelter and chest row are in `FlattenWork`. Then the families in backlog/split-oversized-sources.md's
 order, each taking its maps into the soldier's state as it goes.
