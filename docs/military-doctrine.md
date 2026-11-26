@@ -369,7 +369,7 @@ trunk to reach - and then those steps dug out, so nothing's left to stunt what g
 tree no log comes off in three minutes at its work (errands for tools, food or supply don't count
 against it) - a trunk left floating over the mine's shaft - is let go and not handed out again; and with each tree down the cutter stands where its logs fell, under the
 trunk, while its scavenger takes them up (live, one felled three trees and carried no more logs)
-(`SoldierRunner.fellingDig`; operator, 2026-11-17: get all the wood, so the trees fall, so you get
+(`TreeFelling.dig`; operator, 2026-11-17: get all the wood, so the trees fall, so you get
 saplings and replant; remove the scaffolding you added - live, cutters took what was in reach and
 walked on, the tops and the leaves left). A squad gathering wood fells each tree it starts whole the
 same way, up to a body's reach, and plants a sapling where it stood (`bot.supply.Gatherer`) - back with

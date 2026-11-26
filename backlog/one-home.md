@@ -87,7 +87,7 @@ Paths: `app/`, `bot/`, `command/` are each module's `src/main/java/io/github/jay
 - **A18 An item's class -> where it's kept**: `StoresChunk.Row`, `MineHead.Bank`, `SoldierErrands:91,237`,
   `command/Stockpile:30`. Home: one supply-class table; rows and banks name a class. (The chest-contents check reads it.)
 - **A19 Routine deadlines**: `ANSWER_TICKS = 40` in 13 files, a walk's 400 or 600 in ten. Home: `bot.script.Script`.
-- **A20 to A24**: a tree's limits and a work area's box (`Gatherer:82`, `SoldierRunner:3252,3493`, `WoodDuties`,
+- **A20 to A24**: a tree's limits and a work area's box (`Gatherer:82`, `TreeFelling:51`, `SoldierRunner:3295`, `WoodDuties`,
   `WorkArea`); camp radii re-derived (`WALL_RADIUS - 1` at seven sites); protocol-777 facts as literals (entity ids in
   `EntityTracker:140-183` beside a registry by name; the block index in a section in four places; hotbar slots
   redefined in `StuckCase:26`); thresholds under two names (food 6, drop 3, 132 uses, a stack's 64); the night

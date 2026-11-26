@@ -14,7 +14,7 @@ by its name, written by three clocks - its own tick, the squad loop, the net:
 - **States held as flags.** A dozen name sets (`mining`, `drawingStone`, `stoneFilling`,
   `recovering`, `sealToClimb`, the keep's `fetching` and `drawing`) each mean "this soldier is doing
   that", and nothing stops a soldier being in two. One state's data lies over several maps
-  (`felling`, `fellingLeft`, `fellingSince`).
+  (`felling`, `fellingLeft`, `fellingSince`, now held in `app.TreeFelling`).
 - **It outlives the soldier.** A reconnect builds a new `DeterministicSoldier`; the maps keep the
   old one's rows.
 - **The activity is read off, not decided.** `bot.SoldierActivity` names what a soldier is doing -

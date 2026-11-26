@@ -1306,6 +1306,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final WorldModel world = new WorldModel(chunkCache, entityTracker);
     /** The ground to flatten's dig, scanned once a second for every squad (SiteClears). */
     private final SiteClears siteClears = new SiteClears(world, () -> clockwork.millis());
+    /** The keep cutters' tree felling (TreeFelling). */
+    private final TreeFelling trees = new TreeFelling(world, () -> clockwork.millis());
 
     @Override
     public void run(String... args) {
@@ -2920,7 +2922,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 int crown = toClear.y() + TreeFarm.HEADROOM;
                 for (int x = toClear.x() - TREE_FARM_RADIUS; x <= toClear.x() + TREE_FARM_RADIUS; x++) {
                     for (int z = toClear.z() - TREE_FARM_RADIUS; z <= toClear.z() + TREE_FARM_RADIUS; z++) {
-                        for (int y = toClear.y() + TREE_TALLEST; y > crown; y--) {
+                        for (int y = toClear.y() + TreeFelling.TREE_TALLEST; y > crown; y--) {
                             if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent()) {
                                 crown = y;
                                 break;
@@ -2937,7 +2939,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // there next (operator, 2026-11-17: gather all the wood on a tree; remove the scaffolding you
             // added). Live, cutters took the logs in reach and walked on, the tops and the leaves left.
             if (keepState.party.cutters().contains(h.name())) {
-                Optional<Order> felled = fellingDig(h.name(), keepWoodAt(onKeep, grove), except);
+                Optional<Order> felled = trees.dig(h.name(), keepWoodAt(onKeep, grove), except, keepState, scaffolding, handsHeld::get);
                 if (felled.isPresent()) {
                     orders.put(h.name(), felled.get());
                     continue;
@@ -3066,11 +3068,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
         keepState.party = party;
-        // Off the party, its tree is let go of, its patience with it too: live (field399), Liam's tree was
-        // kept through his night down the mine, and given up as out of reach at dawn - its three minutes run out while he was 70 blocks under it.
-        felling.keySet().retainAll(party.cutters());
-        fellingLeft.keySet().retainAll(party.cutters());
-        fellingSince.keySet().retainAll(party.cutters());
+        // Off the party, its tree is let go of, its patience with it too: a tree kept through a night down the
+        // mine would be given up as out of reach at dawn, its patience run out while the cutter was far under it.
+        trees.retainCutters(party.cutters());
         // Nobody cutting under the reserve says why, once a minute: live (field390), a day went by at 3-19
         // logs with the party never out and no line to say what held it.
         int logsNow = crew.stream().mapToInt(PlatoonSergeant.Hand::logs).sum() + wood.stockpileLogs();
@@ -3226,205 +3226,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return cells;
     }
 
-    /** The tree each keep cutter is felling: its logs as first found - the dig is its box until they're down and its steps out. */
-    private final Map<String, Set<BlockPos>> felling = new ConcurrentHashMap<>();
-    /** How far across from its first log a tree's logs are taken in: an oak's or a spruce's spread. */
-    static final int TREE_ACROSS = 4;
-    /** Logs left on each cutter's tree when last one came off, and when - its patience with it. */
-    private final Map<String, Integer> fellingLeft = new ConcurrentHashMap<>();
-    private final Map<String, Long> fellingSince = new ConcurrentHashMap<>();
-    /** Trees let go as out of reach: never handed out again this run. */
-    private final Set<BlockPos> treesLeft = ConcurrentHashMap.newKeySet();
-    /** What takes a cutter's hands off its tree for a while without its tree being the trouble. */
-    private static final Set<Hands.Routine> ERRANDS = java.util.EnumSet.of(Hands.Routine.SUPPLY_RUN, Hands.Routine.TORCHMAKER,
-            Hands.Routine.RATIONS, Hands.Routine.SEALER, Hands.Routine.HUNTER, Hands.Routine.ARMOURER, Hands.Routine.DEPOSITOR,
-            Hands.Routine.HANDOVER);
-    /** How long a cutter works a tree with no log coming off it before it's let go. */
-    static final long TREE_PATIENCE_MILLIS = 180_000;
-    /** How long a cutter stands where its tree's logs fell, its scavenger taking them up. */
-    static final long COLLECT_MILLIS = 15_000;
-    /** How far down a felled trunk's column its logs are looked for. */
-    static final int FALL_LOOK_DOWN = 24;
-    /** How far down its trunk's column a felled tree's ground is looked for, to replant on. */
-    static final int STUMP_LOOK_DOWN = 4;
-    /** How long a cutter tries to replant a stump - a sapling from the leaves it dug, or broken for - before it goes on. */
-    static final long STUMP_PLANT_MILLIS = 90_000;
-    /** The most logs taken as one tree. */
-    static final int TREE_LOGS = 96;
-    /** Leaves over a tree's top log, dug with it: a spruce's or an oak's crown. */
-    static final int TREE_CROWN = 3;
-    /** How far round where it's sent a cutter looks for its next tree. */
-    static final int TREE_LOOK = 8;
-    /** The tallest a tree is looked for over the ground: a giant spruce. */
-    static final int TREE_TALLEST = 32;
-
-    /**
-     * {@code cutter}'s dig of the tree it's felling, or the next tree nearest {@code at}: the box round
-     * its logs and crown, only logs and leaves in it dug - the ground and anything else kept - and its
-     * own steps kept while a log stands, dug out once none does. Empty with no tree near.
-     */
-    private Optional<Order> fellingDig(String cutter, Position at, Set<Cell> except) {
-        // The logs it cut picked up first: they fall to the ground under the trunk, and a cutter gone on to
-        // its next tree leaves them lying - live (field385), Liam felled three trees and carried 2 logs
-        // before and 2 after. It stands where they fell while its scavenger takes them up.
-        BlockPos fell = keepState.collect.get(cutter);
-        if (fell != null) {
-            if (clockwork.millis() - keepState.collectSince.getOrDefault(cutter, 0L) < COLLECT_MILLIS) {
-                return Optional.of(new Order.MoveTo(fell.x() + 0.5, fell.y(), fell.z() + 0.5, 2, 3, Risk.LOW));
-            }
-            keepState.collect.remove(cutter);
-            keepState.collectSince.remove(cutter);
-        }
-        // Its stump replanted before the next tree: it stands on it, its forester plants it (keepState.stumps).
-        BlockPos stump = keepState.stumps.get(cutter);
-        if (stump != null) {
-            long since = keepState.stumpSince.getOrDefault(cutter, clockwork.millis());
-            if (TreeFarm.planted(world, stump) || clockwork.millis() - since > STUMP_PLANT_MILLIS) {
-                if (!TreeFarm.planted(world, stump)) {
-                    LOG.warn("[Keep] {} couldn't replant the stump at {} in {} s - left for the leaves' saplings", cutter, stump,
-                            STUMP_PLANT_MILLIS / 1000);
-                }
-                keepState.stumps.remove(cutter);
-                keepState.stumpSince.remove(cutter);
-            } else {
-                return Optional.of(new Order.MoveTo(stump.x() + 0.5, stump.y(), stump.z() + 0.5, 2, 3, Risk.LOW));
-            }
-        }
-        Set<BlockPos> tree = felling.get(cutter);
-        // A tree nobody can reach - a trunk left floating over the mine's shaft - is let go once no log has
-        // come off it a while, and never handed out again: live (field377-379), Jack and then Dana were each
-        // sent to the logs at y=76-78 over the shaft at the mine's head, air under them to y=70, and stood.
-        long now = clockwork.millis();
-        if (tree != null) {
-            int left = (int) tree.stream().filter(c -> world.isLog(c.x(), c.y(), c.z())).count();
-            Integer was = fellingLeft.get(cutter);
-            // Its patience runs only while it's at the tree's work, not on an errand: live (field388), Eli
-            // made tools and fetched iron from the stockpile three minutes, and let go as out of reach a tree beside the workshop he'd never gone to.
-            Hands.Routine errand = handsHeld.get(cutter);
-            if (errand != null && ERRANDS.contains(errand)) {
-                fellingSince.put(cutter, now);
-            }
-            if (was == null || left < was) {
-                fellingLeft.put(cutter, left);
-                fellingSince.put(cutter, now);
-            } else if (left > 0 && now - fellingSince.getOrDefault(cutter, now) > TREE_PATIENCE_MILLIS) {
-                LOG.warn("[Keep] {} leaves the tree at {}: no log off it in {} s - out of reach", cutter,
-                        tree.stream().min(Comparator.comparingInt(BlockPos::y)).orElseThrow(), TREE_PATIENCE_MILLIS / 1000);
-                treesLeft.addAll(tree);
-                felling.remove(cutter);
-                fellingLeft.remove(cutter);
-                tree = null;
-            }
-        }
-        boolean standing = tree != null && tree.stream().anyMatch(c -> world.isLog(c.x(), c.y(), c.z()));
-        Box held = tree == null ? null : treeBox(tree);
-        boolean steps = held != null && !standing && scaffolding.stream().anyMatch(c -> held.contains(c.x(), c.y(), c.z())
-                && world.isSolid(c.x(), c.y(), c.z()));
-        Box box = held;
-        if (!standing && !steps) {
-            if (tree != null) {
-                BlockPos lowest = tree.stream().min(Comparator.comparingInt(BlockPos::y)).orElseThrow();
-                LOG.info("[Keep] {} has felled the tree at {} and dug out its steps", cutter, lowest);
-                felling.remove(cutter);
-                // The ground its trunk stood on, down its column: live (field380), Bob's tree's lowest log
-                // stood over air, and its stump wasn't replanted.
-                BlockPos foot = lowest;
-                for (int down = 0; down < STUMP_LOOK_DOWN && !world.isSolid(foot.x(), foot.y() - 1, foot.z()); down++) {
-                    foot = foot.offset(0, -1, 0);
-                }
-                // Where its logs fell: the ground under the trunk, however far down.
-                BlockPos ground = foot;
-                for (int down = 0; down < FALL_LOOK_DOWN && !world.isSolid(ground.x(), ground.y() - 1, ground.z()); down++) {
-                    ground = ground.offset(0, -1, 0);
-                }
-                keepState.collect.put(cutter, ground);
-                keepState.collectSince.put(cutter, clockwork.millis());
-                // Replanted where it stood, its headroom dug clear with its crown (operator, 2026-11-17).
-                if (world.isSoil(foot.x(), foot.y() - 1, foot.z()) && !world.isSolid(foot.x(), foot.y(), foot.z())) {
-                    keepState.stumps.put(cutter, foot);
-                    keepState.stumpSince.put(cutter, clockwork.millis());
-                    return Optional.of(new Order.MoveTo(foot.x() + 0.5, foot.y(), foot.z() + 0.5, 2, 3, Risk.LOW));
-                }
-            }
-            // A tree of its own: never one another cutter is felling (work in parallel - nobody on another's
-            // share). Live (field380), Liam was given the tree Bob had taken 13 s before.
-            Set<BlockPos> others = new HashSet<>();
-            felling.forEach((other, logs) -> {
-                if (!other.equals(cutter)) {
-                    others.addAll(logs);
-                }
-            });
-            tree = nearestLog(at, others).map(this::treeAt).orElse(null);
-            if (tree == null) {
-                felling.remove(cutter);
-                return Optional.empty();
-            }
-            felling.put(cutter, tree);
-            fellingLeft.put(cutter, tree.size());
-            fellingSince.put(cutter, now);
-            box = treeBox(tree);
-            standing = true;
-            LOG.info("[Keep] {} fells the tree at {}: {} log(s), dug as {}", cutter, tree.stream().min(Comparator.comparingInt(BlockPos::y)).orElseThrow(),
-                    tree.size(), box);
-        }
-        Set<Cell> keep = new HashSet<>(except);
-        for (int x = box.minX(); x <= box.maxX(); x++) {
-            for (int y = box.minY(); y <= box.maxY(); y++) {
-                for (int z = box.minZ(); z <= box.maxZ(); z++) {
-                    boolean wood = world.isLog(x, y, z) || world.leaves(x, y, z).isPresent();
-                    boolean step = scaffolding.contains(new BlockPos(x, y, z));
-                    if (world.isSolid(x, y, z) && !wood && (standing || !step)) {
-                        keep.add(new Cell(x, y, z));
-                    } else if (step && !standing) {
-                        keep.remove(new Cell(x, y, z));
-                    }
-                }
-            }
-        }
-        return Optional.of(new Order.Dig(box, keep));
-    }
-
-    /** The log nearest {@code at}, within {@link #TREE_LOOK} across and up or down. */
-    private Optional<BlockPos> nearestLog(Position at, Set<BlockPos> held) {
-        int ax = (int) Math.floor(at.x()), ay = (int) Math.floor(at.y()), az = (int) Math.floor(at.z());
-        BlockPos best = null;
-        double bestDistance = Double.MAX_VALUE;
-        for (int x = ax - TREE_LOOK; x <= ax + TREE_LOOK; x++) {
-            for (int z = az - TREE_LOOK; z <= az + TREE_LOOK; z++) {
-                for (int y = ay - TREE_LOOK; y <= ay + TREE_LOOK; y++) {
-                    double d = Math.hypot(x - ax, z - az) + Math.abs(y - ay) * 0.5;
-                    BlockPos cell = new BlockPos(x, y, z);
-                    if (d < bestDistance && world.isLog(x, y, z) && !treesLeft.contains(cell) && !held.contains(cell)) {
-                        best = new BlockPos(x, y, z);
-                        bestDistance = d;
-                    }
-                }
-            }
-        }
-        return Optional.ofNullable(best);
-    }
-
-    /** Every log joined to {@code log}, within {@link #TREE_ACROSS} across of it: one tree. */
-    private Set<BlockPos> treeAt(BlockPos log) {
-        Set<BlockPos> tree = new HashSet<>(List.of(log));
-        java.util.ArrayDeque<BlockPos> open = new java.util.ArrayDeque<>(List.of(log));
-        while (!open.isEmpty() && tree.size() < TREE_LOGS) {
-            BlockPos c = open.poll();
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dz = -1; dz <= 1; dz++) {
-                        BlockPos n = c.offset(dx, dy, dz);
-                        if (Math.abs(n.x() - log.x()) <= TREE_ACROSS && Math.abs(n.z() - log.z()) <= TREE_ACROSS
-                                && world.isLog(n.x(), n.y(), n.z()) && tree.add(n)) {
-                            open.add(n);
-                        }
-                    }
-                }
-            }
-        }
-        return Set.copyOf(tree);
-    }
-
     /** How far from the keep's depot its wood party goes for trees: the ground the keep's squads work. */
     static final int KEEP_WOOD_REACH = 64;
     /** How often a grove not yet sited is sought again, its ground cleared meanwhile. */
@@ -3472,7 +3273,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                     for (int y = dy + KNOWN_TREE_ABOVE; y >= dy - KNOWN_TREE_BELOW; y--) {
                         if (world.isLog(x, y, z)) {
-                            if (!treesLeft.contains(new BlockPos(x, y, z))) {
+                            if (!trees.letGo(new BlockPos(x, y, z))) {
                                 best = new Position(x + 0.5, y, z + 0.5);
                                 bestDistance = d;
                             }
