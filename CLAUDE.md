@@ -8,7 +8,7 @@ rules. What is wired for Claude Code alone lives under `.claude/` and is listed 
 | What | Where | For |
 |---|---|---|
 | Backlog pass | `.claude/skills/work-on-backlog/` | The procedure of [backlog/README.md](backlog/README.md), as a skill. |
-| Garrison watch | `.claude/loop.md` | A bare `/loop`: points at [docs/loop.md](docs/loop.md). |
+| Garrison watch | `.claude/loop.md` | A bare `/loop`: points at [docs/watches/garrison.md](docs/watches/garrison.md). |
 | `refactor-implementer` | `.claude/agents/` | Writes one behaviour-preserving refactor in its own worktree; never commits. |
 | `field-tracer` | `.claude/agents/` | Read-only: one symptom, live or in a failed simulation, down to its cause and the test that would pin it. |
 | `equivalence-reviewer` | `.claude/agents/` | Read-only: looks for the input that breaks what a diff claims - no change of behaviour, or the rule it states. |
@@ -42,7 +42,7 @@ rules. What is wired for Claude Code alone lives under `.claude/` and is listed 
   back to `designer`, not round three.
 - The reviewer's model by the kind of change: a pure refactor on Opus, its moves undone mechanically and diffed token by
   token; a change of behaviour or a design on the top model.
-- A canary is read ten minutes after a deploy or later, the window named in the brief.
+- A canary is read at the window of [docs/watches/garrison.md](docs/watches/garrison.md), step 8, named in the brief.
 - The ledger's tokens are per run (a resumed agent's round, not its running total), and the orchestrating session's own
   use is a line at the handoff.
 - The orchestrating session reads agents' summaries, never their diffs or logs whole; a task of its own goes to a session

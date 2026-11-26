@@ -164,7 +164,7 @@ extra, what's missing, what's the wrong block - worked by whoever is sent to the
   has, and what last changed that cell where the force did it (the placement and digging audits name the routine and
   the soldier). Differences are counted by cause; one that comes back after being put right, or that the force's own
   routine made - a depot's chest sited in a field, a step left on a fence line, a torch a block low - is a defect to fix
-  in that routine. The repair is the net, not the cure (docs/loop.md, "Anti-entropy, and why it ran").
+  in that routine. The repair is the net, not the cure (docs/watches/garrison.md, "Anti-entropy, and why it ran").
 - **Every template, one mechanism** (operator, 2026-11-23: this should apply to all templates): the wheat farm, the tree
   farm, the supply point and the mineshaft's head each say, cell by cell over their box and the slab under it, what
   stands there (`ChunkFarm`, `TreeChunk`, `StoresChunk`, `MineHead` - one "what the layout has at this cell" each), and

@@ -6,7 +6,7 @@ model: sonnet
 ---
 
 You trace one symptom, in the live garrison or in a simulation that failed, to its cause. You change nothing: no file in the repository, no order to
-the garrison, no Maven job. `docs/loop.md` describes the watch you serve and `DEVELOPMENT.md` the garrison.
+the garrison, no Maven job. `docs/watches/` describes the watch you serve and `DEVELOPMENT.md` the garrison.
 
 ## What you read
 - `GET http://127.0.0.1:8125/status` (each soldier's activity, order, report, position, returns) and `/clock`. Never

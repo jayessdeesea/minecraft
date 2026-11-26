@@ -269,6 +269,8 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
   whole suite (`verify.sh`) in a worktree of its own (`VERIFY_WORKTREE`, default `C:/mc-worktrees/verify`), and
   pushes it only on BUILD SUCCESS. The tree is free to work in meanwhile; a commit that fails is taken back, its
   changes left staged. It says when the commit count makes a profile due.
+- `profile.sh [seconds]` records the running garrison with Flight Recorder and prints its hot spots;
+  `profile.sh --read <file.jfr>` reads one already made (docs/conventions.md, "Profile every sixteenth commit").
 - `deploy.sh [<run>]` builds `origin/main` - what's verified and pushed, whatever state the tree here is in - in a
   worktree of its own (`DEPLOY_WORKTREE`, default `C:/mc-worktrees/deploy`), checks the fat jar, stops the run before by the PID in
   `garrison.pid` and starts the new one from a copy of the jar (`start-garrison.sh`). Each run is a line of

@@ -1,4 +1,4 @@
-# The watch loop
+# The garrison watch
 
 How an agent watches the running garrison toward goals the operator has set, pass after pass, with nobody at the
 keyboard (operator, 2026-11-23: watch over the runtime for consistent goals). Started with `/loop` and a prompt that
@@ -88,7 +88,8 @@ build running is the one last deployed. A pass that finds the last one's work br
    once, and the tree isn't edited while a queued commit is about to stage it.
 7. **Deploy** with `sh tools/ops/deploy.sh`, only a verified commit, and not more than once in 45 minutes: every
    restart takes the squads off their work. Fixes are batched into one restart where they can be.
-8. **Canary.** Five to ten minutes after a deploy: faults, loops, retries, deaths and each goal's rate against before
+8. **Canary.** Read once the run is ten minutes old or more - earlier, the checks that need time (counts falling,
+   reviews, orders) can't be judged yet: faults, loops, retries, deaths and each goal's rate against before
    it. Clearly worse, the commit is reverted through `commit.sh`, redeployed, and why is written down.
 9. **The watch log, and the goals.** One dated entry a pass, appended to `C:/mc-state/garrison/watch-log.md`: the
    stats, what was found, what was changed, what was deployed, deaths and their causes, and what needs the operator's

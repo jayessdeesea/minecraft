@@ -188,7 +188,7 @@ routine whose try fails does something different with the next, from a ladder it
    out of reach (`FlattenMeasures.SLOPE_PATIENCE_MILLIS`).
 And the count is said: four failures running at one target is a `[Retry]` line, again at each doubling; four trips
 running that moved nothing an `[Outcome] loop`. Whoever watches the garrison digs into each
-([loop.md](loop.md)). Live, on one day: a soldier dug a block and walked 38 blocks to a chest with it, 33 times; ten
+([watches/garrison.md](watches/garrison.md)). Live, on one day: a soldier dug a block and walked 38 blocks to a chest with it, 33 times; ten
 soldiers went round each other at one cell by a full chest; nine columns of a slope nobody could reach were handed
 from one soldier to another every two minutes for five hours.
 
@@ -198,12 +198,10 @@ When the commit count on main (`git rev-list --count HEAD`) is a multiple of 16,
 garrison is profiled before the next change is started (operator, 2026-11-15), and the worst
 offenders are fixed where it makes sense to:
 - **Record** three minutes of the running garrison with Java Flight Recorder, which attaches to the
-  live JVM at about 1% cost: `jcmd <pid> JFR.start name=prof duration=180s settings=profile
-  filename=<file>.jfr` (the PID is in `GARRISON_RUNS/garrison.pid`).
-- **Read** the self-time hot spots: `jfr print --events jdk.ExecutionSample --stack-depth 1` counted
-  by frame, then with `--stack-depth 25` attributed to the project's own caller - the JDK frame
-  on top (a map lookup, a sort) is rarely where the fix goes. `jfr summary` gives the sample count
-  to compare against.
+  live JVM at about 1% cost: `sh tools/ops/profile.sh` (the recording under `GARRISON_RUNS/profiles/`).
+- **Read** the self-time hot spots it prints: the samples counted by top frame, then each put to the
+  project's own frame nearest the top - the JDK frame on top (a map lookup, a sort) is rarely where
+  the fix goes. `profile.sh --read <file.jfr>` reads one already made, to compare against.
 - **Fix** what dominates and has a cause in the code - a bad hash, a scan in a tick loop - not
   what's merely first. Measure again after, and put both sample counts in the commit message.
 - A recording with almost no execution samples is a garrison doing nothing: check it's connected

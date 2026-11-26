@@ -26,7 +26,7 @@ the command layer legible, not ones that chase Minecraft feature completeness. T
 organised and talks as an infantry platoon does (mission command, WILCO/CANTCO, SITREP,
 OPORD/FRAGO), so the doctrine for each job comes from the manual for that job, and a model is shown
 computed state, never asked to work it out. At development time a model also watches the running
-garrison (docs/loop.md).
+garrison (docs/watches/).
 
 ## Rules every change needs
 Each points to its home, which has the reasons.
@@ -88,5 +88,5 @@ Each points to its home, which has the reasons.
 | [docs/protocol-pipeline.md](docs/protocol-pipeline.md) | The Netty pipeline, stage by stage. |
 | [docs/world-data-spec.md](docs/world-data-spec.md) | Chunk, block-state and light data the client decodes. |
 | [docs/entry-docs.md](docs/entry-docs.md) | Before editing README.md or DEVELOPMENT.md. |
-| [docs/loop.md](docs/loop.md) | Watching the running garrison toward the operator's goals, pass after pass: the watch loop. |
+| [docs/watches/](docs/watches/README.md) | The watches: what each keeps on course, pass after pass - the running garrison, toward the operator's goals. |
 | [backlog/](backlog/README.md) | Choosing work, and the procedure for "work on the backlog". |

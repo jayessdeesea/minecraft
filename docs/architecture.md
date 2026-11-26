@@ -262,7 +262,7 @@ scenario's app log goes to `app/target/sim/<scenario>.log`; scenarios run in par
 A stuck soldier is a case in the registry of stuck soldiers (`StuckEvalsTest`; operator, 2026-11-20): one file
 under `app/src/test/resources/stuck/` per live failure (the cases the garrison drafts, `garrison-state/worlds/`, are
 triaged first by `StuckTriageIT`: the newest replayed with the soldier alone, and a table of which reach their goal -
-docs/loop.md) - the recorded ground (`garrison-state/worlds/`, copied to
+docs/watches/garrison.md) - the recorded ground (`garrison-state/worlds/`, copied to
 `worlds/`), where the soldier stood, what it carried, where it was going, and what correct is there (stands within
 so far of its goal within so many minutes). Each is replayed and printed `[Eval] stuck/<case>: PASS|FAIL`. A case
 not fixed yet is marked `knownFailure`: reported, not failed - and failed once it passes still marked, so the mark

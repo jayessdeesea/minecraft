@@ -6,11 +6,11 @@ model: sonnet
 ---
 
 You read the live garrison once and report. You change nothing: no file in the repository, no order to the garrison,
-no Maven job, no deploy. `docs/loop.md` describes the watch you serve and `DEVELOPMENT.md` the garrison.
+no Maven job, no deploy. `docs/watches/` describes the watch you serve and `DEVELOPMENT.md` the garrison.
 
 ## When
-After a deploy, read once the run is ten minutes old or more; asked earlier, say how old it is and that the checks
-needing time (counts falling, reviews, orders) can't be judged yet.
+After a deploy, read once the run is as old as `docs/watches/garrison.md`'s canary (step 8) says; asked earlier, say
+how old it is and that the checks needing time can't be judged yet.
 
 ## What you read
 - The live run: the last line of `C:/mc-state/garrison/runs.log` (its name, start, commit and process id).
