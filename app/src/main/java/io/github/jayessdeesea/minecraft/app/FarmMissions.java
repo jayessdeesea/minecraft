@@ -662,38 +662,8 @@ final class FarmMissions {
                 say(m, step, (left == 0 ? "none" : left <= 16 ? String.valueOf(left) : "up to " + (left + 15) / 16 * 16) + " of " + cells.size() + " cells to pave");
                 yield left == 0 ? Optional.of("all " + cells.size() + " cells of y=" + step.level() + " cobblestone") : Optional.empty();
             }
-            case FARM_TEMPLATE -> {
-                ChunkFarm farm = new ChunkFarm(m.chunkX(), m.chunkZ(), step.level());
-                FarmSite.Work work = FarmSite.work(world, farm);
-                say(m, step, work.stage() + " - " + work + (work.stage() != FarmSite.Stage.SURVEYED ? "" : ", to fill "
-                        + FarmSite.surveyed(world, farm).get(1).stream().limit(6).map(c -> c.x() + "," + c.y() + "," + c.z()).toList()
-                        + ", to pave " + FarmSite.surveyed(world, farm).get(2).stream().limit(6).map(c -> c.x() + "," + c.y() + "," + c.z()).toList()
-                        + ", in the way " + FarmSite.surveyed(world, farm).get(0).stream().limit(6).map(c -> c.x() + "," + c.y() + "," + c.z()).toList()));
-                yield work.stage() == FarmSite.Stage.SURVEYED ? Optional.empty() : Optional.of("the template's ground laid at y=" + step.level() + ", " + work.stage());
-            }
-            case TREE_TEMPLATE -> {
-                TreeChunk chunk = new TreeChunk(m.chunkX(), m.chunkZ(), step.level());
-                if (chunk.trunks().stream().anyMatch(c -> !world.isLoaded(c.x(), c.z()))) {
-                    say(m, step, "not all of it in sight");
-                    yield Optional.empty();
-                }
-                // Its trees' dirt first: each tree's cell of the paving dug out and dirt laid in it, the squad's (TemplateGround.treeOrders).
-                int toDig = chunk.soilToDig(world).size(), toLay = chunk.soilToLay(world).size();
-                if (toDig + toLay > 0) {
-                    say(m, step, "GROUND - of its " + chunk.soil().size() + " trees' cells, " + toDig + " to dig out of the paving and " + toLay + " to lay in dirt");
-                    yield Optional.empty();
-                }
-                // Planted, its chest in and lit: the fence is the grid's, not this mission's. A trunk with no soil under it
-                // is said, since the stage stands at GROUND while one lacks it and the planters pass it over.
-                TreeChunk.Stage stage = chunk.stage(world);
-                int takes = chunk.plantable(world).size();
-                say(m, step, stage + " - " + takes + " of " + chunk.trunks().size() + " trunk cells take a sapling"
-                        + (stage == TreeChunk.Stage.GROUND ? ", the rest want soil under them and nothing over" : "")
-                        + (stage != TreeChunk.Stage.PLANTED ? "" : ", not planted: " + chunk.trunks().stream().filter(t -> !io.github.jayessdeesea.minecraft.bot.farm.TreeFarm.planted(world, t))
-                        .limit(4).map(t -> t.x() + "," + t.y() + "," + t.z()).toList() + (world.isChest(chunk.chest().x(), chunk.chest().y(), chunk.chest().z()) ? "" : ", no chest")));
-                yield stage.compareTo(TreeChunk.Stage.PRODUCING) >= 0 ? Optional.of("its " + chunk.trunks().size()
-                        + " saplings in, its chest and its " + chunk.torches().size() + " torches - " + stage) : Optional.empty();
-            }
+            case FARM_TEMPLATE -> TemplateMeasures.farm(world, m, step, said -> say(m, step, said));
+            case TREE_TEMPLATE -> TemplateMeasures.trees(world, m, step, said -> say(m, step, said));
             case MINE_HEAD, PLACEHOLDER_TEMPLATE -> {
                 boolean head = step.kind() == FarmMission.Kind.MINE_HEAD;
                 Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> layout = head
@@ -712,32 +682,8 @@ final class FarmMissions {
                 say(m, step, "its squad down it");
                 yield dry.contains(ChunkFarm.key(m.chunkX(), m.chunkZ())) ? Optional.of("mined dry: every level cut, its ore taken or noted") : Optional.empty();
             }
-            case PASTURE_TEMPLATE -> {
-                io.github.jayessdeesea.minecraft.bot.farm.PastureChunk pasture = TemplateDrift.pasture(m);
-                if (!world.isLoaded(m.minX(), m.minZ()) || !world.isLoaded(m.minX() + 15, m.minZ() + 15)) {
-                    say(m, step, "not all of it in sight");
-                    yield Optional.empty();
-                }
-                int toLay = pasture.groundToLay(world).size(), toPave = pasture.footingsToPave(world).size();
-                Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> left = Fixtures.left(world, pasture.fixtures());
-                say(m, step, (toLay + toPave > 0 ? "GROUND - " + toLay + " cell(s) to lay in dirt, " + toPave + " footing(s) to pave; " : "")
-                        + "to put up: " + (left.isEmpty() ? "nothing" : left.entrySet().stream()
-                        .map(e -> e.getValue().size() + " " + e.getKey().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' ')).collect(Collectors.joining(", "))));
-                yield toLay + toPave == 0 && left.isEmpty() ? Optional.of("its ground laid, fenced, gated and lit, its chest up") : Optional.empty();
-            }
-            case STORES_TEMPLATE -> {
-                StoresChunk stores = new StoresChunk(m.chunkX(), m.chunkZ(), step.level());
-                if (stores.ground().stream().anyMatch(c -> !world.isLoaded(c.x(), c.z()))) {
-                    say(m, step, "not all of it in sight");
-                    yield Optional.empty();
-                }
-                // Stocked - fenced and lit, its workshop in, its first rows up: the rows after are a follow-on order.
-                Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, List<BlockPos>> left = Fixtures.left(world, stores.fixtures());
-                say(m, step, stores.stage(world) + " - to put up: " + (left.isEmpty() ? "nothing" : left.entrySet().stream()
-                        .map(e -> e.getValue().size() + " " + e.getKey().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' ')).collect(Collectors.joining(", "))));
-                yield stores.stocked(world) ? Optional.of("fenced and lit, its workshop in and its "
-                        + StoresChunk.FIRST_ROWS.size() * 6 + " double chests up") : Optional.empty();
-            }
+            case PASTURE_TEMPLATE -> TemplateMeasures.pasture(world, m, step, said -> say(m, step, said));
+            case STORES_TEMPLATE -> TemplateMeasures.stores(world, m, step, said -> say(m, step, said));
         };
         if (done.isEmpty()) {
             return;
