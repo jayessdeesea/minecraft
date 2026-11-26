@@ -34,6 +34,21 @@ class EntityTrackerTest {
         assertEquals(List.of(), tracker.nearbyArrows(new Position(40, 64, 0), 16));
     }
 
+    /**
+     * Pins today's answer, which contradicts docs/military-doctrine.md "The shield": the shield is lowered "as soon as the
+     * arrow is past", and here one that has flown behind the soldier, away from it, still counts as in flight - it counts
+     * for a second from its spawn, whatever it has done since (a pillager's crossbow shoots every 1.25 s, so a shield
+     * raised at one stays up). The rule would answer an empty list for the arrow at -10.
+     */
+    @Test
+    void anArrowThatHasFlownPastIsStillInFlightForASecondFromItsSpawn() {
+        EntityTracker tracker = new EntityTracker();
+        tracker.spawn(1, UUID.randomUUID(), 6, 5, 64, 0, "Alice");
+        tracker.move(1, -10, 64, 0);
+
+        assertEquals(List.of(new Position(-10, 64, 0)), tracker.nearbyArrows(new Position(0, 64, 0), 16));
+    }
+
     private static final int ZOMBIE = 154;
     private static final int CREEPER = 32;
     private static final int COW = 30;

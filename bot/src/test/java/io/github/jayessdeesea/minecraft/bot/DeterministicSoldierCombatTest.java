@@ -10,6 +10,8 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.Risk;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
@@ -868,5 +870,109 @@ class DeterministicSoldierCombatTest {
             alice.tick(pit);
         }
         return alice.status().position().x() - 0.5;
+    }
+
+    /**
+     * The shield in contact, one row a hostile with the shield and the same row without it (docs/military-doctrine.md, "The
+     * shield"; field743: three soldiers killed by pillager arrows). A stone sword, the hostile {@code across} blocks east
+     * and standing, arrows in flight over ticks 10-20 where the row says, none after. A row pins the soldier's answer today -
+     * per tick of 30, up / swung / sprinted as a bit each - and the longest step taken with the shield up and with it
+     * down; where the rule would answer otherwise the row's comment says so.
+     */
+    record ShieldRow(String name, String hostile, double across, boolean shield, boolean arrows, String up, String swung, String sprinted,
+                     String stepUp, String stepDown) {
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private static ShieldRow s(String name, String hostile, double across, boolean shield, boolean arrows, String up, String swung,
+                               String sprinted, String stepUp, String stepDown) {
+        return new ShieldRow(name, hostile, across, shield, arrows, up, swung, sprinted, stepUp, stepDown);
+    }
+
+    static List<ShieldRow> shieldRows() {
+        return List.of(
+                // --- An archer at range, arrows in flight: the shield up from the tick the arrow is seen, down the first tick with none, a
+                // fifth of the walk (0.04 of 0.2), no sprint while it's up, a sprint at it again once it's down. The soldier here
+                // has no bow, so it closes on the archer (the arrow seen is being shot at). Without a shield: the same sprint, never slowed.
+                s("skeleton 12 off, shield, arrows", "skeleton", 12, true, true, "000000000011111111111000000000", "000000000000000000000000000000", "111111111100000000000111111111", "0.040", "0.280"),
+                s("skeleton 12 off, no shield, arrows", "skeleton", 12, false, true, "000000000000000000000000000000", "000000000000000000000000000000", "111111111111111111111111111111", "0.000", "0.280"),
+                s("pillager 12 off, shield, arrows", "pillager", 12, true, true, "000000000011111111111000000000", "000000000000000000000000000000", "111111111100000000000111111111", "0.040", "0.280"),
+                s("pillager 12 off, no shield, arrows", "pillager", 12, false, true, "000000000000000000000000000000", "000000000000000000000000000000", "111111111111111111111111111111", "0.000", "0.280"),
+                // --- An archer at hand: the swing due at tick 12 is held while the shield is up and comes the tick it drops (21).
+                s("skeleton 2 off, shield, arrows", "skeleton", 2, true, true, "000000000011111111111000000000", "100000000000000000000100000000", "000000000000000000000000000000", "0.000", "0.200"),
+                s("skeleton 2 off, no shield, arrows", "skeleton", 2, false, true, "000000000000000000000000000000", "100000000000100000000000100000", "000000000000000000000000000000", "0.000", "0.200"),
+                // --- A creeper: no arrows, so the shield never goes up; it gets clear of the blast at a sprint either way (6 off is
+                // gone past). With an arrow in flight from elsewhere the shield goes up and the soldier crawls from the blast at a fifth
+                // of its pace, unable to sprint: no rule says whether a creeper within its blast outranks the shield - a question
+                // for the operator, pinned as it is.
+                s("creeper 6 off, shield, no arrows", "creeper", 6, true, false, "000000000000000000000000000000", "000000000000000000000000000000", "000000000000000000000000000000", "0.000", "0.000"),
+                s("creeper 6 off, no shield, no arrows", "creeper", 6, false, false, "000000000000000000000000000000", "000000000000000000000000000000", "000000000000000000000000000000", "0.000", "0.000"),
+                s("creeper 3 off, shield, no arrows", "creeper", 3, true, false, "000000000000000000000000000000", "000000000000000000000000000000", "111111111111111110000000000000", "0.000", "0.280"),
+                s("creeper 3 off, no shield, no arrows", "creeper", 3, false, false, "000000000000000000000000000000", "000000000000000000000000000000", "111111111111111110000000000000", "0.000", "0.280"),
+                s("creeper 3 off, shield, an arrow from elsewhere", "creeper", 3, true, true, "000000000011111111111000000000", "000000000000000000000000000000", "111111111100000000000111110000", "0.040", "0.280"),
+                s("creeper 3 off, no shield, an arrow from elsewhere", "creeper", 3, false, true, "000000000000000000000000000000", "000000000000000000000000000000", "111111111111111110000000000000", "0.000", "0.280"),
+                // --- A zombie: the shield is no part of its fight with no arrow in the air - swung at tick 0, 12, 24 either way. An arrow
+                // from elsewhere raises it and holds the swing as above; a zombie 6 off is closed on at a fifth of the pace meanwhile.
+                s("zombie 2 off, shield, no arrows", "zombie", 2, true, false, "000000000000000000000000000000", "100000000000100000000000100000", "000000000000000000000000000000", "0.000", "0.200"),
+                s("zombie 2 off, no shield, no arrows", "zombie", 2, false, false, "000000000000000000000000000000", "100000000000100000000000100000", "000000000000000000000000000000", "0.000", "0.200"),
+                s("zombie 2 off, shield, an arrow from elsewhere", "zombie", 2, true, true, "000000000011111111111000000000", "100000000000000000000100000000", "000000000000000000000000000000", "0.000", "0.200"),
+                s("zombie 2 off, no shield, an arrow from elsewhere", "zombie", 2, false, true, "000000000000000000000000000000", "100000000000100000000000100000", "000000000000000000000000000000", "0.000", "0.200"),
+                s("zombie 6 off, shield, an arrow from elsewhere", "zombie", 6, true, true, "000000000011111111111000000000", "000000000000000000000100000000", "111111111100000000000000000000", "0.040", "0.280"),
+                s("zombie 6 off, no shield, an arrow from elsewhere", "zombie", 6, false, true, "000000000000000000000000000000", "000000000001000000000001000000", "111111111110000000000000000000", "0.000", "0.280"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("shieldRows")
+    void theShieldInContactIsPinned(ShieldRow row) {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0, 0, 0, 0, 0, row.shield()));
+        int[] tick = {0};
+        Position hostile = new Position(0.5 + row.across(), GROUND, 0.5);
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return center.distanceTo(hostile) <= radius
+                        ? List.of(new TrackedEntity(1, HostileMobRegistry.typeIdOf(row.hostile()), hostile)) : List.of();
+            }
+
+            @Override
+            public List<Position> arrowsNear(Position center, double radius) {
+                return row.arrows() && tick[0] >= 10 && tick[0] <= 20 ? List.of(new Position(center.x() + 8, GROUND + 1, 0.5)) : List.of();
+            }
+        };
+        StringBuilder up = new StringBuilder();
+        StringBuilder swung = new StringBuilder();
+        StringBuilder sprinted = new StringBuilder();
+        double stepUp = 0;
+        double stepDown = 0;
+        for (tick[0] = 0; tick[0] < 30; tick[0]++) {
+            double before = alice.status().position().x();
+            OptionalInt attack = alice.tick(world);
+            double step = Math.abs(alice.status().position().x() - before);
+            up.append(alice.shieldRaised() ? '1' : '0');
+            swung.append(attack.isPresent() ? '1' : '0');
+            sprinted.append(alice.sprinting() ? '1' : '0');
+            if (alice.shieldRaised()) {
+                stepUp = Math.max(stepUp, step);
+            } else {
+                stepDown = Math.max(stepDown, step);
+            }
+        }
+        assertEquals(List.of(row.up(), row.swung(), row.sprinted(), row.stepUp(), row.stepDown()),
+                List.of(up.toString(), swung.toString(), sprinted.toString(), String.format("%.3f", stepUp), String.format("%.3f", stepDown)),
+                row.name() + ": up, swung, sprinted, longest step up, longest step down");
     }
 }

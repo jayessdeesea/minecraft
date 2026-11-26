@@ -32,7 +32,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The platoon leader's armour check (docs/echelons/platoon-leader/decisions.md, "Armour"): a soldier on its squad's
  * work, with no armour on and copper for a set in its pack, is ordered to make it and wear it - though its squad
  * leader gives no leave to rearm, and a lower rung of its ladder (a spare pickaxe, its makings to hand) is one a soldier
- * on a task doesn't make. Live (2026-11-26), Hal patrolled with 533 copper ingots and no armour on.
+ * on a task doesn't make. Live (2026-11-26), Hal patrolled with 533 copper ingots and no armour on; and no soldier had a
+ * shield, 384 iron ingots in the stores.
  */
 @Tag("slow")
 class ArmourCheckSimulationTest {
@@ -85,6 +86,25 @@ class ArmourCheckSimulationTest {
                 new int[]{7, SimServer.itemNamedOrMinus("copper_leggings"), 1}, new int[]{8, SimServer.itemNamedOrMinus("copper_boots"), 1},
                 new int[]{10, SimServer.itemNamedOrMinus("raw_copper"), 24}) : List.of(new int[]{13, SimServer.itemNamedOrMinus("coal"), 8}));
         assertWorn(server);
+    }
+
+    /**
+     * The shield, one rule with the armour: Alice in copper with no shield, an iron ingot and logs in her pack, is ordered
+     * to make one and carries it in her off hand. No camp, so no basis of issue: at SHELTER and AIRHEAD the shield isn't
+     * issued (military-doctrine.md § 11) and isn't ordered.
+     */
+    @Test
+    void aSoldierOnATaskWithNoShieldIsOrderedToMakeOneAndCarriesItInTheOffHand() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        run(clock, server, "Alpha:Alice", "", n -> List.of(
+                new int[]{5, SimServer.itemNamedOrMinus("copper_helmet"), 1}, new int[]{6, SimServer.itemNamedOrMinus("copper_chestplate"), 1},
+                new int[]{7, SimServer.itemNamedOrMinus("copper_leggings"), 1}, new int[]{8, SimServer.itemNamedOrMinus("copper_boots"), 1},
+                new int[]{10, SimServer.itemNamedOrMinus("iron_ingot"), 1}));
+        assertEquals(SimServer.itemNamedOrMinus("shield"), server.itemAt("Alice", 45),
+                "a shield in the off hand; last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+        assertTrue(Files.readAllLines(Path.of("target/sim/aSoldierOnATaskWithNoShieldIsOrderedToMakeOneAndCarriesItInTheOffHand.log")).stream()
+                .anyMatch(l -> l.contains("[PL -> Alpha] Alice: make and put on [shield]")), "the order said");
     }
 
     /** {@code roster} on a task at the camp, no leave to rearm, each carrying a stone sword and pickaxe, bread, logs, cobblestone and {@code more}; run. */

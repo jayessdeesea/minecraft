@@ -1075,7 +1075,7 @@ rather than putting a table down where it stands.
 
 Unordered, out of contact, a soldier makes only the weapon or the pickaxe it has none of
 (`SoldierErrands.madeOnMission`): what it can't work or fight without - and its armour and shield from what's in its
-pack, a rung under them it doesn't make passed over rather than barring them; armour from the stores too on the
+pack, a rung under them it doesn't make passed over rather than barring them; armour and a shield from the stores too on the
 platoon leader's armour check (docs/echelons/platoon-leader/decisions.md, "Armour"). The rest of the ladder - a bow, spares, buckets, a
 shield or armour to be fetched for, the tool load - is climbed on the squad leader's order (`SquadOrder.rearm`), given by day, out of
 contact, to a squad holding with no task (operator, 2026-11-22: soldiers do nothing without a command; a squad given

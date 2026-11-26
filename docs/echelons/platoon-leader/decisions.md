@@ -277,30 +277,34 @@ holds.
 
 ## Armour: the pre-combat check
 A standing rule, every 30 seconds, apart from the squads' objectives (operator, 2026-11-26: soldiers in the field without
-armour; `command.ArmourCheck`, run by `app.LadderOrders`; [military-doctrine.md § 11](../../military-doctrine.md#11-pre-combat-checks)).
+armour, and without shields; `command.ArmourCheck`, run by `app.LadderOrders`; [military-doctrine.md § 11](../../military-doctrine.md#11-pre-combat-checks)).
 No `SquadOrder` carries it: the squad leader is a role, and what it would pass up and down is said in its name.
-- **Asked:** each soldier's inventory, by squad - which of the four armour slots it has a piece for, on or carried (a
-  carried one goes on at its next stand-to), the copper and the iron it carries (ingots and raw ore alike, one to an
-  ingot), and whether its pack has a free slot. The first check waits a whole period, so every soldier has answered.
+- **Asked:** each soldier's inventory, by squad - which of the four armour slots it has a piece for, and whether it has a
+  shield, on or carried (a carried piece goes on at its next stand-to, a shield in the off hand), the copper and the iron
+  it carries (ingots and raw ore alike, one to an ingot), its planks (four to a log), and whether its pack has a free
+  slot. The first check waits a whole period, so every soldier has answered.
 - **Ordered:** each soldier with a slot it has no piece for is ordered the pieces the metal pays for: for each such slot,
-  chestplate, leggings, boots, helmet in turn (8, 7, 4, 5 ingots), a piece of one metal - copper before iron, as the
-  ladder climbs - of its pack's alone if that's enough, else of its pack's and the stores' together, the pack's spent
-  first, as a draw makes it up (`bot.supply.MetalPool`); a piece nothing pays for is passed over for the next, cheaper
-  one. The stores are every surface chest as last looked in - the ones a draw is made from. Iron counts only where the
-  camp's level issues iron armour (`Ladder.authorised`). The stores are dealt out, the least armoured first, then by
+  shield, chestplate, leggings, boots, helmet in turn, as the ladder climbs (1, 8, 7, 4, 5 ingots), a piece of one metal -
+  copper before iron, the shield of iron only - of its pack's alone if that's enough, else of its pack's and the stores'
+  together, the pack's spent first, as a draw makes it up (`bot.supply.MetalPool`). The shield's six planks are the
+  pack's: logs aren't drawn from the stores. A piece nothing pays for is passed over for the next. The stores are every
+  surface chest as last looked in - the ones a draw is made from. Only what the camp's level issues is asked for or
+  ordered (`Ladder.authorised`, [§ 11](../../military-doctrine.md#11-pre-combat-checks)): iron armour and the shield from
+  BUILDUP; a slot not issued is not missed, nor counted. The stores are dealt out, the fewest slots filled first, then by
   squad and name, so no two are dealt the same ingots.
-- **Not ordered, and said:** no metal for a piece in its pack or the stores; or no free slot in its pack for the piece
+- **Not ordered, and said:** no metal for a piece in its pack or the stores; no wood in its pack for the shield, the
+  one slot left; or no free slot in its pack for the piece
   made (`Crafter`: "no room in its pack"). The full pack is the fault to fix there, not the order.
-- **Said:** `[Armour] [Bravo -> PL] Hal: armour 0 of 4 held, carries 533 copper, 0 iron; [PL -> Bravo] Hal: make and put
-  on [chestplate, leggings, boots, helmet], from its pack` - once each time what's ordered, or why not, changes; a reason
+- **Said:** `[Armour] [Bravo -> PL] Hal: armour 0 of 4 held, no shield, carries 533 copper, 0 iron; [PL -> Bravo] Hal:
+  make and put on [chestplate, leggings, boots, helmet], from its pack` - once each time what's ordered, or why not, changes; a reason
   not to order is a warning. An order standing five minutes with the same pieces is an outcome missed, said once:
   `[Outcome] Hal's armour order unmet in 300 s: ...`.
 
 The order is carried out by the soldier's `ARMOURER` ([routines](../soldier/routines.md)): on its squad's task, the
-pieces ordered and not yet held are open to it - its squad's climb holds back no armour, though every other rung but a
+pieces ordered and not yet held are open to it - its squad's climb holds back none of them, though every other rung but a
 stone sword or pickaxe spare still waits on it, and no
 rung under them that a soldier on a task doesn't make bars them - and what it's short of it draws from the stores, or
-digs as any armourer does. What's made is worn at its next stand-to. Contact, the mine's base by night, and a keep
+digs as any armourer does. What's made is worn at its next stand-to, the shield in the off hand (`Quartermaster`). Contact, the mine's base by night, and a keep
 builder's work load or full pack still come first.
 
 ## When it decides

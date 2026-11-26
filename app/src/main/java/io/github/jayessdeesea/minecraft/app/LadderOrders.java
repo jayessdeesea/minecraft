@@ -1,11 +1,13 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.craft.Ladder;
 import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import io.github.jayessdeesea.minecraft.bot.supply.Pack;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.command.ArmourCheck;
+import io.github.jayessdeesea.minecraft.command.Site;
 import io.github.jayessdeesea.minecraft.command.Stockpile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The equipment ladder's book for the runner: the rung each soldier is working toward, and the platoon leader's armour
- * check (command.ArmourCheck; docs/echelons/platoon-leader/decisions.md, "Armour") - each soldier's tick gives its
+ * check of armour and shield (command.ArmourCheck; docs/echelons/platoon-leader/decisions.md, "Armour") - each soldier's tick gives its
  * inventory, and every {@link #CHECK_MILLIS} the check is made over them all against the stores, what it orders or why
  * not said when it changes, and an order standing unmet {@link #UNMET_MILLIS} said once as an outcome missed. Ticks
  * write and read; the check runs on whichever tick finds it due.
@@ -51,9 +53,10 @@ final class LadderOrders {
     /**
      * {@code soldier}'s inventory as {@code inventory} shows it, and the pieces it stands ordered to make and put on and
      * doesn't hold yet - none if not ordered - the check made first if it's due, over the stores as {@code stores} holds them (every chest a
-     * draw is made from), iron counted only if {@code ironIssued}.
+     * draw is made from), and what its camp's {@code level} issues ({@link #issued}).
      */
-    Set<ArmourCheck.Piece> ordered(String soldier, String squad, Inventory inventory, Optional<Stockpile> stores, boolean ironIssued, long now) {
+    Set<ArmourCheck.Piece> ordered(String soldier, String squad, Inventory inventory, Optional<Stockpile> stores,
+                                   Optional<Optional<Site.Level>> level, long now) {
         ArmourCheck.Inventory answered = answer(soldier, squad, inventory);
         heard.put(soldier, new Heard(answered, now));
         synchronized (this) {
@@ -64,7 +67,7 @@ final class LadderOrders {
                 heard.values().removeIf(h -> now - h.at() > STALE_MILLIS);
                 List<ArmourCheck.Inventory> inventories = heard.values().stream().map(Heard::inventory).toList();
                 List<ArmourCheck.Verdict> checked = ArmourCheck.check(inventories,
-                        stores.map(ArmourCheck.Stores::of).orElse(new ArmourCheck.Stores(0, 0)), ironIssued);
+                        stores.map(ArmourCheck.Stores::of).orElse(new ArmourCheck.Stores(0, 0)), issued(level));
                 verdicts.keySet().retainAll(heard.keySet());
                 for (int i = 0; i < checked.size(); i++) {
                     verdicts.put(checked.get(i).soldier(), checked.get(i));
@@ -104,29 +107,46 @@ final class LadderOrders {
         }
     }
 
-    /** What {@code inventory} answers: the slots with a piece for them on or carried, the copper and iron carried, a free slot or not. */
+    /**
+     * What a camp at {@code level} issues, as the ladder authorises it (bot.craft.Ladder.authorised; docs/military-doctrine.md
+     * § 11): iron armour, the shield. No camp ({@code level} empty), no basis of issue: all.
+     */
+    static ArmourCheck.Issue issued(Optional<Optional<Site.Level>> level) {
+        return level.map(l -> new ArmourCheck.Issue(Ladder.authorised(Recipe.IRON_CHESTPLATE, l), Ladder.authorised(Recipe.SHIELD, l)))
+                .orElse(new ArmourCheck.Issue(true, true));
+    }
+
+    /** What {@code inventory} answers: the slots with a piece for them on or carried - the off hand's too - the copper and iron carried, a free slot or not. */
     static ArmourCheck.Inventory answer(String soldier, String squad, Inventory inventory) {
         Set<ArmourCheck.Piece> held = EnumSet.noneOf(ArmourCheck.Piece.class);
-        for (int slot = Inventory.ARMOUR_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+        for (int slot = Inventory.ARMOUR_FIRST; slot <= Inventory.OFF_HAND; slot++) {
             int item = inventory.itemAt(slot);
-            if (ItemClassRegistry.classOf(item).equals(Optional.of(ItemClass.ARMOUR))) {
+            boolean offHand = slot == Inventory.OFF_HAND; // a shield's place, not armour's
+            if (ItemClassRegistry.classOf(item).filter(c -> c == ItemClass.SHIELD || c == ItemClass.ARMOUR && !offHand).isPresent()) {
                 ItemClassRegistry.nameOf(item).flatMap(LadderOrders::piece).ifPresent(held::add);
             }
         }
         return new ArmourCheck.Inventory(soldier, squad, held,
                 inventory.count(ItemClass.COPPER_INGOT) + inventory.count(ItemClass.RAW_COPPER),
-                inventory.count(ItemClass.IRON_INGOT) + inventory.count(ItemClass.RAW_IRON), Pack.freeSlots(inventory) > 0);
+                inventory.count(ItemClass.IRON_INGOT) + inventory.count(ItemClass.RAW_IRON),
+                inventory.count(ItemClass.PLANKS) + 4 * inventory.count(ItemClass.LOG), Pack.freeSlots(inventory) > 0);
     }
 
-    /** The slot an armour item's name goes in ("copper_boots": BOOTS), if it's armour. */
+    /** The slot an armour item's name goes in ("copper_boots": BOOTS; "shield": SHIELD), if it's armour or a shield. */
     static Optional<ArmourCheck.Piece> piece(String item) {
-        return EnumSet.allOf(ArmourCheck.Piece.class).stream()
-                .filter(p -> item.endsWith("_" + p.name().toLowerCase(java.util.Locale.ROOT))).findFirst();
+        return EnumSet.allOf(ArmourCheck.Piece.class).stream().map(p -> Map.entry(p, p.name().toLowerCase(java.util.Locale.ROOT)))
+                .filter(p -> item.equals(p.getValue()) || item.endsWith("_" + p.getValue())).map(Map.Entry::getKey).findFirst();
+    }
+
+    /** The slot {@code recipe}'s piece goes in, if it makes armour (by its item's name) or a shield (by its class). */
+    static Optional<ArmourCheck.Piece> piece(Recipe recipe) {
+        return recipe.makes() == ItemClass.SHIELD ? Optional.of(ArmourCheck.Piece.SHIELD)
+                : recipe.makes() == ItemClass.ARMOUR ? recipe.item().flatMap(LadderOrders::piece) : Optional.empty();
     }
 
     /** Whether {@code recipe} makes one of the pieces {@code ordered}. */
     static boolean makes(Set<ArmourCheck.Piece> ordered, Recipe recipe) {
-        return recipe.makes() == ItemClass.ARMOUR && recipe.item().flatMap(LadderOrders::piece).filter(ordered::contains).isPresent();
+        return piece(recipe).filter(ordered::contains).isPresent();
     }
 
     /**

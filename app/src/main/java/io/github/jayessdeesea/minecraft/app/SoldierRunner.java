@@ -6394,7 +6394,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // By day it's made at the squad's workshop on the surface.
             boolean belowByNight = chainOfCommand.time().map(TimeOfDay::dark).orElse(false) && underground(status.position());
             Optional<Recipe> rung = (flattenWork.hands.contains(name) && Pack.freeSlots(inventory) <= KEEP_FULL_AT ? Optional.<Recipe>empty() : ladderStep.get())
-                    .filter(r -> !(belowByNight && r.makes() == ItemClassRegistry.ItemClass.ARMOUR));
+                    .filter(r -> !(belowByNight && (r.makes() == ItemClassRegistry.ItemClass.ARMOUR || r.makes() == ItemClassRegistry.ItemClass.SHIELD)));
             rung.ifPresent(tools::add);
             // A lumberjack's axe: a builder sent to cut trees for the keep makes a stone one first, from
             // the cobblestone it carries (operator, 2026-11-14: the lumberjacks use axes).
@@ -7446,7 +7446,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private Optional<Recipe> nextRung(String name, Inventory inventory, Position at) {
         String squad = soldierDefinitions.stream().filter(d -> d.name().equals(name)).findFirst().orElseThrow().squad();
         var armourOrdered = ladder.ordered(name, squad, inventory, chainOfCommand.stores(), // the platoon leader's armour check
-                camp == null || Ladder.authorised(Recipe.IRON_CHESTPLATE, campLevel), clockwork.millis());
+                camp == null ? Optional.empty() : Optional.of(campLevel), clockwork.millis());
         // A keep builder's work load before the protection ladder past its floor (operator, 2026-11-14:
         // kit by role, protection and work apart): a stone sword, then the pickaxes and shovels its share
         // of the dig wears out (bot.craft.WorkLoad), then the rest. Live, builders climbed through copper
@@ -7477,12 +7477,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         boolean nearStockpile = stockpileFor(name).isPresent();
         Predicate<ItemClass> canDig = material -> setAside.getOrDefault(material, 0) == 0 && Armourer.canDig(material, inventory, world, at, treeClaims)
                 || nearStockpile && LadderOrders.pooled(material, chainOfCommand.stockpile(), chainOfCommand.stores(), !armourOrdered.isEmpty()) > 0;
-        // Past no rung the camp's level doesn't authorise (§ 11, basis of issue; no camp, no level), nor what its load puts away, nor, armour ordered, any but armour
+        // Past no rung the camp's level doesn't authorise (§ 11, basis of issue; no camp, no level), nor what its load puts away, nor, pieces ordered, any but those
         // past its squad's climb; on a task, past what one on a task doesn't make (SoldierErrands.madeOnMission) - passed over, not barring armour above - but pieces ordered.
         boolean upgrade = upgradeAllowed.getOrDefault(name, false);
         Optional<Recipe> made = Ladder.upTo(inventory, setAside, inReach, canDig, upgrade ? ceiling : Math.min(ceiling, Ladder.BASIC_LOAD),
                 camp == null ? Optional.empty() : Optional.of(campLevel), r -> (cutting.containsKey(name) ? LoadPlan.MINING : LoadPlan.FLATTENING).putsAway(r, inventory)
-                || !armourOrdered.isEmpty() && r.makes() != ItemClass.ARMOUR && Ladder.rungOf(r) > highest
+                || !armourOrdered.isEmpty() && !LadderOrders.makes(armourOrdered, r) && Ladder.rungOf(r) > highest
                 || !upgrade && !LadderOrders.makes(armourOrdered, r) && !SoldierErrands.madeOnMission(r.makes(), inventory.meleeWeapons(),
                 inventory.count(ItemClass.PICKAXE), SoldierErrands.carried(r, inventory::count)));
         made.ifPresentOrElse(r -> ladder.rungsWanted.put(name, Ladder.rungOf(r)), () -> ladder.rungsWanted.remove(name));

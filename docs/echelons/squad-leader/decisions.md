@@ -80,7 +80,7 @@ A share with nothing in it to work is no spell and isn't behind; a baker idle fo
 spell with work in it has run.
 
 ## Its soldiers' inventories, passed up
-For the platoon leader's armour check, each soldier's inventory - its armour, the copper and iron it carries, its pack's
+For the platoon leader's armour check, each soldier's inventory - its armour and shield, the copper and iron it carries, its pack's
 room - is read and said in the squad leader's name, and the order that comes back goes to the soldier; no `SquadOrder`
 carries either
 ([platoon-leader/decisions.md](../platoon-leader/decisions.md#armour-the-pre-combat-check)).
