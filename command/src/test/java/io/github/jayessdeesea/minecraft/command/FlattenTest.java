@@ -21,6 +21,17 @@ class FlattenTest {
         assertEquals(Keep.BOTTOM, Flatten.KEEP.bottom());
     }
 
+    /** The dig's box grown by the bench on its four sides, its height as it was. */
+    @Test
+    void theDigWithItsBenchIsTheDigGrownOnItsFourSides() {
+        Flatten site = new Flatten(0, 16, 15, 31, 62);
+        Box dig = site.dig();
+        assertEquals(new Box(dig.minX() - Flatten.BENCH, dig.minY(), dig.minZ() - Flatten.BENCH, dig.maxX() + Flatten.BENCH, dig.maxY(), dig.maxZ() + Flatten.BENCH),
+                site.digWithBench());
+        assertEquals(-Flatten.BENCH, site.digWithBench().minX());
+        assertEquals(31 + Flatten.BENCH, site.digWithBench().maxZ());
+    }
+
     /** Corners either way round, spaces or commas; anything else isn't a site. */
     @Test
     void aSiteIsReadAsTheOperatorTypesIt() {

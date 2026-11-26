@@ -93,7 +93,7 @@ class ArchitectureTest {
      * every sixteenth commit, between profiles"). State added there is state every change has to read past; a new one belongs in the
      * class whose work it is. The cap comes down with each extraction - the test says when.
      */
-    static final int RUNNER_FIELDS = 610;
+    static final int RUNNER_FIELDS = 602;
     /** Lines over {@value #LONG} characters in the main sources: no new one, and the count only comes down. */
     static final int LONG_LINES = 55;
     static final int LONG = 200;

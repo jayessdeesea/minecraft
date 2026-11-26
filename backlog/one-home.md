@@ -98,7 +98,7 @@ Paths: `app/`, `bot/`, `command/` are each module's `src/main/java/io/github/jay
 
 ### No longer true
 - **B1 There is one ground to flatten.** `FarmMissions:140` "one flatten at a time", `:323` `findFirst`;
-  `ChainOfCommand:507` `flatten()`; `SoldierRunner.flattenWork` one `FlattenWork`, holding one plan, workshop, road
+  `ChainOfCommand:507` `flatten()`; `SoldierRunner.flattenWorks` one entry of `FlattenWork`, holding one plan, workshop, road
   and foreman. `BasePlan` gives up to 63 chunks; the code works one. backlog/named-work.md.
 - **B2 "The camp's X".** `campStairs`, `campFarm`, `campTrees`, `campGround`, `campWorkshop`, `campMines`, `stockpile`,
   `keepMine`; `FarmMissions:55,567,950` keep the last tree farm made as the camp's (wheat is a list, trees are not).

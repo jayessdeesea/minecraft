@@ -362,14 +362,25 @@ final class FarmMissions {
                 .map(c -> new TreeChunk(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level())).findFirst();
     }
 
-    /** The mission whose flatten is under way, and that step. */
-    private Optional<Map.Entry<FarmMission, FarmMission.Step>> flattening() {
-        return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.FLATTEN).findFirst();
+    /** The missions whose flatten is under way, and each one's step. */
+    private List<Map.Entry<FarmMission, FarmMission.Step>> flattenings() {
+        return worked().stream().filter(c -> c.getValue().kind() == FarmMission.Kind.FLATTEN).toList();
     }
 
-    /** The ground to flatten while a mission's flatten is under way: its chunk, down to the step's level. */
+    /** The ground one mission's flatten works: its chunk, down to the step's level. */
+    private static Flatten ground(Map.Entry<FarmMission, FarmMission.Step> c) {
+        return new Flatten(c.getKey().minX(), c.getKey().minZ(), c.getKey().minX() + 15, c.getKey().minZ() + 15, c.getValue().level());
+    }
+
+    /** The first ground to flatten while a mission's flatten is under way. */
     Optional<Flatten> flatten() {
-        return flattening().map(c -> new Flatten(c.getKey().minX(), c.getKey().minZ(), c.getKey().minX() + 15, c.getKey().minZ() + 15, c.getValue().level()));
+        return flattenings().stream().findFirst().map(FarmMissions::ground);
+    }
+
+    /** The ground of the flatten {@code objective} is - the worked flatten step it names, said as {@link #on} matches - if it is one. */
+    Optional<Flatten> flatten(Optional<Objective> objective) {
+        return flattenings().stream().filter(c -> objective.filter(o -> o.mission().equals(c.getKey().said(c.getValue()))).isPresent())
+                .findFirst().map(FarmMissions::ground);
     }
 
     /**
@@ -377,7 +388,7 @@ final class FarmMissions {
      * sloped on each side with no template beside it, never into a template's ground.
      */
     Optional<List<FlattenPlan.Column>> reach(Flatten ground, FarmPlan campFarm) {
-        return flattening().filter(c -> flatten().filter(ground::equals).isPresent())
+        return flattenings().stream().filter(c -> ground(c).equals(ground)).findFirst()
                 .map(c -> FlattenPlan.reach(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level(), slopes(c.getKey(), campFarm),
                         kept(c.getKey(), campFarm)));
     }

@@ -455,7 +455,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The keep's state that's the platoon's: its grove and wood party, each builder's fights, fetches and draws ({@link KeepState}). */
     private final KeepState keepState = new KeepState();
     /** The ground to flatten's state: its plan and crews, road, workshop, chests and condemned chests ({@link FlattenWork}). */
-    private final FlattenWork flattenWork = new FlattenWork();
+    private final FlattenWorks flattenWorks = new FlattenWorks();
     /** How long past its last contact a builder's strip stays out of the site's level. */
     static final long KEEP_FIGHT_MILLIS = 30_000;
     /** How near a fight the keep's ground is nobody's: past the reach of a soldier's eyes on a hostile. */
@@ -550,19 +550,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Supply logsWas = logsSupply;
         double logsReorder = logsWas == null ? 0 : logsWas.reorderPoint();
         double committedLogs = 0;
-        if (!flattenWork.digLeftBySquad.isEmpty()) {
-            int digLeft = flattenWork.digLeft();
-            int fillLeft = flattenWork.fillKnown() ? flattenWork.fillLeft() : (int) chainOfCommand.flatten().slab().volume();
-            flattenWork.workBurn.stock(digLeft + fillLeft, now);
-            int crew = flattenWork.crewSize();
+        if (!flattenWorks.first().digLeftBySquad.isEmpty()) {
+            int digLeft = flattenWorks.first().digLeft();
+            int fillLeft = flattenWorks.first().fillKnown() ? flattenWorks.first().fillLeft() : (int) chainOfCommand.flatten().slab().volume();
+            flattenWorks.first().workBurn.stock(digLeft + fillLeft, now);
+            int crew = flattenWorks.first().crewSize();
             int stone = kits.stream().mapToInt(Kit::stone).sum() + pile.map(Stockpile::stone).orElse(0);
             int iron = soldierIron.values().stream().mapToInt(Integer::intValue).sum() + pile.map(Stockpile::rawIron).orElse(0);
-            MissionEstimate keep = MissionEstimate.keep(digLeft, fillLeft, flattenWork.workBurn.perDay(), Math.max(1, crew),
-                    rationsBurn.perDay() / Math.max(1, kits.size()), (int) Math.floor(logs - logsReorder), stone,
-                    flattenWork.oreAside(), ironPickaxe(), iron);
-            flattenWork.estimate = keep;
-            if (flattenWork.feasible == null || flattenWork.feasible != keep.feasible()) {
-                flattenWork.feasible = keep.feasible();
+            MissionEstimate keep = MissionEstimate.keep(digLeft, fillLeft, flattenWorks.first().workBurn.perDay(), Math.max(1, crew),
+                    rationsBurn.perDay() / Math.max(1, kits.size()), (int) Math.floor(logs - logsReorder), stone, flattenWorks.first().oreAside(), ironPickaxe(), iron);
+            flattenWorks.first().estimate = keep;
+            if (flattenWorks.first().feasible == null || flattenWorks.first().feasible != keep.feasible()) {
+                flattenWorks.first().feasible = keep.feasible();
                 LOG.info("[Estimate] {}", keep.line());
             }
             committedLogs = Double.isInfinite(keep.days()) || keep.days() <= 0 ? 0 : keep.logs() / keep.days();
@@ -600,27 +599,26 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Site campSite = Site.camp(foothold);
         campLevel = campSite.level();
         List<Site> sites = new ArrayList<>(List.of(campSite));
-        boolean keepWorked = !flattenWork.digLeftBySquad.isEmpty();
+        boolean keepWorked = !flattenWorks.first().digLeftBySquad.isEmpty();
         if (keepWorked) {
-            int digLeft = flattenWork.digLeft();
-            int fillLeft = flattenWork.fillLeft();
-            boolean fillKnown = flattenWork.fillKnown();
-            Workshop depot = flattenWork.workshop;
+            int digLeft = flattenWorks.first().digLeft();
+            int fillLeft = flattenWorks.first().fillLeft();
+            boolean fillKnown = flattenWorks.first().fillKnown();
+            Workshop depot = flattenWorks.first().workshop;
             boolean chest = depot != null && depot.chestStands(world);
             int logs = keepState.logsCarried.values().stream().mapToInt(Integer::intValue).sum()
                     + chainOfCommand.stockpile().map(Stockpile::logs).orElse(0);
             // Flat: the next of the squads' farm and grove ground off its level is the next to flatten (Flatten.next).
-            if (digLeft == 0 && flattenWork.oreAside() == 0) {
+            if (digLeft == 0 && flattenWorks.first().oreAside() == 0) {
                 chainOfCommand.onFlattened(b -> groundNear((b.minX() + b.maxX()) / 2, (b.minZ() + b.maxZ()) / 2));
             }
             sites.add(new Site(Site.Kind.KEEP, "the keep", List.of(
                     new Site.Standard(Site.Level.AIRHEAD, "the depot stocked", chest && logs >= Keep.LOGS_WANTED,
                             (chest ? "its chest stands" : "no chest standing") + ", " + logs + " of " + Keep.LOGS_WANTED + " logs"),
-                    new Site.Standard(Site.Level.BUILDUP, "the ground flattened", digLeft == 0 && flattenWork.oreAside() == 0,
-                            digLeft + " blocks to dig" + (flattenWork.oreAside() > 0 ? ", " + flattenWork.oreAside() + " ore set aside for "
+                    new Site.Standard(Site.Level.BUILDUP, "the ground flattened", digLeft == 0 && flattenWorks.first().oreAside() == 0,
+                            digLeft + " blocks to dig" + (flattenWorks.first().oreAside() > 0 ? ", " + flattenWorks.first().oreAside() + " ore set aside for "
                                     + (ironPickaxe() ? "the iron pickaxe" : "an iron pickaxe, which nobody carries") : "")),
-                    new Site.Standard(Site.Level.BUILDUP, "the slab laid", fillKnown && fillLeft == 0,
-                            fillKnown ? fillLeft + " cells to fill" : "not begun: the ground first"))));
+                    new Site.Standard(Site.Level.BUILDUP, "the slab laid", fillKnown && fillLeft == 0, fillKnown ? fillLeft + " cells to fill" : "not begun: the ground first"))));
         }
         // The mine the squads work - the keep's, sited by a squad - else the camp's.
         Optional<Staircase> stairs = squadStairs.values().stream().findFirst().or(this::campStairs);
@@ -774,7 +772,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 "MINE"));
         measureRoutes(TerrainSurveyor.groundAt(world, at)); // from where a body there stands: from the centre as kept, "no route on foot" every run since field600
         sweepWanted(wall, farm.orElse(null));
-        return Optional.of(new Foothold(new Position(at.x(), at.y(), at.z()), List.copyOf(standards), supplyPoint.or(() -> chestOf(campWorkshop)).or(() -> chestOf(flattenWork.workshop))));
+        return Optional.of(new Foothold(new Position(at.x(), at.y(), at.z()), List.copyOf(standards), supplyPoint.or(() -> chestOf(campWorkshop)).or(() -> chestOf(flattenWorks.first().workshop))));
     }
 
     /**
@@ -944,7 +942,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** The flatten's depot nearest {@code at}: the main one or an outpost. */
     private Workshop nearestDepot(Position at) {
-        return nearestOf(flattenWork.workshop, flattenWork.outposts, at);
+        return nearestOf(flattenWorks.first().workshop, flattenWorks.first().outposts, at);
     }
     /**
      * Free slots at which a keep builder's pack is a full load, to unload at the depot: room left to
@@ -1053,7 +1051,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** The nearest stockpile chest, not to be salvaged, last seen holding {@code kind} - to {@code from}. */
     private Optional<Position> chestHolding(ItemClass kind, Position from) {
-        return SoldierErrands.holding(chestStock, chestsSeen.keySet(), flattenWork.condemned, kind, from);
+        return SoldierErrands.holding(chestStock, chestsSeen.keySet(), flattenWorks.first().condemned, kind, from);
     }
 
     /** The nearest surface chest last seen holding {@code metal} - raw ore or an ingot - to {@code from}. */
@@ -1087,11 +1085,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Whether an item at {@code item} lies at a depot's dump: left there, not picked up again. */
     private boolean atADump(Position item) {
-        Workshop keep = flattenWork.workshop;
+        Workshop keep = flattenWorks.first().workshop;
         if (keep == null) {
             return false;
         }
-        return java.util.stream.Stream.concat(java.util.stream.Stream.of(keep), flattenWork.outposts.stream()).anyMatch(depot -> Math.hypot(item.x() - (depot.stand().x() - DUMP_OFF + 0.5),
+        return java.util.stream.Stream.concat(java.util.stream.Stream.of(keep), flattenWorks.first().outposts.stream()).anyMatch(depot -> Math.hypot(item.x() - (depot.stand().x() - DUMP_OFF + 0.5),
                 item.z() - (depot.stand().z() + 0.5)) <= DUMP_LEAVE);
     }
 
@@ -1114,7 +1112,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if ((!world.isLoaded(cell.x(), cell.z()) || world.isChest(cell.x(), cell.y(), cell.z())) && fullChests.add(cell)) {
             saveFullChests();
         }
-        flattenWork.chestFull(full);
+        flattenWorks.first().chestFull(full);
     }
     /** Whether no wall is going up round the camp - none laid out, or closed and all stone: foothold check writes, squad loop reads. */
     private volatile boolean campWalled = true;
@@ -1344,7 +1342,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 List<Supply> supplies = measureSupply();
                 phaseBook.measure(chainOfCommand, f, supplies, activeSoldiers.size(), dangerAreas.near(f.camp().x(), f.camp().z(), clockwork.millis()), clockwork.millis());
                 afterActionReview.supplies(supplies);
-                afterActionReview.estimates(Optional.ofNullable(flattenWork.estimate).stream().toList());
+                afterActionReview.estimates(Optional.ofNullable(flattenWorks.first().estimate).stream().toList());
                 supplies.forEach(supply -> {
                     if (supplyStates.put(supply.name(), supply.state()) != supply.state()) {
                         LOG.info("[Supply] {}", supply.line());
@@ -1714,6 +1712,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return Plan.detachment(unit) ? Optional.ofNullable(detached.get(unit)) : chainOfCommand.objective(unit);
     }
 
+    /** The ground {@code squad} works: its mission's, else the one the platoon works ({@code ChainOfCommand.flatten}). */
+    private Flatten flatten(String squad) {
+        return chainOfCommand.farmMissions.flatten(objectiveOf(squad)).orElseGet(chainOfCommand::flatten);
+    }
+
     /** {@code unit}'s objective, if its task is a {@code kind}. */
     private Optional<Objective> taskOf(String unit, Class<? extends Objective.Task> kind) {
         return objectiveOf(unit).filter(o -> kind.isInstance(o.task()));
@@ -1751,7 +1754,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         boolean onKeep = taskOf(squad, Objective.Task.Keep.class).isPresent();
         Optional<String> request = !onKeep ? Optional.empty()
                 : PlatoonSergeant.classFour(Logstat.of(statuses).logs(), chainOfCommand.stockpile().map(Stockpile::logs).orElse(0),
-                        flattenWork.workshop != null && flattenWork.workshop.chestStands(world));
+                        Optional.ofNullable(flattenWorks.of(flatten(squad)).workshop).filter(w -> w.chestStands(world)).isPresent());
         if (!request.equals(state.classFour)) {
             request.ifPresentOrElse(line -> LOG.warn("[{}] {}", squad, line), () -> {
                 if (onKeep) {
@@ -1772,9 +1775,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private void siteWorkshop(String squad, SquadState state, List<SoldierStatus> statuses, List<BlockPos> hut) {
         // On the keep, the keep's workshop: one for every squad on it, off the slab at its depot.
         if (taskOf(squad, Objective.Task.Keep.class).isPresent()) {
-            Workshop keep = flattenWork.workshop;
+            Flatten ground = flatten(squad);
+            FlattenWork groundWork = flattenWorks.of(ground);
+            Workshop keep = groundWork.workshop;
             // Sited again too while it has no cell for a chest and none stands: a depot is a stockpile.
-            Position depotAt = chainOfCommand.flatten().depot();
+            Position depotAt = ground.depot();
             // And when the ground to flatten has moved away from it: a new site's depot is its own.
             boolean moved = keep != null && Math.hypot(keep.stand().x() + 0.5 - depotAt.x(), keep.stand().z() + 0.5 - depotAt.z()) > DEPOT_MOVE;
             if (keep == null || moved || !Pathfinder.standable(world, keep.stand()) || keep.chest().isEmpty() && !keep.stands(world, Workstation.CRAFTING_TABLE)) {
@@ -1788,23 +1793,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .orElseGet(() -> TerrainSurveyor.groundAt(world, BlockPos.containing(depotAt.x() + 0.5, depotAt.y(), depotAt.z() + 0.5)));
                 keep = Workshop.hasty(world, depot, new HashSet<>(treeClaims)).orElse(null);
                 if (keep == null) {
-                    if (!depot.equals(flattenWork.workshopNowhere)) {
+                    if (!depot.equals(groundWork.workshopNowhere)) {
                         LOG.warn("[{}] nowhere at the keep's depot {} to site its workshop", squad, depot);
-                        flattenWork.workshopNowhere = depot;
+                        groundWork.workshopNowhere = depot;
                     }
                 } else {
                     if (!keep.equals(was)) {
                         LOG.info("[{}] the keep's workshop: stand {}, table {}, furnace {}, chest {}", squad, keep.stand(), keep.table(), keep.furnace(),
                                 keep.chest().map(Object::toString).orElse("no room for one"));
                     }
-                    flattenWork.workshopNowhere = null;
+                    groundWork.workshopNowhere = null;
                 }
-                flattenWork.workshop = keep;
+                groundWork.workshop = keep;
                 // A depot is chests enough for what the dig turns out, not one (operator, 2026-11-14): their cells laid out round its stand, filled one after another.
-                flattenWork.chests = keep == null ? List.of() : keep.chestCells(world, chestClaims(), DEPOT_CHESTS);
-                flattenWork.chestAt = 0;
+                groundWork.chests = keep == null ? List.of() : keep.chestCells(world, chestClaims(), DEPOT_CHESTS);
+                groundWork.chestAt = 0;
                 if (keep != null) {
-                    LOG.info("[{}] the keep's depot: {} chest(s) laid out at {}", squad, flattenWork.chests.size(), flattenWork.chests);
+                    LOG.info("[{}] the keep's depot: {} chest(s) laid out at {}", squad, groundWork.chests.size(), groundWork.chests);
                 }
             }
             // Sought again while there's none, as its ground is cleared: once, it stayed none all day.
@@ -1815,15 +1820,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (keepState.grove == null) {
                     LOG.warn("[{}] nowhere near the keep's depot to plant its grove yet", squad);
                 } else {
-                    LOG.info("[{}] the keep's grove round {}: {} cells, a sapling every {} blocks", squad, keepState.grove.centre(),
-                            keepState.grove.plot().size(), TreeFarm.SPACING);
+                    LOG.info("[{}] the keep's grove round {}: {} cells, a sapling every {} blocks", squad, keepState.grove.centre(), keepState.grove.plot().size(), TreeFarm.SPACING);
                 }
             }
             // The chest being filled now: the next cell once the last is full.
-            List<BlockPos> depotCells = flattenWork.chests;
-            if (keep != null && flattenWork.chestAt < depotCells.size() && !keep.chest().equals(Optional.of(depotCells.get(flattenWork.chestAt)))) {
-                keep = keep.withChest(depotCells.get(flattenWork.chestAt));
-                flattenWork.workshop = keep;
+            List<BlockPos> depotCells = groundWork.chests;
+            if (keep != null && groundWork.chestAt < depotCells.size() && !keep.chest().equals(Optional.of(depotCells.get(groundWork.chestAt)))) {
+                keep = keep.withChest(depotCells.get(groundWork.chestAt));
+                groundWork.workshop = keep;
             }
             // The camp's too, if no squad there has sited it since a restart: its chest is the common
             // stockpile a keep builder draws from until the keep's own chest stands. Live, both squads
@@ -1837,19 +1841,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             // Its outposts, the depots along its edge but the main one: each kept while it stands where its depot is, its chest the next of its row once one's full.
             List<Workshop> outposts = new ArrayList<>();
-            for (Position p : chainOfCommand.flatten().depots()) {
+            for (Position p : ground.depots()) {
                 if (Math.hypot(p.x() - depotAt.x(), p.z() - depotAt.z()) < 1 || chainOfCommand.farmMissions.templateAt((int) Math.floor(p.x()), (int) Math.floor(p.z()))) {
                     continue; // the main one's own; or on a template's ground - a farm is no place for a depot's chests
                 }
-                Workshop outpost = flattenWork.outposts.stream()
+                Workshop outpost = groundWork.outposts.stream()
                         .filter(w -> Math.hypot(w.stand().x() + 0.5 - p.x(), w.stand().z() + 0.5 - p.z()) <= DEPOT_MOVE
                                 && Pathfinder.standable(world, w.stand())).findFirst().orElseGet(() -> {
                             BlockPos at = TerrainSurveyor.surface(world, (int) Math.floor(p.x()), (int) Math.floor(p.z()), (int) p.y() + 60)
                                     .orElseGet(() -> TerrainSurveyor.groundAt(world, BlockPos.containing(p.x() + 0.5, p.y(), p.z() + 0.5)));
                             Workshop sited = Workshop.hasty(world, at, new HashSet<>(treeClaims)).orElse(null);
                             if (sited != null) {
-                                LOG.info("[{}] an outpost depot of the flatten's: stand {}, chest {}", squad, sited.stand(),
-                                        sited.chest().map(Object::toString).orElse("no room for one"));
+                                LOG.info("[{}] an outpost depot of the flatten's: stand {}, chest {}", squad, sited.stand(), sited.chest().map(Object::toString).orElse("no room for one"));
                             }
                             return sited;
                         });
@@ -1857,7 +1860,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     outposts.add(nextChestIfFull(outpost));
                 }
             }
-            flattenWork.outposts = List.copyOf(outposts);
+            groundWork.outposts = List.copyOf(outposts);
             state.workshop = keep;
             state.workshopFor = null;
             return;
@@ -1968,7 +1971,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private Optional<Position> stockpileFor(String soldier) {
         // Never a chest being salvaged: loads put into it would be drawn out again, and it never empties.
-        return stockpileOrSalvaged(soldier).filter(p -> !flattenWork.condemned.contains(BlockPos.containing(p.x(), p.y(), p.z())));
+        return stockpileOrSalvaged(soldier).filter(p -> !flattenWorks.first().condemned.contains(BlockPos.containing(p.x(), p.y(), p.z())));
     }
 
     /** {@code soldier}'s depositor's CANTCO, its chest the camp's noted (StockpileWatch): enough of them, the stockpile's sited anew. */
@@ -1989,8 +1992,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         // On the flatten's crew, its depot - whatever its squad's own task: live, the builders of the
         // squads sent to it from the mine carried every load to the camp's chest 70 blocks off, 53 of 92, while the depot stood at the site's edge.
-        if (flattenWork.hands.contains(soldier)) {
-            Optional<Position> depot = chestOf(flattenWork.workshop);
+        if (flattenWorks.holds(soldier)) {
+            Optional<Position> depot = chestOf(flattenWorks.forSoldier(soldier).workshop);
             if (depot.isPresent()) {
                 return depot;
             }
@@ -2184,7 +2187,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * it's free for other work, and the keep waits on the mine.
      */
     private Map<String, Order> keepwork(String squad, SquadState state, List<SoldierStatus> hands) {
-        Flatten ground = chainOfCommand.flatten();
+        Flatten ground = flatten(squad);
+        FlattenWork groundWork = flattenWorks.of(ground);
         Optional<List<FlattenPlan.Column>> missionReach = chainOfCommand.farmMissions.reach(ground, campFarm); // a farm mission's chunk and its slopes
         Set<Cell> kept = groundExcept();
         // Salvage (backlog/salvage-and-pack.md): a chest standing on the ground to flatten is emptied into the depot before
@@ -2195,10 +2199,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         List<String> onKeep = squadStates.keySet().stream().filter(s -> taskOf(s, Objective.Task.Keep.class).isPresent()).sorted().toList();
         int share = Math.max(0, onKeep.indexOf(squad));
         // Shares of the site with its bench round it, so the ring is some squad's ground too.
-        Box siteDig = ground.dig();
-        Box digShare = new Box(siteDig.minX() - Flatten.BENCH, siteDig.minY(), siteDig.minZ() - Flatten.BENCH,
-                siteDig.maxX() + Flatten.BENCH, siteDig.maxY(), siteDig.maxZ() + Flatten.BENCH)
-                .strips(Math.max(1, onKeep.size())).get(share);
+        Box digShare = ground.digWithBench().strips(Math.max(1, onKeep.size())).get(share);
         Box fillShare = ground.fill().strips(Math.max(1, onKeep.size())).get(share);
         // Level by level, strip by strip: each soldier's floor is two under the highest ground left in
         // and round its strip (Tasking.keepDig), every squad's share counted - the seam between two squads' strips is an edge like any other.
@@ -2213,7 +2214,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // sends the one who can. Live, the set-aside followed each squad and each plan's holders, the
         // site's highest ground with it, and the level went 90, 83, 89, 83 every second, dealt out again each time.
         Set<String> siteHands = new HashSet<>();
-        flattenWork.handsAt.values().forEach(m -> siteHands.addAll(m.keySet()));
+        groundWork.handsAt.values().forEach(m -> siteHands.addAll(m.keySet()));
         hands.forEach(h -> siteHands.add(h.name()));
         int squadsBest = siteHands.stream().mapToInt(n -> pickaxeTiers.getOrDefault(n, Hardness.HAND)).max().orElse(Hardness.HAND);
         Set<Cell> oreAside = new HashSet<>();
@@ -2221,7 +2222,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // for the nearest who can - live, an emerald in a builder's rectangle stood, set aside for
         // nobody since another squad's builder had the pickaxe, and the one who had it never sent.
         Set<Cell> beyondHolder = new HashSet<>();
-        FlattenWork.Plan held = flattenWork.plan;
+        FlattenWork.Plan held = groundWork.plan;
         for (BlockPos c : siteClears.cells(ground, digExcept, missionReach)) {
             if (!world.isOre(c.x(), c.y(), c.z())) {
                 continue;
@@ -2237,7 +2238,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .ifPresent(e -> beyondHolder.add(new Cell(c.x(), c.y(), c.z())));
             }
         }
-        flattenWork.oreBeyondHolder.put(squad, Set.copyOf(beyondHolder));
+        groundWork.oreBeyondHolder.put(squad, Set.copyOf(beyondHolder));
         if (!oreAside.equals(state.keepOreAside)) {
             if (!oreAside.isEmpty()) {
                 LOG.info("[{}] the keep sets aside {} ore block(s) its builders' pickaxes won't get the drop from - {} - till one carries a better",
@@ -2246,7 +2247,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             state.keepOreAside = oreAside;
             state.keepWanting = oreAside.stream().findFirst().map(c -> Clearer.oreWanting(world, new BlockPos(c.x(), c.y(), c.z()), squadsBest, "the squad's best")).orElse(null);
         }
-        flattenWork.oreAsideBySquad.put(squad, oreAside.size());
+        groundWork.oreAsideBySquad.put(squad, oreAside.size());
         digExcept.addAll(oreAside);
         List<BlockPos> wholeDig = siteClears.cells(ground, digExcept, missionReach);
         List<BlockPos> toDig = wholeDig.stream().filter(c -> c.x() >= digShare.minX() && c.x() <= digShare.maxX()
@@ -2269,7 +2270,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // or the level drops when the chunk goes and comes back when it's seen again. Live, the big
         // site's east edge is the first column of a chunk mostly off it, loaded and let go as builders
         // moved, and the level went 86, 87, 86 a minute, dealt out again each time.
-        flattenWork.refreshColumnTops(world, ground, tops);
+        groundWork.refreshColumnTops(world, ground, tops);
         java.util.function.IntBinaryOperator top = (x, z) -> tops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
         java.util.function.IntBinaryOperator stepTop = (x, z) -> stepTops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
         int layer = tops.values().stream().mapToInt(Integer::intValue).max()
@@ -2282,9 +2283,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         List<BlockPos> toFill = !shareWater.isEmpty() ? shareWater : !toDig.isEmpty() ? List.of() : ground.soil() ? Clearing.toFill(world, soilShare, kept)
                 : Keep.FILL ? Clearing.toFill(world, fillShare, kept) : List.of();
         state.keepDigLeft = toDig.size();
-        flattenWork.digLeftBySquad.put(squad, toDig.size());
+        groundWork.digLeftBySquad.put(squad, toDig.size());
         state.keepFillLeft = toDig.isEmpty() ? toFill.size() : -1;
-        flattenWork.fillLeftBySquad.put(squad, state.keepFillLeft);
+        groundWork.fillLeftBySquad.put(squad, state.keepFillLeft);
         String said = "the keep: " + toDig.size() + " blocks to dig" + (toDig.isEmpty() ? ", " + toFill.size() + " cells to fill"
                 : ", its top y=" + toDig.stream().mapToInt(BlockPos::y).max().orElse(ground.bottom()) + ", the keep's y=" + layer) + " in its share " + digShare;
         if (!said.equals(state.keepSaid)) {
@@ -2314,7 +2315,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             orders.putAll(foremansNet(squad, onKeep, hands, crew, top, stepTop, layer, digExcept));
             orders.putAll(Tasking.water(orders, dirtHands, bounds(shareWater), soilBorrow(ground), kept, state.fetchingDirt)); // one hand's, over its rectangle
         } else {
-            flattenWork.crews.remove(squad);
+            groundWork.crews.remove(squad);
         }
         // A pillar's stock: a builder on the keep's dig short of blocks to climb on fetches a load of
         // dirt from a borrow pit off its squad's side of the keep. Live, a builder sent to cut its
@@ -2329,8 +2330,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // a builder shut in by the farm moved its squad's pit round the keep every minute.
         // And not again until its fetchers have had a minute at the new one: a gatherer that finds
         // nothing says so every tick, and live the pit went round the keep every second.
-        if (FlattenWork.pitDugOut(now, keepState.pitMovedAt.getOrDefault(squad, Long.MIN_VALUE / 2), hands, keepState.fetching,
-                gatherFoundNothing, pitNow.x(), pitNow.z())) {
+        if (FlattenWork.pitDugOut(now, keepState.pitMovedAt.getOrDefault(squad, Long.MIN_VALUE / 2), hands, keepState.fetching, gatherFoundNothing, pitNow.x(), pitNow.z())) {
             int moved = keepState.pitShift.merge(squad, 1, Integer::sum);
             keepState.pitMovedAt.put(squad, now);
             LOG.info("[{}] the keep's borrow pit is dug out - the next is off another side of the keep ({})", squad, moved);
@@ -2406,15 +2406,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Map<String, Position> handsOn = new HashMap<>();
         hands.stream().filter(h -> !keepState.fighting.contains(h.name()) && !farming.containsKey(h.name()))
                 .forEach(h -> handsOn.put(h.name(), h.position()));
-        flattenWork.roadHands.put(squad, Map.copyOf(handsOn));
-        synchronized (flattenWork.planLock) {
+        groundWork.roadHands.put(squad, Map.copyOf(handsOn));
+        synchronized (groundWork.planLock) {
             List<LevelPlan.Builder> everyone = new ArrayList<>();
-            flattenWork.roadHands.values().forEach(m -> m.forEach((n2, p2) -> everyone.add(new LevelPlan.Builder(n2, p2))));
+            groundWork.roadHands.values().forEach(m -> m.forEach((n2, p2) -> everyone.add(new LevelPlan.Builder(n2, p2))));
             everyone.sort(Comparator.comparing(LevelPlan.Builder::name));
-            flattenWork.haulRoad(everyone, clockwork.millis(), world, chainOfCommand::flatten, this::inWoodParty);
+            groundWork.haulRoad(everyone, clockwork.millis(), world, () -> ground, this::inWoodParty);
         }
-        AccessRoute road = flattenWork.road;
-        String roadCutter = flattenWork.roadCutter;
+        AccessRoute road = groundWork.road;
+        String roadCutter = groundWork.roadCutter;
         if (road != null && roadCutter != null && !road.toCut().isEmpty() && handsOn.containsKey(roadCutter)) {
             orders.put(roadCutter, roadDig(road));
         }
@@ -2423,11 +2423,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // keep's emerald was in one squad's share and the one iron pickaxe in another's, and it stood.
         Map<String, Position> on = new HashMap<>();
         hands.forEach(h -> on.put(h.name(), h.position()));
-        flattenWork.handsAt.put(squad, Map.copyOf(on));
-        FlattenWork.Plan levelled = flattenWork.plan;
-        int level = levelled != null && levelled.level() != Integer.MIN_VALUE && !flattenWork.crews.isEmpty() ? levelled.level() : ground.bottom();
+        groundWork.handsAt.put(squad, Map.copyOf(on));
+        FlattenWork.Plan levelled = groundWork.plan;
+        int level = levelled != null && levelled.level() != Integer.MIN_VALUE && !groundWork.crews.isEmpty() ? levelled.level() : ground.bottom();
         for (SoldierStatus h : hands) {
-            Optional<Cell> errand = flattenWork.oreErrand(h.name(), level, world, pickaxeTiers, squadStates.values());
+            Optional<Cell> errand = groundWork.oreErrand(h.name(), level, world, pickaxeTiers, squadStates.values());
             if (errand.isPresent()) {
                 Cell c = errand.get();
                 Set<Cell> open = new HashSet<>(digExcept);
@@ -2460,49 +2460,48 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * rectangle on the net ({@code /msg}), so the plan reads in the chat as it does in the log.
      */
     private Map<String, Order> foremansNet(String squad, List<String> onKeep, List<SoldierStatus> hands, List<Tasking.Hand> crew,
-                                           java.util.function.IntBinaryOperator top, java.util.function.IntBinaryOperator stepTop,
-                                           int layer, Set<Cell> except) {
+                                           java.util.function.IntBinaryOperator top, java.util.function.IntBinaryOperator stepTop, int layer, Set<Cell> except) {
         long now = clockwork.millis();
         // The night isn't the dig's: its level's clock stops while it's dark, and starts again at dawn.
         // Live, a level stood over a night at 74 blocks and read 10% of its best.
         boolean dark = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
-        synchronized (flattenWork.planLock) {
-            if (dark && flattenWork.darkSince == Long.MIN_VALUE) {
-                flattenWork.darkSince = now;
-            } else if (!dark && flattenWork.darkSince != Long.MIN_VALUE) {
-                flattenWork.levelAt += now - flattenWork.darkSince;
-                flattenWork.darkSince = Long.MIN_VALUE;
+        Flatten ground = flatten(squad);
+        FlattenWork groundWork = flattenWorks.of(ground);
+        synchronized (groundWork.planLock) {
+            if (dark && groundWork.darkSince == Long.MIN_VALUE) {
+                groundWork.darkSince = now;
+            } else if (!dark && groundWork.darkSince != Long.MIN_VALUE) {
+                groundWork.levelAt += now - groundWork.darkSince;
+                groundWork.darkSince = Long.MIN_VALUE;
             }
         }
         Set<String> inCrew = crew.stream().map(Tasking.Hand::name).collect(Collectors.toSet());
         // On hand: on the keep, fed, not fighting - and not off keeping the farm. Live, a level's last
         // three blocks went to a builder who walked 80 blocks to the farm, and seven stood by for her.
-        flattenWork.crews.put(squad, hands.stream().filter(h -> inCrew.contains(h.name()) && !keepState.fighting.contains(h.name())
+        groundWork.crews.put(squad, hands.stream().filter(h -> inCrew.contains(h.name()) && !keepState.fighting.contains(h.name())
                         && !farming.containsKey(h.name()))
                 .map(h -> new LevelPlan.Builder(h.name(), h.position())).toList());
         // The squad leader's appointment: the first builder of the first squad on the keep, again whenever that one is off it.
-        if (!onKeep.isEmpty() && squad.equals(onKeep.getFirst()) && !crew.isEmpty() && !inCrew.contains(flattenWork.foreman)) {
-            flattenWork.foreman = crew.getFirst().name();
-            LOG.info("[{}] {} is the keep's foreman", squad, flattenWork.foreman);
+        if (!onKeep.isEmpty() && squad.equals(onKeep.getFirst()) && !crew.isEmpty() && !inCrew.contains(groundWork.foreman)) {
+            groundWork.foreman = crew.getFirst().name();
+            LOG.info("[{}] {} is the keep's foreman", squad, groundWork.foreman);
         }
         hands.forEach(h -> keepState.logsCarried.put(h.name(), h.condition().flatMap(c -> c.kit()).map(Kit::logs).orElse(0)));
         FlattenWork.Plan plan;
-        synchronized (flattenWork.planLock) {
-            List<LevelPlan.Builder> onHand = onKeep.stream().flatMap(u -> flattenWork.crews.getOrDefault(u, List.of()).stream())
+        synchronized (groundWork.planLock) {
+            List<LevelPlan.Builder> onHand = onKeep.stream().flatMap(u -> groundWork.crews.getOrDefault(u, List.of()).stream())
                     .sorted(Comparator.comparing(LevelPlan.Builder::name)).toList();
             woodParty(onKeep, onHand, now);
             // The haul road's cutter has no rectangle while it cuts it (keepwork).
-            String roadCutter = flattenWork.roadCutter;
-            flattenWork.smelter = flattenWork.chooseSmelter(onHand, flattenWork.plan,
-                    chainOfCommand.stores().map(s -> s.rawIron() + s.rawCopper()).orElse(0), smelterCarries, this::inWoodParty);
-            String smelterNow = flattenWork.smelter;
+            String roadCutter = groundWork.roadCutter;
+            groundWork.smelter = groundWork.chooseSmelter(onHand, groundWork.plan, chainOfCommand.stores().map(s -> s.rawIron() + s.rawCopper()).orElse(0), smelterCarries, this::inWoodParty);
+            String smelterNow = groundWork.smelter;
             List<LevelPlan.Builder> all = onHand.stream().filter(b -> !inWoodParty(b.name()) && !b.name().equals(roadCutter)
                     && !b.name().equals(smelterNow)).toList();
             Set<String> names = all.stream().map(LevelPlan.Builder::name).collect(Collectors.toUnmodifiableSet());
             // The site and its bench round it: the ring's ground is the level's too, highest first.
-            Box dug = chainOfCommand.flatten().dig();
-            Box site = new Box(dug.minX() - Flatten.BENCH, dug.minY(), dug.minZ() - Flatten.BENCH,
-                    dug.maxX() + Flatten.BENCH, dug.maxY(), dug.maxZ() + Flatten.BENCH);
+            Box dug = ground.dig();
+            Box site = ground.digWithBench();
             // Ground under a fight is nobody's until it's over: not shared out - in the squad
             // simulation the fighter's rectangle went to its squadmate, who walked into the fight -
             // and not counted for the level, or the site would wait on it. When the fight's done its
@@ -2568,14 +2567,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                 }
             }
-            plan = flattenWork.plan;
+            plan = groundWork.plan;
             if (plan != null && plan.level() != level && plan.level() != Integer.MIN_VALUE) {
                 Map<String, LevelPace.Tally> digs = new HashMap<>();
-                Set.copyOf(flattenWork.pace.keySet()).forEach(n -> Optional.ofNullable(flattenWork.pace.remove(n)).ifPresent(t -> digs.put(n, t)));
+                Set.copyOf(groundWork.pace.keySet()).forEach(n -> Optional.ofNullable(groundWork.pace.remove(n)).ifPresent(t -> digs.put(n, t)));
                 Map<String, Map<String, Integer>> spent = new HashMap<>();
-                Set.copyOf(flattenWork.spent.keySet()).forEach(n -> Optional.ofNullable(flattenWork.spent.remove(n)).ifPresent(m -> spent.put(n, Map.copyOf(m))));
-                LevelPace pace = new LevelPace(plan.level(), now - flattenWork.levelAt, digs, plan.crew().size(), spent);
-                flattenWork.run = flattenWork.run.plus(pace);
+                Set.copyOf(groundWork.spent.keySet()).forEach(n -> Optional.ofNullable(groundWork.spent.remove(n)).ifPresent(m -> spent.put(n, Map.copyOf(m))));
+                LevelPace pace = new LevelPace(plan.level(), now - groundWork.levelAt, digs, plan.crew().size(), spent);
+                groundWork.run = groundWork.run.plus(pace);
                 // Who stood with a rectangle and nothing its clearer would cut (backlog/flatten-campaign.md),
                 // a tenth of its ticks or more, and what it held at the level's end.
                 FlattenWork.Plan ended = plan;
@@ -2593,10 +2592,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else {
                     LOG.info("[Keep] pace: {}", pace.summary());
                 }
-                if (flattenWork.run.slow()) {
-                    LOG.warn("[Keep] pace: {}", flattenWork.run.summary());
+                if (groundWork.run.slow()) {
+                    LOG.warn("[Keep] pace: {}", groundWork.run.summary());
                 } else {
-                    LOG.info("[Keep] pace: {}", flattenWork.run.summary());
+                    LOG.info("[Keep] pace: {}", groundWork.run.summary());
                 }
             }
             // A level that rises again - ground come back over one dug - says which columns raised it and
@@ -2605,7 +2604,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // apart: a column the last scan didn't have (the scan's), one it had and the live read dropped
             // (the live check's), or ground really come back (both had it lower).
             if (plan != null && plan.level() != Integer.MIN_VALUE && level > plan.level()) {
-                Map<Long, Integer> last = flattenWork.lastScanTops;
+                Map<Long, Integer> last = groundWork.lastScanTops;
                 // The columns that raised it - at the new level - not the level's first few, which may be its steps.
                 int risen = level;
                 LOG.info("[Keep] the level rose from y={} to y={}: {}", plan.level(), level, columns.stream()
@@ -2632,9 +2631,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                 }
             }
-            flattenWork.lastScanTops = scanned;
+            groundWork.lastScanTops = scanned;
             if (plan == null || plan.level() != level) {
-                flattenWork.levelAt = now;
+                groundWork.levelAt = now;
                 // The crew its blocks want, for the squads sent (backlog/flatten-campaign.md): a standard
                 // share a builder, the whole force for a full floor.
                 // And the levels just under it: a hilltop's last few blocks a level over a wide one
@@ -2693,16 +2692,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Map<String, List<Box>> boxes = level == Integer.MIN_VALUE ? Map.of()
                         : LevelPlan.plan(level, siteCeiling(site, level, calm, calmStep), columns, dealtIn, digTicks);
                 plan = new FlattenWork.Plan(level, names, boxes, now);
-                flattenWork.plan = plan;
-                flattenWork.due.clear();
-                flattenWork.dealt.clear();
-                flattenWork.dealt.addAll(boxes.keySet());
+                groundWork.plan = plan;
+                groundWork.due.clear();
+                groundWork.dealt.clear();
+                groundWork.dealt.addAll(boxes.keySet());
                 Map<String, Position> dealtAt = all.stream().collect(Collectors.toMap(LevelPlan.Builder::name, LevelPlan.Builder::at));
                 int dealtLevel = level;
-                boxes.forEach((n, bs) -> flattenWork.due.put(n, now + dueMillis(bs, columns, climb(dealtAt.get(n), dealtLevel))));
+                boxes.forEach((n, bs) -> groundWork.due.put(n, now + dueMillis(bs, columns, climb(dealtAt.get(n), dealtLevel))));
                 LOG.info("[Keep] level y={}: {} block(s) left, {} of {} builder(s) on it - {}", level, columns.size(), boxes.size(), all.size(),
                         boxes.entrySet().stream().map(e -> e.getKey() + " " + boxesSaid(e.getValue())).toList());
-                String chief = flattenWork.foreman;
+                String chief = groundWork.foreman;
                 if (chief != null) {
                     for (LevelPlan.Builder b : all) {
                         sayAssignment(chief, b.name(), level, boxes.getOrDefault(b.name(), List.of()));
@@ -2721,16 +2720,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 // Done: logged once, and free for what times out.
                 for (Map.Entry<String, List<Box>> e : List.copyOf(boxes.entrySet())) {
-                    if (e.getValue().stream().noneMatch(hasWork) && flattenWork.due.remove(e.getKey()) != null) {
+                    if (e.getValue().stream().noneMatch(hasWork) && groundWork.due.remove(e.getKey()) != null) {
                         LOG.info("[Keep] {} done with {} at y={}", e.getKey(), boxesSaid(e.getValue()), level);
                     }
                 }
                 // Timed out: given to someone else.
                 for (Map.Entry<String, List<Box>> e : List.copyOf(boxes.entrySet())) {
-                    Long due = flattenWork.due.get(e.getKey());
+                    Long due = groundWork.due.get(e.getKey());
                     if (due != null && now > due && e.getValue().stream().anyMatch(hasWork)) {
                         orphans.add(Map.entry(e.getKey(), boxes.remove(e.getKey())));
-                        flattenWork.due.remove(e.getKey());
+                        groundWork.due.remove(e.getKey());
                     }
                 }
                 Map<String, Position> at = all.stream().collect(Collectors.toMap(LevelPlan.Builder::name, LevelPlan.Builder::at));
@@ -2758,8 +2757,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     List<Box> mine = new ArrayList<>(boxes.getOrDefault(to, List.of()).stream().filter(hasWork).toList());
                     mine.addAll(work);
                     boxes.put(to, List.copyOf(mine));
-                    flattenWork.due.put(to, now + dueMillis(mine, columns, climb(at.get(to), level)));
-                    flattenWork.dealt.add(to);
+                    groundWork.due.put(to, now + dueMillis(mine, columns, climb(at.get(to), level)));
+                    groundWork.dealt.add(to);
                     given.add(to);
                     LOG.info("[Keep] {}'s {} {} - given to {}", orphan.getKey(), boxesSaid(work),
                             names.contains(orphan.getKey()) ? "timed out" : "left behind", to);
@@ -2774,7 +2773,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     if (given.contains(newcomer.name()) || boxes.getOrDefault(newcomer.name(), List.of()).stream().anyMatch(hasWork)) {
                         continue;
                     }
-                    boolean doneWithItsOwn = flattenWork.dealt.contains(newcomer.name());
+                    boolean doneWithItsOwn = groundWork.dealt.contains(newcomer.name());
                     Optional<Map.Entry<String, List<LevelPlan.Column>>> most = boxes.entrySet().stream()
                             .map(e -> Map.entry(e.getKey(), columns.stream().filter(c -> e.getValue().stream().anyMatch(b -> c.x() >= b.minX()
                                     && c.x() <= b.maxX() && c.z() >= b.minZ() && c.z() <= b.maxZ())).toList()))
@@ -2792,9 +2791,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                     boxes.put(holder, split.get(holder));
                     boxes.put(newcomer.name(), split.get(newcomer.name()));
-                    flattenWork.due.put(holder, now + dueMillis(split.get(holder), columns, climb(at.get(holder), level)));
-                    flattenWork.due.put(newcomer.name(), now + dueMillis(split.get(newcomer.name()), columns, climb(newcomer.at(), level)));
-                    flattenWork.dealt.add(newcomer.name());
+                    groundWork.due.put(holder, now + dueMillis(split.get(holder), columns, climb(at.get(holder), level)));
+                    groundWork.due.put(newcomer.name(), now + dueMillis(split.get(newcomer.name()), columns, climb(newcomer.at(), level)));
+                    groundWork.dealt.add(newcomer.name());
                     given.add(holder);
                     given.add(newcomer.name());
                     LOG.info("[Keep] {} {}: {}'s split, {} - {} keeps {}", newcomer.name(),
@@ -2802,8 +2801,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             boxesSaid(split.get(newcomer.name())), holder, boxesSaid(split.get(holder)));
                 }
                 plan = new FlattenWork.Plan(level, names, Map.copyOf(boxes), plan.at());
-                flattenWork.plan = plan;
-                String chief = flattenWork.foreman;
+                groundWork.plan = plan;
+                String chief = groundWork.foreman;
                 if (chief != null) {
                     for (String n : given) {
                         sayAssignment(chief, n, level, boxes.getOrDefault(n, List.of()));
@@ -2926,13 +2925,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 grove != null && !Forester.planted(world, grove), now < keepState.groveBarredUntil,
                 logsMeasured == null ? 0 : logsMeasured.reorderPoint(), logsMeasured == null ? 0 : logsMeasured.objective());
         PlatoonSergeant.WoodParty was = keepState.party;
-        PlatoonSergeant.WoodParty party = PlatoonSergeant.woodParty(crew, flattenWork.foreman, was, wood);
+        PlatoonSergeant.WoodParty party = PlatoonSergeant.woodParty(crew, flattenWorks.first().foreman, was, wood);
         if (!party.cutters().equals(was.cutters()) || !party.planter().equals(was.planter())) {
             int logs = crew.stream().mapToInt(PlatoonSergeant.Hand::logs).sum() + wood.stockpileLogs();
             LOG.info("[Keep] the wood party: {} cut(s) trees for the depot ({} logs between the builders and the stockpile, {} wanted){}",
                     party.cutters().isEmpty() ? "nobody" : party.cutters(), logs, (int) wood.back(),
                     party.planter().map(n -> ", " + n + " plants the keep's grove").orElse(""));
-            String chief = flattenWork.foreman;
+            String chief = flattenWorks.first().foreman;
             if (chief != null) {
                 party.cutters().stream().filter(n -> !was.cutters().contains(n)).forEach(n -> say(chief, n, "KEEP WOOD " + PlatoonSergeant.WOOD_LOAD));
                 party.planter().filter(n -> !was.planter().equals(Optional.of(n)))
@@ -2982,7 +2981,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** The furnaces standing within {@link #FURNACE_SCAN} of the main depot's stand, 8 up or down, looked for at most once a sweep's span. */
     private Set<BlockPos> furnacesNearDepot(long now) {
-        Workshop depot = flattenWork.workshop;
+        Workshop depot = flattenWorks.first().workshop;
         if (depot == null || now - furnacesScannedAt < FURNACE_SWEEP_MILLIS) {
             return furnacesScanned;
         }
@@ -3018,8 +3017,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private Optional<Position> furnaceDue(Position from) {
         long now = clockwork.millis();
-        List<Workshop> shops = new ArrayList<>(flattenWork.outposts);
-        Optional.ofNullable(flattenWork.workshop).ifPresent(shops::add);
+        List<Workshop> shops = new ArrayList<>(flattenWorks.first().outposts);
+        Optional.ofNullable(flattenWorks.first().workshop).ifPresent(shops::add);
         Optional.ofNullable(campWorkshop).ifPresent(shops::add);
         shops.addAll(workshops.values());
         Set<BlockPos> known = new HashSet<>(shops.stream().map(Workshop::furnace).toList());
@@ -3098,8 +3097,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * for again every {@link #KNOWN_TREE_MILLIS}.
      */
     private Optional<Position> knownTree(long now) {
-        if (now - flattenWork.knownTreeAt >= KNOWN_TREE_MILLIS) {
-            flattenWork.knownTreeAt = now;
+        if (now - flattenWorks.first().knownTreeAt >= KNOWN_TREE_MILLIS) {
+            flattenWorks.first().knownTreeAt = now;
             Position depot = chainOfCommand.flatten().depot();
             int dx = (int) Math.floor(depot.x()), dy = (int) Math.floor(depot.y()), dz = (int) Math.floor(depot.z());
             Position best = null;
@@ -3124,9 +3123,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                 }
             }
-            flattenWork.knownTree = best;
+            flattenWorks.first().knownTree = best;
         }
-        return Optional.ofNullable(flattenWork.knownTree);
+        return Optional.ofNullable(flattenWorks.first().knownTree);
     }
 
     static final long KNOWN_TREE_MILLIS = 10_000;
@@ -3348,7 +3347,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Set<BlockPos> campKeep = KeptGround.camp(world, new KeptGround.Camp(walls.values(), chainOfCommand.foothold().map(Foothold::camp), CAMP_RADIUS,
                 fortifying.values().stream().map(f -> new KeptGround.Hut(f.stand(), f.cells())).toList(),
                 squadStates.values().stream().map(s -> s.builtBase).filter(Objects::nonNull).toList(), workshops.values(), Optional.ofNullable(campWorkshop),
-                chestClaims(), DEPOT_CHESTS, fullChests, c -> flattenWork.condemned.contains(c) && emptied(c)));
+                chestClaims(), DEPOT_CHESTS, fullChests, c -> flattenWorks.first().condemned.contains(c) && emptied(c)));
         return KeptGround.ground(campKeep, campMine(), squadStates.values().stream().map(s -> s.stairs).filter(Objects::nonNull).toList());
     }
 
@@ -3443,8 +3442,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         for (SoldierStatus s : statuses) {
             String n = s.name();
             String task = groundGather.containsKey(n) ? "gather " + groundGather.get(n).resource()
-                    : filling.containsKey(n) ? (flattenWork.hands.contains(n) ? "fill the keep" : farming.containsKey(n) ? "lay the farm's ground" : "fill the camp's ground")
-                    : clearing.containsKey(n) ? (flattenWork.hands.contains(n) ? "dig the keep" : "dig the camp's ground")
+                    : filling.containsKey(n) ? (flattenWorks.holds(n) ? "fill the keep" : farming.containsKey(n) ? "lay the farm's ground" : "fill the camp's ground")
+                    : clearing.containsKey(n) ? (flattenWorks.holds(n) ? "dig the keep" : "dig the camp's ground")
                     : walling.containsKey(n) ? "wall the camp"
                     : repointing.containsKey(n) ? "wall the camp in stone"
                     // Lighting only with torches carried or being made: live, a soldier with none farmed
@@ -3851,7 +3850,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private Set<BlockPos> condemned(Flatten ground, List<SoldierStatus> hands) {
         long now = clockwork.millis();
-        if (!ground.equals(flattenWork.condemnedFor) || now - flattenWork.condemnedAt >= CONDEMNED_LOOK_MILLIS) {
+        FlattenWork groundWork = flattenWorks.of(ground);
+        if (!ground.equals(groundWork.condemnedFor) || now - groundWork.condemnedAt >= CONDEMNED_LOOK_MILLIS) {
             Set<BlockPos> stashes = squadStairs.values().stream().flatMap(s -> s.store().stream()).collect(Collectors.toSet());
             // The flatten's only while a squad is on it - a camp's chest on ground idle to flatten is the camp's own - and an old camp's always.
             boolean flattening = squadStates.keySet().stream().anyMatch(s -> taskOf(s, Objective.Task.Keep.class).isPresent());
@@ -3859,18 +3859,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             found.addAll(chestsAround(world, oldCamps, OLD_CAMP_REACH));
             found.addAll(stockpileWatch.givenUp().stream().filter(c -> world.isChest(c.x(), c.y(), c.z())).toList());
             found.removeAll(stashes);
-            Set<BlockPos> was = flattenWork.condemned;
+            Set<BlockPos> was = groundWork.condemned;
             if (!found.equals(was)) {
                 LOG.info("[Keep] salvage: {} chest(s) on the ground to flatten, {} still to empty - {}", found.size(),
                         found.stream().filter(c -> !emptied(c)).count(), found);
             }
-            flattenWork.condemned = Set.copyOf(found);
-            flattenWork.condemnedAt = now;
-            flattenWork.condemnedFor = ground;
+            groundWork.condemned = Set.copyOf(found);
+            groundWork.condemnedAt = now;
+            groundWork.condemnedFor = ground;
         }
-        Optional<BlockPos> first = flattenWork.condemned.stream().filter(c -> !emptied(c)).min(Comparator.comparing(BlockPos::toString));
+        Optional<BlockPos> first = groundWork.condemned.stream().filter(c -> !emptied(c)).min(Comparator.comparing(BlockPos::toString));
         Map<String, Position> on = new HashMap<>();
-        flattenWork.handsAt.values().forEach(on::putAll);
+        groundWork.handsAt.values().forEach(on::putAll);
         hands.forEach(h -> on.put(h.name(), h.position()));
         // Not one the recovery drill has: live (field432), the first salvager was shut in at y=56 under the
         // keep's site, nearest by its column, and every trip it began was dropped as it cut its way out.
@@ -3879,7 +3879,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // live (field433) the same salvager was chosen again in the pocket at y=56, 7 under the floor.
         on.values().removeIf(p -> p.y() < ground.bottom() - SALVAGER_BELOW);
         on.keySet().removeIf(n -> clockwork.millis() - salvagePassed.getOrDefault(n, Long.MIN_VALUE / 2) < SALVAGE_PASSED_MILLIS); // nor one whose pack had no room
-        String was = flattenWork.salvager;
+        String was = groundWork.salvager;
         // Kept while it's connected and the drill hasn't it, on the keep's rolls this cycle or not: live (field437),
         // the salvager went Jack, Liam, Jack in four minutes as each came off and on the dig, each trip begun lost.
         boolean keep = was != null && activeSoldiers.containsKey(was) && !recovering.contains(was);
@@ -3890,8 +3890,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             LOG.info("[Keep] salvage: {}", now2 != null ? now2 + " empties the chests on the ground into the depot"
                     : first.isEmpty() ? "done - every chest on the ground emptied" : "no keep hand on the ground to empty them for now");
         }
-        flattenWork.salvager = now2;
-        return flattenWork.condemned;
+        groundWork.salvager = now2;
+        return groundWork.condemned;
     }
 
     /**
@@ -3918,7 +3918,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * opened. Its pack full, the depot gets the load as any builder's (stockpileFor).
      */
     private Optional<Unstash> salvageFor(String name, Position at, Inventory inventory, boolean dark, java.util.function.Predicate<Position> barred) {
-        if (dark || !name.equals(flattenWork.salvager)) {
+        if (dark || !name.equals(flattenWorks.first().salvager)) {
             return Optional.empty();
         }
         int free = 0;
@@ -3928,14 +3928,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
         if (free < UNSTASH_FREE) { // its pack full, another salvages: live (field503-504), Carol held it all day, five spare swords in it
-            if (salvagePassed.put(name, clockwork.millis()) == null || flattenWork.salvager != null) {
+            if (salvagePassed.put(name, clockwork.millis()) == null || flattenWorks.first().salvager != null) {
                 LOG.info("[Keep] salvage: {}'s pack has no room - another salvages", name);
             }
-            flattenWork.salvager = null;
+            flattenWorks.first().salvager = null;
             return Optional.empty();
         }
         // Not one its trips couldn't get at, while their setback lasts, but the next (field510: Mia at one all day, 15 behind it).
-        Optional<BlockPos> chest = flattenWork.condemned.stream().filter(c -> !emptied(c) && !barred.test(new Position(c.x() + 0.5, c.y(), c.z() + 0.5)))
+        Optional<BlockPos> chest = flattenWorks.first().condemned.stream().filter(c -> !emptied(c) && !barred.test(new Position(c.x() + 0.5, c.y(), c.z() + 0.5)))
                 .min(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - at.x(), c.z() + 0.5 - at.z())));
         if (chest.isEmpty()) {
             return Optional.empty();
@@ -4580,7 +4580,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // east bench at y=83 and the farm squad's soldier crossing the site were taken for shut in; one boxed in is the recovery drill's.
                     // - while one's dug: with none, the site is the keep's ground round the camp, and the
                     // camp's own huts are what the check is for (SquadSimulationTest's camp on a slope).
-                    .filter(st -> !flattenWork.hands.contains(st.name()) && (flattenWork.hands.isEmpty() || !chainOfCommand.flatten()
+                    .filter(st -> !flattenWorks.holds(st.name()) && (flattenWorks.first().hands.isEmpty() || !chainOfCommand.flatten()
                             .benchedContains((int) Math.floor(st.position().x()), (int) Math.floor(st.position().z()))))
                     // Walled by what a squad builds with, not a tree (its leaves are no hut's wall, and the way out of them a fall);
                     // and a gate in the wall is the way out, opened, never a wall to cut beside - nor the cell over it, solid to a body as it's tall.
@@ -4773,11 +4773,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // above, and the dig's walk there held his hands.
             Map<String, Order> keepOrders = keepwork(squadName, state, state.hands(statuses));
             ground.putAll(keepOrders);
+            Set<String> keepHands = flattenWorks.of(flatten(squadName)).hands;
             statuses.forEach(s -> {
                 if (keepOrders.containsKey(s.name())) {
-                    flattenWork.hands.add(s.name());
+                    keepHands.add(s.name());
                 } else {
-                    flattenWork.hands.remove(s.name());
+                    flattenWorks.release(s.name());
                 }
             });
         } else {
@@ -4786,7 +4787,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             statuses.forEach(s -> {
                 keepState.drawing.remove(s.name());
                 keepState.climbDrawing.remove(s.name());
-                flattenWork.hands.remove(s.name());
+                flattenWorks.release(s.name());
             });
         }
         // A soldier told to level ground: its dig or fill, as the world shows what's left.
@@ -4806,7 +4807,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Each producer's duty order (command.DutyOrder): its duty, its ground, and the dump its squad stockpiles at, else the camp's.
         dutyBook.assign(squadName, statuses.stream().map(SoldierStatus::name).toList(), DutyBook.given(statuses.stream().map(SoldierStatus::name).toList(),
                 woodDuties, farming, statuses.stream().findFirst().flatMap(s -> stockpileFor(s.name())).or(() -> chainOfCommand.foothold()
-                        .flatMap(Foothold::dump)), chainOfCommand.foothold().flatMap(f -> chestHolding(ItemClass.WHEAT, f.camp())), DutyBook.standingTable(world, campWorkshop, flattenWork.workshop)), objectiveOf(squadName).map(Objective::task)
+                        .flatMap(Foothold::dump)), chainOfCommand.foothold().flatMap(f -> chestHolding(ItemClass.WHEAT, f.camp())), DutyBook.standingTable(world, campWorkshop, flattenWorks.of(flatten(squadName)).workshop)), objectiveOf(squadName).map(Objective::task)
                 .filter(PhaseGuardrails::production).map(OrderTrace::taskName), clockwork.millis());
         woodDuties.values().stream().filter(d -> d.order().equals(Optional.ofNullable(ground.get(d.soldier())))).forEach(d -> woodcutters.add(d.soldier()));
         // The fight first: a soldier in contact answers its squad leader until it's over, and takes its ground work up again then.
@@ -5129,10 +5130,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             state.climbingOut.remove(soldierName);
             // A flatten builder's, the depot nearest it: its loads go in there, and there its chest is fitted.
-            Workshop squadShop = soldiersWorkshop(workshopOf(state, statuses.get(i).position()), flattenWork.workshop, campWorkshop,
-                    flattenWork.hands.contains(soldierName));
-            Workshop mainDepot = flattenWork.workshop;
-            Optional.ofNullable(squadShop != null && mainDepot != null && squadShop.stand().equals(mainDepot.stand()) && flattenWork.hands.contains(soldierName)
+            Workshop squadShop = soldiersWorkshop(workshopOf(state, statuses.get(i).position()), flattenWorks.forSoldier(soldierName).workshop, campWorkshop, flattenWorks.holds(soldierName));
+            Workshop mainDepot = flattenWorks.forSoldier(soldierName).workshop;
+            Optional.ofNullable(squadShop != null && mainDepot != null && squadShop.stand().equals(mainDepot.stand()) && flattenWorks.holds(soldierName)
                             ? nearestDepot(statuses.get(i).position()) : squadShop)
                     .ifPresentOrElse(w -> workshops.put(soldierName, w), () -> workshops.remove(soldierName));
             // Its own unit's hand-over first, else one across squads.
@@ -5242,7 +5242,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // live, a builder in a dead end at the mine's bottom kept its strip's dig over the stair out.
             Slots.member(recovering, soldierName, state.recovery.recovering(soldierName));
             Order work = state.recovery.ordered(soldierName) ? null : ground.get(soldierName);
-            if (work != null && !state.relieved(soldierName, flattenWork.hands.contains(soldierName) ? keepTask(work) : groundTask(work), now)) {
+            if (work != null && !state.relieved(soldierName, flattenWorks.holds(soldierName) ? keepTask(work) : groundTask(work), now)) {
                 // The task's now, not the upkeep's: left the upkeep's, the upkeep would drop it again
                 // on seeing the wall - in the squad simulation, every soldier on and off its dig.
                 upkeeping.remove(soldierName);
@@ -6393,7 +6393,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // base for copper armour 222-440 times a run, and gave it up 12-39 times, the furnace held.
             // By day it's made at the squad's workshop on the surface.
             boolean belowByNight = chainOfCommand.time().map(TimeOfDay::dark).orElse(false) && underground(status.position());
-            Optional<Recipe> rung = (flattenWork.hands.contains(name) && Pack.freeSlots(inventory) <= KEEP_FULL_AT ? Optional.<Recipe>empty() : ladderStep.get())
+            Optional<Recipe> rung = (flattenWorks.holds(name) && Pack.freeSlots(inventory) <= KEEP_FULL_AT ? Optional.<Recipe>empty() : ladderStep.get())
                     .filter(r -> !(belowByNight && (r.makes() == ItemClassRegistry.ItemClass.ARMOUR || r.makes() == ItemClassRegistry.ItemClass.SHIELD)));
             rung.ifPresent(tools::add);
             // A lumberjack's axe: a builder sent to cut trees for the keep makes a stone one first, from
@@ -6416,8 +6416,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Its own, else the camp's: live, a farmer working 15 blocks out, sited none, gave up its
             // bread 13 times for want of a table near, and its squad starved with the wheat in its pack.
             // The smelter's is the main depot's: its furnace, its chests.
-            boolean smelter = name.equals(flattenWork.smelter);
-            Workshop mainShop = flattenWork.workshop;
+            boolean smelter = name.equals(flattenWorks.forSoldier(name).smelter);
+            Workshop mainShop = flattenWorks.forSoldier(name).workshop;
             Optional<Workshop> workshop = dutyBook.workshop(name, smelter && mainShop != null ? Optional.of(mainShop) // a baker's, its order's table's (DutyBook)
                     : Optional.ofNullable(workshops.get(name)).or(() -> Optional.ofNullable(campWorkshop)), campWorkshop, mainShop, workshops.get(name));
             // Raw ore through the common stockpile (bot.supply.MetalPool): what its next piece can't
@@ -6465,7 +6465,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // (docs/echelons/tenets.md): live (field536), Eli stuck in his mine with a wooden sword held the seizure a day.
             armourer.digsItsMakings(inventory.meleeWeapons() == 0 || status.report() instanceof Report.Cantco
                     && Ladder.bestMelee(inventory) < ItemClassRegistry.meleeRank("stone_sword")
-                    || !(cutting.containsKey(name) || dutyBook.of(name).isPresent() || flattenWork.hands.contains(name)));
+                    || !(cutting.containsKey(name) || dutyBook.of(name).isPresent() || flattenWorks.holds(name)));
             // A farmer's hoe, and its wheat baked into bread three at a time - by its baker, on a farm that has one.
             FarmPlan field = dutyBook.field(name, farming.get(name));
             boolean bakes = dutyBook.is(name, DutyOrder.Duty.BAKER);
@@ -6551,7 +6551,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Kit carried = status.condition().flatMap(c -> c.kit()).orElse(null);
             // On the keep, a full load is a full pack: what it digs is the slab's fill or the chest's, and
             // carried while there's room - live, its builders walked a chest a load of 16 logs at a time.
-            boolean fullLoad = flattenWork.hands.contains(name) ? Pack.freeSlots(inventory) <= KEEP_FULL_AT
+            boolean fullLoad = flattenWorks.holds(name) ? Pack.freeSlots(inventory) <= KEEP_FULL_AT
                     : carried != null && (carried.logs() >= (gathersWood(name) ? Gatherer.CARRY_LOGS : LOGS_KEPT_DRAWN) || carried.stone() >= Gatherer.CARRY_STONE);
             CrossLevel.Transfer giving = deliveries.get(name);
             boolean atBuildPlace = fort != null && fort.allInside() && !inContact
@@ -6707,7 +6707,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // A mine's cutter keeps only its backfill's bulk: the ore comes first (the rules of a mine).
                 boolean cutsAMine = cutting.containsKey(name);
                 boolean packFree = free && !threatened && !rations.active();
-                if (flattenWork.hands.contains(name) && !cutsAMine) {
+                if (flattenWorks.holds(name) && !cutsAMine) {
                     // A keep builder sheds before its load trip's mark, so a trip carries what's worth the walk.
                     long before = pack.thrown();
                     pack.tick(packFree, KEEP_FULL_AT + 1, StockLevels.throwPast(KEEP_PACK, k -> stockedAt(k, Optional.empty())));
@@ -6793,7 +6793,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // And on the keep, the logs for it carried: the depot's chest goes up as soon as a builder has
             // them, not when its pack happens to fill (operator, 2026-11-14: a flattening campaign starts
             // with its supply depot). Live, builders carried 20 logs past a depot with no chest for days.
-            boolean depotLogs = flattenWork.hands.contains(name) && inventory.count(ItemClass.LOG) >= DEPOT_LOGS;
+            boolean depotLogs = flattenWorks.holds(name) && inventory.count(ItemClass.LOG) >= DEPOT_LOGS;
             // A mine's chest is the stash's, fitted for ore only, from logs to spare beyond a pickaxe's
             // handles or a chest carried down: in the squad simulation a miner spent its logs on it,
             // climbed out for wood for a pickaxe, and stood at the top.
@@ -6804,8 +6804,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     : fullLoad || depotLogs || Depositor.surplusFood(inventory) || poolOre || undumped) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
                     && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
             // The main depot's by its stand, not the object: it's sited again each squad cycle.
-            Workshop mainDepot = flattenWork.workshop;
-            if (flattenWork.hands.contains(name) && shop.isPresent() && mainDepot != null && shop.get().stand().equals(mainDepot.stand())) {
+            Workshop mainDepot = flattenWorks.forSoldier(name).workshop;
+            if (flattenWorks.holds(name) && shop.isPresent() && mainDepot != null && shop.get().stand().equals(mainDepot.stand())) {
                 depositor.full().ifPresent(this::depotChestFull);
             } else if (shop.isPresent() && !atMine) {
                 depositor.full().ifPresent(f -> workshopChestFull(shop.get(), f));
@@ -6842,9 +6842,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         ? chestOf(working) : stockpileFor(name);
                 // A flatten builder's surplus - cobblestone or dirt past what the stockpile needs - is left at its depot's dump, a stack of each kept for steps.
                 java.util.function.Predicate<Position> notFull = c -> !fullChests.contains(BlockPos.containing(c.x(), c.y(), c.z()));
-                Optional<Position> deposit = (flattenWork.hands.contains(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile)
+                Optional<Position> deposit = (flattenWorks.holds(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile)
                         : dutyBook.dump(name, world).or(() -> stockpile)).filter(notFull);
-                Set<ItemClass> surplus = (flattenWork.hands.contains(name) && !depositor.active() || depositor.dumping()) && !chainOfCommand.farmMissions.on(objectiveOf(unitOf(name, definition.squad()))) ? surplusKinds(chestsSeen.values(), deposit) : Set.of(); // on a mission its cobblestone and dirt are the slab's and the ground's, never surplus (PavingRateIT: a squad with full packs dumped the cobblestone its slab wanted and stood)
+                Set<ItemClass> surplus = (flattenWorks.holds(name) && !depositor.active() || depositor.dumping()) && !chainOfCommand.farmMissions.on(objectiveOf(unitOf(name, definition.squad()))) ? surplusKinds(chestsSeen.values(), deposit) : Set.of(); // on a mission its cobblestone and dirt are the slab's and the ground's, never surplus (PavingRateIT: a squad with full packs dumped the cobblestone its slab wanted and stood)
                 boolean dumpNow = fullLoad && surplus.stream().anyMatch(c -> inventory.count(c) > Depositor.KEEP);
                 if (bakes && tickNow % 1200 == 0) LOG.info("[Baker] {}: {} wheat carried, a chest holding wheat {}, hands {}, free {}, threatened {}, fortifying {}, drawing {}", name, inventory.count(ItemClass.WHEAT), chestHolding(ItemClass.WHEAT, status.position()).map(Object::toString).orElse("none known"), handsHeld.get(name), free, threatened, fort != null, depositor.active()); // field640-655: no baker drew wheat
                 Optional<Makings> makings = makingsDrawn(farmer.outOfSeeds(), planting.containsKey(name) && forester.outOfSaplings(),
@@ -6914,12 +6914,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     boolean surplusTrip = upgradeAllowed.getOrDefault(name, false) && plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
                     // The depot's kinds past what the pack keeps go in with it while the depot's under its
                     // most (StockLevels) - not into a mine's stash - and a reserve run short is a trip of its own.
-                    Map<ItemClass, Integer> packKept = planting.containsKey(name) ? SoldierErrands.PLANTER_CARRIED : flattenWork.hands.contains(name) || paving.containsKey(name) ? KEEP_PACK
+                    Map<ItemClass, Integer> packKept = planting.containsKey(name) ? SoldierErrands.PLANTER_CARRIED : flattenWorks.holds(name) || paving.containsKey(name) ? KEEP_PACK
                             : cutting.containsKey(name) ? MINE_CARRIED
                             : dutyBook.is(name, DutyOrder.Duty.HARVESTER) ? HARVESTER_CARRIED : CARRIED;
                     boolean toDepot = deposit.flatMap(this::mineOfChest).isEmpty();
                     boolean stockTrip = toDepot && StockLevels.reserveShort(inventory, packKept, k -> stockedAt(k, deposit));
-                    // A flatten builder's load into the nearest depot standing a chest (flattenWork.outposts).
+                    // A flatten builder's load into the nearest depot standing a chest (FlattenWork.outposts).
                     // Not to a chest known full: a trip there fails, and is made again. Live (field285), with
                     // the depots' rows filled with cobblestone, the crew's ticks were 38% depositor - trip
                     // after failed trip (deposit, above). With every chest it could go to full, its
@@ -6936,7 +6936,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     depositor.tick(status.position(), deposit, free && (fullLoad || poolOre || stashOre || surplusTrip || depositor.pastHalfway()
                                     || SoldierErrands.stocks(upgradeAllowed.getOrDefault(name, false), dutyBook.of(name).isPresent()) && (stockTrip || breadWanted && depositor.surplusFood())) && !threatened && fort == null && !downForTheNight && !recovering.contains(name), pooled,
                             inv -> {
-                                List<Integer> slots = SoldierErrands.tripSlots(flattenWork.hands.contains(name), planting.containsKey(name), inv, plan.map(p -> p.surplus(inv)).orElse(List.of()));
+                                List<Integer> slots = SoldierErrands.tripSlots(flattenWorks.holds(name), planting.containsKey(name), inv, plan.map(p -> p.surplus(inv)).orElse(List.of()));
                                 if (toDepot) {
                                     StockLevels.toStore(inv, packKept, k -> SoldierErrands.capped(k, chainOfCommand.stores()) ? Integer.MAX_VALUE : k == ItemClass.SAPLING && !planting.containsKey(name) ? 0 : stockedAt(k, deposit)).stream().filter(s -> !slots.contains(s)).forEach(slots::add); // saplings put back whatever's held (operator, 2026-11-25)
                                 }
@@ -7012,13 +7012,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // shovel set out for the workshop three times a second for as long as it dug. Nor while
                     // it's on its way to fit the depot's chest, a walk as handless: there, one with a full
                     // pack and the logs for the next chest dug on beside a full one.
-                    clearing.getOrDefault(name, List.of()), free && !(flattenWork.hands.contains(name) ? inContact
+                    clearing.getOrDefault(name, List.of()), free && !(flattenWorks.holds(name) ? inContact
                             : clearingTunnel.contains(name) ? stairThreat : threatened) && !(foodCalls || forage != null)
                             && (clearingTunnel.contains(name) // its way out comes before any errand
                             || armourer.standAt().isEmpty() && storeWalks.getOrDefault(name, Optional.empty()).isEmpty()),
                     // Its stands in its rectangle or a column beside it: the last block of a rectangle one
                     // wide is cut from the neighbour's edge, not from on top of itself.
-                    flattenWork.hands.contains(name) ? Optional.ofNullable(clearingStrip.get(name))
+                    flattenWorks.holds(name) ? Optional.ofNullable(clearingStrip.get(name))
                             .map(b -> new Box(b.minX() - 1, b.minY(), b.minZ() - 1, b.maxX() + 1, b.maxY(), b.maxZ() + 1)) : Optional.empty(),
                     clearingTunnel.contains(name), scaffolding::contains)));
             Filler filler = soilFilling.contains(name) ? soiler : stoneFilling.contains(name) ? paver : plainFiller;
@@ -7079,13 +7079,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             placementAudit.routine(name, hands); gateHabits.computeIfAbsent(name, n -> new io.github.jayessdeesea.minecraft.bot.GateHabit(n, session, gatesUsed, clockwork::millis)).tick(status.position(), world, activeSoldiers.entrySet().stream().filter(e -> !e.getKey().equals(name)).map(e -> e.getValue().status().position()).toList()); // gates opened on the way, shut behind
             afterActionReview.errands.contact(name, threatened, clockwork.millis()).tick(name, hands, status.position(), state.carried = ErrandLedger.carried(inventory), clockwork.millis())
                     .forEach(line -> { if (line.startsWith("loop")) LOG.warn("[Outcome] {} - SHORT", line); else LOG.info(line.startsWith("errands") ? "[Errand] {}" : "[Productivity] {}", line); }); // a trip's yield against its walk
-            if (flattenWork.hands.contains(name)) {
+            if (flattenWorks.holds(name)) {
                 keepState.saplingsCarried.put(name, inventory.count(ItemClass.SAPLING));
-                clearer.drainTimes().forEach(t -> flattenWork.pace.merge(name, t, LevelPace.Tally::plus));
-                FlattenWork.Plan levelPlan = flattenWork.plan;
+                clearer.drainTimes().forEach(t -> flattenWorks.forSoldier(name).pace.merge(name, t, LevelPace.Tally::plus));
+                FlattenWork.Plan levelPlan = flattenWorks.forSoldier(name).plan;
                 // With no routine holding its hands, why it has no rectangle - so "waiting" is only a builder on the crew the plan gave nothing to.
                 String held = hands.map(r -> r.name().toLowerCase(java.util.Locale.ROOT))
-                        .orElseGet(() -> levelPlan != null && levelPlan.boxes().containsKey(name) && !flattenWork.due.containsKey(name)
+                        .orElseGet(() -> levelPlan != null && levelPlan.boxes().containsKey(name) && !flattenWorks.forSoldier(name).due.containsKey(name)
                                 ? "done, waiting for the level"
                                 // Held off its rectangle by another order - an errand, a fight's move -
                                 // not by its clearer: its squad's order isn't its dig, so no cover is
@@ -7095,13 +7095,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                 : levelPlan == null || levelPlan.boxes().containsKey(name)
                                 ? clearer.idleReason().map(r -> "clearer idle, " + r)
                                 .orElse("hands free, " + status.order().getClass().getSimpleName())
-                                : name.equals(flattenWork.smelter) ? "smelter, walking"
+                                : name.equals(flattenWorks.forSoldier(name).smelter) ? "smelter, walking"
                                 : inWoodParty(name) ? "wood party, walking"
-                                : name.equals(flattenWork.roadCutter) ? "haul road, walking"
+                                : name.equals(flattenWorks.forSoldier(name).roadCutter) ? "haul road, walking"
                                 : !levelPlan.crew().contains(name) ? "off the crew (" + status.order().getClass().getSimpleName() + ")"
                                 : "waiting, no rectangle");
                 if (!chainOfCommand.time().map(TimeOfDay::dark).orElse(false)) {
-                    flattenWork.spent.computeIfAbsent(name, n -> new ConcurrentHashMap<>()).merge(held, 1, Integer::sum);
+                    flattenWorks.forSoldier(name).spent.computeIfAbsent(name, n -> new ConcurrentHashMap<>()).merge(held, 1, Integer::sum);
                 }
             } else {
                 clearer.drainTimes();
@@ -7217,9 +7217,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         case FLINT -> ItemClass.FLINT;
                     })))
                     : clearer.active() || clearing.containsKey(name) && clearer.stuck().isEmpty()
-                    ? new Report.Working(flattenWork.hands.contains(name) ? "dig the keep" : "dig the camp's ground", clearing.getOrDefault(name, List.of()).size())
+                    ? new Report.Working(flattenWorks.holds(name) ? "dig the keep" : "dig the camp's ground", clearing.getOrDefault(name, List.of()).size())
                     : filler.active() || filling.containsKey(name)
-                    ? new Report.Working(flattenWork.hands.contains(name) ? "fill the keep" : "fill the camp's ground", filling.getOrDefault(name, List.of()).size())
+                    ? new Report.Working(flattenWorks.holds(name) ? "fill the keep" : "fill the camp's ground", filling.getOrDefault(name, List.of()).size())
                     : mason.active() ? new Report.Fortifying()
                     // Out of ways of its own - each of its last tries failed, on whatever it tried -
                     // it asks for help: live, a soldier opened a chest that wasn't there all night.
@@ -7231,7 +7231,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // Not a keep builder's: a depot chest too full to take its load is the depot's shortfall,
                     // and it digs on with what it carries. Live, the depot's first chest filled with one
                     // builder's load, and four more reported the dig CANTCO from beside it.
-                    : depositor.stuck().isPresent() && !depositor.active() && !flattenWork.hands.contains(name) ? new Report.Cantco(stockpileUnreached(name, status.position(), depositor))
+                    : depositor.stuck().isPresent() && !depositor.active() && !flattenWorks.holds(name) ? new Report.Cantco(stockpileUnreached(name, status.position(), depositor))
                     : forester.active() ? new Report.Planting()
                     : grove != null && forester.failure().isPresent() && !Forester.planted(world, grove)
                     ? new Report.Cantco("can't plant the tree farm: " + forester.failure().get())
@@ -7452,8 +7452,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // of the dig wears out (bot.craft.WorkLoad), then the rest. Live, builders climbed through copper
         // armour while the dig's tools wore out with no spare. Not one in the wood party: its work is the trees, and its load the axe - in the squad
         // simulation a cutter spent its one log on a spare pickaxe's sticks and had none for the axe.
-        if (flattenWork.hands.contains(name) && !keepState.party.has(name)) {
-            int share = flattenWork.digLeftBySquad.getOrDefault(squad, 0) / Math.max(1, flattenWork.crews.getOrDefault(squad, List.of()).size());
+        if (flattenWorks.holds(name) && !keepState.party.has(name)) {
+            int share = flattenWorks.forSoldier(name).digLeftBySquad.getOrDefault(squad, 0) / Math.max(1, flattenWorks.forSoldier(name).crews.getOrDefault(squad, List.of()).size());
             boolean floored = Ladder.upTo(inventory, Map.of(), Set.of(), m -> false, Ladder.rungOf(Recipe.STONE_SWORD)).isEmpty()
                     && Ladder.bestMelee(inventory) >= ItemClassRegistry.meleeRank("stone_sword");
             Optional<Recipe> work = floored ? WorkLoad.builder(inventory, share) : Optional.empty();

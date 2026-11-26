@@ -139,6 +139,12 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side
         return x >= minX - BENCH && x <= maxX + BENCH && z >= minZ - BENCH && z <= maxZ + BENCH;
     }
 
+    /** The dig and its bench round it: the ring's ground is the level's too. */
+    public Box digWithBench() {
+        Box dug = dig();
+        return new Box(dug.minX() - BENCH, dug.minY(), dug.minZ() - BENCH, dug.maxX() + BENCH, dug.maxY(), dug.maxZ() + BENCH);
+    }
+
     /** Its ground's top layer. */
     public Box slab() {
         return new Box(minX, top, minZ, maxX, top, maxZ);

@@ -152,6 +152,26 @@ class FarmMissionsTest {
         assertEquals(steps.get(1), restarted.get(0), "Alpha, on the trees' flatten in the register, keeps it - not the last squad free: " + restarted);
     }
 
+    /** The ground a flatten step's objective names is its mission's chunk, to the step's level; a floor's names none, nor does no objective. */
+    @Test
+    void aFlattenStepsObjectiveNamesItsMissionsGround() {
+        Registers registers = new Registers(state.resolve("registers"));
+        FarmMission wheat = FarmMission.atSeaLevel(1, 3), trees = new FarmMission(1, 4, 63, FarmMission.Crop.TREES);
+        for (FarmMission.Step step : wheat.steps()) { // the wheat farm at its floor, as live
+            registers.add(new ObjectiveRecord(0, wheat.name(), step.index(), step.task(), 1, 3, java.util.Optional.empty(),
+                    step.index() == 0 ? ObjectiveRecord.State.DONE : ObjectiveRecord.State.PLANNED, 0, java.util.Optional.empty()));
+        }
+        FarmMissions missions = new FarmMissions(cause -> { });
+        missions.keptIn(new ObjectiveBook(() -> registers));
+        missions.give(trees, 1_000);
+
+        List<io.github.jayessdeesea.minecraft.command.Objective> steps = missions.objectives();
+        assertEquals(java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Flatten(16, 64, 31, 79, 62)), missions.flatten(java.util.Optional.of(steps.get(1))),
+                "the trees' flatten step names the trees' chunk");
+        assertEquals(java.util.Optional.empty(), missions.flatten(java.util.Optional.of(steps.getFirst())), "a floor step names no ground");
+        assertEquals(java.util.Optional.empty(), missions.flatten(java.util.Optional.empty()), "no objective names none");
+    }
+
     /**
      * Carried on from the register at its template, a farm isn't sent back to its flatten: the template's own ground stands
      * over the flatten's level. Live (field693), restarted with 17 cells of the template's dirt laid, the wheat farm's flatten
