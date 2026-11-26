@@ -37,6 +37,9 @@ first three passes, in that order:
 4. **The depositor's decisions**, out of the runner's tick (`app.SupplyTrips`, 2026-11-26): when a chest is fitted, a dump, which draw
    (food, dirt, makings, stash, stone, logs, wheat, string, metal) and whether and what a trip stores. Left in the runner: the
    dump and empty branches, the fitting itself, and the orders put to the depositor.
+5. **The keep's wood party**, out of the runner (`app.KeepWood`, 2026-11-26): who cuts and who plants, what it is fed, where it
+   cuts and the known tree. Left in the runner: siting the grove (`siteKeepGrove`, `groveGround`) and the foresters' and
+   cutters' orders; the lock is still the caller's, `FlattenWork#planLock`.
 
 And with each file passed through, its comments cut down to the rule and its reason (docs/conventions.md, "A comment
 is the rule and its reason").

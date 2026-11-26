@@ -44,7 +44,7 @@ workshop, wall, ground and level (`campWorkshop`, `campWalled`, `campGround`, `c
 - Live: the tree farm's flatten and the next mission's fall together, a squad each.
 
 ## Notes
-- `SoldierRunner` is at its line cap (7507): the per-ground state is a class of its own (`FlattenWork`, the keep's work
+- `SoldierRunner` is at its line cap (7369): the per-ground state is a class of its own (`FlattenWork`, the keep's work
   lifted out with it) behind `FlattenWorks`, not a map threaded through the runner. backlog/split-oversized-sources.md.
 - The flatten first, since it's what holds the base back; then the mines; then the farms and groves; the camp's own
   works last. Each kind is its own item's worth of work.

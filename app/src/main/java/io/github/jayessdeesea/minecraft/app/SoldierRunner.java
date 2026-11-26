@@ -1262,6 +1262,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .flatMap(squad -> squad.soldiers().stream().map(name -> new SoldierDefinition(name, squad.name())))
                 .toList();
         this.chainOfCommand = chainOfCommand;
+        this.keepWood = new KeepWood(keepState, foresters, () -> logsSupply, chainOfCommand, world, trees, flattenWorks,
+                () -> clockwork.millis(), this::buried, this::say);
         this.operatorOrders = operatorOrders;
         this.supplyPoint = Resupply.supplyPoint(supplyPoint);
         this.clockwork = Clockwork.REAL;
@@ -1293,6 +1295,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final SiteClears siteClears = new SiteClears(world, () -> clockwork.millis());
     /** The keep cutters' tree felling (TreeFelling). */
     private final TreeFelling trees = new TreeFelling(world, () -> clockwork.millis());
+    /** The keep's wood party and where it cuts (KeepWood): built in the constructor, once the chain of command is set. */
+    private final KeepWood keepWood;
 
     @Override
     public void run(String... args) {
@@ -2411,7 +2415,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<LevelPlan.Builder> everyone = new ArrayList<>();
             groundWork.roadHands.values().forEach(m -> m.forEach((n2, p2) -> everyone.add(new LevelPlan.Builder(n2, p2))));
             everyone.sort(Comparator.comparing(LevelPlan.Builder::name));
-            groundWork.haulRoad(everyone, clockwork.millis(), world, () -> ground, this::inWoodParty);
+            groundWork.haulRoad(everyone, clockwork.millis(), world, () -> ground, keepWood::inWoodParty);
         }
         AccessRoute road = groundWork.road;
         String roadCutter = groundWork.roadCutter;
@@ -2491,12 +2495,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         synchronized (groundWork.planLock) {
             List<LevelPlan.Builder> onHand = onKeep.stream().flatMap(u -> groundWork.crews.getOrDefault(u, List.of()).stream())
                     .sorted(Comparator.comparing(LevelPlan.Builder::name)).toList();
-            woodParty(onKeep, onHand, now);
+            keepWood.woodParty(onKeep, onHand, now);
             // The haul road's cutter has no rectangle while it cuts it (keepwork).
             String roadCutter = groundWork.roadCutter;
-            groundWork.smelter = groundWork.chooseSmelter(onHand, groundWork.plan, chainOfCommand.stores().map(s -> s.rawIron() + s.rawCopper()).orElse(0), smelterCarries, this::inWoodParty);
+            groundWork.smelter = groundWork.chooseSmelter(onHand, groundWork.plan, chainOfCommand.stores().map(s -> s.rawIron() + s.rawCopper()).orElse(0), smelterCarries, keepWood::inWoodParty);
             String smelterNow = groundWork.smelter;
-            List<LevelPlan.Builder> all = onHand.stream().filter(b -> !inWoodParty(b.name()) && !b.name().equals(roadCutter)
+            List<LevelPlan.Builder> all = onHand.stream().filter(b -> !keepWood.inWoodParty(b.name()) && !b.name().equals(roadCutter)
                     && !b.name().equals(smelterNow)).toList();
             Set<String> names = all.stream().map(LevelPlan.Builder::name).collect(Collectors.toUnmodifiableSet());
             // The site and its bench round it: the ring's ground is the level's too, highest first.
@@ -2844,14 +2848,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // there next (operator, 2026-11-17: gather all the wood on a tree; remove the scaffolding you
             // added). Live, cutters took the logs in reach and walked on, the tops and the leaves left.
             if (keepState.party.cutters().contains(h.name())) {
-                Optional<Order> felled = trees.dig(h.name(), keepWoodAt(onKeep, grove), except, keepState, scaffolding, handsHeld::get);
+                Optional<Order> felled = trees.dig(h.name(), keepWood.keepWoodAt(onKeep, grove), except, keepState, scaffolding, handsHeld::get);
                 if (felled.isPresent()) {
                     orders.put(h.name(), felled.get());
                     continue;
                 }
             }
             if (keepState.party.cutters().contains(h.name())) {
-                Position trees = keepWoodAt(onKeep, grove);
+                Position trees = keepWood.keepWoodAt(onKeep, grove);
                 int tx = (int) Math.floor(trees.x()), ty = (int) Math.floor(trees.y()), tz = (int) Math.floor(trees.z());
                 orders.put(h.name(), new Order.Gather(Resource.WOOD, new Box(tx - 4, ty - 4, tz - 4, tx + 4, ty + 4, tz + 4), PlatoonSergeant.WOOD_LOAD));
                 continue;
@@ -2897,80 +2901,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         say(chief, builder, boxes.isEmpty() ? "KEEP WAIT " + level
                 : "KEEP DIG " + level + " " + boxes.stream().map(r -> r.minX() + " " + r.minZ() + " " + r.maxX() + " " + r.maxZ())
                 .collect(Collectors.joining(" ")));
-    }
-
-    /**
-     * The keep's wood party, as the platoon sergeant decides it ({@link PlatoonSergeant#woodParty}):
-     * fed what the builders carry, the stockpile's logs, the trees the keep's squads have seen and
-     * the grove's state. A planting that fails pauses the grove {@link #PLANTER_RETRY_MILLIS}, not
-     * the planter - what failed it fails the next builder too: live, five took the job in turn within
-     * a minute. Changes are logged and said on the net. Guarded by {@link FlattenWork#planLock}.
-     */
-    private void woodParty(List<String> onKeep, List<LevelPlan.Builder> onHand, long now) {
-        Optional<String> plantingFailed = keepState.party.planter().map(foresters::get).flatMap(Forester::failure);
-        if (plantingFailed.isPresent()) {
-            LOG.info("[Keep] the grove waits {} min: {}", PLANTER_RETRY_MILLIS / 60_000, plantingFailed.get());
-            keepState.groveBarredUntil = now + PLANTER_RETRY_MILLIS;
-        }
-        List<PlatoonSergeant.Hand> crew = onHand.stream().map(b -> new PlatoonSergeant.Hand(b.name(),
-                keepState.logsCarried.getOrDefault(b.name(), 0), keepState.saplingsCarried.getOrDefault(b.name(), 0))).toList();
-        TreeFarm grove = keepState.grove;
-        Supply logsMeasured = logsSupply;
-        PlatoonSergeant.Wood wood = new PlatoonSergeant.Wood(chainOfCommand.stockpile().map(Stockpile::logs).orElse(0),
-                // Or a tree the world model holds near the depot: live (field389), the keep's squads came up
-                // from a night in the mine having seen no trees, and nobody cut at 3 logs.
-                treesSeenLately(onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream()).anyMatch(r -> r.resource() == Resource.WOOD)
-                        || knownTree(now).isPresent(), now)
-                        || grove == null && keepState.groveToClear != null, // the grove's ground to clear is trees seen
-                grove != null && !Forester.planted(world, grove), now < keepState.groveBarredUntil,
-                logsMeasured == null ? 0 : logsMeasured.reorderPoint(), logsMeasured == null ? 0 : logsMeasured.objective());
-        PlatoonSergeant.WoodParty was = keepState.party;
-        PlatoonSergeant.WoodParty party = PlatoonSergeant.woodParty(crew, flattenWorks.first().foreman, was, wood);
-        if (!party.cutters().equals(was.cutters()) || !party.planter().equals(was.planter())) {
-            int logs = crew.stream().mapToInt(PlatoonSergeant.Hand::logs).sum() + wood.stockpileLogs();
-            LOG.info("[Keep] the wood party: {} cut(s) trees for the depot ({} logs between the builders and the stockpile, {} wanted){}",
-                    party.cutters().isEmpty() ? "nobody" : party.cutters(), logs, (int) wood.back(),
-                    party.planter().map(n -> ", " + n + " plants the keep's grove").orElse(""));
-            String chief = flattenWorks.first().foreman;
-            if (chief != null) {
-                party.cutters().stream().filter(n -> !was.cutters().contains(n)).forEach(n -> say(chief, n, "KEEP WOOD " + PlatoonSergeant.WOOD_LOAD));
-                party.planter().filter(n -> !was.planter().equals(Optional.of(n)))
-                        .ifPresent(n -> say(chief, n, "KEEP PLANT " + grove.centre().x() + " " + grove.centre().z()));
-            }
-        }
-        keepState.party = party;
-        // Off the party, its tree is let go of, its patience with it too: a tree kept through a night down the
-        // mine would be given up as out of reach at dawn, its patience run out while the cutter was far under it.
-        trees.retainCutters(party.cutters());
-        // Nobody cutting under the reserve says why, once a minute: live (field390), a day went by at 3-19
-        // logs with the party never out and no line to say what held it.
-        int logsNow = crew.stream().mapToInt(PlatoonSergeant.Hand::logs).sum() + wood.stockpileLogs();
-        if (party.cutters().isEmpty() && logsNow < wood.out() && now - keepState.woodWhyAt >= WOOD_WHY_MILLIS) {
-            keepState.woodWhyAt = now;
-            LOG.warn("[Keep] nobody cuts at {} logs, under the reserve of {}: crew {}, trees seen lately {}, a known tree {}, the grove's ground to clear {}",
-                    logsNow, (int) wood.out(), crew.size(), now - keepState.treesSeenAt <= TREES_SEEN_MILLIS,
-                    knownTree(now).map(Position::toString).orElse("none within " + KEEP_WOOD_REACH), keepState.groveToClear);
-        }
-    }
-
-    static final long WOOD_WHY_MILLIS = 60_000;
-
-    /** How long trees once seen are counted seen: a survey that misses them doesn't stand the wood party down. */
-    static final long TREES_SEEN_MILLIS = 120_000;
-
-    /**
-     * Whether trees are seen now, or were within {@link #TREES_SEEN_MILLIS}: live (field374), Ivy was put
-     * on the wood party, off it 21 s later ("nobody cut(s) trees" at 5 logs) and on it again 30 s after,
-     * each a survey that did or didn't see the trees, her rectangle handed back and forth with Bob.
-     */
-    private boolean treesSeenLately(boolean seenNow, long now) {
-        if (seenNow) { keepState.treesSeenAt = now; }
-        return now - keepState.treesSeenAt <= TREES_SEEN_MILLIS;
-    }
-
-    /** Whether {@code name} is off the dig in the keep's wood party. */
-    private boolean inWoodParty(String name) {
-        return keepState.party.has(name);
     }
 
     /** How far round the main depot furnaces are looked for: the keep, its mine head and its depots. */
@@ -3064,74 +2994,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return cells;
     }
 
-    /** How far from the keep's depot its wood party goes for trees: the ground the keep's squads work. */
-    static final int KEEP_WOOD_REACH = 64;
     /** How often a grove not yet sited is sought again, its ground cleared meanwhile. */
     static final long GROVE_RESITE_MILLIS = 120_000;
-
-    /**
-     * Where the wood party cuts: the ground being cleared for the keep's grove, while it has none; else
-     * the trees nearest the depot a keep squad last saw, else round the grove, else the depot.
-     */
-    private Position keepWoodAt(List<String> onKeep, TreeFarm grove) {
-        BlockPos clearing = keepState.groveToClear;
-        if (grove == null && clearing != null) {
-            return new Position(clearing.x() + 0.5, clearing.y(), clearing.z() + 0.5);
-        }
-        // Trees on the surface near the depot only: live (field377), Ivy and Liam were sent 120 blocks off to
-        // "trees" at y=-28 - a mineshaft's timbers a mining squad's survey saw - never a surface soldier
-        // routed down into a cave (backlog/long-routes.md).
-        Position depot = chainOfCommand.flatten().depot();
-        return onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream())
-                .filter(site -> site.resource() == Resource.WOOD).map(ResourceSite::location)
-                .filter(l -> !buried(l) && Math.hypot(l.x() - depot.x(), l.z() - depot.z()) <= KEEP_WOOD_REACH)
-                .min(Comparator.comparingDouble(l -> Math.hypot(l.x() - chainOfCommand.flatten().depot().x(), l.z() - chainOfCommand.flatten().depot().z())))
-                .or(() -> knownTree(clockwork.millis()))
-                .orElseGet(() -> grove != null ? new Position(grove.centre().x() + 0.5, grove.centre().y(), grove.centre().z() + 0.5)
-                        : chainOfCommand.flatten().depot());
-    }
-
-    /**
-     * The tree nearest the depot the world model holds, within {@link #KEEP_WOOD_REACH} across: a column
-     * whose top is a log, under leaves or open sky - on the surface, never a mineshaft's timbers. Looked
-     * for again every {@link #KNOWN_TREE_MILLIS}.
-     */
-    private Optional<Position> knownTree(long now) {
-        if (now - flattenWorks.first().knownTreeAt >= KNOWN_TREE_MILLIS) {
-            flattenWorks.first().knownTreeAt = now;
-            Position depot = chainOfCommand.flatten().depot();
-            int dx = (int) Math.floor(depot.x()), dy = (int) Math.floor(depot.y()), dz = (int) Math.floor(depot.z());
-            Position best = null;
-            double bestDistance = Double.MAX_VALUE;
-            for (int x = dx - KEEP_WOOD_REACH; x <= dx + KEEP_WOOD_REACH; x++) {
-                for (int z = dz - KEEP_WOOD_REACH; z <= dz + KEEP_WOOD_REACH; z++) {
-                    double d = Math.hypot(x - dx, z - dz);
-                    if (d > KEEP_WOOD_REACH || d >= bestDistance) {
-                        continue;
-                    }
-                    for (int y = dy + KNOWN_TREE_ABOVE; y >= dy - KNOWN_TREE_BELOW; y--) {
-                        if (world.isLog(x, y, z)) {
-                            if (!trees.letGo(new BlockPos(x, y, z))) {
-                                best = new Position(x + 0.5, y, z + 0.5);
-                                bestDistance = d;
-                            }
-                            break;
-                        }
-                        if (world.isSolid(x, y, z) && world.leaves(x, y, z).isEmpty()) {
-                            break; // the ground: no tree on this column
-                        }
-                    }
-                }
-            }
-            flattenWorks.first().knownTree = best;
-        }
-        return Optional.ofNullable(flattenWorks.first().knownTree);
-    }
-
-    static final long KNOWN_TREE_MILLIS = 10_000;
-    /** How far over and under the depot's stand a known tree's column is looked down. */
-    static final int KNOWN_TREE_ABOVE = 24;
-    static final int KNOWN_TREE_BELOW = 8;
 
     /**
      * The keep's grove: a {@link TreeFarm} near its depot, on the nearest ground with room for one
@@ -3224,8 +3088,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return Optional.ofNullable(best);
     }
 
-    /** How long the keep's grove waits after a planting fails - no sapling, no leaves, no way to the cell. */
-    static final long PLANTER_RETRY_MILLIS = 5 * 60_000;
     /** How far out from the depot the keep's grove is first looked for, and the steps out from there. */
     static final int GROVE_RING = 16;
     /**
@@ -4369,7 +4231,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * order back in the statuses' order.
      */
     private List<Order> formation(SquadOrder order, List<SoldierStatus> statuses) {
-        java.util.function.Predicate<SoldierStatus> detached = s -> farming.containsKey(s.name()) || inWoodParty(s.name());
+        java.util.function.Predicate<SoldierStatus> detached = s -> farming.containsKey(s.name()) || keepWood.inWoodParty(s.name());
         List<SoldierStatus> formed = Stream.concat(statuses.stream().filter(detached.negate()), statuses.stream().filter(detached)).toList();
         List<Order> slots = Formations.assign(order, formed);
         Map<String, Order> byName = new HashMap<>();
@@ -7049,7 +6911,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                 ? clearer.idleReason().map(r -> "clearer idle, " + r)
                                 .orElse("hands free, " + status.order().getClass().getSimpleName())
                                 : name.equals(flattenWorks.forSoldier(name).smelter) ? "smelter, walking"
-                                : inWoodParty(name) ? "wood party, walking"
+                                : keepWood.inWoodParty(name) ? "wood party, walking"
                                 : name.equals(flattenWorks.forSoldier(name).roadCutter) ? "haul road, walking"
                                 : !levelPlan.crew().contains(name) ? "off the crew (" + status.order().getClass().getSimpleName() + ")"
                                 : "waiting, no rectangle");
