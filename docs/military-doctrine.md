@@ -1344,9 +1344,15 @@ grass within 8 blocks, with room to grow: its trunk's column open seven blocks u
 over the trunk's top three, where a birch's leaves form (`bot.farm.TreeFarm.plantable`) - leaves not counted against it,
 since a felled tree's decay in minutes and its stump is replanted under them (operator, 2026-11-21).
 Birch is the farm's first tree - one straight trunk to a predictable height, with no giant form -
-and spruce its second. A soldier plants birch if it carries any, then spruce, then any other, and
-with no sapling breaks leaves for one, birch leaves first, then spruce; one leaf block in twenty
-drops a sapling (`bot.supply.Forester`). A cell one forester couldn't plant - not stood in, its sapling refused -
+and spruce its second. A soldier plants birch if it carries any, then spruce, then any other. Out of saplings
+while it plants, it draws a stack from the nearest chest holding them, birch first, then spruce (operator,
+2026-11-25: look in the chest before planting; `SoldierErrands.makingsDrawn`, `Depositor.takeOrder`, one ranking,
+`Forester.saplingRank`) - it breaks no leaves while that draw is to come (`Forester.drawing`); with no chest to
+draw from, or the one that holds them barred, it breaks leaves for one, birch leaves first, then spruce; one leaf block
+in twenty drops a sapling (`bot.supply.Forester`). Past its stack, the least wanted go back first
+(`StockLevels.toStore`). What it hasn't planted goes back to the stockpile with its loads once it's off the planting,
+a stack a load whatever the stores hold, a miner's too (`SoldierErrands.PLANTER_CARRIED`: no one else carries
+saplings); a keep hand planting keeps its saplings through the dig's trips, the rest of a digger's strip as before. A cell one forester couldn't plant - not stood in, its sapling refused -
 is passed over by every forester for a while, as a farm's cells are (live, field618: one walked at 22 times in turn).
 The camp's grove is a tree chunk (`bot.farm.TreeChunk`, `app.CampTrees`): one chunk within 64 blocks of the camp,
 beside a wheat chunk, flat with half its trunk cells at the least able to take a sapling - the more the better, and

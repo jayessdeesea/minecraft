@@ -108,7 +108,7 @@ public final class StockLevels {
         return level.most() == UNBOUNDED ? UNBOUNDED : level.most() - stocked;
     }
 
-    /** The slots of {@code kind} past {@code kept} that fit in {@code room}. */
+    /** The slots of {@code kind} past {@code kept} that fit in {@code room}: the smallest stacks first, of saplings the least wanted. */
     static List<Integer> toStore(Inventory inventory, ItemClass kind, int kept, int room) {
         int held = Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot();
         List<Integer> slots = new ArrayList<>();
@@ -117,7 +117,9 @@ public final class StockLevels {
                 slots.add(slot);
             }
         }
-        slots.sort(Comparator.comparingInt(inventory::countAt));
+        // Smallest stacks first; saplings the least wanted first, so a birch drawn isn't the first stored (Forester#saplingRank).
+        slots.sort(kind == ItemClass.SAPLING ? Comparator.<Integer>comparingInt(s -> -Forester.saplingRank(inventory.itemAt(s))).thenComparingInt(inventory::countAt)
+                : Comparator.comparingInt(inventory::countAt));
         int left = inventory.count(kind);
         List<Integer> out = new ArrayList<>();
         for (int slot : slots) {

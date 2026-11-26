@@ -90,8 +90,8 @@ putting a kind up keeps at it along the line - the next cell from where it stand
   yet; new ones are put from across their line); a mineshaft's head given its slab and its level paved round the shaft; the same two lists for the tree farm, the
   supply point and the mineshaft's head - the conformance pass below.
 - **Birch first** (operator, 2026-11-23: wood that grows predictably): a planter takes birch if it carries any, then
-  spruce, then any other (docs/military-doctrine.md § 12). Left: a tree template never planted with oak or acacia
-  while a birch or spruce sapling is in the squad or the stores.
+  spruce, then any other, and draws them from a chest birch first when it has none (docs/military-doctrine.md § 12).
+  Left: one carrying only oak or acacia while the stores hold birch plants the oak - it draws only when it has none.
 - **The rotation** (operator, 2026-11-14 and 2026-11-21): one pass fells every tree of an area whole and replants
   each stump at once, under its own decaying leaves (`TreeFarm.plantable` lets them be); then back a couple of minutes
   on - most leaves decayed, inside the 5 minutes a drop lies - to sweep up the saplings and sticks. Dropped saplings

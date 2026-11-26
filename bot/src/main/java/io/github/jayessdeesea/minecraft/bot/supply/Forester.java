@@ -51,6 +51,17 @@ public final class Forester {
      */
     static final List<String> PREFERRED = List.of("birch", "spruce");
 
+    /** How far down {@link #PREFERRED} sapling {@code item} is: 0 a birch, past the list any sapling not on it. */
+    public static int saplingRank(int item) {
+        String tree = ItemClassRegistry.nameOf(item).map(n -> n.replace("_sapling", "")).orElse("");
+        return PREFERRED.contains(tree) ? PREFERRED.indexOf(tree) : PREFERRED.size();
+    }
+
+    /** A cell to plant and no sapling carried: for its runner to draw some, birch first, from a chest holding them. */
+    private boolean outOfSaplings;
+    /** Whether its runner has a draw of saplings for it, from a chest that holds them and isn't barred (#drawing). */
+    private boolean drawing;
+
     private final String name;
     private final PlaySession session;
     private final Inventory inventory;
@@ -100,6 +111,22 @@ public final class Forester {
     }
 
     /** Why the last job failed, while the soldier waits before the next. */
+    /**
+     * Whether it has a cell to plant and no sapling to plant it with - for its runner to draw saplings from a chest
+     * holding them, before it breaks leaves for one (field743: the stores held 569 while planters broke leaves).
+     */
+    public synchronized boolean outOfSaplings() {
+        if (inventory.count(ItemClass.SAPLING) > 0) {
+            outOfSaplings = false;
+        }
+        return outOfSaplings;
+    }
+
+    /** Its runner has a draw of saplings for it ({@code true}) or none - no chest holds them, or the one that does is barred. */
+    public synchronized void drawing(boolean drawing) {
+        this.drawing = drawing;
+    }
+
     public synchronized Optional<String> failure() {
         return cooldown > 0 ? Optional.ofNullable(failure) : Optional.empty();
     }
@@ -188,6 +215,7 @@ public final class Forester {
         Optional<BlockPos> bare = farm.plot().stream().filter(c -> !claims.contains(c) && !TreeFarm.planted(world, c) && !shared.barred(c, ticks))
                 .min(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())));
         if (bare.isEmpty()) {
+            outOfSaplings = false; // nothing left to plant, by it or another
             // Planted: its fixtures, with what it carries (operator, 2026-11-21: lit, then a chest for its saplings).
             FIXTURES.stream().filter(item -> inventory.count(item) > 0 && !fixtures(world, farm, item, fitters.get(item).skipped()).isEmpty())
                     .findFirst().ifPresent(item -> {
@@ -197,9 +225,14 @@ public final class Forester {
             return;
         }
         Optional<Integer> sapling = saplingSlot();
+        boolean wasOut = outOfSaplings;
+        outOfSaplings = sapling.isEmpty();
         if (sapling.isPresent()) {
             plant(world, bare.get(), sapling.get());
             return;
+        }
+        if (!wasOut || drawing) {
+            return; // said out of saplings for its runner to draw from a chest: leaves only with none to draw
         }
         BlockPos at = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
         Optional<Digger.Spot> leaves = Digger.findSpot(world, at, claims, Digger.Target.BIRCH_LEAVES)
@@ -219,8 +252,7 @@ public final class Forester {
         for (int slot = 0; slot < Inventory.SLOTS; slot++) {
             int item = inventory.itemAt(slot);
             if (ItemClassRegistry.classOf(item).equals(Optional.of(ItemClass.SAPLING))) {
-                String tree = ItemClassRegistry.nameOf(item).map(n -> n.replace("_sapling", "")).orElse("");
-                int rank = PREFERRED.contains(tree) ? PREFERRED.indexOf(tree) : PREFERRED.size();
+                int rank = saplingRank(item);
                 if (rank < bestRank) {
                     best = slot;
                     bestRank = rank;

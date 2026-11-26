@@ -204,4 +204,18 @@ class DepositorTest {
 
         assertEquals(128, server.inventory.count(ItemClass.COBBLESTONE), "all of it still carried");
     }
+
+    /** Saplings are taken out of a chest birch first, then spruce, then the rest; anything else in the chest's order (operator, 2026-11-25). */
+    @Test
+    void saplingsAreTakenOutBirchFirst() {
+        int oak = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.idOf("oak_sapling").orElseThrow();
+        int spruce = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.idOf("spruce_sapling").orElseThrow();
+        int birch = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.idOf("birch_sapling").orElseThrow();
+        int dirt = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.idOf("dirt").orElseThrow();
+        java.util.List<Integer> chest = java.util.List.of(oak, dirt, spruce, birch, -1, birch);
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of(3, 5, 2, 0),
+                Depositor.takeOrder(chest, io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.SAPLING));
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of(1),
+                Depositor.takeOrder(chest, io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.DIRT));
+    }
 }

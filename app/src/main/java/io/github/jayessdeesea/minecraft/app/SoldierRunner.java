@@ -887,7 +887,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Farm cells growing wheat for the camp's food to count as met. */
     private static final int FARM_GROWING = 12;
     /** Trees growing for wood to be no worry (operator, 2026-11-14: with 16 or 32 growing, zero problems with wood), and the most asked. */
-    private static final int TREES_GROWING = 16, TREES_MOST = 96, SEEDS_DRAWN = 64; // seeds a farmer out of them draws
+    private static final int TREES_GROWING = 16, TREES_MOST = 96;
     /** How far out from a FORTIFY objective its wall stands. */
     static final int WALL_RADIUS = 8;
     /** How far above and below the camp's centre its ground is kept from digging. */
@@ -7022,6 +7022,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Set<ItemClass> surplus = (keepState.hands.contains(name) && !depositor.active() || depositor.dumping()) && !chainOfCommand.farmMissions.on(objectiveOf(unitOf(name, definition.squad()))) ? surplusKinds(chestsSeen.values(), deposit) : Set.of(); // on a mission its cobblestone and dirt are the slab's and the ground's, never surplus (PavingRateIT: a squad with full packs dumped the cobblestone its slab wanted and stood)
                 boolean dumpNow = fullLoad && surplus.stream().anyMatch(c -> inventory.count(c) > Depositor.KEEP);
                 if (bakes && tickNow % 1200 == 0) LOG.info("[Baker] {}: {} wheat carried, a chest holding wheat {}, hands {}, free {}, threatened {}, fortifying {}, drawing {}", name, inventory.count(ItemClass.WHEAT), chestHolding(ItemClass.WHEAT, status.position()).map(Object::toString).orElse("none known"), handsHeld.get(name), free, threatened, fort != null, depositor.active()); // field640-655: no baker drew wheat
+                Optional<Makings> makings = makingsDrawn(farmer.outOfSeeds(), planting.containsKey(name) && forester.outOfSaplings(),
+                        chainOfCommand.scoutMissions.draws(name), k -> chestHolding(k, status.position()).filter(c -> !depositor.barred(c)).isPresent());
+                forester.drawing(makings.filter(m -> m.kind() == ItemClass.SAPLING).isPresent()); // so it breaks no leaves while a draw's to come
                 if (depositor.dumping() || dumpNow && !depositor.active()) {
                     depositor.tickDump(status.position(), shop.or(() -> Optional.ofNullable(mainDepot)).flatMap(d -> dumpOf(d, world)), surplus,
                             free && !threatened && fort == null && (depositor.dumping() || dumpNow));
@@ -7038,11 +7041,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     depositor.tickDraw(status.position(), chestHolding(ItemClass.FOOD, status.position()), ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened);
                 } else if (soilFilling.contains(name) && filling.containsKey(name) && inventory.count(ItemClass.DIRT) < Tasking.LOW && chestHolding(ItemClass.DIRT, status.position()).isPresent()) { // its fill's dirt, drawn from the nearest chest holding some (operator, 2026-11-22)
                     depositor.tickDraw(status.position(), chestHolding(ItemClass.DIRT, status.position()), ItemClass.DIRT, Tasking.LOAD, free && !threatened);
-                } else if (farmer.outOfSeeds() && chestHolding(ItemClass.SEEDS, status.position()).isPresent()) { // its sowing's seeds, drawn (field603)
-                    depositor.tickDraw(status.position(), chestHolding(ItemClass.SEEDS, status.position()), ItemClass.SEEDS, SEEDS_DRAWN, free && !threatened);
-                } else if (chainOfCommand.scoutMissions.draws(name).flatMap(k -> chestHolding(k, status.position())).isPresent()) { // its scouting's food, drawn
-                    ItemClass lure = chainOfCommand.scoutMissions.draws(name).orElseThrow();
-                    depositor.tickDraw(status.position(), chestHolding(lure, status.position()), lure, ScoutMissions.FOOD_DRAWN, free && !threatened);
+                } else if (makings.isPresent()) { // its sowing's seeds, its planting's saplings, its scouting's food, drawn (SoldierErrands.makingsDrawn)
+                    depositor.tickDraw(status.position(), chestHolding(makings.get().kind(), status.position()), makings.get().kind(), makings.get().count(), free && !threatened);
                 } else if (unstash.isPresent()) {
                     depositor.tickDraw(status.position(), Optional.of(unstash.get().chest()), unstash.get().ore(), unstash.get().carry(),
                             free && !threatened);
@@ -7111,9 +7111,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     depositor.tick(status.position(), deposit, free && (fullLoad || poolOre || stashOre || surplusTrip || depositor.pastHalfway()
                                     || SoldierErrands.stocks(upgradeAllowed.getOrDefault(name, false), dutyBook.of(name).isPresent()) && (stockTrip || breadWanted && depositor.surplusFood())) && !threatened && fort == null && !downForTheNight && !recovering.contains(name), pooled,
                             inv -> {
-                                List<Integer> slots = SoldierErrands.tripSlots(keepState.hands.contains(name), inv, plan.map(p -> p.surplus(inv)).orElse(List.of()));
+                                List<Integer> slots = SoldierErrands.tripSlots(keepState.hands.contains(name), planting.containsKey(name), inv, plan.map(p -> p.surplus(inv)).orElse(List.of()));
                                 if (toDepot) {
-                                    StockLevels.toStore(inv, packKept, k -> SoldierErrands.capped(k, chainOfCommand.stores()) ? Integer.MAX_VALUE : stockedAt(k, deposit)).stream().filter(s -> !slots.contains(s)).forEach(slots::add);
+                                    StockLevels.toStore(inv, packKept, k -> SoldierErrands.capped(k, chainOfCommand.stores()) ? Integer.MAX_VALUE : k == ItemClass.SAPLING && !planting.containsKey(name) ? 0 : stockedAt(k, deposit)).stream().filter(s -> !slots.contains(s)).forEach(slots::add); // saplings put back whatever's held (operator, 2026-11-25)
                                 }
                                 return paving.containsKey(name) ? slots.stream().filter(sl -> ItemClassRegistry.classOf(inv.itemAt(sl)).filter(ItemClass.COBBLESTONE::equals).isEmpty()).toList() : slots; // a paver's cobblestone is its work's: never put in (in the squad simulation one drew a chest's 627 and put 625 back, round and round)
                             });

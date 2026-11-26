@@ -78,4 +78,15 @@ class StockLevelsTest {
         assertFalse(StockLevels.atMost(ItemClass.RAW_IRON, kind -> 1_000_000));
         assertTrue(StockLevels.atMost(ItemClass.RAW_COPPER, kind -> 256), "copper's most is 256, as flint'");
     }
+
+    /** A planter past its stack of saplings puts back the least wanted first: the birch it drew is kept, the oak stored. */
+    @Test
+    void saplingsPastTheStackPutBackTheLeastWantedFirst() {
+        Inventory inventory = new Inventory();
+        int birch = ItemClassRegistry.idOf("birch_sapling").orElseThrow(), oak = ItemClassRegistry.idOf("oak_sapling").orElseThrow();
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{birch, 10});
+        inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{oak, 64});
+        assertEquals(List.of(Inventory.MAIN_FIRST + 1), StockLevels.toStore(inventory, ItemClass.SAPLING, 10, 64), "the oak stored, the birch kept");
+        assertEquals(List.of(Inventory.MAIN_FIRST + 1, Inventory.MAIN_FIRST), StockLevels.toStore(inventory, ItemClass.SAPLING, 0, 256), "all of it, the oak first");
+    }
 }

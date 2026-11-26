@@ -58,9 +58,9 @@ class SoldierErrandsTest {
         pack.setSlot(first + 2, new int[]{item.apply(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.SAPLING), 31});
         pack.setSlot(first + 3, new int[]{item.apply(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.PICKAXE), 1});
 
-        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of(first + 5, first, first + 2), SoldierErrands.tripSlots(true, pack, java.util.List.of(first + 5)),
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of(first + 5, first, first + 2), SoldierErrands.tripSlots(true, false, pack, java.util.List.of(first + 5)),
                 "its load's surplus, then its seeds and saplings");
-        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of(first + 5), SoldierErrands.tripSlots(false, pack, java.util.List.of(first + 5)), "no digger: its load's surplus only");
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of(first + 5), SoldierErrands.tripSlots(false, false, pack, java.util.List.of(first + 5)), "no digger: its load's surplus only");
     }
 
     /** A stand by a chest another soldier is in is taken; the asker's own, and one a block off, aren't (field698: ten at one cell). */
@@ -92,5 +92,19 @@ class SoldierErrandsTest {
         org.junit.jupiter.api.Assertions.assertTrue(SoldierErrands.capped(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.DIRT, java.util.Optional.of(at)));
         org.junit.jupiter.api.Assertions.assertFalse(SoldierErrands.capped(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.LOG, java.util.Optional.of(at)), "logs aren't capped here");
         org.junit.jupiter.api.Assertions.assertFalse(SoldierErrands.capped(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.COBBLESTONE, java.util.Optional.empty()), "no stores seen: nothing known to be full");
+    }
+
+    /** What a soldier draws for its work: the first its chests hold - seeds, then saplings while it plants, then a scout's food. */
+    @Test
+    void aSoldiersWorkDrawsItsSeedsItsSaplingsOrItsLureWhatTheChestsHold() {
+        java.util.function.Predicate<ItemClass> all = k -> true, noSeeds = k -> k != ItemClass.SEEDS;
+        assertEquals(Optional.of(new SoldierErrands.Makings(ItemClass.SEEDS, SoldierErrands.SEEDS_DRAWN)),
+                SoldierErrands.makingsDrawn(true, true, Optional.of(ItemClass.WHEAT), all));
+        assertEquals(Optional.of(new SoldierErrands.Makings(ItemClass.SAPLING, SoldierErrands.SAPLINGS_DRAWN)),
+                SoldierErrands.makingsDrawn(true, true, Optional.empty(), noSeeds), "no seeds in any chest: its saplings");
+        assertEquals(Optional.of(new SoldierErrands.Makings(ItemClass.WHEAT, ScoutMissions.FOOD_DRAWN)),
+                SoldierErrands.makingsDrawn(false, false, Optional.of(ItemClass.WHEAT), all));
+        assertEquals(Optional.empty(), SoldierErrands.makingsDrawn(false, true, Optional.empty(), k -> false), "no chest holds saplings: nothing");
+        assertEquals(Optional.empty(), SoldierErrands.makingsDrawn(false, false, Optional.empty(), all), "short of nothing: nothing");
     }
 }

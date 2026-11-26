@@ -166,6 +166,25 @@ final class SoldierErrands {
         return Math.hypot(chest.x() - from.x(), chest.z() - from.z()) <= MISSION_REACH && Math.abs(chest.y() - from.y()) <= MISSION_REACH_UP;
     }
 
+    /** Seeds a farmer out of them draws; saplings a planter out of them draws, a stack. */
+    static final int SEEDS_DRAWN = 64, SAPLINGS_DRAWN = 64;
+
+    /** What a soldier's work is short of, to draw from a chest holding it, and how many. */
+    record Makings(ItemClassRegistry.ItemClass kind, int count) { }
+
+    /**
+     * What a soldier draws for its work, the first of these its chests hold ({@code held}): its sowing's seeds, out of them
+     * (field603); its planting's saplings, out of them while it plants - birch first from the chest (Depositor#takeOrder;
+     * operator, 2026-11-25: look in the chest before planting); its scouting's food ({@code lure}).
+     */
+    static Optional<Makings> makingsDrawn(boolean outOfSeeds, boolean outOfSaplings, Optional<ItemClassRegistry.ItemClass> lure,
+                                          java.util.function.Predicate<ItemClassRegistry.ItemClass> held) {
+        return java.util.stream.Stream.of(outOfSeeds ? new Makings(ItemClassRegistry.ItemClass.SEEDS, SEEDS_DRAWN) : null,
+                        outOfSaplings ? new Makings(ItemClassRegistry.ItemClass.SAPLING, SAPLINGS_DRAWN) : null,
+                        lure.map(k -> new Makings(k, ScoutMissions.FOOD_DRAWN)).orElse(null))
+                .filter(m -> m != null && held.test(m.kind())).findFirst();
+    }
+
     /** Cobblestone drawn for a weapon or tool short of it: a stone sword's blade, a pickaxe's head, and some over. */
     static final int DRAW_STONE = 8;
 
@@ -206,11 +225,12 @@ final class SoldierErrands {
      * room in the pack that's wanted. Live (field696), a flatten's digger carried 147 seeds, 31 saplings, wheat and a
      * hoe through the dig, the depot at its most of each and so none of it taken.
      */
-    static List<Integer> tripSlots(boolean digger, Inventory inventory, List<Integer> surplus) {
+    static List<Integer> tripSlots(boolean digger, boolean planting, Inventory inventory, List<Integer> surplus) {
         List<Integer> slots = new java.util.ArrayList<>(surplus);
         if (digger) {
             for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
-                if (!slots.contains(slot) && ItemClassRegistry.classOf(inventory.itemAt(slot)).filter(NOT_A_DIGGERS::contains).isPresent()) {
+                if (!slots.contains(slot) && ItemClassRegistry.classOf(inventory.itemAt(slot))
+                        .filter(k -> NOT_A_DIGGERS.contains(k) && !(planting && k == ItemClassRegistry.ItemClass.SAPLING)).isPresent()) { // a planting hand keeps its saplings
                     slots.add(slot);
                 }
             }
@@ -274,7 +294,7 @@ final class SoldierErrands {
             ItemClassRegistry.ItemClass.DIRT, Pack.MINER_DIRT_KEPT, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1,
             // And a stack of cobblestone, its floors' and backfill's (the rules of a mine): live (field462), Alice
             // stored every block and stood a night at a cave in her level's main tunnel with none to floor it.
-            ItemClassRegistry.ItemClass.COBBLESTONE, Pack.MINER_COBBLESTONE_KEPT);
+            ItemClassRegistry.ItemClass.COBBLESTONE, Pack.MINER_COBBLESTONE_KEPT, ItemClassRegistry.ItemClass.SAPLING, 0); // a planter's, put back (PLANTER_CARRIED)
 
     /**
      * The string a soldier still wants for a bed: none once it has one, else what its wool and string fall

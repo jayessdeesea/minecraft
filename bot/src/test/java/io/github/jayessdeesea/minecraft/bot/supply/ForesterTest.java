@@ -126,6 +126,38 @@ class ForesterTest {
         assertTrue(forester.failure().isEmpty(), forester.failure().orElse(""));
     }
 
+    /** A cell to plant and no sapling carried: out of saplings, for its runner to draw some; one carried, not. */
+    @Test
+    void outOfSaplingsWithACellToPlantTillOneIsCarried() {
+        TreeFarm farm = new TreeFarm(CENTRE, List.of(CENTRE));
+        Forester forester = new Forester("Alice", session, inventory, new HashSet<>());
+        assertTrue(!forester.outOfSaplings(), "not before it's looked");
+        forester.tick(new Position(0.5, GROUND, 0.5), grass, Optional.of(farm), true);
+        assertTrue(forester.outOfSaplings(), "a cell to plant, nothing to plant it with");
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item("birch_sapling"), 4});
+        assertTrue(!forester.outOfSaplings(), "a birch carried");
+    }
+
+    /** Out of saplings, it looks for leaves only once its runner has no draw for it: not while one is to come. */
+    @Test
+    void outOfSaplingsItWaitsForTheDrawAndGoesToLeavesWithNone() {
+        TreeFarm farm = new TreeFarm(CENTRE, List.of(CENTRE));
+        Forester forester = new Forester("Alice", session, inventory, new HashSet<>());
+        Position soldier = new Position(0.5, GROUND, 0.5);
+        forester.tick(soldier, grass, Optional.of(farm), true);
+        assertTrue(forester.failure().isEmpty(), "said out of saplings, nothing else yet: " + forester.failure());
+        forester.drawing(true);
+        for (int tick = 0; tick < 400; tick++) {
+            forester.tick(soldier, grass, Optional.of(farm), true);
+        }
+        assertTrue(forester.failure().isEmpty(), "a draw to come: no leaves looked for: " + forester.failure());
+        forester.drawing(false);
+        for (int tick = 0; tick < 400 && forester.failure().isEmpty(); tick++) {
+            forester.tick(soldier, grass, Optional.of(farm), true);
+        }
+        assertTrue(forester.failure().filter(f -> f.contains("no leaves")).isPresent(), "none to draw: leaves looked for - " + forester.failure());
+    }
+
     /**
      * A cell one forester couldn't stand in is passed over by the next: live (field618), (38, 66, 82) was walked at 22
      * times by Fran, Bob and the rest in turn.

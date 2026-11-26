@@ -447,17 +447,27 @@ public final class Depositor {
                 List.of(new Guard("the trip is no longer wanted", () -> wanted || !walking)));
     }
 
-    /** Shift-clicks stacks of what it draws out of the chest until they'd make up what it wants to carry. */
+    /** Shift-clicks stacks of what it draws out of the chest until they'd make up what it wants to carry - the best kind first ({@link #takeOrder}). */
     private void take() {
         ItemClass material = drawing.orElseThrow();
         int coming = inventory.count(material);
-        List<Integer> items = chest.chestItems();
-        for (int slot = 0; slot < items.size() && coming < drawTo; slot++) {
-            if (ItemClassRegistry.classOf(items.get(slot)).equals(Optional.of(material))) {
-                chest.quickMove(slot);
-                coming += chest.countAt(slot);
+        for (int slot : takeOrder(chest.chestItems(), material)) {
+            if (coming >= drawTo) {
+                break;
             }
+            chest.quickMove(slot);
+            coming += chest.countAt(slot);
         }
+    }
+
+    /**
+     * The chest's slots holding {@code material}, in the order they're taken: in the chest's order, but saplings birch
+     * first (Forester#saplingRank; operator, 2026-11-25: a tree farm plants the trees that grow straight and short).
+     */
+    static List<Integer> takeOrder(List<Integer> items, ItemClass material) {
+        return java.util.stream.IntStream.range(0, items.size()).boxed()
+                .filter(slot -> ItemClassRegistry.classOf(items.get(slot)).equals(Optional.of(material)))
+                .sorted(java.util.Comparator.comparingInt(slot -> material == ItemClass.SAPLING ? Forester.saplingRank(items.get(slot)) : 0)).toList();
     }
 
     private Script trip() {
