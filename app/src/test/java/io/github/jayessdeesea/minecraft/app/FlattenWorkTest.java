@@ -115,6 +115,36 @@ class FlattenWorkTest {
         assertEquals(16, FlattenWork.pitAt(ground, 0, 0).sideHalf(), "z half of a 32 deep");
     }
 
+    @Test
+    void noEstimateIsWorkedOutBeforeAnySquadHasMeasuredItsDig() {
+        FlattenWork work = new FlattenWork();
+        double committed = work.estimate(1_000, () -> {
+            throw new AssertionError("slab read");
+        }, 1, 0, () -> {
+            throw new AssertionError("stone read");
+        }, () -> {
+            throw new AssertionError("pickaxe read");
+        }, () -> {
+            throw new AssertionError("iron read");
+        });
+        assertEquals(0, committed);
+        assertNull(work.estimate);
+        assertNull(work.feasible);
+    }
+
+    @Test
+    void theEstimateIsKeptWithItsFeasibilityAndTheLogsItDrawsADayAreReturned() {
+        FlattenWork work = new FlattenWork();
+        work.digLeftBySquad.put("Alpha", 40);
+        work.fillLeftBySquad.put("Alpha", -1);
+        work.crews.put("Alpha", List.of(builder("A")));
+        double committed = work.estimate(1_000, () -> 100, 2.0, 5, () -> 10, () -> false, () -> 0);
+        io.github.jayessdeesea.minecraft.command.MissionEstimate kept = work.estimate;
+        assertEquals(kept, io.github.jayessdeesea.minecraft.command.MissionEstimate.keep(40, 100, work.workBurn.perDay(), 1, 2.0, 5, 10, 0, false, 0));
+        assertEquals(kept.feasible(), work.feasible);
+        assertEquals(Double.isInfinite(kept.days()) || kept.days() <= 0 ? 0 : kept.logs() / kept.days(), committed);
+    }
+
     private static io.github.jayessdeesea.minecraft.command.SoldierStatus status(String name, double x, double z) {
         return new io.github.jayessdeesea.minecraft.command.SoldierStatus(name, new Position(x, 64, z), new io.github.jayessdeesea.minecraft.command.Order.Idle(),
                 new io.github.jayessdeesea.minecraft.command.Report.InPosition(), java.util.Optional.empty());

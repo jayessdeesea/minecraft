@@ -549,23 +549,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Class IV's reorder point - and the logs it draws a day are Class IV's committed burn.
         Supply logsWas = logsSupply;
         double logsReorder = logsWas == null ? 0 : logsWas.reorderPoint();
-        double committedLogs = 0;
-        if (!flattenWorks.first().digLeftBySquad.isEmpty()) {
-            int digLeft = flattenWorks.first().digLeft();
-            int fillLeft = flattenWorks.first().fillKnown() ? flattenWorks.first().fillLeft() : (int) chainOfCommand.flatten().slab().volume();
-            flattenWorks.first().workBurn.stock(digLeft + fillLeft, now);
-            int crew = flattenWorks.first().crewSize();
-            int stone = kits.stream().mapToInt(Kit::stone).sum() + pile.map(Stockpile::stone).orElse(0);
-            int iron = soldierIron.values().stream().mapToInt(Integer::intValue).sum() + pile.map(Stockpile::rawIron).orElse(0);
-            MissionEstimate keep = MissionEstimate.keep(digLeft, fillLeft, flattenWorks.first().workBurn.perDay(), Math.max(1, crew),
-                    rationsBurn.perDay() / Math.max(1, kits.size()), (int) Math.floor(logs - logsReorder), stone, flattenWorks.first().oreAside(), ironPickaxe(), iron);
-            flattenWorks.first().estimate = keep;
-            if (flattenWorks.first().feasible == null || flattenWorks.first().feasible != keep.feasible()) {
-                flattenWorks.first().feasible = keep.feasible();
-                LOG.info("[Estimate] {}", keep.line());
-            }
-            committedLogs = Double.isInfinite(keep.days()) || keep.days() <= 0 ? 0 : keep.logs() / keep.days();
-        }
+        double committedLogs = flattenWorks.first().estimate(now, () -> (int) chainOfCommand.flatten().slab().volume(),
+                rationsBurn.perDay() / Math.max(1, kits.size()), (int) Math.floor(logs - logsReorder),
+                () -> kits.stream().mapToInt(Kit::stone).sum() + pile.map(Stockpile::stone).orElse(0),
+                this::ironPickaxe, () -> soldierIron.values().stream().mapToInt(Integer::intValue).sum() + pile.map(Stockpile::rawIron).orElse(0));
         Supply logsNow = new Supply("Class IV (logs)", logs, logsBurn.perDay(), committedLogs, LOGS_LEAD_DAYS);
         Supply rationsNow = new Supply("Class I (rations)", rations, rationsBurn.perDay(), 0, RATIONS_LEAD_DAYS);
         logsSupply = logsNow;

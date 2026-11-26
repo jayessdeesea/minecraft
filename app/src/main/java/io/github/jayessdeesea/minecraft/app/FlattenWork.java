@@ -178,6 +178,34 @@ final class FlattenWork {
         return fillLeftBySquad.values().stream().mapToInt(Integer::intValue).filter(n -> n >= 0).sum();
     }
 
+    /**
+     * This ground's estimate (command.MissionEstimate) worked out and kept: its work stocked into {@link #workBurn} at {@code now},
+     * its rations at the force's burn a soldier, its logs against the stock above Class IV's reorder point; logged when its
+     * feasibility changes. {@code slabVolume} is the fill to count while no squad has got to it; {@code stone}, {@code iron}
+     * and {@code ironPickaxe} are read only when there is work. Returns the logs it draws a day, Class IV's committed
+     * burn - 0 with no dig measured, an endless or spent estimate.
+     */
+    double estimate(long now, java.util.function.IntSupplier slabVolume, double rationsPerSoldierDay, int logsAboveReorder,
+            java.util.function.IntSupplier stone, java.util.function.BooleanSupplier ironPickaxe, java.util.function.IntSupplier iron) {
+        if (digLeftBySquad.isEmpty()) {
+            return 0;
+        }
+        int digLeft = digLeft();
+        int fillLeft = fillKnown() ? fillLeft() : slabVolume.getAsInt();
+        workBurn.stock(digLeft + fillLeft, now);
+        int crew = crewSize();
+        int stoneHeld = stone.getAsInt();
+        int ironHeld = iron.getAsInt();
+        MissionEstimate keep = MissionEstimate.keep(digLeft, fillLeft, workBurn.perDay(), Math.max(1, crew), rationsPerSoldierDay,
+                logsAboveReorder, stoneHeld, oreAside(), ironPickaxe.getAsBoolean(), ironHeld);
+        estimate = keep;
+        if (feasible == null || feasible != keep.feasible()) {
+            feasible = keep.feasible();
+            LOG.info("[Estimate] {}", keep.line());
+        }
+        return Double.isInfinite(keep.days()) || keep.days() <= 0 ? 0 : keep.logs() / keep.days();
+    }
+
     /** The builders on hand, every squad's. */
     int crewSize() {
         return crews.values().stream().mapToInt(List::size).sum();
