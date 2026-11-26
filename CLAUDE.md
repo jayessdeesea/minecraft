@@ -14,6 +14,8 @@ rules. What is wired for Claude Code alone lives under `.claude/` and is listed 
 | `equivalence-reviewer` | `.claude/agents/` | Read-only: looks for the input that breaks what a diff claims - no change of behaviour, or the rule it states. |
 | `garrison-checker` | `.claude/agents/` | Read-only: one read of the running garrison, a page back. |
 | `rule-designer` | `.claude/agents/` | Read-only: the rule to set for a behaviour with none, its rows and its one home. |
+| `designer` | `.claude/agents/` | Read-only: a change's design before any code - its types, state, pure decisions, commits, the operator's decisions. |
+| `behaviour-implementer` | `.claude/agents/` | Writes one change of behaviour from a design, rows first, in its own worktree; never commits. |
 | Agent ledger | `C:/mc-state/garrison/agent-ledger.md` | A line a run: what each agent cost and whether it held. |
 | `adversary-tester` | `.claude/agents/` | Tests only, in its own worktree: hunts the input whose answer breaks a written rule, pinned as a row with today's answer. |
 | Denied edits | `.claude/settings.json` | The operator's `garrison.args`. |
@@ -33,7 +35,20 @@ rules. What is wired for Claude Code alone lives under `.claude/` and is listed 
 - `adversary-tester` is given a target and where its rule is written; what it finds with no rule to judge by is a
   question for the operator, not a test.
 - No agent commits, pushes, deploys, or sends the garrison an order.
+- Design before build (operator, 2026-11-26, from the ledger: building first cost ~1.7M tokens in held work in a day): a
+  change of behaviour that touches shared state - the register, which ground or chunk a squad works, counts, a
+  scheduler, what an echelon owns - is `designer`'s first, the operator's decisions taken, then `behaviour-implementer`'s.
+- Two review rounds at most: a second pass checks only what the first raised; if it still finds faults, the change goes
+  back to `designer`, not round three.
+- The reviewer's model by the kind of change: a pure refactor on Opus, its moves undone mechanically and diffed token by
+  token; a change of behaviour or a design on the top model.
+- A canary is read ten minutes after a deploy or later, the window named in the brief.
+- The ledger's tokens are per run (a resumed agent's round, not its running total), and the orchestrating session's own
+  use is a line at the handoff.
+- The orchestrating session reads agents' summaries, never their diffs or logs whole; a task of its own goes to a session
+  of its own with a written brief, and the orchestrator keeps the verify slot (one `commit.sh` at a time).
 - Models (operator, 2026-11-25): the session that orchestrates runs on Opus; `refactor-implementer`, `adversary-tester`
-  and a symptom's first `field-tracer` on Sonnet; `equivalence-reviewer` on the top model, and so a second trace of a
-  symptom the first didn't explain, or the design of a new rule, as an agent with a written brief (`model: fable`).
+  and a symptom's first `field-tracer` on Sonnet; `behaviour-implementer` on Opus; `equivalence-reviewer` on the top
+  model for a change of behaviour (on Opus for a refactor, above), and so a second trace of a symptom the first didn't
+  explain, `designer`, or the design of a new rule, as an agent with a written brief (`model: fable`).
   One task a session, started from the handoff.

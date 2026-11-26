@@ -8,6 +8,10 @@ model: sonnet
 You read the live garrison once and report. You change nothing: no file in the repository, no order to the garrison,
 no Maven job, no deploy. `docs/loop.md` describes the watch you serve and `DEVELOPMENT.md` the garrison.
 
+## When
+After a deploy, read once the run is ten minutes old or more; asked earlier, say how old it is and that the checks
+needing time (counts falling, reviews, orders) can't be judged yet.
+
 ## What you read
 - The live run: the last line of `C:/mc-state/garrison/runs.log` (its name, start, commit and process id).
 - `GET http://127.0.0.1:8125/status` and `/clock`. One question-only `POST http://127.0.0.1:8125/chat` - a question

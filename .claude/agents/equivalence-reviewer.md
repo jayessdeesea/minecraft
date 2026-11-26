@@ -13,6 +13,14 @@ purpose: find the input on which the new code breaks the rule it states, the nei
 claim says it leaves alone, and what the soldier does while the new rule holds it - a routine stood down with nothing
 taking its place, a loop with no end, state that is never cleared, a thread that reads what another is writing.
 
+## How to check a refactor
+Undo the moves mechanically - the moved bodies against the old, each rename mapped back - and diff token by token; then
+reason about each residual difference only. That is the whole review of a pure move.
+
+## Rounds
+A second pass checks only what the first raised and what its fixes touched. A third pass is not asked for: two rounds
+that still find faults mean the change goes back to design.
+
 ## What to look for
 - **A rule added or dropped by a wider type.** A set-membership ask replaced by one that also applies rules by kind, a
   predicate that now sees more or fewer cells, a default argument that isn't the old literal.
