@@ -8,20 +8,16 @@ import io.github.jayessdeesea.minecraft.bot.farm.FarmSite;
 import io.github.jayessdeesea.minecraft.bot.farm.StoresChunk;
 import io.github.jayessdeesea.minecraft.bot.farm.TreeChunk;
 import io.github.jayessdeesea.minecraft.bot.supply.Fixtures;
-import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
-import io.github.jayessdeesea.minecraft.bot.supply.Clearer;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Box;
 import io.github.jayessdeesea.minecraft.command.ChunkRecord;
 import io.github.jayessdeesea.minecraft.command.FarmMission;
 import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.FlattenPlan;
-import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.ReviewOrders;
-import io.github.jayessdeesea.minecraft.command.Slopes;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
 import io.github.jayessdeesea.minecraft.command.Tasking;
@@ -63,6 +59,8 @@ final class FarmMissions {
     private boolean loaded;
     /** The chunks the force has made a template of, as last measured: a flatten slopes off none of them, nor digs into any. */
     private volatile Set<Long> made = Set.of();
+    /** The flattens' measure, and the slope patience of each. */
+    private final FlattenMeasures flattens = new FlattenMeasures();
     /** What was last said of each mission's step under way, so each change is said once. */
     private final Map<FarmMission, String> said = new java.util.HashMap<>();
 
@@ -369,7 +367,7 @@ final class FarmMissions {
 
     /** The ground one mission's flatten works: its chunk, down to the step's level. */
     private static Flatten ground(Map.Entry<FarmMission, FarmMission.Step> c) {
-        return new Flatten(c.getKey().minX(), c.getKey().minZ(), c.getKey().minX() + 15, c.getKey().minZ() + 15, c.getValue().level());
+        return FlattenMeasures.ground(c.getKey(), c.getValue());
     }
 
     /** The first ground to flatten while a mission's flatten is under way. */
@@ -389,8 +387,7 @@ final class FarmMissions {
      */
     Optional<List<FlattenPlan.Column>> reach(Flatten ground, FarmPlan campFarm) {
         return flattenings().stream().filter(c -> ground(c).equals(ground)).findFirst()
-                .map(c -> FlattenPlan.reach(c.getKey().chunkX(), c.getKey().chunkZ(), c.getValue().level(), slopes(c.getKey(), campFarm),
-                        kept(c.getKey(), campFarm)));
+                .map(c -> FlattenMeasures.reach(c.getKey(), c.getValue(), made(campFarm), openChunks(c.getKey())));
     }
 
     /**
@@ -400,7 +397,7 @@ final class FarmMissions {
      */
     List<BlockPos> floorCells(Box layer, FarmPlan campFarm) {
         Optional<FarmMission> mission = on(layer);
-        BiPredicate<Integer, Integer> kept = mission.map(m -> kept(m, campFarm)).orElse((x, z) -> false);
+        BiPredicate<Integer, Integer> kept = mission.map(m -> KeptGround.columns(made(campFarm), m)).orElse((x, z) -> false);
         Set<BlockPos> soil = mission.filter(m -> m.crop() == FarmMission.Crop.TREES && m.level() == layer.minY())
                 .map(m -> Set.copyOf(new TreeChunk(m.chunkX(), m.chunkZ(), m.level()).soil())).orElse(Set.of());
         List<BlockPos> cells = new ArrayList<>();
@@ -663,39 +660,7 @@ final class FarmMissions {
             farms.giveUp(m.chunkX(), m.chunkZ());
         }
         Optional<String> done = switch (step.kind()) {
-            case FLATTEN -> {
-                Optional<FlattenPlan> plan = plan(world, m, step, campFarm);
-                // Said a chunk's row of columns at a time, not each block: the count moves with every cut.
-                say(m, step, plan.map(p -> (p.dig().isEmpty() ? "no" : "up to " + (p.dig().size() + 15) / 16 * 16) + " column(s) to cut"
-                        + (p.steps().isEmpty() ? "" : ", " + String.join("; ", p.steps()))
-                        // The last of them named: live (field697), "up to 16 column(s)" stood four hours and said nothing of which.
-                        + (p.dig().isEmpty() || p.dig().size() > 16 ? "" : " - at " + p.dig().stream().limit(8).map(c -> c.x() + "," + c.z()).toList())).orElse("not all of it in sight"));
-                // A block of no known break time over the level is in the way though the plan's ground measure can't see it: not
-                // done while it stands, and said (FlattenTopsSimulationTest: a chest in the chunk, the flatten measured done round it).
-                Box over = new Box(m.minX(), step.level() + 1, m.minZ(), m.minX() + 15, Keep.SKY_TOP, m.minZ() + 15);
-                List<BlockPos> unknown = Clearing.unknownIn(world, over, Set.of());
-                List<BlockPos> water = Clearing.waterIn(world, over, Set.of()); // the plan's ground measure sees no water: it's filled and dug first
-                unknown.stream().findFirst().ifPresent(c -> say(m, step, Clearer.unknownSaid(world, c)));
-                // The chunk itself cut and only columns out on its slopes left, their count unchanged for SLOPE_PATIENCE: the
-                // step is done with them left and said - the chunk is what the template wants; the slope is how it's walked onto.
-                // Live (field697-698), a tree farm's chunk lay flat for five hours while nine columns ten blocks out, eleven
-                // up a hill, were handed from one soldier to another every two minutes, neither reaching them.
-                Optional<String> slopesLeft = plan.filter(p -> !p.cut() && unknown.isEmpty() && water.isEmpty() && chunkCut(m, p)).flatMap(p -> {
-                    long[] seen = slopeLeft.computeIfAbsent(m, k -> new long[]{p.dig().size(), now});
-                    if (seen[0] != p.dig().size()) {
-                        seen[0] = p.dig().size();
-                        seen[1] = now;
-                    }
-                    return now - seen[1] < SLOPE_PATIENCE_MILLIS ? Optional.<String>empty() : Optional.of("nothing over y=" + step.level() + " in the chunk; "
-                            + p.dig().size() + " column(s) out on its slopes left as they are, none cut in " + SLOPE_PATIENCE_MILLIS / 60_000 + " min - out of reach: "
-                            + p.dig().stream().limit(8).map(c -> c.x() + "," + c.z() + " at y=" + c.from()).toList());
-                });
-                if (plan.filter(p -> chunkCut(m, p) && !p.cut()).isEmpty()) {
-                    slopeLeft.remove(m);
-                }
-                yield plan.filter(FlattenPlan::cut).filter(p -> unknown.isEmpty() && water.isEmpty()).map(p -> "nothing over y=" + step.level() + " in the chunk or its " + slopes(m, campFarm).said()
-                        + (p.fill().isEmpty() ? "" : ", " + p.fill().size() + " column(s) under it - the floor's inside, the ground's outside")).or(() -> slopesLeft);
-            }
+            case FLATTEN -> flattens.measure(world, m, step, made(campFarm), openChunks(m), now, said -> say(m, step, said));
             case FLOOR -> {
                 List<BlockPos> cells = floorCells(m.layer(step.level()), campFarm);
                 if (cells.stream().anyMatch(c -> !world.isLoaded(c.x(), c.z()))) {
@@ -796,11 +761,11 @@ final class FarmMissions {
             if (behind.kind() != FarmMission.Kind.FLATTEN) {
                 continue;
             }
-            Optional<FlattenPlan> plan = plan(world, m, behind, campFarm);
+            Optional<FlattenPlan> plan = flattens.plan(world, m, behind, made(campFarm), openChunks(m));
             if (plan.isEmpty()) {
                 return; // not in sight yet: looked at again next measure
             }
-            if (!chunkCut(m, plan.get())) { // its chunk's own columns: the slopes' may have been left as out of reach
+            if (!FlattenMeasures.chunkCut(m, plan.get())) { // its chunk's own columns: the slopes' may have been left as out of reach
                 missions.put(m, k);
                 book.ifPresent(b -> b.reopen(m, behind, "measured again: not cut", now));
                 LOG.warn("[Mission] {}: {} measured again - not cut; worked again", m.name(), behind.task());
@@ -810,58 +775,9 @@ final class FarmMissions {
         rechecked = true;
     }
 
-    /** How long a flatten's slope columns stand uncut, the chunk itself cut, before the step is done with them left. */
-    static final long SLOPE_PATIENCE_MILLIS = 15 * 60_000;
-    /** Each flattening mission's slope columns left, and since when that count has stood: {count, since}. */
-    private final Map<FarmMission, long[]> slopeLeft = new java.util.HashMap<>();
-
-    /** Whether {@code plan} has nothing left to cut in {@code m}'s own chunk: what's left, if anything, is out on its slopes. */
-    private static boolean chunkCut(FarmMission m, FlattenPlan plan) {
-        return plan.dig().stream().noneMatch(c -> c.x() >= m.minX() && c.x() <= m.minX() + 15 && c.z() >= m.minZ() && c.z() <= m.minZ() + 15);
-    }
-
-    /** The flatten's plan for {@code m} as {@code world} stands, if every column it works is in sight. */
-    private Optional<FlattenPlan> plan(WorldView world, FarmMission m, FarmMission.Step step, FarmPlan campFarm) {
-        Slopes slopes = slopes(m, campFarm);
-        BiPredicate<Integer, Integer> kept = kept(m, campFarm);
-        if (FlattenPlan.reach(m.chunkX(), m.chunkZ(), step.level(), slopes, kept).stream().anyMatch(c -> !world.isLoaded(c.x(), c.z()))) {
-            return Optional.empty();
-        }
-        return Optional.of(FlattenPlan.of(m.chunkX(), m.chunkZ(), step.level(), slopes, (x, z) -> top(world, x, z), kept));
-    }
-
-    /** The highest solid block's y at ({@code x}, {@code z}): down from the top of the world, an open section at a time. */
-    static int top(WorldView world, int x, int z) {
-        for (int y = Keep.SKY_TOP; y > -64; y--) {
-            int bottom = Math.floorDiv(y, 16) * 16;
-            if (y > bottom && world.openSection(x, y, z)) {
-                y = bottom + 1;
-                continue;
-            }
-            if (world.isSolid(x, y, z)) {
-                return y;
-            }
-        }
-        return Integer.MIN_VALUE;
-    }
-
-    /**
-     * The slopes of {@code m}'s flatten: each side sloped unless the chunk past it is a template's - or another open
-     * mission's, to be cut to its own level: a slope into it is that ground cut twice.
-     */
-    private Slopes slopes(FarmMission m, FarmPlan campFarm) {
-        Set<Long> open = openChunks(m);
-        return Slopes.around(m.chunkX(), m.chunkZ(), (cx, cz) -> made(campFarm).contains(ChunkFarm.key(cx, cz)) || open.contains(ChunkFarm.key(cx, cz)));
-    }
-
     /** The chunks of the open missions other than {@code m}. */
     private synchronized Set<Long> openChunks(FarmMission m) {
         return missions.keySet().stream().filter(o -> !o.equals(m)).map(o -> ChunkFarm.key(o.chunkX(), o.chunkZ())).collect(Collectors.toSet());
-    }
-
-    /** The columns {@code m} keeps off: every template's as last measured but its own chunk's ({@link KeptGround#columns}). */
-    private BiPredicate<Integer, Integer> kept(FarmMission m, FarmPlan campFarm) {
-        return KeptGround.columns(made(campFarm), m);
     }
 
     /** Whether block column ({@code x}, {@code z}) is on a template's ground: a chunk made one, or a mission's whose template is being laid. */

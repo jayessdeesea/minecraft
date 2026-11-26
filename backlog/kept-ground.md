@@ -18,7 +18,7 @@ farm's gate was safe from the haul road only because no stand was found for it: 
 | `KeptGround.ground` (`SoldierRunner.groundExcept` gathers its arguments) | `camp`, the camp's mine, the squads' stairs | dig, fill | cell |
 | `KeptGround.keep`, the keep's `digExcept` | the slab's rock or soil, the pillar under a chest not yet emptied; ore set aside, added by `SoldierRunner.keepwork` | dig | cell |
 | `WorldModel.keepOpen` / `noBuild` | the staircases' cuts | build in | cell |
-| `KeptGround.columns` (`FarmMissions.kept` hands it the templates); `FarmMissions.slopes`, `floorCells` | other templates' chunks and fence lines; a tree farm's soil | dig, pave, slope | column |
+| `KeptGround.columns` (`FlattenMeasures.plan` and `FarmMissions.floorCells` hand it the templates); `FlattenMeasures.slopes`, `FarmMissions.floorCells` | other templates' chunks and fence lines; a tree farm's soil | dig, pave, slope | column |
 | `AccessRoute.stepCost` | hazard, workstation, chest; the caller's keep-out | road cut, pass | kind, predicate |
 | `Clearing.diggable`, `safeFrom` | live farmland, what holds water back | dig | kind |
 | `Clearer`'s stand | a cell with a block in it | stand | cell |
@@ -27,7 +27,7 @@ farm's gate was safe from the haul road only because no stand was found for it: 
 
 They disagree on: a **gate** (diggable by kind; never built in; listed by the haul road as rock to cut, with the cell
 over it, which is no block); a gate's cell **as a stand** (`Clearing.standFor` takes it; only `Clearer` refuses it);
-the **haul road** (sees none of `groundExcept` or `FarmMissions.kept`); **templates** (kept by column from flatten
+the **haul road** (sees none of `groundExcept` or `KeptGround.columns`); **templates** (kept by column from flatten
 missions only - the keep's dig, a tunnel and an `Order.Dig` never ask); `noBuild` (bars building, not digging or
 standing); a **chest or workstation** (diggable by kind, uncuttable by the road, safe from a dig only if listed).
 

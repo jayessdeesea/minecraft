@@ -185,7 +185,7 @@ routine whose try fails does something different with the next, from a ladder it
 4. **Ask for help** - CANTCO up the chain with the reason and the count (`Setbacks.stuck`), for its leader to give
    the work to someone else, or change it.
 5. **Give it up, and say so** - work nobody reaches is left and named, not handed round: a flatten's slope columns
-   out of reach (`FarmMissions`, `SLOPE_PATIENCE_MILLIS`).
+   out of reach (`FlattenMeasures.SLOPE_PATIENCE_MILLIS`).
 And the count is said: four failures running at one target is a `[Retry]` line, again at each doubling; four trips
 running that moved nothing an `[Outcome] loop`. Whoever watches the garrison digs into each
 ([loop.md](loop.md)). Live, on one day: a soldier dug a block and walked 38 blocks to a chest with it, 33 times; ten

@@ -30,7 +30,7 @@ first three passes, in that order:
 2. **The keep's work by ground**, out of the runner with its state (backlog/named-work.md, the flatten): the level
    plan, its shares, its foreman and pace - a class a squad leader's process will own.
 3. **A mission's measures**, out of `FarmMissions` (its drift check is out: `app.TemplateDrift`, 2026-11-24; the wheat farm's, tree farm's, pasture's and supply point's
-   measures, one function a kind: `app.TemplateMeasures`, 2026-11-26 - the flatten's, the floor's, the mine head's and
+   measures, one function a kind: `app.TemplateMeasures`, 2026-11-26; the flatten's: `app.FlattenMeasures`, 2026-11-26 - the floor's, the mine head's and
    placeholder's, and the mine's are left): what each step counts as left, one function a kind, shared by the
    count that's said and the orders that are given - they've disagreed three times (the flatten's columns, the wheat
    farm's posts, the tree farm's paving).

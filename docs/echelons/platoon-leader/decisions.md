@@ -201,7 +201,7 @@ chunk 640 columns uncut).
 1. **Flatten** the chunk to a block below the farm's level: the `KEEP` task, the ground to flatten the mission's
    chunk while the step's under way (`ChainOfCommand.flatten`), and the dig the columns of `FlattenPlan.reach` - the
    chunk, and a slope a block a block out on each side whose `command.Slopes` flag is on, off beside a chunk the
-   force has made a template of or that has an open mission of its own (`Slopes.around`, `FarmMissions.slopes`), never into a template's ground, its shared fence line included.
+   force has made a template of or that has an open mission of its own (`Slopes.around`, `FlattenMeasures.slopes`), never into a template's ground, its shared fence line included.
    Done when nothing stands over the level in the chunk or its slopes (`FlattenPlan.cut`, over the world's tops).
 2. **Floor** that layer in cobblestone, every cell, natural stone included (`FLOOR`, [military-doctrine.md
    § 17](../../military-doctrine.md#17-the-lodgment)). Done when every cell of it is cobblestone.
@@ -222,7 +222,7 @@ chest on ground a flatten works is emptied into the depot first, then dug (the f
 minutes is said once as an outcome missed - "[Outcome] a farm at chunk (1, 3) at y=63 has made no progress in 20 min -
 SHORT", with what it waits on - and the platoon leader woken (`FarmMissions.alarmStalled`). And **a flatten isn't held
 by slope nobody reaches**: its chunk cut and only columns out on its slopes left, their count unchanged a quarter of an
-hour, the step is done with them left and named (`SLOPE_PATIENCE_MILLIS`) - the chunk is what the template wants.
+hour, the step is done with them left and named (`FlattenMeasures.SLOPE_PATIENCE_MILLIS`) - the chunk is what the template wants.
 **A mission kept in an older shape is given the steps it has now**: a tree farm the register holds as a flatten and a
 template, a supply point as three steps - open, or built - has its rows made the steps it has now, PLANNED, and is worked again from its flatten; what
 is done already measures done at once (`FarmMissions.reshape`, `Registers.retask`).

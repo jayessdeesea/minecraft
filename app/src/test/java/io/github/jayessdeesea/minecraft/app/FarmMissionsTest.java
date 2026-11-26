@@ -434,11 +434,11 @@ class FarmMissionsTest {
         };
 
         missions.measure(world, null, null, null, 1_000);
-        missions.measure(world, null, null, null, 1_000 + FarmMissions.SLOPE_PATIENCE_MILLIS - 1);
+        missions.measure(world, null, null, null, 1_000 + FlattenMeasures.SLOPE_PATIENCE_MILLIS - 1);
         assertEquals(List.of(FarmMission.Kind.FLATTEN), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "its slope's column still wanted");
         assertEquals(java.util.Set.of(), missions.stalled(), "not yet said as stalled");
 
-        missions.measure(world, null, null, null, 1_000 + FarmMissions.SLOPE_PATIENCE_MILLIS);
+        missions.measure(world, null, null, null, 1_000 + FlattenMeasures.SLOPE_PATIENCE_MILLIS);
         assertEquals(List.of(FarmMission.Kind.FLOOR), missions.worked().stream().map(e -> e.getValue().kind()).toList(), "left, and its slab begun");
         ObjectiveRecord flatten = registers.objectives().stream().filter(r -> r.step() == 0).findFirst().orElseThrow();
         assertEquals(ObjectiveRecord.State.DONE, flatten.state());
