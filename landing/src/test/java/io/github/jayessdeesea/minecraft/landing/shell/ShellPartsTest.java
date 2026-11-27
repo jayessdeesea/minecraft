@@ -186,9 +186,11 @@ class ShellPartsTest {
         Properties none = new Properties();
         none.setProperty("repo", "C:/github/jayessdeesea/minecraft");
         none.setProperty("jar.landing-change", String.format("%040x", 7));
-        Config defaults = Config.of(none);
-        assertEquals(Path.of("C:/mc-state/landing/journal.jsonl"), defaults.journal());
-        assertEquals(Path.of("C:/mc-state/landing/integrator.lock"), defaults.lock());
+        Config defaults = Config.of(none, Path.of("D:/home"));
+        // beside the config read: home is one place
+        assertEquals(Path.of("D:/home/journal.jsonl"), defaults.journal());
+        assertEquals(Path.of("D:/home/integrator.lock"), defaults.lock());
+        assertEquals(Path.of("D:/home/verify.log"), defaults.verifyLog());
         assertEquals(Path.of("C:/mc-worktrees/landing"), defaults.worktree());
         assertEquals(List.of("schtasks", "/run", "/tn", "mc-landing"), defaults.poke());
         assertEquals(List.of("sh", "tools/ops/verify.sh"), defaults.verify());
@@ -199,12 +201,12 @@ class ShellPartsTest {
         some.setProperty("journal", "D:/j.jsonl");
         some.setProperty("verify", "sh  -c   true");
         some.setProperty("verify.timeout.minutes", "2");
-        Config set = Config.of(some);
+        Config set = Config.of(some, Path.of("D:/home"));
         assertEquals(Path.of("D:/j.jsonl"), set.journal());
         assertEquals(List.of("sh", "-c", "true"), set.verify());
         assertEquals(Duration.ofMinutes(2), set.verifyTimeout());
         assertEquals(Optional.empty(), set.jarLandingChange());
-        assertThrows(IllegalArgumentException.class, () -> Config.of(new Properties()), "the repo is required");
+        assertThrows(IllegalArgumentException.class, () -> Config.of(new Properties(), Path.of("D:/home")), "the repo is required");
     }
 
     @Test
@@ -233,6 +235,157 @@ class ShellPartsTest {
         assertEquals(1, ended.size(), "ended through Children");
         assertFalse(ended.getFirst().isAlive());
         assertTrue(said.toString(StandardCharsets.UTF_8).contains("the poke failed"), said.toString(StandardCharsets.UTF_8));
+    }
+
+    private static int launch(String[] args, Map<String, String> env, Optional<Path> jar, java.io.PrintStream out, Path cwd) {
+        return Landing.launch(args, env, cwd, out, jar, ProcessTree::new);
+    }
+
+    /**
+     * landing install: the built jar copied to its installed place under the integrator's lock, the commit it was
+     * built from, the last landing/ change there and the directories of git, sh and mvn (tool.path) recorded in the
+     * config; held, 4 and nothing touched; bad, usage.
+     */
+    @Test
+    void installCopiesTheJarUnderTheLockAndRecordsItsCommits() throws IOException {
+        Path config = dir.resolve("state/config");
+        Files.createDirectories(config.getParent());
+        Files.writeString(config, "repo=" + ScratchRepo.slash(dir) + "\nlock=" + ScratchRepo.slash(dir.resolve("state/lock"))
+                + "\njournal=" + ScratchRepo.slash(dir.resolve("state/j.jsonl")) + "\n");
+        Path built = dir.resolve("built.jar");
+        Files.writeString(built, "a jar");
+        Path installed = dir.resolve("state/landing.jar");
+        String from = String.format("%040x", 7);
+        String change = String.format("%040x", 5);
+        var said = new java.io.ByteArrayOutputStream();
+        var out = new java.io.PrintStream(said, true, StandardCharsets.UTF_8);
+        Map<String, String> env = Map.of("LANDING_CONFIG", config.toString());
+        String[] install = {"install", built.toString(), installed.toString(), from, change, "C:\\git\\bin", "C:\\git\\usr\\bin",
+                "C:\\maven\\bin"};
+        try (IntegratorLock.Held held = new IntegratorLock(dir.resolve("state/lock")).tryAcquire().orElseThrow()) {
+            assertEquals(4, launch(install, env, Optional.empty(), out, dir), said.toString(StandardCharsets.UTF_8));
+        }
+        assertFalse(Files.exists(installed), "held: nothing touched");
+        assertEquals(0, launch(install, env, Optional.empty(), out, dir), said.toString(StandardCharsets.UTF_8));
+        assertEquals("a jar", Files.readString(installed));
+        Config read = Config.load(config);
+        assertEquals(Optional.of(Sha.parse(change)), read.jarLandingChange());
+        assertEquals(List.of(Path.of("C:\\git\\bin"), Path.of("C:\\git\\usr\\bin"), Path.of("C:\\maven\\bin")), read.toolPath());
+        Properties kept = new Properties();
+        try (var in = Files.newBufferedReader(config)) {
+            kept.load(in);
+        }
+        assertEquals(from, kept.getProperty("jar.built-from"));
+        assertEquals(ScratchRepo.slash(dir), kept.getProperty("repo"), "the rest of the config kept");
+        assertEquals(2, launch(new String[]{"install", built.toString(), installed.toString(), "abc", change, "a", "b", "c"}, env,
+                Optional.empty(), out, dir));
+        assertEquals(2, launch(new String[]{"install", built.toString(), installed.toString(), from, change}, env,
+                Optional.empty(), out, dir));
+    }
+
+    /** R10: the config is LANDING_CONFIG's; else beside the jar this process runs from; else none, and that is 6. */
+    @Test
+    void theConfigIsTheEnvironmentsElseBesideTheJar() {
+        assertEquals(Path.of("D:/elsewhere/config"), Config.file(Optional.of("D:/elsewhere/config"), Optional.of(Path.of("X/landing.jar"))));
+        assertEquals(Path.of("X/config"), Config.file(Optional.empty(), Optional.of(Path.of("X/landing.jar"))));
+        IllegalStateException none = assertThrows(IllegalStateException.class, () -> Config.file(Optional.empty(), Optional.empty()));
+        assertTrue(none.getMessage().contains("no config named"), none.getMessage());
+        var said = new java.io.ByteArrayOutputStream();
+        assertEquals(6, launch(new String[]{"audit"}, Map.of(), Optional.empty(), new java.io.PrintStream(said, true,
+                StandardCharsets.UTF_8), dir));
+        assertTrue(said.toString(StandardCharsets.UTF_8).contains("no config named"), said.toString(StandardCharsets.UTF_8));
+    }
+
+    /** R12: a run budget with no room for one attempt - the verify, its kill, two remote calls, the margin - is refused. */
+    @Test
+    void aBudgetWithNoRoomForOneAttemptIsRefused() {
+        Properties p = new Properties();
+        p.setProperty("repo", "C:/r");
+        p.setProperty("verify.timeout.minutes", "45");
+        p.setProperty("git.remote-timeout.minutes", "10");
+        p.setProperty("run.budget.minutes", "70");
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, () -> Config.of(p, Path.of("D:/home")));
+        assertTrue(refused.getMessage().contains("run.budget.minutes"), refused.getMessage());
+        p.setProperty("run.budget.minutes", "71");
+        assertEquals(Duration.ofMinutes(71), Config.of(p, Path.of("D:/home")).runBudget());
+    }
+
+    /** The directories git, sh and mvn are in on this machine, as an install would record them. */
+    static List<String> toolDirs() throws IOException, InterruptedException {
+        List<String> dirs = new java.util.ArrayList<>();
+        for (String name : List.of("git", "sh", "mvn")) {
+            // no quote inside an argument: Windows' command line would not carry it
+            String found = answer("sh", "-c", "command -v $0", name);
+            dirs.add(Path.of(answer("cygpath", "-w", found)).getParent().toString());
+        }
+        return dirs;
+    }
+
+    private static String answer(String... command) throws IOException, InterruptedException {
+        Process p = new ProcessBuilder(command).redirectErrorStream(true).start();
+        String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8).strip();
+        assertEquals(0, p.waitFor(), () -> List.of(command) + ": " + out);
+        return out;
+    }
+
+    private static String read(Path file) {
+        try {
+            return Files.readString(file);
+        } catch (IOException e) {
+            return e.toString();
+        }
+    }
+
+    /**
+     * R11, job-check: run through launch it enters its job, then runs git, sh's mvn and java as the task would find them,
+     * through tool.path - every answer a line of its file; one missing, 6, and the file names it.
+     */
+    @Test
+    void jobCheckAnswersForItsJobAndItsPrograms() throws IOException, InterruptedException {
+        List<String> dirs = toolDirs();
+        Path config = dir.resolve("config");
+        Path said = dir.resolve("job-check.txt");
+        Files.writeString(config, "repo=" + ScratchRepo.slash(dir) + "\ntool.path=" + String.join(";", dirs).replace("\\", "\\\\")
+                + "\n");
+        assertEquals(0, launch(new String[]{"job-check", said.toString()}, Map.of("LANDING_CONFIG", config.toString()),
+                Optional.empty(), System.out, dir), () -> dirs + " " + read(said));
+        List<String> lines = Files.readAllLines(said);
+        assertEquals(4, lines.size(), lines.toString());
+        assertTrue(lines.get(0).startsWith("entered its job, pid "), lines.toString());
+        assertTrue(lines.get(1).startsWith("git: git version"), lines.toString());
+        assertTrue(lines.get(2).startsWith("sh: ") && lines.get(2).contains("Maven"), lines.toString());
+        assertTrue(lines.get(3).startsWith("java: "), lines.toString());
+        Files.writeString(config, "repo=" + ScratchRepo.slash(dir) + "\ntool.path=" + dirs.getFirst().replace("\\", "\\\\") + "\n");
+        assertEquals(6, launch(new String[]{"job-check", said.toString()}, Map.of("LANDING_CONFIG", config.toString()),
+                Optional.empty(), System.out, dir));
+        assertTrue(Files.readString(said).contains("sh"), Files.readString(said));
+    }
+
+    /**
+     * R11, the log: with a home, integrate writes what it prints to landing-task.log there too; an integrate that takes
+     * the lock moves a log over 1 MB to landing-task.log.1; one that does not get the lock never rotates; no home, no log.
+     */
+    @Test
+    void theTasksLogIsBesideTheJarAndRotatedByTheLockHolder() throws IOException {
+        ScratchRepo s = new ScratchRepo(dir.resolve("world"), 1);
+        s.configFile("sh -c true");
+        Optional<Path> home = Optional.of(s.root.resolve("landing.jar"));
+        Path log = s.root.resolve("landing-task.log");
+        Path earlier = s.root.resolve("landing-task.log.1");
+        var quiet = new java.io.PrintStream(new java.io.ByteArrayOutputStream(), true, StandardCharsets.UTF_8);
+        // a real start's environment: its PATH inherited
+        Map<String, String> env = Map.of("PATH", System.getenv("PATH"));
+        launch(new String[]{"integrate"}, env, Optional.empty(), quiet, s.a);
+        assertFalse(Files.exists(log), "no home, no log");
+        Files.writeString(log, "x".repeat(1024 * 1024) + "\n");
+        try (IntegratorLock.Held held = new IntegratorLock(s.state.resolve("integrator.lock")).tryAcquire().orElseThrow()) {
+            assertEquals(4, launch(new String[]{"integrate"}, env, home, quiet, s.a));
+        }
+        assertFalse(Files.exists(earlier), "a run without the lock never rotates");
+        assertEquals(2, Files.readAllLines(log).size(), "its one line appended");
+        launch(new String[]{"integrate"}, env, home, quiet, s.a);
+        assertTrue(Files.size(earlier) > 1024 * 1024, "the full log moved aside");
+        assertTrue(Files.readString(log).contains("the queue is empty"), Files.readString(log));
     }
 
     @Test

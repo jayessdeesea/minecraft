@@ -130,7 +130,7 @@ public final class Git {
         List<String> command = new ArrayList<>(tool.program());
         command.addAll(args);
         ProcessBuilder builder = new ProcessBuilder(command).directory(dir.toFile());
-        builder.environment().putAll(tool.env());
+        Programs.set(builder.environment(), tool.env());
         builder.environment().put("GIT_TERMINAL_PROMPT", "0");
         builder.environment().put("GCM_INTERACTIVE", "never");
         try {
@@ -307,7 +307,8 @@ public final class Git {
         }
     }
 
-    private static CompletableFuture<byte[]> drain(InputStream stream) {
+    /** A stream read whole on a thread of its own, so a wait on its process is bounded by the wait alone. */
+    static CompletableFuture<byte[]> drain(InputStream stream) {
         CompletableFuture<byte[]> bytes = new CompletableFuture<>();
         Thread.ofVirtual().start(() -> {
             try {

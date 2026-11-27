@@ -11,7 +11,8 @@
 # Usage: hotspots.sh [commits, default 64]
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 1
 N="${1:-64}"
-W="${VERIFY_WORKTREE:-C:/mc-worktrees/verify}"
+# The worktree whose surefire reports are read: REPORTS_WORKTREE when set, else commit.sh's verify worktree.
+W="${REPORTS_WORKTREE:-${VERIFY_WORKTREE:-C:/mc-worktrees/verify}}"
 main='^(protocol|command|command-ai|bot|landing|app)/src/main/.*[.]java$'
 
 echo "== churn x size, the last $N commits (changes, lines, changes x lines)"

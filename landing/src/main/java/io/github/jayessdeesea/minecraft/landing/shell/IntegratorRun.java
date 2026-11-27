@@ -52,9 +52,17 @@ public final class IntegratorRun {
     private final Steps steps;
     private final PrintStream out;
     private final Gather gather;
+    private final Optional<java.nio.file.Path> taskLog;
 
     public IntegratorRun(Config config, Git repo, Journal journal, IntegratorLock lock, Verifier verifier, Clock clock,
                          RandomGenerator random, Steps steps, PrintStream out) {
+        this(config, repo, journal, lock, verifier, clock, random, steps, out, Optional.empty());
+    }
+
+    /** With the task's log, which the run that takes the lock keeps to its size. */
+    public IntegratorRun(Config config, Git repo, Journal journal, IntegratorLock lock, Verifier verifier, Clock clock,
+                         RandomGenerator random, Steps steps, PrintStream out, Optional<java.nio.file.Path> taskLog) {
+        this.taskLog = taskLog;
         this.config = config;
         this.repo = repo;
         this.tree = repo.at(config.worktree());
@@ -80,6 +88,8 @@ public final class IntegratorRun {
             return ExitCode.HALTED;
         }
         try (IntegratorLock.Held h = held.get()) {
+            // only the lock's holder rotates: two runs never move the log at once
+            taskLog.ifPresent(log -> TaskLog.rotate(log, out));
             Optional<JournalRecord.Halted> halted = Integrator.halted(journal.read());
             if (halted.isPresent()) {
                 // read before any git call: a halted run writes nothing, however broken the repository
@@ -116,6 +126,7 @@ public final class IntegratorRun {
     /** The passes of one run, until the queue is empty, a back-off or a halt; {@code working} the entry in hand. */
     private int passes(RunToken run, EntryId[] working) {
         Auditor auditor = new Auditor(gather, journal, config, clock, out);
+        java.time.Instant started = clock.instant();
         boolean audited = false;
         int exit = ExitCode.OK;
         for (int pass = 0; ; pass++) {
@@ -135,6 +146,13 @@ public final class IntegratorRun {
             noteMain(run);
             Step step = Integrator.next(gather.snapshot(journal.read()));
             steps.reached(2);
+            if ((step instanceof Step.Attempt || step instanceof Step.Reconcile) && !Integrator.budgetAllows(
+                    java.time.Duration.between(started, clock.instant()), config.verifyTimeout(), config.gitRemoteTimeout(),
+                    config.runBudget())) {
+                out.println("this run's budget (" + config.runBudget() + ") has no room for another attempt: the next start"
+                        + " takes up the queue");
+                break;
+            }
             boolean going = switch (step) {
                 case Step.Halt halt -> {
                     if (halt.record()) {
@@ -316,6 +334,10 @@ public final class IntegratorRun {
         Verifier.Run verify;
         try {
             verify = verifier.run(config.worktree());
+        } catch (Verifier.NoRun e) {
+            // the verify never ran - its log not cleared, its command not started, its log not read: the integrator's
+            fault(run, FaultKind.VERIFY_NO_RESULT, id, e.getMessage());
+            return;
         } catch (Children.NotGone e) {
             fault(run, FaultKind.VERIFY_TIMEOUT, id, "the verify of " + candidate + " timed out, and " + e.getMessage());
             throw e;

@@ -257,11 +257,11 @@ class Amendment2Test {
         s.write(badNumber, "repo=" + ScratchRepo.slash(s.a) + "\nverify.timeout.minutes=abc\n");
         java.util.function.Supplier<Children> tree = ProcessTree::new;
         assertEquals(6, Landing.launch(new String[]{"audit"}, java.util.Map.of("LANDING_CONFIG",
-                s.root.resolve("absent").toString()), s.a, out, tree));
-        assertEquals(6, Landing.launch(new String[]{"audit"}, java.util.Map.of("LANDING_CONFIG", noRepo.toString()), s.a, out, tree));
-        assertEquals(6, Landing.launch(new String[]{"audit"}, java.util.Map.of("LANDING_CONFIG", badNumber.toString()), s.a, out,
+                s.root.resolve("absent").toString()), s.a, out, Optional.empty(), tree));
+        assertEquals(6, Landing.launch(new String[]{"audit"}, java.util.Map.of("LANDING_CONFIG", noRepo.toString()), s.a, out, Optional.empty(), tree));
+        assertEquals(6, Landing.launch(new String[]{"audit"}, java.util.Map.of("LANDING_CONFIG", badNumber.toString()), s.a, out, Optional.empty(),
                 tree));
-        assertEquals(6, Landing.launch(new String[]{"audit"}, java.util.Map.of("LANDING_CONFIG", good.toString()), s.a, out,
+        assertEquals(6, Landing.launch(new String[]{"audit"}, java.util.Map.of("LANDING_CONFIG", good.toString()), s.a, out, Optional.empty(),
                 () -> {
                     throw new IllegalStateException("AssignProcessToJobObject failed: 5");
                 }));
@@ -397,6 +397,56 @@ class Amendment2Test {
         assertTrue(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Fault f && f.kind() == FaultKind.FETCH_FAILED
                 && f.entry().isPresent()), s.printed());
         assertEquals(0, s.run(s.b, Poke.NONE, "state", id), s.printed());
+    }
+
+    /**
+     * C3 F2: a verify that cannot start - its command not there, as sh is not on a scheduled task's PATH - is the
+     * integrator's VERIFY_NO_RESULT about the entry, the run carrying on to its halt rule: three halt the queue, and no
+     * entry is failed or left an Attempt charged.
+     */
+    @Test
+    void aVerifyThatCannotStartIsTheIntegratorsFaultAndHalts() {
+        ScratchRepo s = new ScratchRepo(dir, 69);
+        s.verifyCommand = Optional.of(List.of("no-such-verify-command-anywhere"));
+        s.write(s.a.resolve("x"), "1\nE\n3\n");
+        assertEquals(5, s.queue(s.a, "A edits x"));
+        String id = s.lastQueued();
+        for (int minutes : new int[]{0, 6, 11}) {
+            s.clock.advance(Duration.ofMinutes(minutes));
+            s.integrate();
+        }
+        assertEquals(3, s.faults(FaultKind.VERIFY_NO_RESULT), s.printed());
+        assertTrue(s.printed().contains("the verify did not start"), s.printed());
+        assertTrue(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Halted), s.printed());
+        assertFalse(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Failed), s.printed());
+        assertEquals(4, s.run(s.a, Poke.NONE, "state", id));
+    }
+
+    /** Amendment 3: the verify's log path a directory, not clearable - VERIFY_NO_RESULT "could not be cleared", not "did not start". */
+    @Test
+    void aVerifyLogThatCannotBeClearedSaysSo() throws IOException {
+        ScratchRepo s = new ScratchRepo(dir, 71);
+        Files.createDirectories(s.state.resolve("verify.log"));
+        Files.writeString(s.state.resolve("verify.log").resolve("in-the-way"), "x");
+        s.write(s.a.resolve("x"), "1\nE\n3\n");
+        assertEquals(5, s.queue(s.a, "A edits x"));
+        s.integrate();
+        assertTrue(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Fault f && f.kind() == FaultKind.VERIFY_NO_RESULT
+                && f.detail().contains("could not be cleared")), s.printed());
+        assertFalse(s.printed().contains("did not start"), s.printed());
+    }
+
+    /** C3 F3: a run without the budget for a whole attempt starts none - 0, the entry left queued for the next start. */
+    @Test
+    void aRunWithoutTheBudgetForAnAttemptStartsNone() {
+        ScratchRepo s = new ScratchRepo(dir, 70);
+        s.runBudget = Duration.ofMinutes(5);
+        s.write(s.a.resolve("x"), "1\nE\n3\n");
+        assertEquals(5, s.queue(s.a, "A edits x"));
+        assertEquals(0, s.integrate(), s.printed());
+        assertTrue(s.printed().contains("budget"), s.printed());
+        assertFalse(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Attempt), s.printed());
+        assertEquals(1, s.requestRefs().size());
     }
 
     /** R9: adopt resolves under the lock - held by another, it is 4, the shared ref unmoved and nothing journaled. */

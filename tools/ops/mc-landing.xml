@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The landing queue's integrator as a Task Scheduler task: whoever holds the lock integrates, and this task is the one
+  way it starts - every five minutes, never a second instance while one runs, as the user at the Limited run level.
+  One trigger: a time trigger repeating without end. It runs only while the user is logged on (an interactive token),
+  and its repetition goes on from its start after a reboot, so a logon trigger would add nothing.
+  The task is derived, never kept: every run of install-landing.sh fills the __NAMES__ in, writes it as UTF-16 and
+  registers it again (schtasks /create /xml /f), enabled only if it was there and enabled. Its action is javaw - the
+  JDK's windowless launcher - on the installed jar, nothing between, so its Last Result is landing's exit; landing finds
+  its own programs and config beside the jar, and keeps its log there. The time limit is the config's run budget and
+  half an hour. GIT_SSH_COMMAND, for the deploy key, is C5's. The elements are in the order this machine's exports write
+  them.
+-->
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>The landing queue's integrator: lands the queued changes on main, one verified on its parent at a time.</Description>
+  </RegistrationInfo>
+  <Principals>
+    <Principal id="Author">
+      <UserId>__USER__</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <Enabled>__ENABLED__</Enabled>
+    <ExecutionTimeLimit>__LIMIT__</ExecutionTimeLimit>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <StartWhenAvailable>true</StartWhenAvailable>
+  </Settings>
+  <Triggers>
+    <TimeTrigger>
+      <StartBoundary>__START__</StartBoundary>
+      <Repetition>
+        <Interval>PT5M</Interval>
+      </Repetition>
+    </TimeTrigger>
+  </Triggers>
+  <Actions Context="Author">
+    <Exec>
+      <Command>__JAVAW__</Command>
+      <Arguments>-jar "__JAR__" integrate</Arguments>
+      <WorkingDirectory>__REPO__</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>

@@ -19,7 +19,7 @@ the garrison, no Maven job. `docs/watches/` describes the watch you serve and `D
   `bot/src/main/resources/io/github/jayessdeesea/minecraft/bot/world/block-classes-777.txt`.
 - For a simulation that failed: the verify's output, `app/target/surefire-reports/<test class>.txt` for the cause
   under "Caused by", and `app/target/sim/<scenario>.log` and `<scenario>-server.log` in the worktree that ran it
-  (`C:/mc-worktrees/verify` for `tools/ops/commit.sh`). Say whether the change under verify caused it, or moved the
+  (the worktree the brief names, else `C:/mc-worktrees/verify`, where `tools/ops/commit.sh` verifies). Say whether the change under verify caused it, or moved the
   timing onto a fault that was there.
 - The code the log lines come from.
 - Never `C:/mc-state/garrison/garrison.args`.

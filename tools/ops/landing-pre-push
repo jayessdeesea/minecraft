@@ -1,0 +1,25 @@
+#!/bin/sh
+# The pre-push hook, installed in the shared hooks directory at the cutover: an update of main goes only as the landing
+# queue's verified candidate, pushed by the integrator under its lock - `landing may-push <sha> <remote-sha>` says
+# whether it is. Every other ref goes through. With no landing installed it refuses main, and only main: closed where it
+# guards, open where it does not. --no-verify goes around it; it stops accidents and the old commit.sh, not intent.
+# git gives the remote's name and url as arguments, and on stdin a line a ref: <local ref> <local sha> <remote ref>
+# <remote sha>.
+JAR="${LANDING_JAR:-C:/mc-state/landing/landing.jar}"
+JAVA="${LANDING_JAVA:-java}"
+refused=0
+# a last line with no newline is a ref all the same
+while read -r local_ref local_sha remote_ref remote_sha || [ -n "$local_ref" ]; do
+  [ "$remote_ref" = refs/heads/main ] || continue
+  if [ ! -f "$JAR" ]; then
+    echo "refused: no landing installed at $JAR to say this push of main is the queue's" >&2
+    refused=1
+  elif ! "$JAVA" -jar "$JAR" may-push "$local_sha" "$remote_sha" >&2; then
+    refused=1
+  fi
+done
+if [ "$refused" -ne 0 ]; then
+  echo "main is landed through the queue: sh C:/mc-state/landing/land.sh <message file>" >&2
+  exit 1
+fi
+exit 0

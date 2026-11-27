@@ -82,6 +82,26 @@ public final class Integrator {
         return Optional.empty();
     }
 
+    /** How long a kill is given to prove its tree gone (the job's ten seconds). */
+    static final Duration KILL = Duration.ofSeconds(10);
+    /** What a run keeps in hand past its last attempt's worst case. */
+    static final Duration BUDGET_MARGIN = Duration.ofMinutes(5);
+
+    /**
+     * Whether a run may start another attempt: only while what has gone ({@code elapsed}), and the attempt's worst case -
+     * a whole verify, its kill, a push and the fetch after it each at their remote time - and a margin, fit the run's
+     * {@code budget}. The task's own time limit is the budget and a margin, so a run is never stopped mid-push; out of
+     * budget, it ends and the next start takes up the queue.
+     */
+    public static boolean budgetAllows(Duration elapsed, Duration verifyTimeout, Duration remoteTimeout, Duration budget) {
+        return elapsed.plus(leastBudget(verifyTimeout, remoteTimeout)).compareTo(budget) < 0;
+    }
+
+    /** One attempt's worst case and the margin: a budget not above it has room for no attempt, and is refused. */
+    public static Duration leastBudget(Duration verifyTimeout, Duration remoteTimeout) {
+        return verifyTimeout.plus(KILL).plus(remoteTimeout.multipliedBy(2)).plus(BUDGET_MARGIN);
+    }
+
     /**
      * Whether a run should start at all: not while the journal ends in failed fetches or a pass's own git failures
      * (REPO) whose back-off is still running - an offline machine's, or a broken repository's, every scheduled start

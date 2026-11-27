@@ -60,6 +60,9 @@ final class ScratchRepo {
     /** git as the tool runs it: git itself, unless a row stands a hanging one in. */
     List<String> gitProgram = List.of("git");
     Duration gitTimeout = Duration.ofMinutes(2);
+    /** The verify as a command of its own, instead of the script {@link #verify}. */
+    Optional<List<String>> verifyCommand = Optional.empty();
+    Duration runBudget = Duration.ofHours(3);
     /** What ends a timed-out call's tree: by its parent chain in this JVM, shared by four tests at once. */
     Children children = new ProcessTree();
     Steps steps = new Steps() {
@@ -122,8 +125,8 @@ final class ScratchRepo {
             write(script, verify + "\n");
         }
         return new Config(a, "origin", landingTree, state.resolve("journal.jsonl"), state.resolve("integrator.lock"),
-                List.of("sh", script.toString()), verifyTimeout, state.resolve("verify.log"), List.of(), poll, Optional.of(hook),
-                sha256(hook), Optional.of(init), "landing", "landing@localhost", gitTimeout, gitTimeout);
+                verifyCommand.orElse(List.of("sh", script.toString())), verifyTimeout, state.resolve("verify.log"), List.of(), poll, Optional.of(hook),
+                sha256(hook), Optional.of(init), "landing", "landing@localhost", gitTimeout, gitTimeout, runBudget, List.of());
     }
 
     /** This world's config as the tool reads it from a file, for a landing run in a JVM of its own; {@code verify} its command. */

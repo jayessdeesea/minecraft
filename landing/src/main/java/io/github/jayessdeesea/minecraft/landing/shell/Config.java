@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.landing.shell;
 
+import io.github.jayessdeesea.minecraft.landing.Integrator;
 import io.github.jayessdeesea.minecraft.landing.Sha;
 
 import java.io.IOException;
@@ -15,9 +16,10 @@ import java.util.Optional;
 import java.util.Properties;
 
 /**
- * Where the queue's things are and how it runs, read once by {@code main()} from {@code C:/mc-state/landing/config}
- * (a Java properties file; {@code LANDING_CONFIG} names another). Every path can be set; only {@code repo} must be.
- * A command is its words split on white space, so no word of it holds a space.
+ * Where the queue's things are and how it runs, read once by {@code main()}: a Java properties file, {@code config}
+ * beside the jar the tool runs from, or the one {@code LANDING_CONFIG} names ({@link #file}). Every path can be set; only
+ * {@code repo} must be. A command is its words split on white space, so no word of it holds a space. The task is made
+ * from it at every install, so a changed {@code run.budget.minutes} or a moved JDK takes at the next install.
  *
  * @param repo             a path in the shared repository: the main checkout the landing worktree is added from
  * @param remote           the remote main is fetched from and pushed to
@@ -37,19 +39,30 @@ import java.util.Properties;
  * @param committerEmail   and its address
  * @param gitTimeout       how long a local git call may take before its process tree is killed
  * @param gitRemoteTimeout how long a fetch or a push may take
+ * @param runBudget        how long one integrator run may go on starting attempts; the task's time limit is past it
+ * @param toolPath         where git, sh and mvn are ({@code tool.path}, written by {@code landing install}): a scheduled
+ *                         task's PATH has none of them; empty, the inherited PATH finds them
  */
 public record Config(Path repo, String remote, Path worktree, Path journal, Path lock, List<String> verify,
                      Duration verifyTimeout, Path verifyLog, List<String> poke, Duration poll, Optional<Path> hook,
                      String hookHash, Optional<Sha> jarLandingChange, String committerName, String committerEmail,
-                     Duration gitTimeout, Duration gitRemoteTimeout) {
-
-    /** The config's home when {@code LANDING_CONFIG} names none. */
-    public static final Path DEFAULT = Path.of("C:/mc-state/landing/config");
-    private static final String STATE = "C:/mc-state/landing/";
+                     Duration gitTimeout, Duration gitRemoteTimeout, Duration runBudget, List<Path> toolPath) {
 
     public Config {
         verify = List.copyOf(verify);
         poke = List.copyOf(poke);
+        toolPath = List.copyOf(toolPath);
+    }
+
+    /**
+     * The config this process reads: {@code LANDING_CONFIG}'s file if set; else {@code config} beside the jar it runs
+     * from - the installed tool's home; else there is none, and that is landing itself failing.
+     */
+    public static Path file(Optional<String> env, Optional<Path> jar) {
+        return env.filter(e -> !e.isBlank()).map(Path::of)
+                .or(() -> jar.map(j -> j.resolveSibling("config")))
+                .orElseThrow(() -> new IllegalStateException("no config named: LANDING_CONFIG is not set, and no jar to find "
+                        + "one beside"));
     }
 
     public static Config load(Path file) {
@@ -59,21 +72,33 @@ public record Config(Path repo, String remote, Path worktree, Path journal, Path
         } catch (IOException e) {
             throw new UncheckedIOException("no landing config readable at " + file, e);
         }
-        return of(properties);
+        return of(properties, file.toAbsolutePath().getParent());
     }
 
-    public static Config of(Properties p) {
+    /**
+     * The config; refused if it names no repo, or gives a run budget with no room for one attempt. The journal, the lock
+     * and the verify's log are in {@code home}, the config file's own directory, unless named: home is one place.
+     */
+    public static Config of(Properties p, Path home) {
         String repo = p.getProperty("repo");
         if (repo == null || repo.isBlank()) {
             throw new IllegalArgumentException("the landing config names no repo");
         }
+        Duration verifyTimeout = Duration.ofMinutes(Long.parseLong(p.getProperty("verify.timeout.minutes", "45")));
+        Duration remote = Duration.ofMinutes(Long.parseLong(p.getProperty("git.remote-timeout.minutes", "10")));
+        Duration budget = Duration.ofMinutes(Long.parseLong(p.getProperty("run.budget.minutes", "180")));
+        Duration least = Integrator.leastBudget(verifyTimeout, remote);
+        if (budget.compareTo(least) <= 0) {
+            throw new IllegalArgumentException("run.budget.minutes " + budget.toMinutes() + " has no room for one attempt, "
+                    + "which takes up to " + least + ": every start would be refused at its first attempt");
+        }
         return new Config(Path.of(repo), p.getProperty("remote", "origin"),
                 Path.of(p.getProperty("worktree", "C:/mc-worktrees/landing")),
-                Path.of(p.getProperty("journal", STATE + "journal.jsonl")),
-                Path.of(p.getProperty("lock", STATE + "integrator.lock")),
+                p.getProperty("journal") == null ? home.resolve("journal.jsonl") : Path.of(p.getProperty("journal")),
+                p.getProperty("lock") == null ? home.resolve("integrator.lock") : Path.of(p.getProperty("lock")),
                 words(p.getProperty("verify", "sh tools/ops/verify.sh")),
-                Duration.ofMinutes(Long.parseLong(p.getProperty("verify.timeout.minutes", "45"))),
-                Path.of(p.getProperty("verify.log", STATE + "verify.log")),
+                verifyTimeout,
+                p.getProperty("verify.log") == null ? home.resolve("verify.log") : Path.of(p.getProperty("verify.log")),
                 words(p.getProperty("poke", "schtasks /run /tn mc-landing")),
                 Duration.ofSeconds(Long.parseLong(p.getProperty("poll.seconds", "15"))),
                 Optional.ofNullable(p.getProperty("hook")).map(Path::of),
@@ -82,7 +107,9 @@ public record Config(Path repo, String remote, Path worktree, Path journal, Path
                 p.getProperty("committer.name", "landing"),
                 p.getProperty("committer.email", "landing@localhost"),
                 Duration.ofMinutes(Long.parseLong(p.getProperty("git.timeout.minutes", "2"))),
-                Duration.ofMinutes(Long.parseLong(p.getProperty("git.remote-timeout.minutes", "10"))));
+                remote,
+                budget,
+                Arrays.stream(p.getProperty("tool.path", "").split(";")).filter(d -> !d.isBlank()).map(Path::of).toList());
     }
 
     private static List<String> words(String command) {

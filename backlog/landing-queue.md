@@ -45,6 +45,11 @@ puts itself in a kill-on-close Windows job object, so a verify's whole tree - Ma
 forks - is ended with it or by it. 17. A tree not proven gone ten seconds after the kill is a fault, and the run exits
 6 with no further checkout or git. 18. A `land` whose entry lands while the worktree holds more exits 5, land again.
 
+Decided after C3's reviews (operator, 2026-11-26, amendment 3's recommendations accepted): 19. The task runs `javaw -jar
+landing.jar integrate` directly, landing finding git, sh and Maven from the config's `tool.path`. 20. The task's log is
+beside the jar, 1 MB and one earlier file. 21. The install exits 1 when any of its live checks answers NO or cannot be
+answered. 22. Every install registers the task again, its enabled state kept.
+
 A stream has one landing in flight at a time; streams meet only at the queue. At about two landings an hour, many open
 streams wait their turn: the journal records wait times.
 
@@ -223,13 +228,33 @@ an old push during a new verify only costs an attempt.
 ### 8. Commit sequence
 | # | Content | Size | Risk |
 |---|---|---|---|
-| C3 | `install-landing.sh`, `land.sh`, the hook's source, the task definition, the two worktree-path readers | ~120 | None until installed. |
 | C4 | `commit.sh` as a shim; "Landing a change" rewritten with the invariants and the exit table; DEVELOPMENT.md, CLAUDE.md, the AGENTS.md rule, the watches | ~150, mostly docs | The first entry through the new queue. |
 | C5 | A docs line for the deploy-key remote | Small | After the operator's GitHub work. |
 
+Left by C2 and C3 for C4 and the migration's steps:
+- The install, step 2, is the operator's: `sh tools/ops/install-landing.sh` (`--dry-run` first), from a shell that is
+  not elevated. It exits 0 only when its check task ran unelevated, landing entered its job, and git, sh, mvn and java
+  answered under the scheduler - and the audit is clean; until it runs, those are unanswered. Its last line asks whether
+  a window showed during the check: `javaw` was never started by Task Scheduler here.
+- The task runs `javaw -jar C:/mc-state/landing/landing.jar integrate`, nothing between: its Last Result is landing's
+  exit. Its log is `landing-task.log` beside the jar, 1 MB and one file before it. Every install registers the task
+  again, its enabled state kept: after a change to the run budget or the JDK, run the install again.
+- At the cutover, step 4: copy `tools/ops/landing-pre-push` to the shared hooks directory as `pre-push`, and record its
+  SHA-256 as `hook.hash` in `C:/mc-state/landing/config` (the config's `hook` already names that path), or the audit's I8
+  names it.
+- Step 6: point `hotspots.sh` (`REPORTS_WORKTREE`) and `field-tracer.md` at `C:/mc-worktrees/landing`; today both still
+  read `C:/mc-worktrees/verify`.
+- `commit.sh` as a shim execs `C:/mc-state/landing/land.sh`, which tests for the jar and exits 6 if landing does not
+  start.
+- A reinstall while a `land` runs from the installed jar may fail at the jar's replacement (Windows holds a running
+  jar open; not yet tried), which would exit 6 with the old jar in place: reinstall when no session is landing.
+- `job-check` skips only `WARNING:` lines before a program's answer; with `JAVA_TOOL_OPTIONS` (or `_JAVA_OPTIONS`)
+  set, Java's "Picked up ..." line gives a false NO and the install exits 1. Neither is set on this machine.
+
 ### Unsure (the designer's own words, condensed)
 - Whether a personal-account repository's rulesets allow "restrict updates" with a deploy key as bypass actor.
-- Whether `schtasks /run` works without elevation for a user's own task; `install-landing.sh` runs it once and says.
+- Whether `schtasks /run` works without elevation for a user's own task, and whether landing's job object nests inside
+  Task Scheduler's: `install-landing.sh` answers both when it runs.
 - A hole: a writer who runs plain `git rebase origin/main` on a branch whose landed change was since reverted re-adds it;
   only review of the squash diff catches that.
 - Whether `deploy.sh`'s `mvn install` into the shared `~/.m2` during a verify can change what the verify resolves.

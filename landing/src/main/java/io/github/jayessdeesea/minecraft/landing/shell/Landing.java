@@ -11,7 +11,10 @@ import io.github.jayessdeesea.minecraft.landing.JournalRecord;
 import io.github.jayessdeesea.minecraft.landing.RunToken;
 import io.github.jayessdeesea.minecraft.landing.Sha;
 
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
@@ -44,9 +47,17 @@ public final class Landing {
     private final Poke poke;
     private final Journal journal;
     private final IntegratorLock lock;
+    private final Optional<Path> taskLog;
 
     public Landing(Config config, Git.Tool tool, Clock clock, RandomGenerator random, PrintStream out, Path cwd,
                    Sleeper sleeper, Steps steps, Poke poke) {
+        this(config, tool, clock, random, out, cwd, sleeper, steps, poke, Optional.empty());
+    }
+
+    /** With the task's log, which the integrator that takes the lock keeps to its size. */
+    public Landing(Config config, Git.Tool tool, Clock clock, RandomGenerator random, PrintStream out, Path cwd,
+                   Sleeper sleeper, Steps steps, Poke poke, Optional<Path> taskLog) {
+        this.taskLog = taskLog;
         this.config = config;
         this.tool = tool;
         this.clock = clock;
@@ -60,32 +71,86 @@ public final class Landing {
         this.lock = new IntegratorLock(config.lock());
     }
 
-    /** The environment and the working directory read once, here; everything after is passed in. */
+    /** The environment, the working directory and the jar this runs from, read once, here; everything after is passed in. */
     public static void main(String[] args) {
-        System.exit(launch(args, System.getenv(), Path.of("").toAbsolutePath(), System.out));
+        System.exit(launch(args, System.getenv(), System.out));
     }
 
-    /**
-     * The one {@code try}: this process into its job before anything is read or started, the config, the command. Any
-     * {@code Throwable} is landing itself failing: 6, never the JVM's own 1, which reads as FAILED.
-     */
-    public static int launch(String[] args, Map<String, String> env, Path cwd, PrintStream out) {
-        return launch(args, env, cwd, out, Job::enter);
-    }
-
-    static int launch(String[] args, Map<String, String> env, Path cwd, PrintStream out, Supplier<Children> enter) {
+    /** The working directory and the jar's place read inside a try of their own: a failure there is 6, as any other. */
+    static int launch(String[] args, Map<String, String> env, PrintStream out) {
+        Path cwd;
+        Optional<Path> jar;
         try {
-            Children job = enter.get();
-            Path file = Optional.ofNullable(env.get("LANDING_CONFIG")).map(Path::of).orElse(Config.DEFAULT);
-            Config config = Config.load(file);
-            Git.Tool git = new Git.Tool(List.of("git"), Map.of(), config.gitTimeout(), config.gitRemoteTimeout(), job);
-            return new Landing(config, git, Clock.systemUTC(), RandomGenerator.getDefault(), out, cwd, Landing::sleep,
-                    new Steps() {
-                    }, new CommandPoke(config.poke(), out, job, CommandPoke.WAIT)).run(args);
+            cwd = Path.of("").toAbsolutePath();
+            jar = home();
         } catch (Throwable t) {
             out.println("landing itself failed: " + t + " - an entry, if any, may still be queued: landing state <id>");
             return ExitCode.LANDING_FAILED;
         }
+        return launch(args, env, cwd, out, jar);
+    }
+
+    /** The jar this process runs from, if it runs from one: the installed tool's home, where its config and log are. */
+    private static Optional<Path> home() {
+        try {
+            Path code = Path.of(Landing.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            return Files.isRegularFile(code) && code.toString().endsWith(".jar") ? Optional.of(code) : Optional.empty();
+        } catch (java.net.URISyntaxException | SecurityException | NullPointerException e) {
+            // no jar to name: the config must then be LANDING_CONFIG's, or the launch is 6, "no config named"
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * The one {@code try}: this process into its job before anything is read or started, the config, the command. Any
+     * {@code Throwable} is landing itself failing: 6, never the JVM's own 1, which reads as FAILED. With a home (the jar),
+     * integrate and job-check also write what they print to {@code landing-task.log} beside it.
+     */
+    public static int launch(String[] args, Map<String, String> env, Path cwd, PrintStream out, Optional<Path> jar) {
+        return launch(args, env, cwd, out, jar, Job::enter);
+    }
+
+    static int launch(String[] args, Map<String, String> env, Path cwd, PrintStream out, Optional<Path> jar,
+                      Supplier<Children> enter) {
+        Optional<Path> taskLog = jar.filter(j -> args.length > 0 && List.of("integrate", "job-check").contains(args[0]))
+                .map(j -> j.resolveSibling("landing-task.log"));
+        PrintStream said = taskLog.map(log -> TaskLog.tee(out, log, System.err)).orElse(out);
+        try {
+            Children job = enter.get();
+            Path file = Config.file(Optional.ofNullable(env.get("LANDING_CONFIG")), jar);
+            Config config = Config.load(file);
+            if (args.length > 0 && args[0].equals("install")) {
+                return Installer.install(config, file, Arrays.asList(args).subList(1, args.length), said);
+            }
+            Map<String, String> children = childrensEnvironment(config, env);
+            Git.Tool git = new Git.Tool(List.of(Programs.resolve("git", config.toolPath(), Files::isRegularFile)), children,
+                    config.gitTimeout(), config.gitRemoteTimeout(), job);
+            if (args.length == 2 && args[0].equals("job-check")) {
+                return JobCheck.run(Path.of(args[1]), config, git, children, job, said);
+            }
+            return new Landing(config, git, Clock.systemUTC(), RandomGenerator.getDefault(), said, cwd, Landing::sleep,
+                    new Steps() {
+                    }, new CommandPoke(config.poke(), said, job, CommandPoke.WAIT), taskLog).run(args);
+        } catch (Throwable t) {
+            said.println("landing itself failed: " + t + " - an entry, if any, may still be queued: landing state <id>");
+            return ExitCode.LANDING_FAILED;
+        }
+    }
+
+    /**
+     * What git and the verify are started with: PATH the config's tool.path, the running JVM's bin, then the inherited
+     * PATH; JAVA_HOME the running JVM's home - so the verify builds on the JDK the task names, whatever the user's own.
+     */
+    private static Map<String, String> childrensEnvironment(Config config, Map<String, String> env) {
+        String inherited = env.entrySet().stream().filter(e -> e.getKey().equalsIgnoreCase("PATH")).map(Map.Entry::getValue)
+                .findFirst().orElse("");
+        Path javaHome = Path.of(System.getProperty("java.home"));
+        List<String> path = new java.util.ArrayList<>(config.toolPath().stream().map(Path::toString).toList());
+        path.add(javaHome.resolve("bin").toString());
+        if (!inherited.isEmpty()) {
+            path.add(inherited);
+        }
+        return Map.of("PATH", String.join(java.io.File.pathSeparator, path), "JAVA_HOME", javaHome.toString());
     }
 
     private static void sleep(Duration duration) {
@@ -159,7 +224,7 @@ public final class Landing {
     }
 
     private int usage() {
-        out.println("usage: landing land <message file> [--timeout <minutes>] | integrate | state <id> | audit"
+        out.println("usage: landing land <message file> [--timeout <minutes>] | integrate | state <id> | audit | install ..."
                 + " | withdraw <id> | resume <reason> | may-push <sha> <remote-sha> | adopt <sha> <reason> | cutover <sha>");
         return ExitCode.USAGE;
     }
@@ -169,8 +234,9 @@ public final class Landing {
     }
 
     private IntegratorRun integrator() {
-        return new IntegratorRun(config, repo(), journal, lock, new Verifier(config.verify(), config.verifyTimeout(),
-                config.verifyLog(), tool.env(), tool.children()), clock, random, steps, out);
+        List<String> verify = Programs.command(config.verify(), config.toolPath(), Files::isRegularFile);
+        return new IntegratorRun(config, repo(), journal, lock, new Verifier(verify, config.verifyTimeout(),
+                config.verifyLog(), tool.env(), tool.children()), clock, random, steps, out, taskLog);
     }
 
     private IntSupplier land(List<String> rest) {

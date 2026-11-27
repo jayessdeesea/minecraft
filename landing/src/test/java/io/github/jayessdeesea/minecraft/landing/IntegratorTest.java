@@ -197,6 +197,29 @@ class IntegratorTest {
         assertEquals(due, Integrator.runDue(journal, at(minutes)));
     }
 
+    /**
+     * Whether a run may start another attempt (C3 review F3): only while what has gone, plus a whole verify, its kill,
+     * two remote git calls and a margin, fits the run's budget - the task's time limit is the budget and a margin, so a
+     * run is never stopped mid-push. Out of budget the run ends and the next start takes up the queue.
+     */
+    static Stream<Arguments> budgets() {
+        return Stream.of(
+                // minutes gone, the verify's timeout, a remote call's timeout, the budget -> another attempt
+                Arguments.of(0, 45, 10, 180, true),
+                Arguments.of(109, 45, 10, 180, true),
+                Arguments.of(110, 45, 10, 180, false),
+                Arguments.of(0, 45, 10, 70, false),
+                Arguments.of(0, 45, 10, 71, true),
+                Arguments.of(200, 45, 10, 180, false));
+    }
+
+    @ParameterizedTest
+    @MethodSource("budgets")
+    void whetherTheRunHasTheBudgetForAnotherAttempt(int gone, int verify, int remote, int budget, boolean allowed) {
+        assertEquals(allowed, Integrator.budgetAllows(Duration.ofMinutes(gone), Duration.ofMinutes(verify),
+                Duration.ofMinutes(remote), Duration.ofMinutes(budget)));
+    }
+
     @ParameterizedTest
     @MethodSource("table")
     void theNextStep(java.util.List<JournalRecord> journal, Landings landed, Set<EntryId> queued, Set<EntryId> withdrawn,
