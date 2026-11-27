@@ -153,6 +153,29 @@ public final class Job implements Children {
         }
     }
 
+    /** NORMAL_PRIORITY_CLASS: what the task's template asks for (Priority 4), and what its children inherit. */
+    public static final int NORMAL_PRIORITY_CLASS = 0x20;
+
+    /**
+     * This process's priority class, {@code GetPriorityClass(GetCurrentProcess())}: 0 if Windows refused it. The task's
+     * XML is the one home of the priority; the job sets none.
+     */
+    public static int priorityClass() {
+        Linker linker = Linker.nativeLinker();
+        SymbolLookup kernel32 = SymbolLookup.libraryLookup("kernel32", Arena.global());
+        MethodHandle current = linker.downcallHandle(kernel32.find("GetCurrentProcess").orElseThrow(),
+                FunctionDescriptor.of(ADDRESS));
+        MethodHandle priority = linker.downcallHandle(kernel32.find("GetPriorityClass").orElseThrow(),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS));
+        try {
+            return (int) priority.invokeExact((MemorySegment) current.invokeExact());
+        } catch (RuntimeException | Error e) {
+            throw e;
+        } catch (Throwable t) {
+            throw new IllegalStateException("the priority class not read", t);
+        }
+    }
+
     /** What is left in the job but this process, to name in a fault. */
     public List<Long> others() {
         return members().stream().filter(pid -> pid != self).toList();

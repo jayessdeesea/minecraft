@@ -8,8 +8,16 @@ public enum FaultKind {
     PUSH_REFUSED(Blame.INTEGRATOR),
     /** The push refused because main moved under it: attempted again on the new main, FAILED at the third. */
     OUTSIDE_PUSH(Blame.ENTRY),
-    /** The verify ran past its time and its process tree was killed: FAILED at the second. */
+    /**
+     * The verify ran its cap, still writing, and its process tree was killed - the backstop: FAILED at the second of
+     * this or a stall.
+     */
     VERIFY_TIMEOUT(Blame.ENTRY),
+    /**
+     * The verify wrote nothing for the stall limit and its process tree was killed: the candidate stopped, so the
+     * entry's - FAILED at the second of this or a timeout. Unreadable to a jar older than it: reinstall when nothing lands.
+     */
+    VERIFY_STALLED(Blame.ENTRY),
     /** The verify's output held no BUILD line, or said BUILD SUCCESS and exited otherwise than 0. */
     VERIFY_NO_RESULT(Blame.INTEGRATOR),
     /** HEAD was not the candidate before or after the verify, or the tracked tree was dirty after it: nothing pushed. */

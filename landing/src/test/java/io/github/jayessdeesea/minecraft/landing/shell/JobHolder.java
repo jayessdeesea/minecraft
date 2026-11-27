@@ -42,9 +42,11 @@ public final class JobHolder {
         String answer = switch (mode) {
             case "enter" -> "entered";
             case "verify" -> {
-                Verifier.Run run = new Verifier(List.of("sh", outer.toString()), Duration.ofSeconds(1),
-                        out.resolveSibling("verify.log"), Map.of(), job).run(out.getParent());
-                yield "timedOut=" + run.timedOut();
+                Verifier.Run run = new Verifier(List.of("sh", outer.toString()),
+                        new io.github.jayessdeesea.minecraft.landing.VerifyWatch.Limits(Duration.ofSeconds(1),
+                                Duration.ofSeconds(30), Duration.ofMillis(50)),
+                        out.resolveSibling("verify.log"), Map.of(), job, java.time.Clock.systemUTC()).run(out.getParent());
+                yield "end=" + run.end().getClass().getSimpleName();
             }
             case "git" -> {
                 Git git = new Git(out.getParent(), new Git.Tool(List.of("sh", outer.toString()), Map.of(), Duration.ofSeconds(1),

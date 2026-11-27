@@ -3,9 +3,10 @@
 # its place under the integrator's lock with the commit it was built from, the last landing/ change there and where
 # git, sh and mvn are recorded in the config; the config written by landing install alone, its keys kept; land.sh
 # copied beside it, filled with the jar's path; the landing worktree made if absent; the scheduled task registered again
-# from tools/ops/mc-landing.xml - javaw on the jar, enabled only if it was there and enabled. It then asks the four
-# questions the scheduler alone can answer, with a check task it runs once and deletes. Its 0 means the scheduler can
-# run the tool: every question answered yes and landing audit clean; anything else is 1, all installed regardless.
+# from tools/ops/mc-landing.xml - javaw on the jar at normal priority, enabled only if it was there and enabled. It then
+# asks the five questions the scheduler alone can answer, with a check task made from the same template - job-check for
+# integrate, its start a day ahead - that it runs once and deletes. Its 0 means the scheduler can run the tool: every
+# question answered yes and landing audit clean; anything else is 1, all installed regardless.
 # Every path is the environment's to set: LANDING_STATE, LANDING_WORKTREE, LANDING_TASK, LANDING_REF, LANDING_JAVA,
 # LANDING_MVN, LANDING_BUILD (empty or absent: the build worktree only), LANDING_SCHTASKS. With --dry-run it says what it
 # would do and makes nothing.
@@ -139,42 +140,50 @@ fi
 xml="$XML_DIR/mc-landing.xml"
 user=$("$WHOAMI" 2>/dev/null | tr -d '\r')
 action="$(win_path "$JAVAW") -jar \"$(win_path "$INSTALLED")\" integrate"
+# the template filled into $1: the action's arguments $2, enabled $3, the trigger's start $4; UTF-16 little-endian with
+# its byte-order mark, as Task Scheduler writes its own
+fill() {
+  sed -e "s|__USER__|$(literal "$user")|g" -e "s|__JAVAW__|$(literal "$(win_path "$JAVAW")")|g" \
+      -e "s|__ARGUMENTS__|$(literal "$2")|g" -e "s|__REPO__|$(literal "$(win_path "$REPO")")|g" \
+      -e "s|__ENABLED__|$3|g" -e "s|__LIMIT__|PT$((BUDGET + 30))M|g" -e "s|__START__|$4|g" \
+      -e 's|encoding="UTF-8"|encoding="UTF-16"|' tools/ops/mc-landing.xml > "$1.utf8" || return 1
+  { printf '\377\376'; iconv -f UTF-8 -t UTF-16LE "$1.utf8"; } > "$1"
+}
 if [ "$DRY" = yes ]; then
   echo "would: fill tools/ops/mc-landing.xml (user $user, $action, in $REPO, $kept,"
-  echo "       time limit PT$((BUDGET + 30))M) into $xml, UTF-16"
+  echo "       time limit PT$((BUDGET + 30))M, priority 4) into $xml, UTF-16"
 else
-  sed -e "s|__USER__|$(literal "$user")|g" -e "s|__JAVAW__|$(literal "$(win_path "$JAVAW")")|g" \
-      -e "s|__JAR__|$(literal "$(win_path "$INSTALLED")")|g" -e "s|__REPO__|$(literal "$(win_path "$REPO")")|g" \
-      -e "s|__ENABLED__|$enabled|g" -e "s|__LIMIT__|PT$((BUDGET + 30))M|g" \
-      -e "s|__START__|$(date +%Y-%m-%dT%H:%M:%S)|g" \
-      -e 's|encoding="UTF-8"|encoding="UTF-16"|' tools/ops/mc-landing.xml > "$xml.utf8" || exit 1
-  # UTF-16 little-endian with its byte-order mark, as Task Scheduler writes its own
-  { printf '\377\376'; iconv -f UTF-8 -t UTF-16LE "$xml.utf8"; } > "$xml" || exit 1
+  fill "$xml" "-jar \"$(win_path "$INSTALLED")\" integrate" "$enabled" "$(date +%Y-%m-%dT%H:%M:%S)" || exit 1
 fi
 [ "$DRY" = yes ] && echo "would: register $TASK again, $kept"
 step win "$SCHTASKS" /create /tn "$TASK" /xml "$( [ "$DRY" = yes ] && printf '%s' "$xml" || win_path "$xml")" /f
 [ "$DRY" = yes ] || echo "registered $TASK again, $kept"
 
-echo "== the four questions, answered on this machine (exit 1 if any is not yes)"
+echo "== the five questions, answered on this machine (exit 1 if any is not yes)"
 echo "1. schtasks /create /xml takes the file: $( [ "$DRY" = yes ] && echo "asked by the step above" || echo yes)"
 said="$STATE/job-check.txt"
+check_xml="$XML_DIR/mc-landing-check.xml"
+check_args="-jar \"$(win_path "$INSTALLED")\" job-check \"$(win_path "$said")\""
 if [ "$DRY" = yes ]; then
   echo "would: say whether this shell is elevated (whoami /groups, the High Mandatory Level)"
-  echo "would: create a check task $CHECK (once, Limited, the user's own) running $(win_path "$JAVAW") -jar"
-  echo "       \"$(win_path "$INSTALLED")\" job-check \"$(win_path "$said")\", run it once, and delete it and its files"
+  echo "would: fill tools/ops/mc-landing.xml again for the check task $CHECK - the task's own settings, priority"
+  echo "       included - with $(win_path "$JAVAW") $check_args for integrate, enabled, its start a day ahead,"
+  echo "       into $check_xml"
+  echo "would: register it (schtasks /create /tn $CHECK /xml $check_xml /f), run it once, and delete it and its files"
   echo "2. a task of the user's own runs with schtasks /run without elevation: asked by the check task's /run"
   echo "3. landing enters its job when Task Scheduler starts it: asked by the file's first line"
-  echo "4. git, sh, mvn and java run under the scheduler: asked by the file's other lines"
+  echo "4. git, sh, mvn and java run under the scheduler: asked by the file's git, sh and java lines"
+  echo "5. the task runs at normal priority: asked by the file's priority line"
   echo "would: run landing audit, then exit 1 if any is not yes or the audit is not clean"
   exit 0
 fi
 answered=yes
 if win "$WHOAMI" /groups 2>/dev/null | grep -q S-1-16-12288; then elevated=yes; else elevated=no; fi
 rm -f "$said"
-# the real action, javaw on the jar, with job-check in place of integrate: it never takes the lock
-if win "$SCHTASKS" /create /tn "$CHECK" \
-    /tr "\"$(win_path "$JAVAW")\" -jar \"$(win_path "$INSTALLED")\" job-check \"$(win_path "$said")\"" \
-    /sc once /st 23:59 /rl LIMITED /f > /dev/null 2>&1; then
+# the task itself, from the same template, with job-check in place of integrate - it never takes the lock - and its start
+# a day ahead, so only the /run below starts it before it is deleted
+if fill "$check_xml" "$check_args" true "$(date -d '+1 day' +%Y-%m-%dT%H:%M:%S)" \
+    && win "$SCHTASKS" /create /tn "$CHECK" /xml "$(win_path "$check_xml")" /f > /dev/null 2>&1; then
   CHECK_MADE=yes
   ran=$(win "$SCHTASKS" /run /tn "$CHECK" 2>&1); code=$?
 else
@@ -203,14 +212,21 @@ if [ -f "$said" ] && head -1 "$said" | grep -q '^entered its job'; then
     esac
   done
   if [ -z "$missing" ]; then
-    echo "4. git, sh, mvn and java run under the scheduler: yes"; sed '1d; s/^/   /' "$said" | tr -d '\r'
+    echo "4. git, sh, mvn and java run under the scheduler: yes"; sed '1d; /^priority: /d; s/^/   /' "$said" | tr -d '\r'
   else
     echo "4. git, sh, mvn and java run under the scheduler: NO -$missing"; answered=no
+  fi
+  priority=$(grep "^priority: " "$said" | tr -d '\r')
+  if [ "$priority" = "priority: NORMAL" ]; then
+    echo "5. the task runs at normal priority: yes"
+  else
+    echo "5. the task runs at normal priority: NO - ${priority:-no answer}"; answered=no
   fi
 else
   echo "3. landing enters its job when Task Scheduler starts it: NO - $( [ -f "$said" ] && tr -d '\r' < "$said" || echo "no answer");"
   echo "   the task's log ends: $(tail -3 "$STATE/landing-task.log" 2>/dev/null | tr -d '\r')"
   echo "4. git, sh, mvn and java run under the scheduler: unanswered"
+  echo "5. the task runs at normal priority: unanswered"
   answered=no
 fi
 

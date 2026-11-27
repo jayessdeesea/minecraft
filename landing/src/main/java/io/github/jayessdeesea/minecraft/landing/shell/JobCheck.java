@@ -20,8 +20,8 @@ import java.util.regex.Pattern;
 
 /**
  * The scheduler's probe ({@code job-check <file>}, run by install-landing.sh's check task): this process entered its job
- * to get here; then git, sh's mvn and java, found and started as the task finds and starts them, each answer a line of
- * the file. A yes is an exit of 0 and a first line of the program's own form; anything else, or no answer in its time
+ * to get here; then git, sh's mvn and java, found and started as the task finds and starts them, and the priority it
+ * runs at, each answer a line of the file. A yes is an exit of 0 and a first line of the program's own form; anything else, or no answer in its time
  * (the probe then ended through its job), is a NO, named, and the exit is 6.
  */
 final class JobCheck {
@@ -38,8 +38,8 @@ final class JobCheck {
     record Answer(String line, boolean yes) {
     }
 
-    static int run(Path file, Config config, Git.Tool git, Map<String, String> env, Children children, PrintStream out)
-            throws IOException {
+    static int run(Path file, Config config, Git.Tool git, Map<String, String> env, Children children,
+                   java.util.function.IntSupplier priorityClass, PrintStream out) throws IOException {
         List<String> lines = new ArrayList<>(List.of("entered its job, pid " + ProcessHandle.current().pid()));
         boolean all = true;
         List<Answer> answers = new ArrayList<>();
@@ -57,6 +57,11 @@ final class JobCheck {
         }
         answers.add(probe("java", List.of(Path.of(System.getProperty("java.home"), "bin", "java").toString(), "-version"),
                 l -> JAVA_VERSION.matcher(l).matches(), env, children, WAIT));
+        try {
+            answers.add(priority(priorityClass.getAsInt()));
+        } catch (RuntimeException e) {
+            answers.add(new Answer("priority: NO - " + e.getMessage(), false));
+        }
         for (Answer answer : answers) {
             lines.add(answer.line());
             all &= answer.yes();
@@ -67,6 +72,23 @@ final class JobCheck {
         Files.write(part, lines, StandardCharsets.UTF_8);
         Files.move(part, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         return all ? ExitCode.OK : ExitCode.LANDING_FAILED;
+    }
+
+    /** The priority classes by value, as GetPriorityClass answers. */
+    private static final Map<Integer, String> PRIORITY = Map.of(0x40, "IDLE", 0x4000, "BELOW_NORMAL", 0x20, "NORMAL",
+            0x8000, "ABOVE_NORMAL", 0x80, "HIGH", 0x100, "REALTIME");
+
+    /**
+     * The fifth question, whether the task runs at normal priority - known only live, from this process as the
+     * scheduler started it: NORMAL a yes, any other class a NO, named with its value.
+     */
+    static Answer priority(int priorityClass) {
+        if (priorityClass == Job.NORMAL_PRIORITY_CLASS) {
+            return new Answer("priority: NORMAL", true);
+        }
+        String hex = "0x" + Integer.toHexString(priorityClass);
+        return new Answer("priority: NO - " + (priorityClass == 0 ? hex + " - GetPriorityClass failed"
+                : PRIORITY.getOrDefault(priorityClass, "an unknown class") + " (" + hex + ")"), false);
     }
 
     /**

@@ -8,8 +8,10 @@
   registers it again (schtasks /create /xml /f), enabled only if it was there and enabled. Its action is javaw - the
   JDK's windowless launcher - on the installed jar, nothing between, so its Last Result is landing's exit; landing finds
   its own programs and config beside the jar, and keeps its log there. The time limit is the config's run budget and
-  half an hour. GIT_SSH_COMMAND, for the deploy key, is C5's. The elements are in the order this machine's exports write
-  them.
+  half an hour. It runs at normal priority, 4 - Task Scheduler's default, 7, is below normal with low I/O and memory
+  priority - and its children inherit it: this file is the one home of that fact, the job sets none. The install's check
+  task is this template too, with job-check for integrate and its start a day ahead, so it asks of the same settings.
+  GIT_SSH_COMMAND, for the deploy key, is C5's. The elements are in the order this machine's exports write them.
 -->
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
@@ -28,6 +30,7 @@
     <Enabled>__ENABLED__</Enabled>
     <ExecutionTimeLimit>__LIMIT__</ExecutionTimeLimit>
     <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <Priority>4</Priority>
     <StartWhenAvailable>true</StartWhenAvailable>
   </Settings>
   <Triggers>
@@ -41,7 +44,7 @@
   <Actions Context="Author">
     <Exec>
       <Command>__JAVAW__</Command>
-      <Arguments>-jar "__JAR__" integrate</Arguments>
+      <Arguments>__ARGUMENTS__</Arguments>
       <WorkingDirectory>__REPO__</WorkingDirectory>
     </Exec>
   </Actions>

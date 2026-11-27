@@ -35,11 +35,11 @@ class JobTest {
         assertEquals(List.of(held.self), held.members);
     }
 
-    /** A verify past its time: ended by the job's list - every pid the job held dead, the job the holder again. */
+    /** A verify quiet past its stall limit: ended by the job's list - every pid the job held dead, the job the holder again. */
     @Test
     void aVerifyShapedChainPastItsTimeIsEndedByTheJob() throws Exception {
         Held held = hold("verify");
-        assertEquals("timedOut=true", held.answer);
+        assertEquals("end=Stalled", held.answer);
         assertTrue(held.others.size() >= 2, "the chain was seen in the job: " + held.others);
         held.others.forEach(pid -> assertFalse(alive(pid), "pid " + pid + " outlived the kill"));
         assertEquals(List.of(held.self), held.members);

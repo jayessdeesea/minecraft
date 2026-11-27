@@ -17,6 +17,7 @@ import static io.github.jayessdeesea.minecraft.landing.FaultKind.FETCH_FAILED;
 import static io.github.jayessdeesea.minecraft.landing.FaultKind.MERGE_TREE;
 import static io.github.jayessdeesea.minecraft.landing.FaultKind.OUTSIDE_PUSH;
 import static io.github.jayessdeesea.minecraft.landing.FaultKind.REPO;
+import static io.github.jayessdeesea.minecraft.landing.FaultKind.VERIFY_STALLED;
 import static io.github.jayessdeesea.minecraft.landing.FaultKind.VERIFY_TAMPERED;
 import static io.github.jayessdeesea.minecraft.landing.FaultKind.VERIFY_TIMEOUT;
 import static io.github.jayessdeesea.minecraft.landing.Fixtures.at;
@@ -76,6 +77,18 @@ class IntegratorTest {
                         NONE, ids(1), ids(), 2, "Reconcile 1 after 2"),
                 Arguments.of(journal(attempt(1), fault(OUTSIDE_PUSH, 1, 0), attempt(1), fault(OUTSIDE_PUSH, 1, 1),
                         attempt(1), fault(OUTSIDE_PUSH, 1, 2)), NONE, ids(1), ids(), 3, "Settle 1 Failed MAIN_MOVED, written"),
+                // a stall is the entry's, sharing the two strikes with the cap: the later one's reason
+                Arguments.of(journal(attempt(1), fault(VERIFY_STALLED, 1, 0)), NONE, ids(1), ids(), 1,
+                        "Reconcile 1 after 1"),
+                Arguments.of(journal(attempt(1), fault(VERIFY_STALLED, 1, 0), attempt(1), fault(VERIFY_STALLED, 1, 1)),
+                        NONE, ids(1), ids(), 2, "Settle 1 Failed STALLED, written"),
+                Arguments.of(journal(attempt(1), fault(VERIFY_TIMEOUT, 1, 0), attempt(1), fault(VERIFY_STALLED, 1, 1)),
+                        NONE, ids(1), ids(), 2, "Settle 1 Failed STALLED, written"),
+                Arguments.of(journal(attempt(1), fault(VERIFY_STALLED, 1, 0), attempt(1), fault(VERIFY_TIMEOUT, 1, 1)),
+                        NONE, ids(1), ids(), 2, "Settle 1 Failed TIMED_OUT, written"),
+                // a stall neither starts the integrator's back-off nor counts to its halt
+                Arguments.of(journal(fault(MERGE_TREE, 1, 0), fault(MERGE_TREE, 1, 10), attempt(2),
+                        fault(VERIFY_STALLED, 2, 20)), NONE, ids(2), ids(), 21, "Reconcile 2 after 1"),
                 // the timeouts are the entry's: another entry's do not count against it
                 Arguments.of(journal(attempt(2), fault(VERIFY_TIMEOUT, 2, 0), attempt(2), fault(VERIFY_TIMEOUT, 2, 1),
                         attempt(1)), NONE, ids(1), ids(), 2, "Reconcile 1 after 1"),
@@ -218,6 +231,88 @@ class IntegratorTest {
     void whetherTheRunHasTheBudgetForAnotherAttempt(int gone, int verify, int remote, int budget, boolean allowed) {
         assertEquals(allowed, Integrator.budgetAllows(Duration.ofMinutes(gone), Duration.ofMinutes(verify),
                 Duration.ofMinutes(remote), Duration.ofMinutes(budget)));
+    }
+
+    /**
+     * The verify's cap (operator's decision 4, amended), at a run's first check: max(the 90m floor, 2 x the expected
+     * total), held to what the run budget leaves one attempt - budget less the kill, two remote calls and the margin.
+     */
+    static Stream<Arguments> caps() {
+        return Stream.of(
+                // expected total in seconds (-1 none), floor, remote, budget in minutes -> cap in seconds, held
+                Arguments.of(-1, 90, 10, 180, 90 * 60, false),
+                Arguments.of(30 * 60, 90, 10, 180, 90 * 60, false),
+                Arguments.of(60 * 60, 90, 10, 180, 120 * 60, false),
+                Arguments.of(80 * 60, 90, 10, 180, 154 * 60 + 50, true),
+                Arguments.of(82 * 60, 90, 10, 180, 154 * 60 + 50, true));
+    }
+
+    @ParameterizedTest
+    @MethodSource("caps")
+    void theVerifysCap(int expected, int floor, int remote, int budget, int cap, boolean held) {
+        Integrator.Cap c = Integrator.cap(Duration.ZERO, expected < 0 ? java.util.Optional.empty()
+                        : java.util.Optional.of(Duration.ofSeconds(expected)), Duration.ofMinutes(floor),
+                Duration.ofMinutes(remote), Duration.ofMinutes(budget)).orElseThrow();
+        assertEquals(Duration.ofSeconds(cap), c.cap());
+        assertEquals(held, c.held().isPresent());
+        if (held) {
+            assertEquals("the verify cap 2 x " + expected / 60 + "m = " + 2 * expected / 60 + "m is held to 154m50s by what is "
+                    + "left of the run budget 180m, 0s gone", c.held().get());
+        }
+    }
+
+    /**
+     * The cap decided at the check, from what the run has left (review round 1, finding 1): at budget 180, floor 90,
+     * remote 10, what is left for a verify is 154m50s less what has gone; the cap is the smaller of that and
+     * max(90m, 2 x expected); an attempt starts if and only if the cap is at least the floor.
+     */
+    static Stream<Arguments> capsAtTheCheck() {
+        return Stream.of(
+                // seconds gone, expected minutes (-1 none) -> cap in seconds (-1 no attempt), held
+                Arguments.of(0, -1, 90 * 60, false),
+                Arguments.of(0, 30, 90 * 60, false),
+                Arguments.of(0, 78, 154 * 60 + 50, true),
+                Arguments.of(0, 90, 154 * 60 + 50, true),
+                Arguments.of(1, -1, 90 * 60, false),
+                Arguments.of(1, 30, 90 * 60, false),
+                Arguments.of(1, 78, 154 * 60 + 49, true),
+                Arguments.of(1, 90, 154 * 60 + 49, true),
+                Arguments.of(600, -1, 90 * 60, false),
+                Arguments.of(600, 30, 90 * 60, false),
+                Arguments.of(600, 78, 144 * 60 + 50, true),
+                Arguments.of(600, 90, 144 * 60 + 50, true),
+                Arguments.of(3600, 78, 94 * 60 + 50, true),
+                // what is left under the floor: no attempt, whatever the history
+                Arguments.of(3900, -1, -1, false),
+                Arguments.of(3900, 78, -1, false),
+                Arguments.of(3890, 90, 90 * 60, true));
+    }
+
+    @ParameterizedTest
+    @MethodSource("capsAtTheCheck")
+    void theCapIsDecidedAtTheCheck(int gone, int expected, int cap, boolean held) {
+        Duration floor = Duration.ofMinutes(90);
+        Duration remote = Duration.ofMinutes(10);
+        Duration budget = Duration.ofMinutes(180);
+        java.util.Optional<Integrator.Cap> c = Integrator.cap(Duration.ofSeconds(gone), expected < 0
+                ? java.util.Optional.empty() : java.util.Optional.of(Duration.ofMinutes(expected)), floor, remote, budget);
+        assertEquals(cap >= 0, c.isPresent(), "an attempt");
+        // the budget's own answer is the same computation with no history
+        assertEquals(gone <= 3890, Integrator.budgetAllows(Duration.ofSeconds(gone), floor, remote, budget));
+        if (cap >= 0) {
+            assertEquals(Duration.ofSeconds(cap), c.get().cap());
+            assertEquals(held, c.get().held().isPresent());
+        }
+    }
+
+    /** The floor is never held below: a budget too small for it refuses the attempt, as before, whatever the history. */
+    @org.junit.jupiter.api.Test
+    void theFloorIsNeverHeldBelow() {
+        for (java.util.Optional<Duration> expected : java.util.List.of(java.util.Optional.<Duration>empty(),
+                java.util.Optional.of(Duration.ofMinutes(60)))) {
+            assertEquals(java.util.Optional.empty(), Integrator.cap(Duration.ZERO, expected, Duration.ofMinutes(90),
+                    Duration.ofMinutes(10), Duration.ofMinutes(100)));
+        }
     }
 
     @ParameterizedTest

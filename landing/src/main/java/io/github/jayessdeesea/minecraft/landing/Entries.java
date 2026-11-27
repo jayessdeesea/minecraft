@@ -98,6 +98,18 @@ public final class Entries {
         return n;
     }
 
+    /** The last fault of one of {@code kinds} against entry {@code id}, if any. */
+    static java.util.Optional<JournalRecord.Fault> lastFault(EntryId id, java.util.Set<FaultKind> kinds,
+                                                             List<JournalRecord> journal) {
+        JournalRecord.Fault last = null;
+        for (JournalRecord record : journal) {
+            if (record instanceof JournalRecord.Fault f && kinds.contains(f.kind()) && about(f, id)) {
+                last = f;
+            }
+        }
+        return java.util.Optional.ofNullable(last);
+    }
+
     static boolean about(JournalRecord record, EntryId id) {
         return record.entry().filter(id::equals).isPresent();
     }

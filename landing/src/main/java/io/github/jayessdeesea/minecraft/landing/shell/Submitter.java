@@ -9,6 +9,9 @@ import io.github.jayessdeesea.minecraft.landing.Integrator;
 import io.github.jayessdeesea.minecraft.landing.JournalRecord;
 import io.github.jayessdeesea.minecraft.landing.Landings;
 import io.github.jayessdeesea.minecraft.landing.Sha;
+import io.github.jayessdeesea.minecraft.landing.Snapshot;
+import io.github.jayessdeesea.minecraft.landing.Step;
+import io.github.jayessdeesea.minecraft.landing.Waiting;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -51,10 +54,12 @@ public final class Submitter {
     private final RandomGenerator random;
     private final Duration poll;
     private final PrintStream out;
+    private final WatchFiles progress;
+    private final Duration feedback;
     private final ObjectMapper json = new ObjectMapper();
 
     public Submitter(Git git, String remote, Journal journal, Poke poke, Sleeper sleeper, Clock clock, RandomGenerator random,
-                     Duration poll, PrintStream out) {
+                     Duration poll, PrintStream out, WatchFiles progress, Duration feedback) {
         this.git = git;
         this.gather = new Gather(git, remote, clock);
         this.remote = remote;
@@ -65,6 +70,8 @@ public final class Submitter {
         this.random = random;
         this.poll = poll;
         this.out = out;
+        this.progress = progress;
+        this.feedback = feedback;
     }
 
     /** Submits, pokes and waits, up to {@code timeout} if given: the exit of {@link ExitCode}. */
@@ -172,12 +179,15 @@ public final class Submitter {
 
     /**
      * Waits on the entry: its state, from the journal and main, until settled; halted, exit 4; past the timeout, exit 5.
-     * The integrator is poked again each minute while it waits. Main is read as the integrator last fetched it into the
+     * The integrator is poked again each minute while it waits. Where the entry is - who is ahead, the module and test
+     * classes done, how old the last output is - is said when that changes and every {@code feedback} otherwise. Main is read as the integrator last fetched it into the
      * shared repository - a waiter's own fetch every look would contend with the integrator's for the ref's lock.
      */
     public int await(EntryId id, Sha source, Optional<Duration> timeout) {
         Instant deadline = timeout.map(clock.instant()::plus).orElse(Instant.MAX);
         Instant poked = clock.instant();
+        Optional<Waiting.Said> said = Optional.empty();
+        Instant saidAt = clock.instant();
         while (true) {
             List<JournalRecord> records = journal.read();
             Landings landings = gather.landings(gather.mainTip());
@@ -202,12 +212,33 @@ public final class Submitter {
                 out.println(id + " still queued: " + state);
                 return ExitCode.of(state, false);
             }
+            Waiting.Said line = where(id, state, records);
+            if (Waiting.due(said, saidAt, line, clock.instant(), feedback)) {
+                out.println(line.text());
+                said = Optional.of(line);
+                saidAt = clock.instant();
+            }
             if (!clock.instant().isBefore(poked.plus(REPOKE))) {
                 poke.poke();
                 poked = clock.instant();
             }
             sleeper.sleep(poll);
         }
+    }
+
+    /**
+     * Where the entry is, in a waiter's words ({@link Waiting#line}): the queue's refs and the integrator's next step are
+     * read only while it is queued; the running verify from the progress file its integrator writes.
+     */
+    Waiting.Said where(EntryId id, EntryState state, List<JournalRecord> records) {
+        Optional<Step> next = Optional.empty();
+        List<EntryId> ahead = List.of();
+        if (state instanceof EntryState.Queued) {
+            Snapshot snapshot = gather.snapshot(records);
+            next = Optional.of(Integrator.next(snapshot));
+            ahead = snapshot.queued().stream().filter(q -> q.compareTo(id) < 0).sorted().toList();
+        }
+        return Waiting.line(id, state, records, progress.readProgress(), next, ahead, clock.instant());
     }
 
     /** Main as this worktree fetches it into its own FETCH_HEAD, the shared ref being the integrator's; none if it fails. */

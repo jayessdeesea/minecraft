@@ -10,14 +10,15 @@ import java.util.TreeSet;
  * The integrator's decision, one step at a time. In order: halted, attempt
  * nothing; settle what is settled - landed on main, recorded, withdrawn, or over a cap; wait out an integrator fault's
  * back-off; attempt again an entry with an attempt and no outcome; attempt the oldest request; else idle. An entry is
- * charged only for what is its own: it fails at its fifth try ({@link Entries#tries}), its second verify timeout or the
- * third time main moves under its push. The integrator's own faults are bounded by a halt, never by failing entries:
+ * charged only for what is its own: it fails at its fifth try ({@link Entries#tries}), its second verify the watchdog
+ * ended - stalled or at the cap, the later one's reason - or the third time main moves under its push. The integrator's own faults are bounded by a halt, never by failing entries:
  * three running, a fetch's aside, halt the queue until the operator resumes it.
  */
 public final class Integrator {
 
     static final int MOST_ATTEMPTS = 5;
-    static final int MOST_TIMEOUTS = 2;
+    /** The verifies the watchdog may end, stalled or at the cap, before the entry fails: the two share the strikes. */
+    static final int MOST_ENDED_VERIFIES = 2;
     static final int MOST_MAIN_MOVES = 3;
     /** The integrator's faults running, a fetch's aside, that halt the queue. */
     static final int MOST_INTEGRATOR_FAULTS = 3;
@@ -70,8 +71,11 @@ public final class Integrator {
         if (snapshot.withdrawals().contains(id)) {
             return Optional.of(new Step.Settle(id, new EntryState.Withdrawn(), true));
         }
-        if (Entries.faults(id, FaultKind.VERIFY_TIMEOUT, journal) >= MOST_TIMEOUTS) {
-            return failed(id, FailReason.TIMED_OUT);
+        if (Entries.faults(id, FaultKind.VERIFY_TIMEOUT, journal) + Entries.faults(id, FaultKind.VERIFY_STALLED, journal)
+                >= MOST_ENDED_VERIFIES) {
+            boolean stalledLast = Entries.lastFault(id, java.util.Set.of(FaultKind.VERIFY_TIMEOUT, FaultKind.VERIFY_STALLED),
+                    journal).map(f -> f.kind() == FaultKind.VERIFY_STALLED).orElseThrow();
+            return failed(id, stalledLast ? FailReason.STALLED : FailReason.TIMED_OUT);
         }
         if (Entries.faults(id, FaultKind.OUTSIDE_PUSH, journal) >= MOST_MAIN_MOVES) {
             return failed(id, FailReason.MAIN_MOVED);
@@ -89,15 +93,41 @@ public final class Integrator {
 
     /**
      * Whether a run may start another attempt: only while what has gone ({@code elapsed}), and the attempt's worst case -
-     * a whole verify, its kill, a push and the fetch after it each at their remote time - and a margin, fit the run's
-     * {@code budget}. The task's own time limit is the budget and a margin, so a run is never stopped mid-push; out of
-     * budget, it ends and the next start takes up the queue.
+     * a whole verify at {@code verifyTimeout}, its kill, a push and the fetch after it each at their remote time - and a
+     * margin, fit the run's {@code budget}. The task's own time limit is the budget and a margin, so a run is never
+     * stopped mid-push; out of budget, it ends and the next start takes up the queue.
      */
     public static boolean budgetAllows(Duration elapsed, Duration verifyTimeout, Duration remoteTimeout, Duration budget) {
-        return elapsed.plus(leastBudget(verifyTimeout, remoteTimeout)).compareTo(budget) < 0;
+        return cap(elapsed, Optional.empty(), verifyTimeout, remoteTimeout, budget).isPresent();
     }
 
-    /** One attempt's worst case and the margin: a budget not above it has room for no attempt, and is refused. */
+    /** A verify's cap, and, when what the run had left held it below what the history asked, the line that says so. */
+    public record Cap(Duration cap, Optional<String> held) {
+    }
+
+    /**
+     * The attempt's verify cap, decided at the check from what the run has left (operator's decision 4, amended): the
+     * larger of {@code floor} ({@code verify.timeout.minutes}) and twice the expected total, if the history has one -
+     * held to what is left of the {@code budget} after {@code elapsed}, the kill, two remote calls and the margin. An
+     * attempt starts if and only if that is at least the floor: none, and the next start takes up the queue.
+     * {@link #budgetAllows} is this with no history.
+     */
+    public static Optional<Cap> cap(Duration elapsed, Optional<Duration> expected, Duration floor, Duration remoteTimeout,
+                                    Duration budget) {
+        Duration wanted = expected.map(e -> e.multipliedBy(2)).filter(twice -> twice.compareTo(floor) > 0).orElse(floor);
+        Duration left = budget.minus(elapsed).minus(leastBudget(Duration.ZERO, remoteTimeout));
+        if (left.compareTo(floor) < 0) {
+            return Optional.empty();
+        }
+        if (wanted.compareTo(left) <= 0) {
+            return Optional.of(new Cap(wanted, Optional.empty()));
+        }
+        return Optional.of(new Cap(left, Optional.of("the verify cap 2 x " + Span.of(expected.orElseThrow()) + " = "
+                + Span.of(wanted) + " is held to " + Span.of(left) + " by what is left of the run budget " + Span.of(budget)
+                + ", " + Span.of(elapsed) + " gone")));
+    }
+
+    /** One attempt's worst case and the margin: a budget below it has room for no attempt, and is refused. */
     public static Duration leastBudget(Duration verifyTimeout, Duration remoteTimeout) {
         return verifyTimeout.plus(KILL).plus(remoteTimeout.multipliedBy(2)).plus(BUDGET_MARGIN);
     }

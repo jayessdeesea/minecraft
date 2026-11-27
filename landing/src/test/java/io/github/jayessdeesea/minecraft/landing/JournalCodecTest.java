@@ -29,6 +29,8 @@ class JournalCodecTest {
                 Arguments.of(new JournalRecord.Attempt(RUN, T0, id(1), sha(7), sha(6))),
                 Arguments.of(new JournalRecord.Verified(RUN, late, id(1), sha(7), sha(6))),
                 Arguments.of(new JournalRecord.Failed(RUN, T0, id(1), FailReason.TIMED_OUT, "45 min, twice")),
+                Arguments.of(new JournalRecord.Failed(RUN, T0, id(1), FailReason.STALLED, "quiet 10m, twice")),
+                Arguments.of(new JournalRecord.Fault(RUN, T0, FaultKind.VERIFY_STALLED, id(1), "wrote nothing for 10m")),
                 Arguments.of(new JournalRecord.Bounced(RUN, T0, id(1), BounceReason.CONFLICT,
                         List.of("app/pom.xml", "docs/a \"b\".md", "ünïcode/π.txt"))),
                 Arguments.of(new JournalRecord.Bounced(RUN, T0, id(1), BounceReason.NOTHING_TO_LAND, List.of())),

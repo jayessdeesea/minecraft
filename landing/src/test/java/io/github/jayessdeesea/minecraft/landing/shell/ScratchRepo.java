@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.landing.shell;
 import io.github.jayessdeesea.minecraft.landing.JournalCodec;
 import io.github.jayessdeesea.minecraft.landing.JournalRecord;
 import io.github.jayessdeesea.minecraft.landing.Sha;
+import io.github.jayessdeesea.minecraft.landing.VerifyWatch;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -55,7 +56,9 @@ final class ScratchRepo {
     final PrintStream out = new PrintStream(printed, true, StandardCharsets.UTF_8);
     final Sha init;
     String verify = VERIFY;
-    Duration verifyTimeout = Duration.ofMinutes(1);
+    /** The watchdog: a minute quiet, two minutes in all, a look each 100 ms - on this world's clock, which ticks only if told. */
+    VerifyWatch.Limits verifyLimits = new VerifyWatch.Limits(Duration.ofMinutes(1), Duration.ofMinutes(2),
+            Duration.ofMillis(100));
     Duration poll = Duration.ofSeconds(15);
     /** git as the tool runs it: git itself, unless a row stands a hanging one in. */
     List<String> gitProgram = List.of("git");
@@ -125,9 +128,13 @@ final class ScratchRepo {
             write(script, verify + "\n");
         }
         return new Config(a, "origin", landingTree, state.resolve("journal.jsonl"), state.resolve("integrator.lock"),
-                verifyCommand.orElse(List.of("sh", script.toString())), verifyTimeout, state.resolve("verify.log"), List.of(), poll, Optional.of(hook),
-                sha256(hook), Optional.of(init), "landing", "landing@localhost", gitTimeout, gitTimeout, runBudget, List.of());
+                verifyCommand.orElse(List.of("sh", script.toString())), verifyLimits, state.resolve("verify.log"), List.of(), poll,
+                Optional.of(hook), sha256(hook), Optional.of(init), "landing", "landing@localhost", gitTimeout, gitTimeout, runBudget,
+                List.of(), state.resolve("verify-progress.json"), state.resolve("verify-history.json"), feedback);
     }
+
+    /** How often a waiter says where its entry is when nothing has changed. */
+    Duration feedback = Duration.ofSeconds(60);
 
     /** This world's config as the tool reads it from a file, for a landing run in a JVM of its own; {@code verify} its command. */
     Path configFile(String verify) {
@@ -148,7 +155,12 @@ final class ScratchRepo {
     }
 
     Landing cli(Path cwd, Poke poke) {
-        return new Landing(config(), tool(), clock, random, out, cwd, clock::advance, steps, poke);
+        return cli(cwd, poke, clock::advance);
+    }
+
+    /** With a sleeper of the test's own: one that really waits lets an integrator on another thread go on meanwhile. */
+    Landing cli(Path cwd, Poke poke, Sleeper sleeper) {
+        return new Landing(config(), tool(), clock, random, out, cwd, sleeper, steps, poke);
     }
 
     int run(Path cwd, Poke poke, String... args) {
@@ -203,7 +215,8 @@ final class ScratchRepo {
     /** The ids queued so far, in the order printed. */
     List<String> queuedIds() {
         List<String> ids = new ArrayList<>();
-        Matcher m = Pattern.compile("queued (\\S+)").matcher(printed());
+        // the submitter's own line, not a waiter's "<id> queued 3m, ..."
+        Matcher m = Pattern.compile("^queued (\\S+)\\s*$", Pattern.MULTILINE).matcher(printed());
         while (m.find()) {
             ids.add(m.group(1));
         }

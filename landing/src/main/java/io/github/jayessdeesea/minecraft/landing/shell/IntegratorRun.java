@@ -16,7 +16,13 @@ import io.github.jayessdeesea.minecraft.landing.RunToken;
 import io.github.jayessdeesea.minecraft.landing.Sha;
 import io.github.jayessdeesea.minecraft.landing.Stale;
 import io.github.jayessdeesea.minecraft.landing.Step;
+import io.github.jayessdeesea.minecraft.landing.Expected;
+import io.github.jayessdeesea.minecraft.landing.MavenLog;
+import io.github.jayessdeesea.minecraft.landing.VerifyEnd;
+import io.github.jayessdeesea.minecraft.landing.VerifyEstimate;
 import io.github.jayessdeesea.minecraft.landing.VerifyOutcome;
+import io.github.jayessdeesea.minecraft.landing.VerifyPass;
+import io.github.jayessdeesea.minecraft.landing.VerifyProgress;
 
 import java.io.PrintStream;
 import java.nio.file.Files;
@@ -74,12 +80,16 @@ public final class IntegratorRun {
         this.steps = steps;
         this.out = out;
         this.gather = new Gather(repo, config.remote(), clock);
+        this.watch = new WatchFiles(config.verifyProgress(), config.verifyHistory(), out);
     }
+
+    private final WatchFiles watch;
 
     /**
      * 0 the queue empty, backing off, or a failing fetch's or repository's back-off running; 4 the lock held by another,
      * or the queue halted; 6 a git call the pass needed failed (journaled REPO, and Halted if it is the third running)
-     * - and a process tree not proven gone throws {@link Children.NotGone}, journaled as the timeout it is.
+     * - and a process tree not proven gone throws {@link Children.NotGone}, journaled as what ended it - a git call's
+     * timeout, or the verify's stall or cap.
      */
     public int integrate() {
         Optional<IntegratorLock.Held> held = lock.tryAcquire();
@@ -90,6 +100,8 @@ public final class IntegratorRun {
         try (IntegratorLock.Held h = held.get()) {
             // only the lock's holder rotates: two runs never move the log at once
             taskLog.ifPresent(log -> TaskLog.rotate(log, out));
+            // a crashed run's progress is no verify running: the file is there only while this holder's verify runs
+            watch.clearProgress();
             Optional<JournalRecord.Halted> halted = Integrator.halted(journal.read());
             if (halted.isPresent()) {
                 // read before any git call: a halted run writes nothing, however broken the repository
@@ -146,13 +158,22 @@ public final class IntegratorRun {
             noteMain(run);
             Step step = Integrator.next(gather.snapshot(journal.read()));
             steps.reached(2);
-            if ((step instanceof Step.Attempt || step instanceof Step.Reconcile) && !Integrator.budgetAllows(
-                    java.time.Duration.between(started, clock.instant()), config.verifyTimeout(), config.gitRemoteTimeout(),
-                    config.runBudget())) {
-                out.println("this run's budget (" + config.runBudget() + ") has no room for another attempt: the next start"
-                        + " takes up the queue");
-                break;
+            Optional<Expected> expected = Optional.empty();
+            Optional<Integrator.Cap> cap = Optional.of(new Integrator.Cap(config.verifyTimeout(), Optional.empty()));
+            if (step instanceof Step.Attempt || step instanceof Step.Reconcile) {
+                // read once an attempt: what the verify is measured against; its cap and whether it starts at all are one
+                // decision, from what the run has left now
+                expected = watch.readHistory().expected();
+                cap = Integrator.cap(java.time.Duration.between(started, clock.instant()), expected.map(Expected::total),
+                        config.verifyTimeout(), config.gitRemoteTimeout(), config.runBudget());
+                if (cap.isEmpty()) {
+                    out.println("this run's budget (" + config.runBudget() + ") has no room for another attempt: the next "
+                            + "start takes up the queue");
+                    break;
+                }
+                cap.get().held().ifPresent(out::println);
             }
+            Attempting attempting = new Attempting(expected, cap.orElseThrow().cap());
             boolean going = switch (step) {
                 case Step.Halt halt -> {
                     if (halt.record()) {
@@ -173,12 +194,12 @@ public final class IntegratorRun {
                 }
                 case Step.Reconcile again -> {
                     working[0] = again.id();
-                    attempt(run, again.id());
+                    attempt(run, again.id(), attempting);
                     yield true;
                 }
                 case Step.Attempt attempt -> {
                     working[0] = attempt.id();
-                    attempt(run, attempt.id());
+                    attempt(run, attempt.id(), attempting);
                     yield true;
                 }
             };
@@ -243,10 +264,14 @@ public final class IntegratorRun {
      * Attempt, the verify's up to the push. From the push on, main says what happened: a failed look is the push's
      * FETCH_FAILED, and a ref deletion failing after a landing is REPO, which ends the run.
      */
-    private void attempt(RunToken run, EntryId id) {
+    /** What an attempt's verify is measured against, and its cap: both from the history, read once an attempt. */
+    private record Attempting(Optional<Expected> expected, java.time.Duration cap) {
+    }
+
+    private void attempt(RunToken run, EntryId id, Attempting attempting) {
         FaultKind[] step = {FaultKind.CANDIDATE};
         try {
-            attempt(run, id, step);
+            attempt(run, id, step, attempting);
         } catch (Git.Failed e) {
             if (step[0] == FaultKind.REPO) {
                 throw e;
@@ -255,7 +280,7 @@ public final class IntegratorRun {
         }
     }
 
-    private void attempt(RunToken run, EntryId id, FaultKind[] step) {
+    private void attempt(RunToken run, EntryId id, FaultKind[] step, Attempting attempting) {
         Sha mainTip = gather.mainTip();
         Optional<Commit> squash = repo.commit(Gather.QUEUE + id);
         boolean sourcePresent = squash.filter(c -> c.landingSources().size() == 1 && Sha.valid(c.landingSources().getFirst()))
@@ -306,7 +331,7 @@ public final class IntegratorRun {
         journal.append(new JournalRecord.Attempt(run, clock.instant(), id, candidate.get(), mainTip));
         steps.reached(5);
         step[0] = FaultKind.VERIFY_TAMPERED;
-        verifyAndPush(run, id, candidate.get(), mainTip, step);
+        verifyAndPush(run, id, candidate.get(), mainTip, step, attempting);
     }
 
     /** The candidate: main's tip as its one parent, the merged tree, the request's message and author. */
@@ -323,7 +348,43 @@ public final class IntegratorRun {
         return made.ok() && Sha.valid(made.line()) ? Optional.of(Sha.parse(made.line())) : Optional.empty();
     }
 
-    private void verifyAndPush(RunToken run, EntryId id, Sha candidate, Sha mainTip, FaultKind[] step) {
+    /**
+     * The verify, watched: at each look the progress file is written for waiters - where the build is and, with a
+     * history, the percent done and time left. Gone when the verify ends, which ends with its lines on the task's log.
+     */
+    private Verifier.Run verify(EntryId id, Sha candidate, Attempting attempting) {
+        try {
+            return verifier.run(config.worktree(), attempting.cap(), w -> {
+                MavenLog log = MavenLog.of(Verifier.lines(config.verifyLog()));
+                watch.writeProgress(new VerifyProgress(id, candidate, w.started(), w.lastLook(), w.lastGrew(), w.bytes(),
+                        config.verifyLimits().stall(), attempting.cap(), log.progress(), VerifyEstimate.of(attempting.expected(),
+                        log, java.time.Duration.between(w.started(), w.lastLook()))));
+            });
+        } finally {
+            watch.clearProgress();
+        }
+    }
+
+    /**
+     * The one fence for a witness step on the outcome path - the ended lines, keeping a pass: one that throws is said,
+     * as a fault, every time, and the outcome stands. Not a fallback: what it fences only says or keeps, and decides
+     * nothing; and without it a throw there loses a whole verify and throws again on the same log at the retry.
+     */
+    static void witness(String what, Runnable step, PrintStream out) {
+        try {
+            step.run();
+        } catch (RuntimeException e) {
+            out.println("[Fault] the verify's " + what + " not said (" + e + "): the outcome stands");
+        }
+    }
+
+    /** Every verify that ran ends with its time against expected and its longest quiet, and an [Overrun] past 1.25x. */
+    private void ended(Attempting attempting, Sha candidate, Verifier.Watched watched, List<String> lines) {
+        witness("time", () -> VerifyEstimate.ended(attempting.expected(), candidate, watched.took(), watched.longestQuiet(),
+                VerifyPass.of(lines, clock.instant(), candidate, watched.took())).forEach(out::println), out);
+    }
+
+    private void verifyAndPush(RunToken run, EntryId id, Sha candidate, Sha mainTip, FaultKind[] step, Attempting attempting) {
         if (!tree.run(List.of("checkout", "-q", "-f", "--detach", candidate.value())).ok()
                 || !tree.run(List.of("clean", "-q", "-fd")).ok()) {
             fault(run, FaultKind.VERIFY_TAMPERED, id, "the landing worktree could not be put on " + candidate);
@@ -333,20 +394,26 @@ public final class IntegratorRun {
         boolean cleanBefore = clean();
         Verifier.Run verify;
         try {
-            verify = verifier.run(config.worktree());
+            verify = verify(id, candidate, attempting);
         } catch (Verifier.NoRun e) {
-            // the verify never ran - its log not cleared, its command not started, its log not read: the integrator's
+            // no outcome - its log not cleared, its command not started, its log not read: the integrator's; one that
+            // ran says its time as any
+            e.watched().ifPresent(w -> ended(attempting, candidate, w, List.of()));
             fault(run, FaultKind.VERIFY_NO_RESULT, id, e.getMessage());
             return;
-        } catch (Children.NotGone e) {
-            fault(run, FaultKind.VERIFY_TIMEOUT, id, "the verify of " + candidate + " timed out, and " + e.getMessage());
+        } catch (Verifier.NotGone e) {
+            // journaled as the kind that ended it: the entry's either way
+            ended(attempting, candidate, e.watched(), List.of());
+            boolean stalled = e.end() instanceof VerifyEnd.Stalled;
+            fault(run, stalled ? FaultKind.VERIFY_STALLED : FaultKind.VERIFY_TIMEOUT, id, "the verify of " + candidate
+                    + (stalled ? " stalled" : " ran its cap") + ", and " + e.getMessage());
             throw e;
         }
         Sha after = tree.resolve("HEAD").orElseThrow();
         boolean cleanAfter = clean();
         steps.reached(6);
-        switch (VerifyOutcome.of(verify.lines(), verify.exit(), verify.timedOut(), candidate, before, after, cleanBefore,
-                cleanAfter)) {
+        ended(attempting, candidate, new Verifier.Watched(verify.took(), verify.longestQuiet()), verify.lines());
+        switch (VerifyOutcome.of(verify.lines(), verify.end(), candidate, before, after, cleanBefore, cleanAfter)) {
             case VerifyOutcome.BuildFailed f -> {
                 journal.append(new JournalRecord.Failed(run, clock.instant(), id, FailReason.BUILD_FAILED, errors(verify.lines())));
                 step[0] = FaultKind.REPO;
@@ -358,7 +425,12 @@ public final class IntegratorRun {
                 fault(run, f.kind(), id, f.detail());
                 return;
             }
-            case VerifyOutcome.Verified v -> journal.append(new JournalRecord.Verified(run, clock.instant(), id, candidate, mainTip));
+            case VerifyOutcome.Verified v -> {
+                journal.append(new JournalRecord.Verified(run, clock.instant(), id, candidate, mainTip));
+                // a pass is what later verifies are measured against: read from its log once, now
+                witness("pass", () -> VerifyPass.of(verify.lines(), clock.instant(), candidate, verify.took())
+                        .ifPresent(watch::addPass), out);
+            }
         }
         steps.reached(7);
         step[0] = FaultKind.FETCH_FAILED;

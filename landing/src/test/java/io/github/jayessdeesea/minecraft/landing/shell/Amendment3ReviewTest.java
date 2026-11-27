@@ -74,7 +74,7 @@ class Amendment3ReviewTest {
         assertTrue(Files.isDirectory(log));
     }
 
-    /** N2: with the log's path a directory, job-check still answers - its four lines, 0 - as the exit table says. */
+    /** N2: with the log's path a directory, job-check still answers - its five lines, 0 at normal priority - as the exit table says. */
     @Test
     void jobCheckAnswersWhenItsLogCannotBeWritten() throws IOException, InterruptedException {
         Files.createDirectories(dir.resolve("landing-task.log"));
@@ -82,9 +82,10 @@ class Amendment3ReviewTest {
                 + String.join(";", ShellPartsTest.toolDirs()).replace("\\", "\\\\") + "\n");
         Path said = dir.resolve("job-check.txt");
         var quiet = new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8);
-        assertEquals(0, Landing.launch(new String[]{"job-check", said.toString()}, Map.of("PATH", inheritedPath()), dir, quiet,
-                Optional.of(dir.resolve("landing.jar")), ProcessTree::new));
-        assertEquals(4, Files.readAllLines(said).size(), Files.readString(said));
+        assertEquals(Job.priorityClass() == Job.NORMAL_PRIORITY_CLASS ? 0 : 6, Landing.launch(new String[]{"job-check",
+                said.toString()}, Map.of("PATH", inheritedPath()), dir, quiet, Optional.of(dir.resolve("landing.jar")),
+                ProcessTree::new));
+        assertEquals(5, Files.readAllLines(said).size(), Files.readString(said));
     }
 
     /** N4: a probe that exits 0 with a line not of its program's form is a NO. */

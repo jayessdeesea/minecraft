@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.landing.shell;
 
 import io.github.jayessdeesea.minecraft.landing.Integrator;
 import io.github.jayessdeesea.minecraft.landing.Sha;
+import io.github.jayessdeesea.minecraft.landing.VerifyWatch;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -27,7 +28,9 @@ import java.util.Properties;
  * @param journal          the journal, kept whole
  * @param lock             the integrator's lock file, never deleted
  * @param verify           the verify command, run in the landing worktree with {@code VERIFY_LOG} set
- * @param verifyTimeout    past this the verify's process tree is killed
+ * @param verifyLimits     the verify's watchdog: quiet for {@code verify.stall.minutes} (15) ends it, a look each
+ *                         {@code verify.look.seconds} (10); its cap is {@code verify.timeout.minutes} (90), a floor that
+ *                         twice the expected total raises ({@link Integrator#cap}, at each attempt)
  * @param verifyLog        where the verify writes Maven's whole output
  * @param poke             the command that wakes the integrator now, as the scheduler's task, outside this process: one
  *                         that starts the integrator as its own child is wrong - it would die in its submitter's job
@@ -42,11 +45,15 @@ import java.util.Properties;
  * @param runBudget        how long one integrator run may go on starting attempts; the task's time limit is past it
  * @param toolPath         where git, sh and mvn are ({@code tool.path}, written by {@code landing install}): a scheduled
  *                         task's PATH has none of them; empty, the inherited PATH finds them
+ * @param verifyProgress   the running verify's progress for waiters ({@code verify.progress}), there only while one runs
+ * @param verifyHistory    the last five verifies that passed ({@code verify.history}), for the estimate and the cap
+ * @param feedback         how often a waiter says where its entry is when nothing has changed ({@code feedback.seconds})
  */
 public record Config(Path repo, String remote, Path worktree, Path journal, Path lock, List<String> verify,
-                     Duration verifyTimeout, Path verifyLog, List<String> poke, Duration poll, Optional<Path> hook,
+                     VerifyWatch.Limits verifyLimits, Path verifyLog, List<String> poke, Duration poll, Optional<Path> hook,
                      String hookHash, Optional<Sha> jarLandingChange, String committerName, String committerEmail,
-                     Duration gitTimeout, Duration gitRemoteTimeout, Duration runBudget, List<Path> toolPath) {
+                     Duration gitTimeout, Duration gitRemoteTimeout, Duration runBudget, List<Path> toolPath, Path verifyProgress,
+                     Path verifyHistory, Duration feedback) {
 
     public Config {
         verify = List.copyOf(verify);
@@ -84,11 +91,15 @@ public record Config(Path repo, String remote, Path worktree, Path journal, Path
         if (repo == null || repo.isBlank()) {
             throw new IllegalArgumentException("the landing config names no repo");
         }
-        Duration verifyTimeout = Duration.ofMinutes(Long.parseLong(p.getProperty("verify.timeout.minutes", "45")));
+        VerifyWatch.Limits limits = new VerifyWatch.Limits(
+                Duration.ofMinutes(Long.parseLong(p.getProperty("verify.stall.minutes", "15"))),
+                Duration.ofMinutes(Long.parseLong(p.getProperty("verify.timeout.minutes", "90"))),
+                Duration.ofSeconds(Long.parseLong(p.getProperty("verify.look.seconds", "10"))));
         Duration remote = Duration.ofMinutes(Long.parseLong(p.getProperty("git.remote-timeout.minutes", "10")));
         Duration budget = Duration.ofMinutes(Long.parseLong(p.getProperty("run.budget.minutes", "180")));
-        Duration least = Integrator.leastBudget(verifyTimeout, remote);
-        if (budget.compareTo(least) <= 0) {
+        // the cap's floor must fit: a larger cap from the history is held to what is left at the attempt (Integrator.cap)
+        Duration least = Integrator.leastBudget(limits.cap(), remote);
+        if (budget.compareTo(least) < 0) {
             throw new IllegalArgumentException("run.budget.minutes " + budget.toMinutes() + " has no room for one attempt, "
                     + "which takes up to " + least + ": every start would be refused at its first attempt");
         }
@@ -97,7 +108,7 @@ public record Config(Path repo, String remote, Path worktree, Path journal, Path
                 p.getProperty("journal") == null ? home.resolve("journal.jsonl") : Path.of(p.getProperty("journal")),
                 p.getProperty("lock") == null ? home.resolve("integrator.lock") : Path.of(p.getProperty("lock")),
                 words(p.getProperty("verify", "sh tools/ops/verify.sh")),
-                verifyTimeout,
+                limits,
                 p.getProperty("verify.log") == null ? home.resolve("verify.log") : Path.of(p.getProperty("verify.log")),
                 words(p.getProperty("poke", "schtasks /run /tn mc-landing")),
                 Duration.ofSeconds(Long.parseLong(p.getProperty("poll.seconds", "15"))),
@@ -109,7 +120,17 @@ public record Config(Path repo, String remote, Path worktree, Path journal, Path
                 Duration.ofMinutes(Long.parseLong(p.getProperty("git.timeout.minutes", "2"))),
                 remote,
                 budget,
-                Arrays.stream(p.getProperty("tool.path", "").split(";")).filter(d -> !d.isBlank()).map(Path::of).toList());
+                Arrays.stream(p.getProperty("tool.path", "").split(";")).filter(d -> !d.isBlank()).map(Path::of).toList(),
+                p.getProperty("verify.progress") == null ? home.resolve("verify-progress.json")
+                        : Path.of(p.getProperty("verify.progress")),
+                p.getProperty("verify.history") == null ? home.resolve("verify-history.json")
+                        : Path.of(p.getProperty("verify.history")),
+                Duration.ofSeconds(Long.parseLong(p.getProperty("feedback.seconds", "60"))));
+    }
+
+    /** The cap's floor, {@code verify.timeout.minutes}: what a verify may run with no history to raise it. */
+    public Duration verifyTimeout() {
+        return verifyLimits.cap();
     }
 
     private static List<String> words(String command) {

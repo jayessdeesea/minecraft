@@ -73,6 +73,8 @@ class EntriesTest {
                 Arguments.of(journal(attempt(1), fault(FaultKind.FETCH_FAILED, 1, 0)), 0),
                 Arguments.of(journal(attempt(1), fault(FaultKind.FETCH_FAILED, 0)), 1),
                 Arguments.of(journal(attempt(1), fault(FaultKind.VERIFY_TIMEOUT, 1, 0)), 1),
+                // a stall is the entry's own, as a timeout is: its try stays charged
+                Arguments.of(journal(attempt(1), fault(FaultKind.VERIFY_STALLED, 1, 0)), 1),
                 Arguments.of(journal(attempt(1), fault(FaultKind.OUTSIDE_PUSH, 1, 0)), 1),
                 Arguments.of(journal(attempt(1), fault(FaultKind.PUSH_REFUSED, 2, 0)), 1),
                 Arguments.of(journal(attempt(1), attempt(1), fault(FaultKind.PUSH_REFUSED, 1, 0)), 1),

@@ -271,11 +271,17 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
   Its exit is Maven's.
 - `install-landing.sh [--dry-run]` installs the landing queue from `origin/main` into `C:/mc-state/landing/` - the jar,
   its `config` (written by the tool alone, what is there kept), `land.sh` - makes the worktree `C:/mc-worktrees/landing`
-  and registers the scheduled task `mc-landing` again, its enabled state kept. Run it from a shell that is not elevated,
-  when nothing is landing; again after a change under `landing/` lands, a JDK moves, or `run.budget.minutes` changes. It
-  worked when its last line is `== installed, the task enabled: every question yes, the audit clean` - or `the task
-  disabled`, on a first install or when the task was disabled, which it keeps. The task's own
-  output is `landing-task.log` there; the last verify's is `verify.log`.
+  and registers the scheduled task `mc-landing` again, its enabled state kept, at normal priority. Run it from a shell
+  that is not elevated, when nothing is landing; again after a change under `landing/` lands, a JDK moves, or
+  `run.budget.minutes` changes. It asks five questions only the scheduler can answer, the fifth that the task runs at
+  normal priority, through a check task made from the same template. It worked when its last line is
+  `== installed, the task enabled: every question yes, the audit clean` - or `the task disabled`, on a first install or
+  when the task was disabled, which it keeps. At the first verify after an install, read the priority of the whole tree
+  by hand - surefire's forks included: `Get-CimInstance Win32_Process | ? Name -match 'java|sh' | select
+  ProcessId,ParentProcessId,Name,Priority` shows every process under the task's `javaw` at 8; I/O priority has no
+  documented read, and its test is the verify's time. The task's own output is `landing-task.log` there - each verify that ran
+  ends with its time against expected and its longest quiet, and an `[Overrun]` line past 1.25 times expected; the last
+  verify's log is `verify.log`; one the watchdog ended, `verify.killed.log`.
 - `commit.sh <message file> [--timeout <minutes>]` lands this worktree's change through the landing queue: it commits
   the tracked changes (`git add` new files first), squashes the branch into one commit under that message, and waits
   while the queue verifies it on main with the whole suite (`verify.sh`) in the queue's own worktree and pushes it. The

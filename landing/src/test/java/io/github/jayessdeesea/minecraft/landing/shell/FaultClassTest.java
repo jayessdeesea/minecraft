@@ -68,22 +68,32 @@ class FaultClassTest {
         assertEquals(0, s.audit(), s.printed());
     }
 
-    /** A verify past its time: its tree killed, a fault against the entry; FAILED at the second. */
+    /**
+     * A verify that writes nothing for the stall limit: its tree killed, a fault against the entry; FAILED STALLED at the
+     * second, the queue not halted. The clock ticks in real time here: the watchdog watches it.
+     */
     @Test
-    void aVerifyTimedOutTwiceFails() {
+    void aVerifyStalledTwiceFails() {
         ScratchRepo s = new ScratchRepo(dir, 23);
         Path child = s.root.resolve("sleep.pid");
-        s.verify = ScratchRepo.NATIVE_CHILD + " cat /proc/$!/winpid > '" + ScratchRepo.slash(child) + "'; wait; "
-                + "echo '[INFO] BUILD SUCCESS' > \"$VERIFY_LOG\"";
-        s.verifyTimeout = Duration.ofSeconds(2);
+        s.verify = "echo '[INFO] Building app 0.1.0-SNAPSHOT [7/7]' > \"$VERIFY_LOG\"; " + ScratchRepo.NATIVE_CHILD
+                + " cat /proc/$!/winpid > '" + ScratchRepo.slash(child) + "'; wait; echo '[INFO] BUILD SUCCESS' > \"$VERIFY_LOG\"";
+        s.verifyLimits = new io.github.jayessdeesea.minecraft.landing.VerifyWatch.Limits(Duration.ofSeconds(2),
+                Duration.ofMinutes(1), Duration.ofMillis(100));
+        s.clock.tick();
         s.write(s.a.resolve("x"), "1\nT\n3\n");
         long before = System.nanoTime();
         assertEquals(1, s.land(s.a, "A edits x", s.inline()), s.printed());
-        assertTrue(Duration.ofNanos(System.nanoTime() - before).toSeconds() < 40, "each verify killed at its time");
-        assertEquals(2, s.faults(FaultKind.VERIFY_TIMEOUT));
+        assertTrue(Duration.ofNanos(System.nanoTime() - before).toSeconds() < 40, "each verify ended at its stall");
+        assertEquals(2, s.faults(FaultKind.VERIFY_STALLED));
+        assertEquals(0, s.faults(FaultKind.VERIFY_TIMEOUT));
         long sleep = Long.parseLong(readString(child).strip());
         assertFalse(ProcessHandle.of(sleep).map(ProcessHandle::isAlive).orElse(false), "the verify's child sleep killed");
-        assertTrue(s.printed().contains("TIMED_OUT"), s.printed());
+        assertTrue(s.printed().contains("failed: STALLED"), s.printed());
+        assertFalse(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Halted), "the queue not halted");
+        assertTrue(java.nio.file.Files.exists(s.state.resolve("verify.killed.log")), "the ended verify's log kept");
+        assertTrue(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Fault f && f.kind() == FaultKind.VERIFY_STALLED
+                && f.detail().contains(" at app [7/7], 0 test classes done, 0 failing; ended")), s.printed());
         assertEquals(List.of("init"), s.subjects());
         assertEquals(0, s.audit(), s.printed());
     }

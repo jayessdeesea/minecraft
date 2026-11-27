@@ -209,7 +209,28 @@ class ScriptsTest {
             }
         }
         assertEquals(List.of("DisallowStartIfOnBatteries", "StopIfGoingOnBatteries", "Enabled", "ExecutionTimeLimit",
-                "MultipleInstancesPolicy", "StartWhenAvailable"), names);
+                "MultipleInstancesPolicy", "Priority", "StartWhenAvailable"), names);
+        // normal priority (operator's decision 1): 4, not the default 7, below normal with low I/O and memory priority
+        assertEquals("4", doc.getElementsByTagName("Priority").item(0).getTextContent());
+        // one template for the task and its check: the action's arguments filled in at install
+        assertEquals("__ARGUMENTS__", doc.getElementsByTagName("Arguments").item(0).getTextContent());
+    }
+
+    /**
+     * The check task is the task (design section 1): registered /xml from the same template, priority and all, with
+     * job-check for integrate, its start a day ahead so only its /run starts it; and five questions, the fifth the
+     * priority.
+     */
+    @Test
+    void theCheckTaskIsMadeFromTheTemplateAndAsksTheFifthQuestion() throws IOException, InterruptedException {
+        Ran ran = sh(OPS.resolve("install-landing.sh"), dryRun(dir.resolve("state"), null), "", "--dry-run");
+        assertEquals(0, ran.exit(), ran.out());
+        for (String said : List.of("the five questions", "would: fill tools/ops/mc-landing.xml again for the check task",
+                "job-check", "a day ahead", "/create /tn mc-landing-dry-run-check /xml",
+                "5. the task runs at normal priority: asked by the file's priority line")) {
+            assertTrue(ran.out().contains(said), "said " + said + ":\n" + ran.out());
+        }
+        assertFalse(ran.out().contains("/sc once"), "no schtasks /tr task: " + ran.out());
     }
 
     /** A program the task will need and this machine has not - here mvn - is exit 1 naming it, before anything is made. */

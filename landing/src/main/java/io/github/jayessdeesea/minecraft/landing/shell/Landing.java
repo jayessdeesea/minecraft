@@ -126,7 +126,7 @@ public final class Landing {
             Git.Tool git = new Git.Tool(List.of(Programs.resolve("git", config.toolPath(), Files::isRegularFile)), children,
                     config.gitTimeout(), config.gitRemoteTimeout(), job);
             if (args.length == 2 && args[0].equals("job-check")) {
-                return JobCheck.run(Path.of(args[1]), config, git, children, job, said);
+                return JobCheck.run(Path.of(args[1]), config, git, children, job, Job::priorityClass, said);
             }
             return new Landing(config, git, Clock.systemUTC(), RandomGenerator.getDefault(), said, cwd, Landing::sleep,
                     new Steps() {
@@ -235,8 +235,8 @@ public final class Landing {
 
     private IntegratorRun integrator() {
         List<String> verify = Programs.command(config.verify(), config.toolPath(), Files::isRegularFile);
-        return new IntegratorRun(config, repo(), journal, lock, new Verifier(verify, config.verifyTimeout(),
-                config.verifyLog(), tool.env(), tool.children()), clock, random, steps, out, taskLog);
+        return new IntegratorRun(config, repo(), journal, lock, new Verifier(verify, config.verifyLimits(),
+                config.verifyLog(), tool.env(), tool.children(), clock), clock, random, steps, out, taskLog);
     }
 
     private IntSupplier land(List<String> rest) {
@@ -246,13 +246,18 @@ public final class Landing {
         Optional<Duration> timeout = rest.size() == 3 ? Optional.of(Duration.ofMinutes(Long.parseLong(rest.get(2))))
                 : Optional.empty();
         Path message = cwd.resolve(rest.getFirst());
-        return () -> new Submitter(new Git(cwd, tool), config.remote(), journal, poke, sleeper, clock, random, config.poll(),
-                out).land(message, timeout);
+        return () -> submitter(new Git(cwd, tool)).land(message, timeout);
+    }
+
+    private Submitter submitter(Git git) {
+        return new Submitter(git, config.remote(), journal, poke, sleeper, clock, random, config.poll(), out,
+                new WatchFiles(config.verifyProgress(), config.verifyHistory(), out), config.feedback());
     }
 
     /**
      * The entry's state as a waiter's exit, main as the integrator last fetched it - or, the entry verified and
-     * unsettled, as this worktree fetches it once for itself, as a waiter does.
+     * unsettled, as this worktree fetches it once for itself, as a waiter does. Under it, the line a waiter would say,
+     * then each fault journaled about the entry.
      */
     private int state(EntryId id) {
         Git git = repo();
@@ -269,6 +274,9 @@ public final class Landing {
         }
         EntryState state = Entries.state(id, records, gather.landings(tip));
         out.println(id + ": " + state);
+        out.println(submitter(git).where(id, state, records).text());
+        records.stream().filter(r -> r instanceof JournalRecord.Fault f && f.entry().filter(id::equals).isPresent())
+                .map(r -> (JournalRecord.Fault) r).forEach(f -> out.println(f.at() + " " + f.kind() + " " + f.detail()));
         return ExitCode.of(state, Integrator.halted(records).isPresent());
     }
 

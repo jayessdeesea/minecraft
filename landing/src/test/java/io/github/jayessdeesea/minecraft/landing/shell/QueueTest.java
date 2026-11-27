@@ -228,6 +228,208 @@ class QueueTest {
         assertEquals(0, s.audit(), s.printed());
     }
 
+    /**
+     * A fake verify that says it builds app and has done one test class, then writes nothing until the test opens
+     * {@code gate}, then passes with a Reactor Summary - or fails, the candidate holding {@code fail}.
+     */
+    private static String gated(Path gate) {
+        return "if [ -e fail ]; then echo '[INFO] BUILD FAILURE' > \"$VERIFY_LOG\"; exit 1; fi; "
+                + "echo '[INFO] Building app 0.1.0-SNAPSHOT [7/7]' > \"$VERIFY_LOG\"; "
+                + "echo '[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.1 s -- in x.ATest' >> \"$VERIFY_LOG\"; "
+                + "while [ ! -e '" + ScratchRepo.slash(gate) + "' ]; do sleep 0.1; done; "
+                + "echo '[INFO] Reactor Summary for app 0.1.0-SNAPSHOT:' >> \"$VERIFY_LOG\"; "
+                + "echo '[INFO] app ................................................ SUCCESS [  1.000 s]' >> \"$VERIFY_LOG\"; "
+                + "echo '[INFO] BUILD SUCCESS' >> \"$VERIFY_LOG\"";
+    }
+
+    /**
+     * Lands {@code file} from a, the integrator on a thread of its own and the waiter really waiting, so the waiter sees
+     * the verify running; once it has said a verifying line, {@code during} runs and the gate opens. Its exit.
+     */
+    private static int landWatched(ScratchRepo s, String file, Path gate, Runnable during) throws Exception {
+        s.write(s.a.resolve(file), file + "\n");
+        s.git(s.a).ok("add", file);
+        Path message = s.root.resolve("message-" + file);
+        s.write(message, "A adds " + file + "\n");
+        int seen = s.printed().split(" verifying, attempt 1, ", -1).length;
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            Poke background = () -> pool.submit(s::integrate);
+            var waiter = pool.submit(() -> s.cli(s.a, background, d -> {
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }).run("land", message.toString()));
+            long until = System.nanoTime() + java.util.concurrent.TimeUnit.MINUTES.toNanos(2);
+            while (s.printed().split(" verifying, attempt 1, ", -1).length == seen && System.nanoTime() < until) {
+                Thread.sleep(50);
+            }
+            during.run();
+            java.nio.file.Files.writeString(gate, "go");
+            return waiter.get(3, java.util.concurrent.TimeUnit.MINUTES);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    /**
+     * A waiter on a slow verify says where it is - verifying, the module, the classes done, how old the last output is -
+     * before it lands; with no verify passed yet there is no estimate; `state` says the same line under its own; the
+     * progress file is there only while the verify runs; a pass is kept in the history.
+     */
+    @Test
+    void aWaiterSaysWhereItsVerifyIs() throws Exception {
+        ScratchRepo s = new ScratchRepo(dir, 16);
+        Path gate = s.root.resolve("gate");
+        s.verify = gated(gate);
+        Path progress = s.state.resolve("verify-progress.json");
+        Path history = s.state.resolve("verify-history.json");
+        boolean[] during = new boolean[2];
+        String[] state = new String[1];
+        int exit = landWatched(s, "q", gate, () -> {
+            during[0] = java.nio.file.Files.exists(progress);
+            var said = new java.io.ByteArrayOutputStream();
+            String id = s.lastQueued();
+            new Landing(s.config(), s.tool(), s.clock, s.random, new java.io.PrintStream(said, true,
+                    java.nio.charset.StandardCharsets.UTF_8), s.a, s.clock::advance, s.steps, Poke.NONE).run("state", id);
+            state[0] = said.toString(java.nio.charset.StandardCharsets.UTF_8);
+        });
+        assertEquals(0, exit, s.printed());
+        String printed = s.printed();
+        String id = s.lastQueued();
+        int verifying = printed.indexOf(id + " verifying, attempt 1, ");
+        assertTrue(verifying >= 0, printed);
+        String line = printed.substring(verifying, printed.indexOf('\n', verifying));
+        assertTrue(line.contains("app [7/7], 1 test class done, 0 failing (no estimate: no verify has passed yet); last output ")
+                && line.contains("s ago"), line);
+        assertTrue(verifying < printed.indexOf(id + " landed as "), printed);
+        assertTrue(during[0], "the progress file there while the verify runs");
+        assertFalse(java.nio.file.Files.exists(progress), "gone after");
+        assertTrue(state[0].startsWith(id + ": Verifying"), state[0]);
+        assertTrue(state[0].lines().toList().get(1).startsWith(id + " verifying, attempt 1, "), state[0]);
+        assertTrue(java.nio.file.Files.readString(history).contains("\"app\""), "the pass kept");
+        assertTrue(printed.contains("verify took ") && printed.contains("(no estimate: no verify has passed yet), longest quiet"),
+                printed);
+    }
+
+    /** A second landing is measured against the first: its waiter says a percent and the time left. */
+    @Test
+    void aSecondLandingShowsAPercent() throws Exception {
+        ScratchRepo s = new ScratchRepo(dir, 17);
+        Path gate = s.root.resolve("gate");
+        s.verify = gated(gate);
+        assertEquals(0, landWatched(s, "q", gate, () -> { }), s.printed());
+        java.nio.file.Files.delete(gate);
+        assertEquals(0, landWatched(s, "r", gate, () -> { }), s.printed());
+        String printed = s.printed();
+        String id = s.lastQueued();
+        int verifying = printed.indexOf(id + " verifying, attempt 1, ");
+        assertTrue(verifying >= 0, printed);
+        String line = printed.substring(verifying, printed.indexOf('\n', verifying)).strip();
+        assertTrue(line.matches(".* verifying, attempt 1, \\S+: \\d+%, about \\S+ left.* - app \\[7/7], 1 of 1 test classes; .*"),
+                line);
+        assertTrue(printed.contains("against ") && printed.contains(" expected (1 pass)"), printed);
+    }
+
+    /**
+     * A history whose 2 x expected is past what the run budget leaves, and a clock that moves while the run starts: the
+     * cap is held to what is left at the check, said, and the attempt starts - never refused for ever (review round 1).
+     * Here the budget is 3h and a remote call 2m, so 2 x 88m = 176m is held below 170m50s.
+     */
+    @Test
+    void aHeldCapStillAttempts() {
+        ScratchRepo s = new ScratchRepo(dir, 20);
+        var codec = new io.github.jayessdeesea.minecraft.landing.WatchCodec();
+        s.write(s.state.resolve("verify-history.json"), codec.write(io.github.jayessdeesea.minecraft.landing.VerifyHistory.NONE
+                .with(new io.github.jayessdeesea.minecraft.landing.VerifyPass(s.clock.instant(), s.init, Duration.ofMinutes(88),
+                        List.of()))));
+        s.clock.tick();
+        s.write(s.a.resolve("k"), "k\n");
+        s.git(s.a).ok("add", "k");
+        assertEquals(0, s.land(s.a, "A adds k", s.inline(), "--timeout", "5"), s.printed());
+        assertTrue(s.printed().contains("the verify cap 2 x 88m = 176m is held to "), s.printed());
+        assertEquals(Optional.of("k\n"), s.onMain("k"));
+    }
+
+    /**
+     * A test that prints a Reactor Summary line no verify could take - 10^17 minutes - is display, not outcome (review
+     * round 2, A): the entry lands and is pushed, the history keeps the pass without that module, and the verify's time
+     * is said.
+     */
+    @Test
+    void aTestPrintingASummaryLineNoVerifyCouldTakeStillLands() {
+        ScratchRepo s = new ScratchRepo(dir, 21);
+        s.verify = "echo '[INFO] app ................................................ SUCCESS [100000000000000000:00 min]' "
+                + "> \"$VERIFY_LOG\"; echo '[INFO] Reactor Summary for bot 0.1.0-SNAPSHOT:' >> \"$VERIFY_LOG\"; "
+                + "echo '[INFO] bot ................................................ SUCCESS [  1.000 s]' >> \"$VERIFY_LOG\"; "
+                + "echo '[INFO] BUILD SUCCESS' >> \"$VERIFY_LOG\"";
+        s.write(s.a.resolve("k"), "k\n");
+        s.git(s.a).ok("add", "k");
+        assertEquals(0, s.land(s.a, "A adds k", s.inline(), "--timeout", "3"), s.printed());
+        assertEquals(Optional.of("k\n"), s.onMain("k"));
+        String history = readHistory(s);
+        assertTrue(history.contains("\"bot\"") && !history.contains("\"app\""), history);
+        assertTrue(s.printed().contains("verify took "), s.printed());
+    }
+
+    private static String readHistory(ScratchRepo s) {
+        try {
+            return java.nio.file.Files.readString(s.state.resolve("verify-history.json"));
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * A log that goes and comes back, at the same size, is no output (review round 2, B): moved aside and back between
+     * looks with nothing new, the verify ends as a stall at the stall limit - not, each move taken for growth, at its cap.
+     */
+    @Test
+    void aLogThatComesAndGoesIsAStall() {
+        ScratchRepo s = new ScratchRepo(dir, 22);
+        String pause = "\"${SystemRoot:-$SYSTEMROOT}/System32/PING.EXE\" -n 1 -w 100 192.0.2.1 > /dev/null";
+        s.verify = "echo '[INFO] Building app 0.1.0-SNAPSHOT [7/7]' > \"$VERIFY_LOG\"; while true; do "
+                + "mv \"$VERIFY_LOG\" \"$VERIFY_LOG.aside\"; " + pause + "; mv \"$VERIFY_LOG.aside\" \"$VERIFY_LOG\"; " + pause
+                + "; done";
+        s.verifyLimits = new io.github.jayessdeesea.minecraft.landing.VerifyWatch.Limits(Duration.ofSeconds(2),
+                Duration.ofSeconds(20), Duration.ofMillis(100));
+        s.clock.tick();
+        s.write(s.a.resolve("k"), "k\n");
+        s.git(s.a).ok("add", "k");
+        assertEquals(1, s.land(s.a, "A adds k", s.inline()), s.printed());
+        assertEquals(2, s.faults(FaultKind.VERIFY_STALLED), s.printed());
+        assertEquals(0, s.faults(FaultKind.VERIFY_TIMEOUT), s.printed());
+    }
+
+    /** A failed verify is no pass: nothing kept in the history. */
+    @Test
+    void aFailedVerifyIsNotKept() {
+        ScratchRepo s = new ScratchRepo(dir, 18);
+        s.verify = gated(s.root.resolve("gate"));
+        s.write(s.a.resolve("fail"), "\n");
+        s.git(s.a).ok("add", "fail");
+        assertEquals(1, s.land(s.a, "A breaks it", s.inline()), s.printed());
+        assertFalse(java.nio.file.Files.exists(s.state.resolve("verify-history.json")));
+    }
+
+    /** A history that cannot be read is said once and the verify goes on with no estimate: the entry lands. */
+    @Test
+    void anUnreadableHistoryIsSaidOnceAndTheEntryLands() throws Exception {
+        ScratchRepo s = new ScratchRepo(dir, 19);
+        Path gate = s.root.resolve("gate");
+        java.nio.file.Files.writeString(gate, "go");
+        s.verify = gated(gate);
+        s.write(s.state.resolve("verify-history.json"), "{not json");
+        s.write(s.a.resolve("k"), "k\n");
+        s.git(s.a).ok("add", "k");
+        assertEquals(0, s.land(s.a, "A adds k", s.inline()), s.printed());
+        assertEquals(1, s.printed().split("the verify history ", -1).length - 1, s.printed());
+        assertTrue(java.nio.file.Files.readString(s.state.resolve("verify-history.json")).contains("\"app\""),
+                "written again with this pass");
+    }
+
     /** The hook's question: may this push go? Only the verified candidate, on its parent, while the lock is held. */
     @Test
     void mayPushAllowsOnlyTheVerifiedCandidateUnderTheLock() {

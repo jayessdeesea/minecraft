@@ -160,10 +160,19 @@ branch is moved to the landed commit. A worktree has one landing in flight: `lan
 waits on it again, and what was changed meanwhile is the next landing's. After a landing a branch is brought up by
 rebase only, never a merge.
 
+The verify is watched. Fifteen minutes with nothing new in its log ends it (`VERIFY_STALLED`); its cap ends it however busy
+(`VERIFY_TIMEOUT`) - the larger of ninety minutes and twice the expected total, held to what is left of the run budget
+when the attempt starts; with less than ninety minutes left no attempt starts, and the next run takes it up
+(`landing.Integrator.cap`). Either twice fails the entry. An ended verify's log is kept as
+`verify.killed.log`. While it waits, `land` says where its entry is - who is ahead, the module and test classes done, how
+old the last output is, and the percent done and time left, measured against the last five verifies that passed (before
+one has, counts only) - when that changes and each minute. A verify over 1.25 times its expected time is an `[Overrun]`
+on the task's log, naming the modules over their own; it ends nothing.
+
 | Exit | The answer | Then |
 |---|---|---|
 | 0 | Landed, and nothing more in the worktree | The branch is the landed commit. |
-| 1 | Failed: the verify failed, timed out twice, main moved under its push three times, or five attempts had no outcome | The commit stays where it is - nothing is taken back. Fix and land again. |
+| 1 | Failed: the verify failed, stalled or ran past its cap twice, main moved under its push three times, or five attempts had no outcome | The commit stays where it is - nothing is taken back. Fix and land again. |
 | 2 | Usage, or nothing to land: the change is main's already | |
 | 3 | Bounced or withdrawn: it conflicts with main (the files named), carries a change that landed since its base, holds a merge commit, has a message with a `Landing-Id` already in it, or is malformed; or the replay onto its last landed change could not be made | Rebase onto `origin/main`, land again. |
 | 4 | Halted: the queue attempts nothing; the entry stays queued | The operator's to resume. |
@@ -178,7 +187,8 @@ fetch's aside - halt the queue and fail no entry.
   `[Fault] HALTED: <reason>` for a halt in force. Each is journaled once, and only when the audit holds the lock; an
   audit that finds the lock held notes "I7 not checked" and says nothing of a halt. Run at the start and end of every
   integrator run and at the start of every watch's pass.
-- `landing state <id>` - an entry's state, as a waiter's exit.
+- `landing state <id>` - an entry's state, as a waiter's exit, and where its verify is: the line a waiter says, then each
+  fault journaled about the entry.
 - `landing withdraw <id>` - asks the integrator to take an entry out, a bad one that halts the queue included.
 - `landing resume <reason>` - lifts a halt; the next run attempts at once. The operator's.
 - `landing adopt <sha> <reason>` - accepts a commit that reached main from outside the queue, which is a `[Fault]` at
@@ -188,7 +198,10 @@ Where the queue's facts are, each with one writer: a request is the ref `refs/qu
 the integrator deletes it); attempts, verifies, failures, bounces, faults and halts are lines of
 `C:/mc-state/landing/journal.jsonl`, written only under the lock and kept whole; landed is a fact of main - the commit
 carries `Landing-Id: <id>` - and nothing is recorded after the push. An entry's state is computed from those
-(`landing.Entries.state`), never stored; a trailer on main wins.
+(`landing.Entries.state`), never stored; a trailer on main wins. The running verify's progress is
+`verify-progress.json`, written by the lock's holder, there only while a verify runs; the last five verifies that passed
+are `verify-history.json`, written by the lock's holder after each `Verified`. Both are witnesses: one that cannot be read
+is said once and the queue goes on without it.
 
 The invariants, K the commit of the journal's last `Cutover` (with none, the audit notes that I1 to I3 and I8's hook
 are not checked):

@@ -268,7 +268,10 @@ class Amendment2Test {
         assertTrue(said.toString(java.nio.charset.StandardCharsets.UTF_8).contains("landing itself failed"));
     }
 
-    /** R5 in this JVM: a tree not proven gone at the verify's timeout is VERIFY_TIMEOUT, "not gone", and the run ends 6. */
+    /**
+     * R5 in this JVM: a tree not proven gone when the watchdog ends the verify is the kind that ended it - here a stall,
+     * VERIFY_STALLED - "not gone", and the run ends 6.
+     */
     @Test
     void aVerifyTreeNotProvenGoneEndsTheRun() {
         ScratchRepo s = new ScratchRepo(dir, 63);
@@ -277,16 +280,20 @@ class Amendment2Test {
             return false;
         };
         s.verify = ScratchRepo.NATIVE_CHILD + " wait";
-        s.verifyTimeout = Duration.ofSeconds(2);
+        s.verifyLimits = new io.github.jayessdeesea.minecraft.landing.VerifyWatch.Limits(Duration.ofSeconds(2),
+                Duration.ofMinutes(1), Duration.ofMillis(100));
+        s.clock.tick();
         s.write(s.a.resolve("x"), "1\nE\n3\n");
         assertEquals(5, s.queue(s.a, "A edits x"));
         String id = s.lastQueued();
         assertEquals(6, s.integrate(), s.printed());
-        assertTrue(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Fault f && f.kind() == FaultKind.VERIFY_TIMEOUT
+        assertTrue(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Fault f && f.kind() == FaultKind.VERIFY_STALLED
                 && f.entry().map(e -> e.value().equals(id)).orElse(false) && f.detail().contains("not proven gone")), s.printed());
         Sha candidate = s.journal().stream().filter(r -> r instanceof JournalRecord.Attempt).map(r -> ((JournalRecord.Attempt) r)
                 .candidate()).reduce((x, y) -> y).orElseThrow();
         assertEquals(candidate, s.git(s.landingTree).resolve("HEAD").orElseThrow(), "no checkout after");
+        // an ended verify says its time, not proven gone or not (review round 1)
+        assertTrue(s.printed().contains("verify took "), s.printed());
     }
 
     /** R5 in this JVM: a fetch's tree not proven gone is FETCH_FAILED, "not gone", and the run ends 6. */
@@ -434,6 +441,22 @@ class Amendment2Test {
         assertTrue(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Fault f && f.kind() == FaultKind.VERIFY_NO_RESULT
                 && f.detail().contains("could not be cleared")), s.printed());
         assertFalse(s.printed().contains("did not start"), s.printed());
+    }
+
+    /**
+     * A verify that ran to its exit and whose log then could not be read is VERIFY_NO_RESULT, and ends with its time on the
+     * task's log as any verify that ran does (review round 1).
+     */
+    @Test
+    void aVerifyWhoseLogCannotBeReadStillSaysItsTime() {
+        ScratchRepo s = new ScratchRepo(dir, 72);
+        s.verify = "echo '[INFO] BUILD SUCCESS' > \"$VERIFY_LOG\"; rm -f \"$VERIFY_LOG\"; mkdir \"$VERIFY_LOG\"";
+        s.write(s.a.resolve("x"), "1\nR\n3\n");
+        assertEquals(5, s.queue(s.a, "A edits x"));
+        s.integrate();
+        assertTrue(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Fault f && f.kind() == FaultKind.VERIFY_NO_RESULT
+                && f.detail().contains("could not be read")), s.printed());
+        assertTrue(s.printed().contains("verify took "), s.printed());
     }
 
     /** C3 F3: a run without the budget for a whole attempt starts none - 0, the entry left queued for the next start. */

@@ -7,6 +7,8 @@ import io.github.jayessdeesea.minecraft.landing.JournalFormatException;
 import io.github.jayessdeesea.minecraft.landing.JournalRecord;
 import io.github.jayessdeesea.minecraft.landing.RunToken;
 import io.github.jayessdeesea.minecraft.landing.Sha;
+import io.github.jayessdeesea.minecraft.landing.VerifyEnd;
+import io.github.jayessdeesea.minecraft.landing.VerifyWatch;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -108,35 +110,85 @@ class ShellPartsTest {
     /** The verify's output is the log Maven wrote and its exit; what it prints is nobody's. */
     @Test
     void theVerifierReadsTheLogAndTheExitAndEchoesNothing() {
-        Verifier verifier = new Verifier(List.of("sh", "-c", "echo noise; echo '[INFO] BUILD FAILURE' > \"$VERIFY_LOG\"; exit 3"),
-                Duration.ofSeconds(30), dir.resolve("state/verify.log"), Map.of(), new ProcessTree());
+        Verifier verifier = verifier("echo noise; echo '[INFO] BUILD FAILURE' > \"$VERIFY_LOG\"; exit 3", SLOW,
+                dir.resolve("state/verify.log"));
         Verifier.Run run = verifier.run(dir);
         assertEquals(List.of("[INFO] BUILD FAILURE"), run.lines());
-        assertEquals(3, run.exit());
-        assertFalse(run.timedOut());
+        assertEquals(new VerifyEnd.Exited(3), run.end());
     }
 
     @Test
     void aVerifyThatWritesNoLogHasNoLines() {
-        Verifier.Run run = new Verifier(List.of("sh", "-c", "echo '[INFO] BUILD SUCCESS'"), Duration.ofSeconds(30),
-                dir.resolve("verify.log"), Map.of(), new ProcessTree()).run(dir);
+        Verifier.Run run = verifier("echo '[INFO] BUILD SUCCESS'", SLOW, dir.resolve("verify.log")).run(dir);
         assertEquals(List.of(), run.lines());
-        assertEquals(0, run.exit());
+        assertEquals(new VerifyEnd.Exited(0), run.end());
     }
 
-    /** Past its time the verify's whole process tree is killed - its child sleep's pid gone - and it says it timed out. */
+    /** Looks each 50 ms; quiet 1 s is a stall; 4 s is the cap. */
+    private static final VerifyWatch.Limits FAST = new VerifyWatch.Limits(Duration.ofSeconds(1), Duration.ofSeconds(4),
+            Duration.ofMillis(50));
+    private static final VerifyWatch.Limits SLOW = new VerifyWatch.Limits(Duration.ofSeconds(30), Duration.ofSeconds(60),
+            Duration.ofMillis(50));
+
+    /** The verify as a script of its own - Windows quoting mangles quotes in a {@code sh -c} argument. */
+    private Verifier verifier(String script, VerifyWatch.Limits limits, Path log) {
+        Path file = dir.resolve("verify-" + Integer.toHexString(script.hashCode()) + ".sh");
+        try {
+            Files.writeString(file, script + "\n");
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+        return new Verifier(List.of("sh", file.toString()), limits, log, Map.of(), new ProcessTree(),
+                java.time.Clock.systemUTC());
+    }
+
+    /**
+     * A verify that writes nothing for the stall limit is ended: its whole process tree killed - its child's pid gone -
+     * said as Stalled, and its log kept as verify.killed.log for the next attempt not to clear.
+     */
     @Test
-    void aVerifyPastItsTimeIsKilled() throws IOException {
+    void aSilentVerifyIsStalledAndItsLogKept() throws IOException {
         Path child = dir.resolve("sleep.pid");
-        Path script = dir.resolve("verify.sh");
-        Files.writeString(script, ScratchRepo.NATIVE_CHILD + " cat /proc/$!/winpid > '" + ScratchRepo.slash(child)
-                + "'; wait; echo '[INFO] BUILD SUCCESS' > \"$VERIFY_LOG\"\n");
-        Verifier.Run run = new Verifier(List.of("sh", script.toString()), Duration.ofSeconds(3), dir.resolve("verify.log"),
-                Map.of(), new ProcessTree()).run(dir);
-        assertTrue(run.timedOut());
+        Path log = dir.resolve("verify.log");
+        Verifier.Run run = verifier("echo '[INFO] Building app 0.1.0-SNAPSHOT [7/7]' > \"$VERIFY_LOG\"; "
+                + ScratchRepo.NATIVE_CHILD + " cat /proc/$!/winpid > '" + ScratchRepo.slash(child) + "'; wait; "
+                + "echo '[INFO] BUILD SUCCESS' > \"$VERIFY_LOG\"", FAST, log).run(dir);
+        VerifyEnd.Stalled stalled = (VerifyEnd.Stalled) run.end();
+        assertTrue(stalled.quiet().compareTo(Duration.ofSeconds(1)) >= 0, stalled.toString());
+        assertEquals("app [7/7], 0 test classes done, 0 failing", stalled.where());
         assertEquals(List.of(), run.lines());
         long sleep = Long.parseLong(Files.readString(child).strip());
-        assertFalse(ProcessHandle.of(sleep).map(ProcessHandle::isAlive).orElse(false), "the child sleep killed");
+        assertFalse(ProcessHandle.of(sleep).map(ProcessHandle::isAlive).orElse(false), "the child killed");
+        assertFalse(Files.exists(log), "the log moved");
+        assertTrue(Files.readString(dir.resolve("verify.killed.log")).contains("Building app"));
+    }
+
+    /** One that keeps writing past the stall limit and then exits is Exited, its looks seeing the log grow. */
+    @Test
+    void aVerifyThatKeepsWritingPastTheStallLimitIsNotEnded() {
+        List<Long> sizes = new java.util.concurrent.CopyOnWriteArrayList<>();
+        // six native pauses of about half a second: past the 1 s stall limit in all, under it each, under the 4 s cap
+        Verifier.Run run = verifier("i=0; while [ $i -lt 6 ]; do echo line $i >> \"$VERIFY_LOG\"; i=$((i + 1)); "
+                + "\"${SystemRoot:-$SYSTEMROOT}/System32/PING.EXE\" -n 1 -w 100 192.0.2.1 > /dev/null; done; "
+                + "echo '[INFO] BUILD SUCCESS' >> \"$VERIFY_LOG\"", FAST, dir.resolve("verify.log"))
+                .run(dir, FAST.cap(), w -> sizes.add(w.bytes()));
+        assertEquals(new VerifyEnd.Exited(0), run.end(), sizes.toString());
+        assertTrue(run.took().compareTo(Duration.ofSeconds(1)) > 0, "it ran past the stall limit: " + run.took());
+        assertEquals("[INFO] BUILD SUCCESS", run.lines().getLast());
+        assertTrue(sizes.stream().distinct().count() > 3, "the looks saw it grow: " + sizes);
+        assertTrue(run.longestQuiet().compareTo(Duration.ofSeconds(1)) < 0, run.longestQuiet().toString());
+    }
+
+    /** One that writes forever is ended at its cap, Capped - however busy. */
+    @Test
+    void aVerifyWritingForeverIsCapped() throws IOException {
+        Verifier.Run run = verifier("while true; do echo line >> \"$VERIFY_LOG\"; "
+                // a native pause, as Maven's java is - an MSYS sleep's fork stub escapes the tree and holds the dir
+                + "\"${SystemRoot:-$SYSTEMROOT}/System32/PING.EXE\" -n 1 -w 100 192.0.2.1 > /dev/null; done", FAST,
+                dir.resolve("verify.log")).run(dir, Duration.ofSeconds(3), w -> { });
+        VerifyEnd.Capped capped = (VerifyEnd.Capped) run.end();
+        assertTrue(capped.ran().compareTo(Duration.ofSeconds(3)) >= 0, capped.toString());
+        assertTrue(Files.exists(dir.resolve("verify.killed.log")));
     }
 
     /** A git call past its time is killed with its children and says so; a hang never holds the caller. */
@@ -194,19 +246,48 @@ class ShellPartsTest {
         assertEquals(Path.of("C:/mc-worktrees/landing"), defaults.worktree());
         assertEquals(List.of("schtasks", "/run", "/tn", "mc-landing"), defaults.poke());
         assertEquals(List.of("sh", "tools/ops/verify.sh"), defaults.verify());
-        assertEquals(Duration.ofMinutes(45), defaults.verifyTimeout());
+        // the watchdog (operator's decisions 3-5; the stall 15m, 2026-11-27): quiet 15m ends a verify, 90m is the cap's
+        // floor, a look each 10 s
+        assertEquals(Duration.ofMinutes(90), defaults.verifyTimeout());
+        assertEquals(new VerifyWatch.Limits(Duration.ofMinutes(15), Duration.ofMinutes(90), Duration.ofSeconds(10)),
+                defaults.verifyLimits());
+        assertEquals(Duration.ofSeconds(60), defaults.feedback());
+        assertEquals(Path.of("D:/home/verify-progress.json"), defaults.verifyProgress());
+        assertEquals(Path.of("D:/home/verify-history.json"), defaults.verifyHistory());
         assertEquals("origin", defaults.remote());
         Properties some = new Properties();
         some.setProperty("repo", "C:/r");
         some.setProperty("journal", "D:/j.jsonl");
         some.setProperty("verify", "sh  -c   true");
         some.setProperty("verify.timeout.minutes", "2");
+        some.setProperty("verify.stall.minutes", "1");
+        some.setProperty("verify.look.seconds", "5");
+        some.setProperty("feedback.seconds", "300");
+        some.setProperty("verify.progress", "D:/p.json");
+        some.setProperty("verify.history", "D:/h.json");
         Config set = Config.of(some, Path.of("D:/home"));
         assertEquals(Path.of("D:/j.jsonl"), set.journal());
         assertEquals(List.of("sh", "-c", "true"), set.verify());
         assertEquals(Duration.ofMinutes(2), set.verifyTimeout());
+        assertEquals(new VerifyWatch.Limits(Duration.ofMinutes(1), Duration.ofMinutes(2), Duration.ofSeconds(5)),
+                set.verifyLimits());
+        assertEquals(Duration.ofSeconds(300), set.feedback());
+        assertEquals(Path.of("D:/p.json"), set.verifyProgress());
+        assertEquals(Path.of("D:/h.json"), set.verifyHistory());
         assertEquals(Optional.empty(), set.jarLandingChange());
         assertThrows(IllegalArgumentException.class, () -> Config.of(new Properties(), Path.of("D:/home")), "the repo is required");
+    }
+
+    /** The watchdog's limits out of order are refused: a stall at or past the cap, under four looks, no look. */
+    @Test
+    void theWatchdogsLimitsOutOfOrderAreRefused() {
+        for (String[] bad : List.of(new String[]{"verify.stall.minutes", "90"}, new String[]{"verify.look.seconds", "0"},
+                new String[]{"verify.look.seconds", "226"})) {
+            Properties p = new Properties();
+            p.setProperty("repo", "C:/r");
+            p.setProperty(bad[0], bad[1]);
+            assertThrows(IllegalArgumentException.class, () -> Config.of(p, Path.of("D:/home")), String.join("=", bad));
+        }
     }
 
     @Test
@@ -347,14 +428,18 @@ class ShellPartsTest {
         Path said = dir.resolve("job-check.txt");
         Files.writeString(config, "repo=" + ScratchRepo.slash(dir) + "\ntool.path=" + String.join(";", dirs).replace("\\", "\\\\")
                 + "\n");
-        assertEquals(0, launch(new String[]{"job-check", said.toString()}, Map.of("LANDING_CONFIG", config.toString()),
-                Optional.empty(), System.out, dir), () -> dirs + " " + read(said));
+        // this JVM's own priority answers the fifth question: a yes only at normal
+        boolean normal = Job.priorityClass() == Job.NORMAL_PRIORITY_CLASS;
+        assertEquals(normal ? 0 : 6, launch(new String[]{"job-check", said.toString()}, Map.of("LANDING_CONFIG",
+                config.toString()), Optional.empty(), System.out, dir), () -> dirs + " " + read(said));
         List<String> lines = Files.readAllLines(said);
-        assertEquals(4, lines.size(), lines.toString());
+        assertEquals(5, lines.size(), lines.toString());
         assertTrue(lines.get(0).startsWith("entered its job, pid "), lines.toString());
         assertTrue(lines.get(1).startsWith("git: git version"), lines.toString());
         assertTrue(lines.get(2).startsWith("sh: ") && lines.get(2).contains("Maven"), lines.toString());
         assertTrue(lines.get(3).startsWith("java: "), lines.toString());
+        assertEquals(normal ? "priority: NORMAL" : "priority: NO - ", normal ? lines.get(4) : lines.get(4).substring(0, 15),
+                lines.toString());
         Files.writeString(config, "repo=" + ScratchRepo.slash(dir) + "\ntool.path=" + dirs.getFirst().replace("\\", "\\\\") + "\n");
         assertEquals(6, launch(new String[]{"job-check", said.toString()}, Map.of("LANDING_CONFIG", config.toString()),
                 Optional.empty(), System.out, dir));
@@ -386,6 +471,44 @@ class ShellPartsTest {
         launch(new String[]{"integrate"}, env, home, quiet, s.a);
         assertTrue(Files.size(earlier) > 1024 * 1024, "the full log moved aside");
         assertTrue(Files.readString(log).contains("the queue is empty"), Files.readString(log));
+    }
+
+    /**
+     * A witness step on the outcome path that throws is said as a fault, once, and the outcome stands (review round 2, A).
+     */
+    @Test
+    void aWitnessThatThrowsIsSaidAndTheOutcomeStands() {
+        var said = new java.io.ByteArrayOutputStream();
+        IntegratorRun.witness("history", () -> {
+            throw new ArithmeticException("x");
+        }, new java.io.PrintStream(said, true, StandardCharsets.UTF_8));
+        assertEquals(List.of("[Fault] the verify's history not said (java.lang.ArithmeticException: x): the outcome stands"),
+                said.toString(StandardCharsets.UTF_8).lines().toList());
+        var quiet = new java.io.ByteArrayOutputStream();
+        boolean[] ran = {false};
+        IntegratorRun.witness("history", () -> ran[0] = true, new java.io.PrintStream(quiet, true, StandardCharsets.UTF_8));
+        assertTrue(ran[0]);
+        assertEquals("", quiet.toString(StandardCharsets.UTF_8));
+    }
+
+    /** The log's size is one read: not there, or not readable, is no reading; there, its bytes (review round 2, B). */
+    @Test
+    void aLogNotThereIsNoReading() throws IOException {
+        assertEquals(java.util.OptionalLong.empty(), Verifier.size(dir.resolve("absent.log")));
+        Files.writeString(dir.resolve("five.log"), "12345");
+        assertEquals(java.util.OptionalLong.of(5), Verifier.size(dir.resolve("five.log")));
+        Files.writeString(dir.resolve("empty.log"), "");
+        assertEquals(java.util.OptionalLong.of(0), Verifier.size(dir.resolve("empty.log")));
+    }
+
+    /** The fifth question's answer: NORMAL a yes; any other class a NO, named with its value. */
+    @Test
+    void thePriorityAnswer() {
+        assertEquals(new JobCheck.Answer("priority: NORMAL", true), JobCheck.priority(0x20));
+        assertEquals(new JobCheck.Answer("priority: NO - BELOW_NORMAL (0x4000)", false), JobCheck.priority(0x4000));
+        assertEquals(new JobCheck.Answer("priority: NO - IDLE (0x40)", false), JobCheck.priority(0x40));
+        assertEquals(new JobCheck.Answer("priority: NO - HIGH (0x80)", false), JobCheck.priority(0x80));
+        assertEquals(new JobCheck.Answer("priority: NO - 0x0 - GetPriorityClass failed", false), JobCheck.priority(0));
     }
 
     @Test

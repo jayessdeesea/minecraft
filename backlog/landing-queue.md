@@ -31,6 +31,9 @@ refuses.
 2. **GitHub** (C5): the ruleset and the deploy key; the integrator's remote switched in the config (`remote`), SSH by
    `GIT_SSH_COMMAND` in the task; a docs line for it.
 3. **Retire `C:/mc-worktrees/verify`** once no branch runs the old `commit.sh`.
+4. **Thread dumps before a stall's kill** (operator, 2026-11-27: yes, the commit after the watchdog): `jcmd <pid>
+   Thread.print` for each JVM in the job, appended to `verify.killed.log`, bounded at 20 s each, then the kill - what
+   tells a deadlock from a wait.
 
 ## Unsure
 - Whether a personal-account repository's rulesets allow "restrict updates" with a deploy key as bypass actor.
@@ -39,6 +42,12 @@ refuses.
 - Whether `deploy.sh`'s `mvn install` into the shared `~/.m2` during a verify can change what the verify resolves.
 - A reinstall while a `land` runs from the installed jar may fail at the jar's replacement (not tried): reinstall when
   no session is landing.
+- Whether the stall limit (15m) and the cap's floor (90m) fit a verify at normal priority: each verify's `longest quiet`
+  and its time against expected, on `landing-task.log`, say whether either should move.
+- Whether replacing `verify-progress.json` can fail on Windows while a waiter has it open: a waiter that cannot read it
+  takes it as no verify running for that look; a write that fails is said once.
+- Nothing bounds `run.budget.minutes` to a day, while a pass is kept only up to 24h: past that, a passing verify would
+  join no history, unsaid. Unreachable at the default 180m.
 - `job-check` gives a false NO when `JAVA_TOOL_OPTIONS` or `_JAVA_OPTIONS` is set (neither is, here).
 - `commit.sh` says the commit count only when the landing exits 0 to its own waiter: one that ends 5 (more in the
   worktree, or still queued at `--timeout`), one whose session died while it waited, or one found landed by a later
