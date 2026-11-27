@@ -42,6 +42,13 @@ proven wrong, so a gap is fixed before work that leans on it.
    - `RoutingSimulationTest.eliOnHisOwnGroundGetsToHisBranch` (field535): live he couldn't walk to a stand two blocks
      off on ground the probe shows is the model's; replayed, he walks it - the two part in what the soldier does, not
      in the ground. Replayed he reaches his branch by quarrying, a pillar and a stair, not by bridging his gap.
+7. **The server's facts from a source of their own.** `SimItems.dugTooFast` times a dig with the bot's own
+   `Hardness.ticks`, so a wrong dig time is the same wrong time on both sides, and the sim passes it. It refuses a
+   dig under 70% of that time and never notices one too slow. `bot`'s fakes (`FakeCraftingServer`,
+   `FakeChestServer`, `Battle`) are a second model of the server, checked against neither `SimServer` nor live play
+   (docs/test-map.md). Wanted: tables of what the real server answers, measured live and checked in. A dig's ticks
+   come first, per block and tool. Both simulators read those tables, and the bot's estimate is held to them in both
+   directions: never early, never far late.
 
 ## Done when
 - The ledger runs live and in the simulation, and a `[Fidelity]` line names each act whose live rate is off the

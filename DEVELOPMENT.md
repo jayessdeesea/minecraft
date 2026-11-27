@@ -264,6 +264,10 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
   change together, long lines, and the last verify's slowest tests - what a refactor pass reads first
   (docs/conventions.md, "Refactor every sixteenth commit, between profiles"). The slowest tests are read from the
   landing queue's worktree, or the one `REPORTS_WORKTREE` names; `hotspots.sh --slowest` prints them alone.
+- `python -I tools/ops/test-map.py [--check]` (Python, not `sh`) rewrites the generated tables of
+  [docs/test-map.md](docs/test-map.md) from the source tree - the code's tiers, its cycles, and every test class by
+  area and kind - and prints any main class it can't place. `--check` writes nothing and exits 1 when the tables are
+  stale. Run it after adding or moving tests, and with each refactor pass.
 - `quick.sh [mvn arguments]` runs every module's tests but those tagged `slow` - the simulations, the stuck evals and
   the combat matrices, nearly all of the suite's time - for the loop while a change is being made.
 - `verify.sh` is the whole suite as the gate runs it - from clean classes, every module, offline. It prints the failures
