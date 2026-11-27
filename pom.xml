@@ -22,6 +22,7 @@
     <module>command</module>
     <module>command-ai</module>
     <module>bot</module>
+    <module>landing</module>
     <module>app</module>
   </modules>
 

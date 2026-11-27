@@ -12,7 +12,7 @@
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 1
 N="${1:-64}"
 W="${VERIFY_WORKTREE:-C:/mc-worktrees/verify}"
-main='^(protocol|command|command-ai|bot|app)/src/main/.*[.]java$'
+main='^(protocol|command|command-ai|bot|landing|app)/src/main/.*[.]java$'
 
 echo "== churn x size, the last $N commits (changes, lines, changes x lines)"
 git log -n "$N" --name-only --pretty=format: | grep -E "$main" | sort | uniq -c | while read -r changes file; do

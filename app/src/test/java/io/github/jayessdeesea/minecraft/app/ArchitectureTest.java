@@ -1,13 +1,19 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.AccessTarget;
+import com.tngtech.archunit.core.domain.JavaAccess;
+import com.tngtech.archunit.core.domain.JavaModifier;
 
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +26,8 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Enforces, at build time, the module tenets documented in docs/architecture.md:
@@ -77,6 +85,9 @@ class ArchitectureTest {
         assertEquals(List.of(), ambiguous);
     }
 
+    /** Every module of the reactor, for the counts over their sources. */
+    static final List<String> MODULES = List.of("protocol", "command", "command-ai", "bot", "landing", "app");
+
     /** The most lines a source file holds (docs/conventions.md, operator 2026-11-18). */
     static final int MOST_LINES = 1000;
 
@@ -112,7 +123,7 @@ class ArchitectureTest {
                     || l.matches("^    (?:private |protected |public )?(?:static |final |volatile )+[\\w.<>\\[\\], ?]+ \\w+ = .*")).count();
         }
         long longLines = 0;
-        for (String module : List.of("protocol", "command", "command-ai", "bot", "app")) {
+        for (String module : MODULES) {
             Path src = root.resolve(module).resolve("src").resolve("main");
             if (!Files.isDirectory(src)) {
                 continue;
@@ -145,7 +156,7 @@ class ArchitectureTest {
         List<String> wrong = new ArrayList<>();
         OVER_THE_LIMIT.keySet().stream().filter(f -> !Files.isRegularFile(root.resolve(f)))
                 .forEach(f -> wrong.add(f + " is listed but not found: take it off OVER_THE_LIMIT"));
-        for (String module : List.of("protocol", "command", "command-ai", "bot", "app")) {
+        for (String module : MODULES) {
             Path src = root.resolve(module).resolve("src");
             if (!Files.isDirectory(src)) {
                 continue;
@@ -177,5 +188,133 @@ class ArchitectureTest {
                 .that().resideInAPackage(ROOT + ".command")
                 .should().dependOnClassesThat().resideInAnyPackage("org.springframework..", "io.netty..");
         rule.check(classes);
+    }
+
+    private static final String LANDING = ROOT + ".landing";
+    /** The rules below are vacuous unless the landing module's classes are on this test's classpath (app's pom). */
+    @Test
+    void theLandingModuleIsImported() {
+        assertTrue(classes.stream().anyMatch(c -> c.getPackageName().equals(LANDING)),
+                "no class of " + LANDING + " imported: the landing rules below would hold of nothing");
+    }
+
+    /**
+     * The merge queue stands alone: it runs from an installed jar to gatekeep this code, so it uses none of it, and
+     * nothing of the force uses it (below).
+     */
+    @Test
+    void landingDependsOnNoOtherModule() {
+        ArchRuleDefinition.noClasses()
+                .that().resideInAPackage(LANDING + "..")
+                .should().dependOnClassesThat(JavaClass.Predicates.resideInAPackage(ROOT + "..")
+                        .and(DescribedPredicate.not(JavaClass.Predicates.resideInAPackage(LANDING + ".."))))
+                .orShould().dependOnClassesThat().resideInAnyPackage("org.springframework..", "io.netty..")
+                .check(classes);
+    }
+
+    @Test
+    void noModuleDependsOnLanding() {
+        ArchRuleDefinition.noClasses()
+                .that().resideOutsideOfPackage(LANDING + "..")
+                .should().dependOnClassesThat().resideInAPackage(LANDING + "..")
+                .check(classes);
+    }
+
+    /**
+     * Functional core, imperative shell: outside its shell the landing module is a pure core - each of its decisions a
+     * function of its arguments, with no I/O and nothing read from the time, the machine or chance but what it is
+     * handed (amendment 1, R4: a closed set, not a list of what is barred).
+     */
+    @Test
+    void landingsCoreIsPure() {
+        pureCore(LANDING).check(classes);
+    }
+
+    private static final String FIXTURES = ROOT + ".app.purecore";
+
+    /** Each gap a pure core could read the ambient through is refused by the same rule, and a core handed them passes. */
+    @ParameterizedTest
+    @ValueSource(strings = {"NowInAZone", "SystemDefaultZone", "NewDate", "NewRandom", "ThreadLocalRandomCurrent",
+            "RandomUuid", "SystemProperties", "LineSeparator", "Console", "SystemIn", "InstantNowReference",
+            "DefaultRandomGenerator", "NamedRandomGenerator", "NestedRandomGeneratorStatic", "MathRandom", "ClockTick",
+            "InstantSourceSystem", "NewSplittableRandom", "NewGregorianCalendar", "ShuffleWithNoSource",
+            "FormatterToAFile"})
+    void thePureCoreRuleRefusesEachGap(String fixture) throws ClassNotFoundException {
+        JavaClasses one = new ClassFileImporter().importClasses(Class.forName(FIXTURES + ".PureCoreFixtures$" + fixture));
+        assertThrows(AssertionError.class, () -> pureCore(FIXTURES).check(one), fixture + " passed the pure-core rule");
+    }
+
+    @Test
+    void thePureCoreRulePassesACoreHandedItsClockAndRandomSource() throws ClassNotFoundException {
+        pureCore(FIXTURES).check(new ClassFileImporter().importClasses(
+                Class.forName(FIXTURES + ".PureCoreFixtures$Handed")));
+    }
+
+    /**
+     * The pure-core rule for {@code core} - the package and those under it but its {@code shell}: it depends only on
+     * listed classes, and on those outside it accesses - by call or method reference - nothing that reads the time,
+     * the system's defaults, a file or a random source it was not handed. Its own members may bear those names: a
+     * {@code now} it was handed is a value. Methods too broad to bar ({@code hashCode}, {@code toLowerCase}) stay.
+     */
+    static ArchRule pureCore(String core) {
+        DescribedPredicate<JavaClass> listed = DescribedPredicate.describe("listed for a pure core",
+                c -> listedForAPureCore(core, c.isArray() ? c.getBaseComponentType() : c));
+        DescribedPredicate<JavaAccess<?>> ambient = DescribedPredicate.describe(
+                "read the time, the system's defaults or a random source not handed in", access -> {
+                    String owner = access.getTargetOwner().getName();
+                    String name = access.getTarget().getName();
+                    String pkg = access.getTargetOwner().getPackageName();
+                    if (pkg.equals(core) || pkg.startsWith(core + ".")) {
+                        return false;
+                    }
+                    List<JavaClass> params = access.getTarget() instanceof AccessTarget.CodeUnitAccessTarget unit
+                            ? unit.getRawParameterTypes() : List.of();
+                    return List.of("now", "systemDefault", "getDefault").contains(name)
+                            || owner.equals(java.time.Clock.class.getName()) && (name.startsWith("system")
+                            || name.startsWith("tick"))
+                            || owner.equals(java.time.InstantSource.class.getName()) && name.startsWith("system")
+                            || List.of(Math.class.getName(), StrictMath.class.getName()).contains(owner)
+                            && name.equals("random")
+                            || owner.equals(java.util.Collections.class.getName()) && name.equals("shuffle")
+                            && params.size() == 1
+                            || owner.equals(java.util.Formatter.class.getName()) && name.equals("<init>")
+                            && !params.isEmpty() && List.of(String.class.getName(), java.io.File.class.getName())
+                            .contains(params.getFirst().getName())
+                            || owner.startsWith(java.util.random.RandomGenerator.class.getName())
+                            && access.getTarget().resolveMember().map(m -> m.getModifiers().contains(JavaModifier.STATIC))
+                            .orElse(false);
+                });
+        return ArchRuleDefinition.noClasses()
+                .that().resideInAPackage(core + "..").and().resideOutsideOfPackage(core + ".shell..")
+                .should().dependOnClassesThat(DescribedPredicate.not(listed))
+                .orShould().accessTargetWhere(ambient);
+    }
+
+    /** What a pure core may depend on: its own packages, the language and the collections, time as values, Jackson. */
+    private static boolean listedForAPureCore(String core, JavaClass c) {
+        String name = c.getName();
+        String pkg = c.getPackageName();
+        if (c.isPrimitive()) {
+            return true;
+        }
+        if (pkg.equals(core) || pkg.startsWith(core + ".") && !pkg.startsWith(core + ".shell")) {
+            return true;
+        }
+        if (pkg.equals("java.lang")) {
+            String simple = name.substring("java.lang.".length());
+            return !(simple.startsWith("Process") || simple.startsWith("Thread")
+                    || List.of("System", "Runtime", "ClassLoader").stream()
+                    .anyMatch(b -> simple.equals(b) || simple.startsWith(b + "$")));
+        }
+        if (pkg.equals("java.util")) {
+            String simple = name.substring("java.util.".length());
+            return List.of("Random", "SplittableRandom", "UUID", "Date", "Calendar", "GregorianCalendar", "TimeZone", "Timer",
+                    "Scanner", "Properties", "Locale", "ResourceBundle", "ServiceLoader").stream().noneMatch(b -> simple.equals(b) || simple.startsWith(b + "$"));
+        }
+        return List.of("java.lang.invoke", "java.lang.runtime", "java.util.function", "java.util.stream", "java.util.regex",
+                "java.time", "java.time.format").contains(pkg)
+                || name.equals("java.util.random.RandomGenerator") || name.startsWith("java.util.random.RandomGenerator$")
+                || name.equals("java.io.IOException")
+                || pkg.startsWith("com.fasterxml.jackson.");
     }
 }

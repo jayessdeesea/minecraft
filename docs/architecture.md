@@ -178,6 +178,10 @@ modules:
 - **`bot`** — the deterministic per-tick soldier runtime. Depends on `protocol` (to actually
   connect and act) and `command` (interfaces only) — never on `command-ai`. A soldier must not
   know or care whether its orders came from an LLM or a hand-typed test order.
+- **`landing`** — the local merge queue that lands changes on main. It depends on no other module
+  and none depends on it (only `app`'s tests, to import it for ArchUnit), since it runs from an
+  installed jar to gatekeep this code. No Spring, no Netty; code outside the package
+  `landing.shell`, kept for its shell, does no I/O and reads no ambient clock or environment.
 - **`app`** — the Spring Boot composition root: `main()`, DI wiring of concrete beans from every
   other module, and the ArchUnit tests that enforce the boundaries above.
 
@@ -191,7 +195,8 @@ express). Don't pre-split modules speculatively.
 
 **Enforcement: ArchUnit, not JPMS.** `app`'s `ArchitectureTest` encodes the boundary rules above
 (Netty confined to `protocol`; `command` never depends on `command.ai`; `bot` never depends on
-`command.ai`; `command` never depends on Spring or Netty) and runs as part of the normal test
+`command.ai`; `command` never depends on Spring or Netty; `landing` stands alone and its core does
+no I/O) and runs as part of the normal test
 suite. Real `module-info.java`/JPMS module-path enforcement was considered and rejected: Spring
 Boot applications almost universally run on the classpath rather than the module path, because
 Spring's proxying/reflection-heavy DI has real friction under JPMS's strong encapsulation.

@@ -34,6 +34,12 @@ from outside the queue: fault and carry on until adopted. 6. A failed entry leav
 7. Branches after landing: rebase only. 8. Tool updates by a deliberate reinstall. 9. The hook at cutover at once,
 announced. 10. No batching; two verifies side by side measured before any change to throughput.
 
+Decided after C1's reviews (operator, 2026-11-26, amendment 1's recommendations accepted): 11. Three integrator faults
+running, fetch failures aside, halt the queue; an entry is never failed for the integrator's faults. 12. The journal
+is kept whole; compaction is later work. 13. `landing resume` attempts at once. 14. I7's stranded rule is a ref 30
+minutes old with nothing journaled for 30 minutes, the lock free and no halt. 15. A verify that exits non-zero with no
+BUILD line is the integrator's fault.
+
 A stream has one landing in flight at a time; streams meet only at the queue. At about two landings an hour, many open
 streams wait their turn: the journal records wait times.
 
@@ -59,7 +65,7 @@ verified one and nobody else pushes. The lock protects throughput and the journa
 | State | Home | Sole writer | Lives |
 |---|---|---|---|
 | Request: ref `refs/queue/<id>` pointing at the squash commit. Its message carries trailers `Landing-Id`, `Landing-Source` (the writer's head) and `Landing-By`. | The shared repo | The submitter creates it, create-only (`git update-ref <ref> <sha> ""`). The integrator deletes it. | Until terminal |
-| Attempts, verify results, failed/bounced/withdrawn outcomes, faults, halts | `C:/mc-state/landing/journal.jsonl`, append-only JSON lines (Jackson), fsynced per record | The integrator, only while holding the lock | Rotated monthly |
+| Attempts, verify results, failed/bounced/withdrawn outcomes, faults, halts | `C:/mc-state/landing/journal.jsonl`, append-only JSON lines (Jackson), fsynced per record | The integrator, only while holding the lock | Kept whole, never rotated |
 | Landed | origin/main: a commit bearing `Landing-Id: <id>` | The integrator's push | Forever |
 | Integrator exclusion | An OS lock on `C:/mc-state/landing/integrator.lock`; the file is never deleted | The kernel | The holder's process life |
 | A writer's last submission (id, source head, base) | `<that worktree's git-dir>/landing.json` | That worktree's submit | Until its next sync |
@@ -122,7 +128,7 @@ injected; `main()` reads the environment once.
 The integrator's step:
 1. Fetch.
 2. Reconcile every entry that has an attempt and no outcome: on main means landed, otherwise attempt again. Five
-   attempts without an outcome is FAILED.
+   attempts without an outcome is FAILED; an attempt the integrator's own fault ended is not counted.
 3. Take the oldest request and run the stale check.
 4. Run merge-tree, then `git commit-tree <tree> -p <main>` with the squash's message: `candidate`, a value.
 5. Journal `Attempt`.
@@ -133,7 +139,8 @@ The integrator's step:
 10. Delete the ref.
 
 A crash anywhere is covered by step 2. Entry faults settle the entry. Integrator faults settle nothing and back off (5,
-10, 20 min). A halt is visible to every waiter as exit 4.
+10, 20 min); three running, fetch failures aside, halt the queue until `landing resume`, which attempts at once. A
+halt is visible to every waiter as exit 4.
 
 The submitter:
 1. `git add -u` and commit.
@@ -145,7 +152,7 @@ The submitter:
 6. On failure the commit stays. Nothing is taken back.
 
 ### 4. Invariants, each checked by `landing audit`
-K is the cutover commit, the journal's first record.
+K is the cutover commit: the journal's last `Cutover` record.
 
 | # | Invariant | Check |
 |---|---|---|
@@ -155,7 +162,7 @@ K is the cutover commit, the journal's first record.
 | I4 | At most one settled record per id; none for an id on main; no `Attempt` after a terminal record | Journal fold |
 | I5 | Records of two integrator runs never interleave | Each record carries its run's token |
 | I6 | Main is never rewound | Each `SeenMain` is an ancestor of the next |
-| I7 | `refs/queue/*` equals the non-terminal ids; none waits longer than 3 verifies times its position while the lock is free | Refs against the fold |
+| I7 | `refs/queue/*` are the unsettled ids; with the lock free and no halt, no ref sits 30 minutes with nothing journaled | Refs against the fold |
 | I8 | The pre-push hook is installed with the installed hash; the jar's source commit is the last on main touching `landing/` | File hash, `git log -1 -- landing` |
 
 ### 5. Controls
@@ -210,7 +217,6 @@ an old push during a new verify only costs an attempt.
 ### 8. Commit sequence
 | # | Content | Size | Risk |
 |---|---|---|---|
-| C1 | Module `landing`: value types, the pure core, the tables of evals | ~400 main, 500 test | Low; nothing calls it. Adds a reactor module. |
 | C2 | Shell, CLI, integration and crash tests | ~600 main, 700 test | Windows process and file semantics; the time the tests add to verify. |
 | C3 | `install-landing.sh`, `land.sh`, the hook's source, the task definition, the two worktree-path readers | ~120 | None until installed. |
 | C4 | `commit.sh` as a shim; "Landing a change" rewritten with the invariants and the exit table; DEVELOPMENT.md, CLAUDE.md, the AGENTS.md rule, the watches | ~150, mostly docs | The first entry through the new queue. |
@@ -218,8 +224,7 @@ an old push during a new verify only costs an attempt.
 
 ### Unsure (the designer's own words, condensed)
 - Whether a personal-account repository's rulesets allow "restrict updates" with a deploy key as bypass actor.
-- `git merge-tree --write-tree --merge-base` exit codes on git 2.45.1 - from the docs, not run.
-- Whether `schtasks /run` works without elevation for a user's own task.
+- Whether `schtasks /run` works without elevation for a user's own task; `install-landing.sh` runs it once and says.
 - A hole: a writer who runs plain `git rebase origin/main` on a branch whose landed change was since reverted re-adds it;
   only review of the squash diff catches that.
 - Whether `deploy.sh`'s `mvn install` into the shared `~/.m2` during a verify can change what the verify resolves.

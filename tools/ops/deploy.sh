@@ -29,7 +29,7 @@ cd "$W"
 built=no
 for try in 1 2 3; do
   rm -rf */target/classes */target/test-classes 2>/dev/null || echo "build try $try: target/classes not all removed (the IDE holds a file)" >&2
-  out=$( { mvn -o -q -T 4 install -pl protocol,command,command-ai,bot -DskipTests && mvn -o -q package -pl app -DskipTests; } 2>&1 )
+  out=$( { mvn -o -q -T 4 install -pl protocol,command,command-ai,bot,landing -DskipTests && mvn -o -q package -pl app -DskipTests; } 2>&1 )
   if ! echo "$out" | grep -q "ERROR"; then built=yes; break; fi
   echo "build try $try failed: $(echo "$out" | grep ERROR | head -1 | cut -c1-160)" >&2
   sleep 5
