@@ -61,7 +61,7 @@ public final class Submitter {
     public Submitter(Git git, String remote, Journal journal, Poke poke, Sleeper sleeper, Clock clock, RandomGenerator random,
                      Duration poll, PrintStream out, WatchFiles progress, Duration feedback) {
         this.git = git;
-        this.gather = new Gather(git, remote, clock);
+        this.gather = new Gather(git, remote, clock, sleeper, poll, out);
         this.remote = remote;
         this.journal = journal;
         this.poke = poke;
@@ -181,7 +181,8 @@ public final class Submitter {
      * Waits on the entry: its state, from the journal and main, until settled; halted, exit 4; past the timeout, exit 5.
      * The integrator is poked again each minute while it waits. Where the entry is - who is ahead, the module and test
      * classes done, how old the last output is - is said when that changes and every {@code feedback} otherwise. Main is read as the integrator last fetched it into the
-     * shared repository - a waiter's own fetch every look would contend with the integrator's for the ref's lock.
+     * shared repository - a waiter's own fetch every look would contend with the integrator's for the ref's lock - once
+     * a poll ({@link Gather#mainTip(String)}, which reads an absent ref again).
      */
     public int await(EntryId id, Sha source, Optional<Duration> timeout) {
         Instant deadline = timeout.map(clock.instant()::plus).orElse(Instant.MAX);
@@ -190,7 +191,8 @@ public final class Submitter {
         Instant saidAt = clock.instant();
         while (true) {
             List<JournalRecord> records = journal.read();
-            Landings landings = gather.landings(gather.mainTip());
+            Sha tip = gather.mainTip(id.value());
+            Landings landings = gather.landings(tip);
             boolean looking = !clock.instant().isBefore(poked.plus(REPOKE)) || !clock.instant().isBefore(deadline);
             if (looking && Entries.pushed(id, records)) {
                 // verified, maybe pushed, and the integrator's view not saying so: it may be its fetch that fails
@@ -212,7 +214,7 @@ public final class Submitter {
                 out.println(id + " still queued: " + state);
                 return ExitCode.of(state, false);
             }
-            Waiting.Said line = where(id, state, records);
+            Waiting.Said line = where(id, state, records, tip);
             if (Waiting.due(said, saidAt, line, clock.instant(), feedback)) {
                 out.println(line.text());
                 said = Optional.of(line);
@@ -228,13 +230,14 @@ public final class Submitter {
 
     /**
      * Where the entry is, in a waiter's words ({@link Waiting#line}): the queue's refs and the integrator's next step are
-     * read only while it is queued; the running verify from the progress file its integrator writes.
+     * read only while it is queued, main at {@code tip}, the shared ref as its caller read it; the running verify from the
+     * progress file its integrator writes.
      */
-    Waiting.Said where(EntryId id, EntryState state, List<JournalRecord> records) {
+    Waiting.Said where(EntryId id, EntryState state, List<JournalRecord> records, Sha tip) {
         Optional<Step> next = Optional.empty();
         List<EntryId> ahead = List.of();
         if (state instanceof EntryState.Queued) {
-            Snapshot snapshot = gather.snapshot(records);
+            Snapshot snapshot = gather.snapshot(records, tip);
             next = Optional.of(Integrator.next(snapshot));
             ahead = snapshot.queued().stream().filter(q -> q.compareTo(id) < 0).sorted().toList();
         }

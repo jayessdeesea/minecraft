@@ -5,16 +5,19 @@ import io.github.jayessdeesea.minecraft.landing.Commit;
 import io.github.jayessdeesea.minecraft.landing.JournalRecord;
 import io.github.jayessdeesea.minecraft.landing.Landings;
 import io.github.jayessdeesea.minecraft.landing.Main;
+import io.github.jayessdeesea.minecraft.landing.MainReads;
 import io.github.jayessdeesea.minecraft.landing.Sha;
 import io.github.jayessdeesea.minecraft.landing.Snapshot;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -32,17 +35,49 @@ public final class Gather {
     private final Git git;
     private final String remote;
     private final Clock clock;
+    private final Sleeper sleeper;
+    private final Duration wait;
+    private final PrintStream out;
 
-    public Gather(Git git, String remote, Clock clock) {
+    /** {@code sleeper}, {@code wait} and {@code out}: how an absent read of main waits before it is read again, and says so. */
+    public Gather(Git git, String remote, Clock clock, Sleeper sleeper, Duration wait, PrintStream out) {
         this.git = git;
         this.remote = remote;
         this.clock = clock;
+        this.sleeper = sleeper;
+        this.wait = wait;
+        this.out = out;
     }
 
-    /** Main as last fetched. */
+    /** Main as last fetched: {@link #mainTip(String)}, said of no one. */
     public Sha mainTip() {
-        return git.resolve("refs/remotes/" + remote + "/main")
-                .orElseThrow(() -> new Git.Failed("no refs/remotes/" + remote + "/main: never fetched"));
+        return mainTip("");
+    }
+
+    /**
+     * Main as last fetched - the one read of the shared ref. Any {@code git fetch} in any worktree of the repository
+     * rewrites it, and a read mid-rewrite finds it absent: no answer, said with its count (of {@code who}, if named) and
+     * read again after the poll's wait; {@link MainReads#MOST_ABSENT} in a row throws, as any failed git call does.
+     */
+    public Sha mainTip(String who) {
+        String of = who.isEmpty() ? "" : who + " ";
+        MainReads reads = MainReads.NONE;
+        while (true) {
+            Optional<Sha> read = mainRead();
+            reads = reads.read(read.isPresent());
+            if (read.isPresent()) {
+                return read.get();
+            }
+            if (reads.givenUp()) {
+                throw new Git.Failed(of + reads.said() + ": no refs/remotes/" + remote + "/main");
+            }
+            out.println(of + reads.said());
+            sleeper.sleep(wait);
+        }
+    }
+
+    private Optional<Sha> mainRead() {
+        return git.resolve("refs/remotes/" + remote + "/main");
     }
 
     /** Where each entry landed: a trailer scan of all of main's history at {@code tip}. */
@@ -52,7 +87,12 @@ public final class Gather {
 
     /** The integrator's snapshot; only after a fetch that worked. */
     public Snapshot snapshot(List<JournalRecord> journal) {
-        return new Snapshot(journal, landings(mainTip()), git.refs(QUEUE), git.refs(WITHDRAW), clock.instant());
+        return snapshot(journal, mainTip());
+    }
+
+    /** The same, main read at {@code tip} already. */
+    public Snapshot snapshot(List<JournalRecord> journal, Sha tip) {
+        return new Snapshot(journal, landings(tip), git.refs(QUEUE), git.refs(WITHDRAW), clock.instant());
     }
 
     /** The audit's input: main since the journal's K, the landings, the ancestry and the install, all at one tip. */

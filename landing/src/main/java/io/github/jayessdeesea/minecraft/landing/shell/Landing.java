@@ -236,7 +236,7 @@ public final class Landing {
     private IntegratorRun integrator() {
         List<String> verify = Programs.command(config.verify(), config.toolPath(), Files::isRegularFile);
         return new IntegratorRun(config, repo(), journal, lock, new Verifier(verify, config.verifyLimits(),
-                config.verifyLog(), tool.env(), tool.children(), clock), clock, random, steps, out, taskLog);
+                config.verifyLog(), tool.env(), tool.children(), clock), clock, random, sleeper, steps, out, taskLog);
     }
 
     private IntSupplier land(List<String> rest) {
@@ -247,6 +247,11 @@ public final class Landing {
                 : Optional.empty();
         Path message = cwd.resolve(rest.getFirst());
         return () -> submitter(new Git(cwd, tool)).land(message, timeout);
+    }
+
+    /** What reads main through {@code git}: an absent read waits the poll, through this tool's sleeper, and is read again. */
+    private Gather gather(Git git) {
+        return new Gather(git, config.remote(), clock, sleeper, config.poll(), out);
     }
 
     private Submitter submitter(Git git) {
@@ -262,8 +267,9 @@ public final class Landing {
     private int state(EntryId id) {
         Git git = repo();
         List<JournalRecord> records = journal.read();
-        Gather gather = new Gather(git, config.remote(), clock);
-        Sha tip = gather.mainTip();
+        Gather gather = gather(git);
+        Sha shared = gather.mainTip(id.value());
+        Sha tip = shared;
         if (Entries.pushed(id, records)) {
             // verified, maybe pushed: the integrator's fetch may be what failed, so look once, into this worktree's own
             // FETCH_HEAD - the shared ref is the lock holder's to write
@@ -274,7 +280,7 @@ public final class Landing {
         }
         EntryState state = Entries.state(id, records, gather.landings(tip));
         out.println(id + ": " + state);
-        out.println(submitter(git).where(id, state, records).text());
+        out.println(submitter(git).where(id, state, records, shared).text());
         records.stream().filter(r -> r instanceof JournalRecord.Fault f && f.entry().filter(id::equals).isPresent())
                 .map(r -> (JournalRecord.Fault) r).forEach(f -> out.println(f.at() + " " + f.kind() + " " + f.detail()));
         return ExitCode.of(state, Integrator.halted(records).isPresent());
@@ -287,7 +293,7 @@ public final class Landing {
      */
     private int audit() {
         Git git = repo();
-        Gather gather = new Gather(git, config.remote(), clock);
+        Gather gather = gather(git);
         Auditor auditor = new Auditor(gather, journal, config, clock, out);
         Optional<IntegratorLock.Held> held = lock.tryAcquire();
         Audit.Report report;

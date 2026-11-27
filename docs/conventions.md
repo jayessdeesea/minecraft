@@ -220,6 +220,22 @@ are not checked):
 A change under `landing/` takes effect at a reinstall (`tools/ops/install-landing.sh`), not when it lands: I8 says so
 until then.
 
+## Retiring a stream
+
+A stream - a session and its worktree - is retired only when everything it started has settled, so nothing is lost
+with it and no one has to ask what was left:
+- each change it made is on main, or was given up: its commit or edits dropped from the worktree, or kept on another branch
+  its last message names;
+- nothing it started is still running: a landing, a background job, an agent;
+- its worktree holds nothing else: `git status` clean, and no commit that is not on main in content (a change that
+  answered 2, already main's, is rebased away);
+- what it found that the next reader needs is written in that reader's place - a watch's in its watch log, the rest
+  where [Docs](#docs) puts it;
+- every follow-up is a backlog item or another stream's task, never only a sentence in its last message.
+
+Until then its last message lists what is outstanding, each item with who acts next: the stream itself, the operator,
+or another stream. A stream that is done ends with the line `Done: nothing outstanding.`
+
 ## Check the outcome of what the force is sent to do
 
 A task sent to produce something - a night's mining, a wood party's trip, a smelt, a draw for

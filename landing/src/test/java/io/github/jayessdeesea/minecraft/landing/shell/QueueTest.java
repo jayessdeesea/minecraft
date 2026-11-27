@@ -253,6 +253,7 @@ class QueueTest {
         s.write(message, "A adds " + file + "\n");
         int seen = s.printed().split(" verifying, attempt 1, ", -1).length;
         var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        boolean answered = false;
         try {
             Poke background = () -> pool.submit(s::integrate);
             var waiter = pool.submit(() -> s.cli(s.a, background, d -> {
@@ -268,9 +269,20 @@ class QueueTest {
             }
             during.run();
             java.nio.file.Files.writeString(gate, "go");
-            return waiter.get(3, java.util.concurrent.TimeUnit.MINUTES);
+            int exit = waiter.get(3, java.util.concurrent.TimeUnit.MINUTES);
+            answered = true;
+            return exit;
         } finally {
-            pool.shutdownNow();
+            // a waiter that answered - one that gave up included - leaves its integrator to finish before the test's
+            // directory goes; one that threw or timed out, or a {@code during} that threw, is interrupted at once
+            if (answered) {
+                pool.shutdown();
+                if (!pool.awaitTermination(3, java.util.concurrent.TimeUnit.MINUTES)) {
+                    pool.shutdownNow();
+                }
+            } else {
+                pool.shutdownNow();
+            }
         }
     }
 
@@ -401,6 +413,133 @@ class QueueTest {
         assertEquals(1, s.land(s.a, "A adds k", s.inline()), s.printed());
         assertEquals(2, s.faults(FaultKind.VERIFY_STALLED), s.printed());
         assertEquals(0, s.faults(FaultKind.VERIFY_TIMEOUT), s.printed());
+    }
+
+    /**
+     * git, except that while {@code reads} holds a count its look at main's shared ref answers absent - exit 1, as
+     * {@code rev-parse --verify --quiet} does when the integrator's fetch has the ref mid-rewrite - one fewer each time.
+     */
+    private static void mainReadsAbsent(ScratchRepo s, Path reads) {
+        Path fake = s.root.resolve("git-absent.sh");
+        String f = ScratchRepo.slash(reads);
+        s.write(fake, "if [ \"$1 $2 $3 $4\" = 'rev-parse --verify --quiet refs/remotes/origin/main' ] && [ -e '" + f + "' ]; then\n"
+                + "  n=$(cat '" + f + "'); if [ \"$n\" -gt 1 ]; then echo $((n - 1)) > '" + f + "'; else rm -f '" + f + "'; fi\n"
+                + "  exit 1\nfi\nexec git \"$@\"\n");
+        s.gitProgram = List.of("sh", fake.toString());
+    }
+
+    /** {@code n} absent reads to come, written whole before the shim can see the file: a move, never a write in place. */
+    private static void absentFor(ScratchRepo s, Path reads, int n) {
+        Path part = reads.resolveSibling(reads.getFileName() + ".part");
+        s.write(part, n + "\n");
+        try {
+            java.nio.file.Files.move(part, reads, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
+
+    /** While the verify runs, {@code n} absent reads of main, waited on until the waiter has made them all. */
+    private static Runnable absentReads(ScratchRepo s, Path reads, int n) {
+        return () -> {
+            absentFor(s, reads, n);
+            long until = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(30);
+            while (java.nio.file.Files.exists(reads) && System.nanoTime() < until) {
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        };
+    }
+
+    /** A read of main that finds the ref absent, the integrator mid-rewrite, is read again: said with its count, it lands. */
+    @Test
+    void anAbsentReadOfMainIsReadAgainAndTheEntryLands() throws Exception {
+        ScratchRepo s = new ScratchRepo(dir, 23);
+        Path gate = s.root.resolve("gate");
+        Path reads = s.root.resolve("absent-reads");
+        s.verify = gated(gate);
+        mainReadsAbsent(s, reads);
+        assertEquals(0, landWatched(s, "q", gate, absentReads(s, reads, 1)), s.printed());
+        assertTrue(s.printed().contains(s.lastQueued() + " main's ref read absent (1 of 5); reading again"), s.printed());
+        assertEquals(Optional.of("q\n"), s.onMain("q"));
+    }
+
+    /** Five absent reads in a row is the ref gone: the waiter gives up, 6, naming the count; its entry still lands. */
+    @Test
+    void fiveAbsentReadsOfMainInARowIsSix() throws Exception {
+        ScratchRepo s = new ScratchRepo(dir, 24);
+        Path gate = s.root.resolve("gate");
+        Path reads = s.root.resolve("absent-reads");
+        s.verify = gated(gate);
+        mainReadsAbsent(s, reads);
+        assertEquals(6, landWatched(s, "q", gate, absentReads(s, reads, 5)), s.printed());
+        String id = s.lastQueued();
+        assertTrue(s.printed().contains(id + " main's ref read absent (4 of 5); reading again"), s.printed());
+        assertTrue(s.printed().contains("landing itself failed: ") && s.printed().contains(id + " main's ref read absent 5 of 5 in a row"),
+                s.printed());
+        assertEquals(Optional.of("q\n"), s.onMain("q"), "the waiter gave up; the integrator did not");
+    }
+
+    /** {@code landing state} reads main as a waiter does: one absent read is read again and the state answered. */
+    @Test
+    void stateReadsMainAgainAfterAnAbsentRead() {
+        ScratchRepo s = new ScratchRepo(dir, 25);
+        Path reads = s.root.resolve("absent-reads");
+        s.write(s.a.resolve("k"), "k\n");
+        s.git(s.a).ok("add", "k");
+        assertEquals(5, s.queue(s.a, "A adds k"));
+        String id = s.lastQueued();
+        mainReadsAbsent(s, reads);
+        absentFor(s, reads, 1);
+        assertEquals(5, s.run(s.a, Poke.NONE, "state", id), s.printed());
+        assertTrue(s.printed().contains(id + " main's ref read absent (1 of 5); reading again"), s.printed());
+        absentFor(s, reads, 5);
+        assertEquals(6, s.run(s.a, Poke.NONE, "state", id), s.printed());
+        assertTrue(s.printed().contains(id + " main's ref read absent 5 of 5 in a row"), s.printed());
+    }
+
+    /** An audit that finds the lock held reads main as a waiter does: one absent read is read again, five is 6. */
+    @Test
+    void anUnlockedAuditReadsMainAgainAfterAnAbsentRead() {
+        ScratchRepo s = new ScratchRepo(dir, 26);
+        Path reads = s.root.resolve("absent-reads");
+        mainReadsAbsent(s, reads);
+        try (IntegratorLock.Held held = new IntegratorLock(s.state.resolve("integrator.lock")).tryAcquire().orElseThrow()) {
+            absentFor(s, reads, 1);
+            assertEquals(0, s.audit(), s.printed());
+            assertTrue(s.printed().contains("main's ref read absent (1 of 5); reading again")
+                    && s.printed().contains("I7 not checked"), s.printed());
+            absentFor(s, reads, 5);
+            assertEquals(6, s.audit(), s.printed());
+            assertTrue(s.printed().contains("main's ref read absent 5 of 5 in a row"), s.printed());
+        }
+    }
+
+    /**
+     * The integrator's own reads under the lock are read again too - another worktree's fetch rewrites the ref as well:
+     * one absent read and the entry lands; five, and the run ends as any failed git call does, a REPO fault and 6.
+     */
+    @Test
+    void theIntegratorReadsMainAgainAfterAnAbsentRead() {
+        ScratchRepo s = new ScratchRepo(dir, 27);
+        Path reads = s.root.resolve("absent-reads");
+        s.write(s.a.resolve("k"), "k\n");
+        s.git(s.a).ok("add", "k");
+        assertEquals(5, s.queue(s.a, "A adds k"));
+        mainReadsAbsent(s, reads);
+        absentFor(s, reads, 5);
+        assertEquals(6, s.integrate(), s.printed());
+        assertTrue(s.journal().stream().anyMatch(r -> r instanceof JournalRecord.Fault f && f.kind() == FaultKind.REPO
+                && f.detail().contains("main's ref read absent 5 of 5 in a row")), s.printed());
+        s.clock.advance(Duration.ofMinutes(5));
+        absentFor(s, reads, 1);
+        assertEquals(0, s.integrate(), s.printed());
+        assertTrue(s.printed().contains("main's ref read absent (1 of 5); reading again"), s.printed());
+        assertEquals(Optional.of("k\n"), s.onMain("k"));
     }
 
     /** A failed verify is no pass: nothing kept in the history. */

@@ -57,6 +57,9 @@ Each points to its home, which has the reasons.
   in the same commit. [docs/conventions.md](docs/conventions.md#docs)
 - **A change lands through the queue:** one command from the stream's own worktree, verified on the main it lands on;
   nothing else pushes main. [docs/conventions.md](docs/conventions.md#landing-a-change)
+- **A stream is retired only when all it started has settled:** on main or given up, nothing running, nothing else in
+  its worktree, follow-ups written down; until then its last message lists what is outstanding and who acts next.
+  [docs/conventions.md](docs/conventions.md#retiring-a-stream)
 - **Check the outcome of what the force is sent to do:** a task that should yield is checked
   against what it yielded, and a miss is dug into. [docs/conventions.md](docs/conventions.md#check-the-outcome-of-what-the-force-is-sent-to-do)
 - **A contact met live is a row first:** a combination of weapon, armour, health, hostile and ground not in the table

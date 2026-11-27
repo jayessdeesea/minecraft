@@ -61,13 +61,17 @@ public final class IntegratorRun {
     private final Optional<java.nio.file.Path> taskLog;
 
     public IntegratorRun(Config config, Git repo, Journal journal, IntegratorLock lock, Verifier verifier, Clock clock,
-                         RandomGenerator random, Steps steps, PrintStream out) {
-        this(config, repo, journal, lock, verifier, clock, random, steps, out, Optional.empty());
+                         RandomGenerator random, Sleeper sleeper, Steps steps, PrintStream out) {
+        this(config, repo, journal, lock, verifier, clock, random, sleeper, steps, out, Optional.empty());
     }
 
-    /** With the task's log, which the run that takes the lock keeps to its size. */
+    /**
+     * With the task's log, which the run that takes the lock keeps to its size; {@code sleeper} waits the poll before an
+     * absent read of main is read again.
+     */
     public IntegratorRun(Config config, Git repo, Journal journal, IntegratorLock lock, Verifier verifier, Clock clock,
-                         RandomGenerator random, Steps steps, PrintStream out, Optional<java.nio.file.Path> taskLog) {
+                         RandomGenerator random, Sleeper sleeper, Steps steps, PrintStream out,
+                         Optional<java.nio.file.Path> taskLog) {
         this.taskLog = taskLog;
         this.config = config;
         this.repo = repo;
@@ -79,7 +83,7 @@ public final class IntegratorRun {
         this.random = random;
         this.steps = steps;
         this.out = out;
-        this.gather = new Gather(repo, config.remote(), clock);
+        this.gather = new Gather(repo, config.remote(), clock, sleeper, config.poll(), out);
         this.watch = new WatchFiles(config.verifyProgress(), config.verifyHistory(), out);
     }
 

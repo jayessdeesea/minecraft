@@ -7,19 +7,17 @@ priority: P1
 
 ## Why
 The queue is built and is how a change lands (docs/conventions.md, "Landing a change"). Until the cutover a push to main
-from outside it - an old branch's `commit.sh`, a hand - is neither refused nor audited, and after it only this machine
-refuses.
+from outside it - an old branch's `commit.sh`, a hand - is neither refused nor audited. Only this machine pushes to main
+(operator, 2026-11-27), so the hook is the whole of the refusal - a `--no-verify` push gets past it and only the audit names it, after the
+fact; GitHub's own rules are long-term work, not this item's.
 
 ## Done when
 - Every commit on main past the cutover carries one `Landing-Id` and the journal's `Verified` for it on its parent
   (`landing audit` clean, nothing noted as unchecked).
-- A push to main from outside the queue is refused on this machine (the hook) and, after the operator's GitHub work, at
-  GitHub.
+- A push to main from outside the queue is refused on this machine (the hook).
 - `C:/mc-worktrees/verify` is gone.
 
 ## Decided (operator, 2026-11-26), not yet carried out
-- GitHub: a ruleset on main (no force push, no deletion, linear history) and updates restricted to a deploy key the
-  integrator alone uses - the operator's hands.
 - The hook at the cutover at once, announced.
 - No batching; two verifies side by side measured before any change to throughput.
 - The journal is kept whole; compaction is later work (the audit asks for it past 100,000 records).
@@ -28,15 +26,12 @@ refuses.
 1. **Cutover**, the operator's timing: `landing cutover <sha>`; copy `tools/ops/landing-pre-push` to the shared hooks
    directory as `pre-push` and record its SHA-256 as `hook.hash` in `C:/mc-state/landing/config`, or I8 names it. Every
    old `commit.sh` then fails at its push with the hook's message naming `land.sh`; a session mid-verify loses one verify.
-2. **GitHub** (C5): the ruleset and the deploy key; the integrator's remote switched in the config (`remote`), SSH by
-   `GIT_SSH_COMMAND` in the task; a docs line for it.
-3. **Retire `C:/mc-worktrees/verify`** once no branch runs the old `commit.sh`.
-4. **Thread dumps before a stall's kill** (operator, 2026-11-27: yes, the commit after the watchdog): `jcmd <pid>
+2. **Retire `C:/mc-worktrees/verify`** once no branch runs the old `commit.sh`.
+3. **Thread dumps before a stall's kill** (operator, 2026-11-27: yes, the commit after the watchdog): `jcmd <pid>
    Thread.print` for each JVM in the job, appended to `verify.killed.log`, bounded at 20 s each, then the kill - what
    tells a deadlock from a wait.
 
 ## Unsure
-- Whether a personal-account repository's rulesets allow "restrict updates" with a deploy key as bypass actor.
 - A writer who runs plain `git rebase origin/main` on a branch whose landed change was since reverted re-adds it; only
   review of the squash diff catches that.
 - Whether `deploy.sh`'s `mvn install` into the shared `~/.m2` during a verify can change what the verify resolves.
@@ -48,6 +43,10 @@ refuses.
   takes it as no verify running for that look; a write that fails is said once.
 - Nothing bounds `run.budget.minutes` to a day, while a pass is kept only up to 24h: past that, a passing verify would
   join no history, unsaid. Unreachable at the default 180m.
+- An absent read of main's ref (rev-parse exit 1, likely git on Windows deleting then renaming a ref another process
+  holds open) is read again, through `Gather.mainTip` alone; whether git can instead answer 128 mid-rename, which still
+  fails at once, only a live symptom's text will say. `MainRefReadsTest` guards the one home by spelling, not by
+  meaning, and `tools/ops/deploy.sh`'s bare `git rev-parse origin/main` is outside it.
 - `job-check` gives a false NO when `JAVA_TOOL_OPTIONS` or `_JAVA_OPTIONS` is set (neither is, here).
 - `commit.sh` says the commit count only when the landing exits 0 to its own waiter: one that ends 5 (more in the
   worktree, or still queued at `--timeout`), one whose session died while it waited, or one found landed by a later

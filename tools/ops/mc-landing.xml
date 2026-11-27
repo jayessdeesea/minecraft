@@ -11,7 +11,7 @@
   half an hour. It runs at normal priority, 4 - Task Scheduler's default, 7, is below normal with low I/O and memory
   priority - and its children inherit it: this file is the one home of that fact, the job sets none. The install's check
   task is this template too, with job-check for integrate and its start a day ahead, so it asks of the same settings.
-  GIT_SSH_COMMAND, for the deploy key, is C5's. The elements are in the order this machine's exports write them.
+  The elements are in the order this machine's exports write them.
 -->
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
