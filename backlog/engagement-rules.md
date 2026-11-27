@@ -146,6 +146,7 @@ SAME: today's answer stands. CHANGE: the numbered change under "The changes" fli
 | The same, a bow alone | shoots | Backs off: arrows miss it | CHANGE 10 |
 | An archer, no melee weapon | takes cover, flees past 20 | Break contact | SAME |
 | An archer within 4 and a walk to it or in reach, the soldier boxed in (hurt where it stood a second, no step taken) | fights, armed or bare-handed (`Contact.NEAR_AMBUSH`) | Assault through: the near ambush | BUILT 2026-11-25 |
+| An archer more than 4 below, the soldier boxed in | takes cover where it stands, at any health: `NEAR_AMBUSH`'s assault can't hold, since an archer more than 4 below is more than 4 away | Not decided: no written rule for a soldier that can neither close down the drop nor reach cover | CHANGE 12 |
 | An archer no walk reaches, no hurt from it nor arrow seen in 30 s | no contact, at any range (`Contact.QUIET_SECONDS`) | Ineffective fire: carry on | BUILT 2026-11-25 |
 | An archer, armed, the exchange won | fights, closing at a sprint | Engage | SAME |
 | An archer, armed, the exchange lost, not begun | takes cover | Break contact | SAME |
@@ -199,6 +200,22 @@ answers where one is recorded, then by reach.
     enderman at hand: shot", "a phantom overhead, a bow in hand".
 11. **An unknown kit is one thing.** Bare-handed in the rules as in the exchange. Flips: the three "kit not reported"
     rows.
+12. **Cover that holds nothing, and the edge at 4 below.** `Contact.withoutTheBow` reads an archer as below on a strict
+    `y < at.y - ARCHER_BELOW` with no hysteresis, so a soldier bobbing a block on a lip flips between "takes cover" and
+    "fights" every few ticks (the "a skeleton 4 below" row pins the edge: at exactly 4 it fights, though the response
+    says "4.0 or more below"). And once boxed in (hurt where it stood, no step taken) nothing changes the answer: the
+    near ambush's assault needs a range (3D) within `NEAR_AMBUSH` (4), which no archer more than 4 below can be, so the
+    soldier stands in cover that isn't one until it dies. Live: field750, 2026-11-27 19:25:58-19:26:28Z, Fran (stone
+    sword, armour 4) on a cliff lip, three pillagers below; held at (47.31, 63.02, 69.76) for 30 s, the nearest 5.7 off
+    and 4.0 below, 20 health to dead (`death.attack.arrow`); her ground kept as
+    `garrison-state/worlds/Fran-1795807588233.json`. Rows: "a pillager 5.4 off, 3.8 below" (a bob, fights), "a
+    pillager 5.7 off, 4.02 below" and "the same, hurt where it stood, boxed in" (cover), pinned with today's answers.
+    Not established: why she didn't move. The server set her position to the same point every 100 ms for the 30 s (298
+    "Player Position received" lines) - whether against steps of hers is to be read; and her kept ground has air in the block she
+    stood on, so the client's world there may be wrong. A replay of her ground in the squad
+    simulation, with `Body.coverFrom`'s cell and `Mover.stepGuarded`'s step logged, says which. The operator's to
+    decide: what a boxed-in soldier does against an archer more than 4 below that it can't close on (back off the lip
+    away from it, dig in, or another way round), and whether the edge at 4 below gets hysteresis.
 
 ## Done when
 - Every row group above is SAME, each change's rows flipped in its own commit.
