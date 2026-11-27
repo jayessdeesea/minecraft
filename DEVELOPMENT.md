@@ -306,6 +306,9 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
 - `round-report.sh [<run>]` is a live round's digest of a run, the last by default: the alerts by soldier and kind,
   the deaths, blocks the tables don't know, the missions and objectives, who was taken off a task most often, the
   changes of activity and what was thrown away - then the chat probe (`--no-chat` leaves it out).
+- `soldier.sh <name> [<run> | <log file>]` is one soldier's run: what it is doing now, then its changes of activity,
+  tasks, CANTCOs, failed steps, alerts, retries, loops, requests and police calls, deaths and disconnects, each grouped
+  with a count and its first and last time - a loop reads as one line with a big count.
 - `chatprobe.sh` asks the operator's chat a fixed set of questions - questions only - and records each
   reply with the register reads it made; each should read and name what's true, with no command given.
 
