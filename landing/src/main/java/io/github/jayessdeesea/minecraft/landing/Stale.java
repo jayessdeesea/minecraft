@@ -18,7 +18,7 @@ public final class Stale {
     /**
      * Refused first, since a request git cannot read would make the integrator fault, and three of those halt the
      * queue. {@code squash} is what the ref names, none if not a commit; {@code sourcePresent} whether its
-     * {@code Landing-Source} names an object in the repo. MALFORMED unless it is a commit with one parent and one
+     * {@code Landing-Source} names a commit in the repo (a tree or a blob is none). MALFORMED unless it is a commit with one parent and one
      * {@code Landing-Source}, a full sha, present; LANDING_ID unless its message carries exactly one {@code Landing-Id},
      * its ref's - another id beside it would settle that entry as landed by a commit never verified for it.
      */

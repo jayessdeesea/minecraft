@@ -18,6 +18,11 @@ public enum FaultKind {
     MERGE_TREE(Blame.INTEGRATOR),
     /** Another git call building the candidate failed: the stale check's, or {@code commit-tree}. */
     CANDIDATE(Blame.INTEGRATOR),
+    /**
+     * A git call a pass needs outside an attempt failed - the snapshot, a SeenMain, a settle's ref deletion, the audit -
+     * or a ref deletion after a landing: the run ends, exit 6.
+     */
+    REPO(Blame.INTEGRATOR),
     /** An invariant of section 4 broken: named at every audit until put right; the queue carries on. */
     AUDIT(Blame.AUDIT);
 

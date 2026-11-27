@@ -40,6 +40,11 @@ is kept whole; compaction is later work. 13. `landing resume` attempts at once. 
 minutes old with nothing journaled for 30 minutes, the lock free and no halt. 15. A verify that exits non-zero with no
 BUILD line is the integrator's fault.
 
+Decided after C2's reviews (operator, 2026-11-26, amendment 2's recommendations accepted): 16. Each `landing` process
+puts itself in a kill-on-close Windows job object, so a verify's whole tree - Maven behind its `sh` script, Surefire's
+forks - is ended with it or by it. 17. A tree not proven gone ten seconds after the kill is a fault, and the run exits
+6 with no further checkout or git. 18. A `land` whose entry lands while the worktree holds more exits 5, land again.
+
 A stream has one landing in flight at a time; streams meet only at the queue. At about two landings an hour, many open
 streams wait their turn: the journal records wait times.
 
@@ -119,8 +124,9 @@ Pure core, each with its table of evals:
   | refused | ok | no | yes | `[Fault]` outside push. Attempt again on the new main; FAILED at the third. |
   | ok | ok | no | n/a | Halt. |
 - `Audit.check`: the violations of section 4.
-- `ExitCode.of(state)`: 0 landed, 1 failed, 2 usage or nothing to land, 3 bounced, 4 halted, 5 still queued at
-  `--timeout`. The one table; the docs quote it.
+- `ExitCode.of(state, halted, more)`: 0 landed and the worktree holds nothing more, 1 failed, 2 usage or nothing to
+  land, 3 bounced or withdrawn, 4 halted, 5 land again (still queued at `--timeout`, or landed with more in the
+  worktree), 6 landing itself failed (the entry, if any, may still be queued). The one table; the docs quote it.
 
 Shell: `Git` (ProcessBuilder, argument lists, exit codes), `Journal`, `IntegratorLock`, `Verifier`, `Clock`, all
 injected; `main()` reads the environment once.
@@ -217,7 +223,6 @@ an old push during a new verify only costs an attempt.
 ### 8. Commit sequence
 | # | Content | Size | Risk |
 |---|---|---|---|
-| C2 | Shell, CLI, integration and crash tests | ~600 main, 700 test | Windows process and file semantics; the time the tests add to verify. |
 | C3 | `install-landing.sh`, `land.sh`, the hook's source, the task definition, the two worktree-path readers | ~120 | None until installed. |
 | C4 | `commit.sh` as a shim; "Landing a change" rewritten with the invariants and the exit table; DEVELOPMENT.md, CLAUDE.md, the AGENTS.md rule, the watches | ~150, mostly docs | The first entry through the new queue. |
 | C5 | A docs line for the deploy-key remote | Small | After the operator's GitHub work. |

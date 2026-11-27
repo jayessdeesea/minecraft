@@ -19,19 +19,22 @@ public sealed interface VerifyOutcome permits VerifyOutcome.Verified, VerifyOutc
     }
 
     /**
-     * HEAD not the candidate before or after, or the tracked tree dirty after: a fault and nothing pushed, whatever the
+     * HEAD not the candidate before or after, or the tracked tree dirty before or after: a fault and nothing pushed, whatever the
      * build said - what was verified may not be the candidate. Then: timed out, a fault against the entry; a BUILD
      * FAILURE line, failed; a BUILD SUCCESS line and exit 0, verified. A BUILD SUCCESS line with another exit, or no
      * result line at all, is the integrator's fault. Only Maven's whole line counts, so a test printing the words does
      * not decide it.
      */
     static VerifyOutcome of(List<String> output, int exit, boolean timedOut, Sha candidate, Sha headBefore, Sha headAfter,
-                            boolean clean) {
+                            boolean cleanBefore, boolean clean) {
         if (!headBefore.equals(candidate)) {
             return new Faulted(FaultKind.VERIFY_TAMPERED, "HEAD was " + headBefore + " before the verify, not " + candidate);
         }
         if (!headAfter.equals(candidate)) {
             return new Faulted(FaultKind.VERIFY_TAMPERED, "HEAD moved to " + headAfter + " during the verify of " + candidate);
+        }
+        if (!cleanBefore) {
+            return new Faulted(FaultKind.VERIFY_TAMPERED, "the tracked tree was dirty before the verify of " + candidate);
         }
         if (!clean) {
             return new Faulted(FaultKind.VERIFY_TAMPERED, "the tracked tree was dirty after the verify of " + candidate);

@@ -37,7 +37,7 @@ public final class Audit {
      * main now ({@code git log -1 origin/main -- landing}, none if main has none). The jar is current when the two are
      * the same commit, whatever later commit it was built from.
      */
-    public record Install(Optional<String> hookHash, String installedHookHash, Sha builtLandingChange,
+    public record Install(Optional<String> hookHash, String installedHookHash, Optional<Sha> builtLandingChange,
                           Optional<Sha> mainLandingChange) {
     }
 
@@ -45,14 +45,23 @@ public final class Audit {
      * What the audit reads: the whole journal; main since its K, for I1 to I3; where entries landed, from all of main,
      * for I4 and I7; the request refs; the ancestry the shell confirmed of {@link #questions}; whether no integrator is
      * mid-step - false for a watch that finds the lock held, true for the integrator's own audit or with the lock
-     * free; the time; the install.
+     * free; the time; the install; and the refs under {@code refs/queue/} and {@code refs/queue-withdraw/} that name no
+     * entry, which every run skips.
      */
     public record Input(List<JournalRecord> journal, Main sinceCutover, Landings landed, Set<EntryId> queued,
-                        Set<Edge> ancestors, boolean noIntegratorMidStep, Instant now, Install install) {
+                        Set<Edge> ancestors, boolean noIntegratorMidStep, Instant now, Install install,
+                        List<String> strayRefs) {
         public Input {
             journal = List.copyOf(journal);
             queued = Set.copyOf(queued);
             ancestors = Set.copyOf(ancestors);
+            strayRefs = List.copyOf(strayRefs);
+        }
+
+        /** With no stray refs. */
+        public Input(List<JournalRecord> journal, Main sinceCutover, Landings landed, Set<EntryId> queued,
+                     Set<Edge> ancestors, boolean noIntegratorMidStep, Instant now, Install install) {
+            this(journal, sinceCutover, landed, queued, ancestors, noIntegratorMidStep, now, install, List.of());
         }
     }
 
@@ -243,6 +252,7 @@ public final class Audit {
      */
     private static void refsAreTheUnsettled(Input in, Map<EntryId, List<JournalRecord>> byEntry, List<Violation> found,
                                             List<String> notes) {
+        in.strayRefs().forEach(ref -> found.add(new Violation("I7", ref + " is not an entry")));
         if (!in.noIntegratorMidStep()) {
             notes.add("an integrator is mid-step: I7 not checked");
             return;
@@ -282,9 +292,13 @@ public final class Audit {
             found.add(new Violation("I8", "the pre-push hook's hash is " + install.hookHash().get() + ", not the "
                     + install.installedHookHash() + " installed"));
         }
-        install.mainLandingChange().filter(last -> !last.equals(install.builtLandingChange())).ifPresent(last ->
-                found.add(new Violation("I8", "the jar's last change to landing/ is " + install.builtLandingChange()
-                        + "; main's is " + last)));
+        if (install.builtLandingChange().isEmpty()) {
+            found.add(new Violation("I8", "no installed jar recorded"));
+            return;
+        }
+        Sha built = install.builtLandingChange().get();
+        install.mainLandingChange().filter(last -> !last.equals(built)).ifPresent(last ->
+                found.add(new Violation("I8", "the jar's last change to landing/ is " + built + "; main's is " + last)));
     }
 
     /** Each entry the journal names, in the order first named, with its records in journal order. */

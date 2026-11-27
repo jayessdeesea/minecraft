@@ -118,14 +118,15 @@ public sealed interface JournalRecord {
 
     /**
      * A {@code [Fault]}: its kind says whose it is. A fault inside a step carries its entry, so the halt that bounds
-     * the integrator's faults counts every one. A fetch's may be about one or none; an audit's is about the journal
+     * the integrator's faults counts every one. A fetch's, and a pass's own git failure's, may be about one or none;
+     * an audit's is about the journal
      * and main, never one entry, so it carries none ({@code id} null) - it neither raises I7 about its own record nor
      * keeps a try charged.
      */
     record Fault(RunToken run, Instant at, FaultKind kind, EntryId id, String detail) implements JournalRecord {
         public Fault {
             present("Fault", run, at, kind, detail);
-            if (id == null && kind != FaultKind.FETCH_FAILED && kind != FaultKind.AUDIT) {
+            if (id == null && kind != FaultKind.FETCH_FAILED && kind != FaultKind.AUDIT && kind != FaultKind.REPO) {
                 throw new IllegalArgumentException("a " + kind + " fault about no entry");
             }
             if (id != null && kind == FaultKind.AUDIT) {

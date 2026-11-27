@@ -59,11 +59,24 @@ class VerifyOutcomeTest {
                 Arguments.of(FAILURE, 1, false, 7, 7, false, "Fault VERIFY_TAMPERED"));
     }
 
+    /** The tracked tree dirty before the verify: what is verified may not be the candidate - whatever the build says. */
+    @ParameterizedTest
+    @MethodSource("table")
+    void aTreeDirtyBeforeTheVerifyIsTampered(List<String> output, int exit, boolean timedOut, int before, int after,
+                                             boolean clean, String ignored) {
+        assertEquals("Fault VERIFY_TAMPERED", switch (VerifyOutcome.of(output, exit, timedOut, sha(7), sha(before),
+                sha(after), false, clean)) {
+            case VerifyOutcome.Verified v -> "Verified";
+            case VerifyOutcome.BuildFailed f -> "BuildFailed";
+            case Faulted f -> "Fault " + f.kind();
+        });
+    }
+
     @ParameterizedTest
     @MethodSource("table")
     void whatTheVerifySaid(List<String> output, int exit, boolean timedOut, int before, int after, boolean clean,
                            String expected) {
-        VerifyOutcome outcome = VerifyOutcome.of(output, exit, timedOut, sha(7), sha(before), sha(after), clean);
+        VerifyOutcome outcome = VerifyOutcome.of(output, exit, timedOut, sha(7), sha(before), sha(after), true, clean);
         assertEquals(expected, switch (outcome) {
             case VerifyOutcome.Verified v -> "Verified";
             case VerifyOutcome.BuildFailed f -> "BuildFailed";

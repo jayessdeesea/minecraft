@@ -65,6 +65,28 @@ public final class Entries {
         return tries;
     }
 
+    /**
+     * Whether the entry's last Attempt was verified - so its push may have gone - and the entry is not settled: a
+     * waiter then looks at main for itself, since the integrator's fetch may be what failed.
+     */
+    public static boolean pushed(EntryId id, List<JournalRecord> journal) {
+        boolean verified = false;
+        for (JournalRecord record : journal) {
+            if (!about(record, id)) {
+                continue;
+            }
+            if (record.settles()) {
+                return false;
+            }
+            if (record instanceof JournalRecord.Attempt) {
+                verified = false;
+            } else if (record instanceof JournalRecord.Verified) {
+                verified = true;
+            }
+        }
+        return verified;
+    }
+
     /** The faults of {@code kind} against entry {@code id}. */
     static int faults(EntryId id, FaultKind kind, List<JournalRecord> journal) {
         int n = 0;

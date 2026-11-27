@@ -89,6 +89,27 @@ class EntriesTest {
                 Arguments.of(journal(attempt(1), fault(FaultKind.CANDIDATE, 1, 5)), 0));
     }
 
+    /**
+     * Whether the entry's last Attempt was verified and so maybe pushed, unsettled (amendment 2, R9): a waiter then
+     * looks at main for itself, since the integrator's fetch may be what failed.
+     */
+    static Stream<Arguments> pushed() {
+        return Stream.of(
+                Arguments.of(journal(), false),
+                Arguments.of(journal(attempt(1)), false),
+                Arguments.of(journal(attempt(1), verified(1, 101)), true),
+                Arguments.of(journal(attempt(1), verified(1, 101), fault(FaultKind.FETCH_FAILED, 1, 0)), true),
+                Arguments.of(journal(attempt(1), verified(1, 101), attempt(1)), false),
+                Arguments.of(journal(attempt(1), verified(2, 101)), false),
+                Arguments.of(journal(attempt(1), verified(1, 101), failed(1)), false));
+    }
+
+    @ParameterizedTest
+    @MethodSource("pushed")
+    void whetherEntryOneMayBePushed(List<JournalRecord> journal, boolean expected) {
+        assertEquals(expected, Entries.pushed(Fixtures.id(1), journal));
+    }
+
     @ParameterizedTest
     @MethodSource("tries")
     void theTriesAtEntryOne(List<JournalRecord> journal, int expected) {

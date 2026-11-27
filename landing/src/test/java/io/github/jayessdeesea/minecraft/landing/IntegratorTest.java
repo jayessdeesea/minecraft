@@ -16,6 +16,7 @@ import static io.github.jayessdeesea.minecraft.landing.FaultKind.CANDIDATE;
 import static io.github.jayessdeesea.minecraft.landing.FaultKind.FETCH_FAILED;
 import static io.github.jayessdeesea.minecraft.landing.FaultKind.MERGE_TREE;
 import static io.github.jayessdeesea.minecraft.landing.FaultKind.OUTSIDE_PUSH;
+import static io.github.jayessdeesea.minecraft.landing.FaultKind.REPO;
 import static io.github.jayessdeesea.minecraft.landing.FaultKind.VERIFY_TAMPERED;
 import static io.github.jayessdeesea.minecraft.landing.FaultKind.VERIFY_TIMEOUT;
 import static io.github.jayessdeesea.minecraft.landing.Fixtures.at;
@@ -140,6 +141,60 @@ class IntegratorTest {
                 Arguments.of(journal(fault(AUDIT, 0)), NONE, ids(1), ids(), 1, "Attempt 1"),
                 // an empty queue while backing off is still idle with nothing to wait for
                 Arguments.of(journal(fault(FETCH_FAILED, 0)), NONE, ids(), ids(), 1, "Idle until 12:05"));
+    }
+
+    /**
+     * Whether a run should fetch at all (C2 review F9): not while the journal ends in failed fetches still inside their
+     * back-off - an offline machine's every scheduled start would otherwise journal another.
+     */
+    static Stream<Arguments> fetchesDue() {
+        return Stream.of(
+                // journal, minutes past noon -> fetch due
+                Arguments.of(journal(), 0, true),
+                Arguments.of(journal(fault(FETCH_FAILED, 0)), 4, false),
+                Arguments.of(journal(fault(FETCH_FAILED, 0)), 5, true),
+                Arguments.of(journal(fault(FETCH_FAILED, 0), fault(FETCH_FAILED, 5)), 14, false),
+                Arguments.of(journal(fault(FETCH_FAILED, 0), fault(FETCH_FAILED, 5)), 15, true),
+                Arguments.of(journal(fetches(4)), 49, false),
+                Arguments.of(journal(fetches(4)), 50, true),
+                // the journal ends in something else: the last run fetched, or never failed to
+                Arguments.of(journal(fault(FETCH_FAILED, 0), Fixtures.seen(1)), 1, true),
+                Arguments.of(journal(fault(MERGE_TREE, 1, 0)), 1, true),
+                // a fetch failed after a push, about its entry: the same back-off
+                Arguments.of(journal(attempt(1), fault(FETCH_FAILED, 1, 0)), 4, false),
+                Arguments.of(journal(halted(), resumed(), fault(FETCH_FAILED, 0)), 3, false),
+                // a pass's own git failure backs off the whole run as a fetch's does (amendment 2, R8)
+                Arguments.of(journal(fault(REPO, 0)), 4, false),
+                Arguments.of(journal(fault(REPO, 0)), 5, true),
+                Arguments.of(journal(fault(REPO, 0), fault(FETCH_FAILED, 5)), 14, false),
+                Arguments.of(journal(fault(REPO, 1, 0)), 4, false));
+    }
+
+    /**
+     * The halt a pass's own failure may bring (amendment 2, R8), read from the journal alone: three integrator faults
+     * running, a fetch's aside, since a Verified or a Resumed - each Verified taken as a landing, so it can only halt
+     * later than the core's own next step would, never sooner.
+     */
+    static Stream<Arguments> haltsDue() {
+        return Stream.of(
+                Arguments.of(journal(fault(REPO, 0), fault(REPO, 5)), false),
+                Arguments.of(journal(fault(REPO, 0), fault(REPO, 5), fault(REPO, 15)), true),
+                Arguments.of(journal(fault(REPO, 0), fault(FETCH_FAILED, 1), fault(REPO, 5), fault(REPO, 15)), true),
+                Arguments.of(journal(fault(REPO, 0), fault(REPO, 5), resumed(), fault(REPO, 15)), false),
+                Arguments.of(journal(fault(REPO, 0), attempt(1), verified(1, 3), fault(REPO, 5), fault(REPO, 15)), false),
+                Arguments.of(journal(halted(), fault(REPO, 0), fault(REPO, 5), fault(REPO, 15)), false));
+    }
+
+    @ParameterizedTest
+    @MethodSource("haltsDue")
+    void whetherAPasssOwnFailureHalts(java.util.List<JournalRecord> journal, boolean due) {
+        assertEquals(due, Integrator.haltDue(journal).isPresent());
+    }
+
+    @ParameterizedTest
+    @MethodSource("fetchesDue")
+    void whetherAFetchIsDue(java.util.List<JournalRecord> journal, int minutes, boolean due) {
+        assertEquals(due, Integrator.runDue(journal, at(minutes)));
     }
 
     @ParameterizedTest

@@ -51,7 +51,8 @@ class AuditTest {
     private static final List<JournalRecord> CLEAN = List.of(cutover(1), seen(1), attempt(1), verified(1, 2), seen(2));
     private static final Main ONE_LANDED = main(landing(2, 1));
     private static final Set<Audit.Edge> FORWARD = Set.of(edge(1, 2), edge(2, 3));
-    private static final Audit.Install INSTALLED = new Audit.Install(Optional.of("h1"), "h1", sha(2), Optional.of(sha(2)));
+    private static final Audit.Install INSTALLED = new Audit.Install(Optional.of("h1"), "h1", Optional.of(sha(2)),
+            Optional.of(sha(2)));
     private static final boolean MID_STEP = true, BETWEEN_STEPS = false;
     private static final Main NOT_CUT_OVER = mainSince(Optional.empty());
 
@@ -172,7 +173,7 @@ class AuditTest {
     void beforeTheCutoverTheReportSaysWhatWasNotChecked() {
         Main sinceK = mainSince(Optional.empty(), merge(2), plain(3));
         Audit.Input input = new Audit.Input(List.of(seen(1)), sinceK, landed(), ids(), Set.of(edge(1, 3)), true, T0,
-                new Audit.Install(Optional.empty(), "h1", sha(2), Optional.of(sha(2))));
+                new Audit.Install(Optional.empty(), "h1", Optional.of(sha(2)), Optional.of(sha(2))));
         Audit.Report report = Audit.check(input);
         assertEquals("[]", invariants(report));
         assertEquals(List.of("not yet cut over: I1 to I3 and the pre-push hook (I8) not checked"), report.notes());
@@ -233,6 +234,19 @@ class AuditTest {
         assertTrue(held.notes().contains("an integrator is mid-step: I7 not checked"), held.notes().toString());
     }
 
+    /** A ref under refs/queue or refs/queue-withdraw that names no entry: skipped by every run, named here (C2 review F3). */
+    @Test
+    void aRefThatIsNoEntryIsNamed() {
+        Audit.Input input = new Audit.Input(List.of(), NOT_CUT_OVER, landed(), Set.of(), Set.of(), true, T0, INSTALLED,
+                List.of("refs/queue/foo", "refs/queue-withdraw/x/y"));
+        List<Audit.Violation> found = Audit.check(input).violations();
+        assertEquals(List.of("[Fault] I7: refs/queue/foo is not an entry", "[Fault] I7: refs/queue-withdraw/x/y is not an entry"),
+                found.stream().map(Audit.Violation::toString).toList());
+        Audit.Input held = new Audit.Input(List.of(), NOT_CUT_OVER, landed(), Set.of(), Set.of(), false, T0, INSTALLED,
+                List.of("refs/queue/foo"));
+        assertEquals(1, Audit.check(held).violations().size(), "no step clears it: named mid-step too");
+    }
+
     @Test
     void aHaltInForceIsItsOwnFaultLine() {
         List<Audit.Violation> found = Audit.check(new Audit.Input(List.of(new JournalRecord.Halted(RUN, T0, "the reason")),
@@ -254,7 +268,10 @@ class AuditTest {
                 Arguments.of(k, Optional.of("h1"), 2, Optional.empty(), "[]"),
                 // before the cutover the hook is not installed yet; the jar is
                 Arguments.of(Optional.empty(), Optional.empty(), 2, Optional.of(sha(2)), "[]"),
-                Arguments.of(Optional.empty(), Optional.empty(), 1, Optional.of(sha(2)), "[I8]"));
+                Arguments.of(Optional.empty(), Optional.empty(), 1, Optional.of(sha(2)), "[I8]"),
+                // no installed jar recorded (0): a violation, not a throw
+                Arguments.of(k, Optional.of("h1"), 0, Optional.of(sha(2)), "[I8]"),
+                Arguments.of(k, Optional.of("h1"), 0, Optional.empty(), "[I8]"));
     }
 
     @ParameterizedTest
@@ -262,7 +279,8 @@ class AuditTest {
     void theInstall(Optional<Sha> k, Optional<String> hook, int builtChange, Optional<Sha> mainChange, String expected) {
         Main sinceK = k.isPresent() ? ONE_LANDED : NOT_CUT_OVER;
         List<JournalRecord> journal = k.isPresent() ? CLEAN : List.of(seen(1));
-        Audit.Install install = new Audit.Install(hook, "h1", sha(builtChange), mainChange);
+        Audit.Install install = new Audit.Install(hook, "h1", builtChange == 0 ? Optional.empty() : Optional.of(sha(builtChange)),
+                mainChange);
         Audit.Input input = new Audit.Input(journal, sinceK, Landings.of(sinceK.commits()), ids(), FORWARD, true, T0,
                 install);
         assertEquals(expected, invariants(Audit.check(input)));

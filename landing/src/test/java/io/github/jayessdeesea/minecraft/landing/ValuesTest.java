@@ -95,7 +95,8 @@ class ValuesTest {
     @ParameterizedTest
     @EnumSource(FaultKind.class)
     void aFaultNeedsItsEntryButAFetchsOrAnAudits(FaultKind kind) {
-        boolean none = kind == FaultKind.FETCH_FAILED || kind == FaultKind.AUDIT;
+        // a pass's own git failure (REPO) may be about no entry: the snapshot, noteMain, the audit
+        boolean none = kind == FaultKind.FETCH_FAILED || kind == FaultKind.AUDIT || kind == FaultKind.REPO;
         boolean some = kind != FaultKind.AUDIT;
         if (none) {
             assertEquals(kind, new JournalRecord.Fault(Fixtures.RUN, Fixtures.T0, kind, null, "x").kind());

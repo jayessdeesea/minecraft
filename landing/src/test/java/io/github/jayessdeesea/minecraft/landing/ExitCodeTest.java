@@ -47,4 +47,40 @@ class ExitCodeTest {
     void usageIsTwo() {
         assertEquals(2, ExitCode.USAGE);
     }
+
+    /**
+     * The tool's own: 6 when landing itself failed - an exception, a fetch failing after the commit was made - which
+     * must never read as 1, FAILED; the entry may still be queued. The other commands answer 0 done, 1 refused.
+     */
+    /**
+     * The entry landed and the worktree holds more since its source (amendment 2, R7): 5, land again - 5's one meaning,
+     * not all landed and nothing wrong. FAILED, BOUNCED and WITHDRAWN answer as before whatever the worktree holds.
+     */
+    static Stream<Arguments> withMore() {
+        return Stream.of(
+                // state, halted, the worktree holds more -> exit
+                Arguments.of(new EntryState.Landed(sha(3)), false, true, 5),
+                Arguments.of(new EntryState.Landed(sha(3)), false, false, 0),
+                Arguments.of(new EntryState.Landed(sha(3)), true, true, 5),
+                Arguments.of(new EntryState.Failed(FailReason.BUILD_FAILED), false, true, 1),
+                Arguments.of(new EntryState.Bounced(BounceReason.CONFLICT), false, true, 3),
+                Arguments.of(new EntryState.Bounced(BounceReason.NOTHING_TO_LAND), false, true, 2),
+                Arguments.of(new EntryState.Withdrawn(), false, true, 3),
+                Arguments.of(new EntryState.Queued(), false, true, 5),
+                Arguments.of(new EntryState.Queued(), true, true, 4));
+    }
+
+    @ParameterizedTest
+    @MethodSource("withMore")
+    void aWaitersExitWithTheWorktreeHoldingMore(EntryState state, boolean halted, boolean more, int expected) {
+        assertEquals(expected, ExitCode.of(state, halted, more));
+        assertEquals(5, ExitCode.LAND_AGAIN);
+    }
+
+    @Test
+    void landingItselfFailingIsSixAndTheOtherCommandsZeroOrOne() {
+        assertEquals(6, ExitCode.LANDING_FAILED);
+        assertEquals(0, ExitCode.OK);
+        assertEquals(1, ExitCode.REFUSED);
+    }
 }

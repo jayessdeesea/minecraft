@@ -82,6 +82,48 @@ public final class Integrator {
         return Optional.empty();
     }
 
+    /**
+     * Whether a run should start at all: not while the journal ends in failed fetches or a pass's own git failures
+     * (REPO) whose back-off is still running - an offline machine's, or a broken repository's, every scheduled start
+     * would journal another. The run that is not due exits writing nothing.
+     */
+    public static boolean runDue(List<JournalRecord> journal, Instant now) {
+        int failed = 0;
+        Instant last = null;
+        for (int i = journal.size() - 1; i >= 0; i--) {
+            if (!(journal.get(i) instanceof JournalRecord.Fault f
+                    && (f.kind() == FaultKind.FETCH_FAILED || f.kind() == FaultKind.REPO))) {
+                break;
+            }
+            failed++;
+            if (last == null) {
+                last = f.at();
+            }
+        }
+        return failed == 0 || !now.isBefore(last.plus(BACKOFF.get(Math.min(failed, BACKOFF.size()) - 1)));
+    }
+
+    /**
+     * The halt a pass's own failure brings, read from the journal alone, where main cannot be: three integrator faults
+     * running, a fetch's aside, since a Verified or a Resumed, and no halt already in force. Each Verified is taken as
+     * landed, so this halts no sooner than {@link #next} would.
+     */
+    public static Optional<String> haltDue(List<JournalRecord> journal) {
+        if (halted(journal).isPresent()) {
+            return Optional.empty();
+        }
+        java.util.Map<EntryId, Sha> verified = new java.util.HashMap<>();
+        journal.forEach(r -> {
+            if (r instanceof JournalRecord.Verified v) {
+                verified.put(v.id(), v.candidate());
+            }
+        });
+        Streak streak = Streak.of(journal, new Landings(verified));
+        return streak.running() >= MOST_INTEGRATOR_FAULTS
+                ? Optional.of(streak.running() + " integrator faults running, the last " + streak.lastHalting().kind() + ": "
+                + streak.lastHalting().detail()) : Optional.empty();
+    }
+
     /** The halt in force: the last {@code Halted} with no {@code Resumed} after it. Every waiter reads it as exit 4. */
     public static Optional<JournalRecord.Halted> halted(List<JournalRecord> journal) {
         JournalRecord.Halted halted = null;
