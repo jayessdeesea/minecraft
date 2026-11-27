@@ -8,11 +8,24 @@
 #      one decision kept in two places.
 #   4. long lines: main sources by lines over 200 characters.
 #   5. the slowest tests of the last verify, from its surefire reports.
-# Usage: hotspots.sh [commits, default 64]
+# Usage: hotspots.sh [commits, default 64] | --slowest
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 1
+# The worktree whose surefire reports are read: REPORTS_WORKTREE when set, else the landing queue's.
+W="${REPORTS_WORKTREE:-C:/mc-worktrees/landing}"
+slowest() {
+  echo "== the slowest tests of the last verify"
+  if ls "$W"/*/target/surefire-reports/TEST-*.xml > /dev/null 2>&1; then
+    grep -ho '<testcase name="[^"]*" classname="[^"]*" time="[0-9.]*"' "$W"/*/target/surefire-reports/TEST-*.xml \
+      | sed -E 's/<testcase name="([^"]*)" classname="[^"]*\.([^".]*)" time="([0-9.]*)"/\3 \2.\1/' | sort -rn | head -15
+    grep -ho '<testcase [^>]*time="[0-9.]*"' "$W"/*/target/surefire-reports/TEST-*.xml | sed -E 's/.*time="([0-9.]*)"/\1/' \
+      | awk '{ s += $1; n++ } END { printf "%d tests, %.0f s summed\n", n, s }'
+  else
+    echo "no surefire reports under $W"
+  fi
+}
+# --slowest: section 5 alone
+if [ "${1:-}" = --slowest ]; then slowest; exit 0; fi
 N="${1:-64}"
-# The worktree whose surefire reports are read: REPORTS_WORKTREE when set, else commit.sh's verify worktree.
-W="${REPORTS_WORKTREE:-${VERIFY_WORKTREE:-C:/mc-worktrees/verify}}"
 main='^(protocol|command|command-ai|bot|landing|app)/src/main/.*[.]java$'
 
 echo "== churn x size, the last $N commits (changes, lines, changes x lines)"
@@ -36,12 +49,4 @@ git ls-files | grep -E "$main" | while read -r file; do
   [ "$long" -gt 0 ] && echo "$long $file"
 done | sort -rn | head -8
 
-echo "== the slowest tests of the last verify"
-if ls "$W"/*/target/surefire-reports/TEST-*.xml > /dev/null 2>&1; then
-  grep -ho '<testcase name="[^"]*" classname="[^"]*" time="[0-9.]*"' "$W"/*/target/surefire-reports/TEST-*.xml \
-    | sed -E 's/<testcase name="([^"]*)" classname="[^"]*\.([^".]*)" time="([0-9.]*)"/\3 \2.\1/' | sort -rn | head -15
-  grep -ho '<testcase [^>]*time="[0-9.]*"' "$W"/*/target/surefire-reports/TEST-*.xml | sed -E 's/.*time="([0-9.]*)"/\1/' \
-    | awk '{ s += $1; n++ } END { printf "%d tests, %.0f s summed\n", n, s }'
-else
-  echo "no surefire reports under $W"
-fi
+slowest

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Deploys origin/main as a garrison run: every commit there passed its verify (commit.sh), so that - not the tree here,
+# Deploys origin/main as a garrison run: every commit there passed its verify (the landing queue), so that - not the tree here,
 # which may be mid-change or a commit ahead - is what goes out. It's checked out and built in a worktree of its own
 # (DEPLOY_WORKTREE, default C:/mc-worktrees/deploy): the modules installed and the app packaged without tests, the fat
 # jar checked. Then the running garrison is stopped by its PID (never all java), the jar copied to $S/garrison-app.jar

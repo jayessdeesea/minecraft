@@ -23,7 +23,7 @@ public enum FaultKind {
      * or a ref deletion after a landing: the run ends, exit 6.
      */
     REPO(Blame.INTEGRATOR),
-    /** An invariant of section 4 broken: named at every audit until put right; the queue carries on. */
+    /** An invariant of docs/conventions.md, "Landing a change", broken: named at every audit until put right; the queue carries on. */
     AUDIT(Blame.AUDIT);
 
     /** Whose a fault is. */

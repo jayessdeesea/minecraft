@@ -1,7 +1,7 @@
 #!/bin/sh
-# Installs the landing queue's tool (design section 7, step 2; amendment 3): the jar built from origin/main in a clean
-# temporary worktree, offline, copied to its place under the integrator's lock with the commit it was built from, the
-# last landing/ change there and where git, sh and mvn are recorded in the config; the config written if absent; land.sh
+# Installs the landing queue's tool: the jar built from origin/main in a clean temporary worktree, offline, copied to
+# its place under the integrator's lock with the commit it was built from, the last landing/ change there and where
+# git, sh and mvn are recorded in the config; the config written by landing install alone, its keys kept; land.sh
 # copied beside it, filled with the jar's path; the landing worktree made if absent; the scheduled task registered again
 # from tools/ops/mc-landing.xml - javaw on the jar, enabled only if it was there and enabled. It then asks the four
 # questions the scheduler alone can answer, with a check task it runs once and deletes. Its 0 means the scheduler can
@@ -109,32 +109,15 @@ if [ "$DRY" = no ]; then
   [ -f "$JAR" ] || { echo "install-landing.sh: the build made no jar" >&2; exit 1; }
 fi
 
-echo "== the config"
-if [ -f "$CONFIG" ]; then
-  echo "$CONFIG is there: kept"
-else
-  config="# The landing queue's config, beside its jar. The task is made from it at every install: after a change to
-# run.budget.minutes, or a JDK moved or updated, run tools/ops/install-landing.sh again. Under the task the verify builds
-# on the JDK the task runs, not a JAVA_HOME of the user's.
-repo=$REPO
-worktree=$WORKTREE
-journal=$STATE/journal.jsonl
-lock=$STATE/integrator.lock
-verify.log=$STATE/verify.log
-poke=schtasks /run /tn $TASK
-hook=$(cd "$COMMON" && (pwd -W 2>/dev/null || pwd))/hooks/pre-push"
-  if [ "$DRY" = yes ]; then
-    echo "would write $CONFIG:"; echo "$config" | sed 's/^/  /'
-  else
-    mkdir -p "$STATE" && printf '%s\n' "$config" > "$CONFIG" || { echo "install-landing.sh: $CONFIG not written" >&2; exit 1; }
-  fi
-fi
+echo "== the config $CONFIG: written by landing install, what is there kept"
 BUDGET=$( [ -f "$CONFIG" ] && sed -n 's/^run\.budget\.minutes=//p' "$CONFIG" | tail -1)
 BUDGET="${BUDGET:-180}"
 
 echo "== the jar into its place, under the integrator's lock, with where git, sh and mvn are"
 step env LANDING_CONFIG="$CONFIG" "$JAVA" -jar "$JAR" install "$JAR" "$INSTALLED" "$COMMIT" "$CHANGE" \
-  "$(win_path "$(dirname "$GIT")")" "$(win_path "$(dirname "$SH")")" "$(win_path "$(dirname "$MVN")")"
+  "$(win_path "$(dirname "$GIT")")" "$(win_path "$(dirname "$SH")")" "$(win_path "$(dirname "$MVN")")" \
+  "repo=$REPO" "worktree=$WORKTREE" "poke=schtasks /run /tn $TASK" \
+  "hook=$(cd "$COMMON" && (pwd -W 2>/dev/null || pwd))/hooks/pre-push"
 # land.sh filled with this install's jar, so a land from any branch runs this tool
 step sh -c "sed 's|C:/mc-state/landing/landing.jar|$(literal "$INSTALLED")|' '$BUILD/src/tools/ops/land.sh' > '$STATE/land.sh'"
 

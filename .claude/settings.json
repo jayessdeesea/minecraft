@@ -3,7 +3,8 @@
     "deny": [
       "Edit(//c/mc-state/garrison/garrison.args)",
       "Bash(*garrison.args*)",
-      "PowerShell(*garrison.args*)"
+      "PowerShell(*garrison.args*)",
+      "Edit(//c/mc-state/landing/**)"
     ]
   }
 }

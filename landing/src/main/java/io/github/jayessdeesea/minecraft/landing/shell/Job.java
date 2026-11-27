@@ -19,7 +19,7 @@ import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /**
- * The Windows job object a {@code landing} process puts itself in before anything else (amendment 2, R5): every
+ * The Windows job object a {@code landing} process puts itself in before anything else: every
  * process it starts, and every process those start, is a member - the kernel's record, inherited at creation and not
  * left (no breakaway is allowed). A kill ends every member but this process, by the job's own list, which Surefire's
  * forks and an MSYS fork's lost parent cannot hide from. The job is made to kill its members when its last handle

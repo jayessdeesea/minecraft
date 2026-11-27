@@ -1,7 +1,7 @@
 package io.github.jayessdeesea.minecraft.landing.shell;
 
 /**
- * Where a test reaches into the integrator's step (design section 6, crash injection): told as each numbered step is
+ * Where a test reaches into the integrator's step (crash injection): told as each numbered step is
  * done, and asked what the push reported. The integrator's own is the default: nothing happens, the report stands.
  */
 public interface Steps {

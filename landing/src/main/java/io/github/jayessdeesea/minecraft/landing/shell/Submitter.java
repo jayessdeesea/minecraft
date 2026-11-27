@@ -24,7 +24,7 @@ import java.util.Optional;
 import java.util.random.RandomGenerator;
 
 /**
- * {@code landing land <message file>}, from a writer's worktree (design section 3, the submitter): 1 commit the tracked
+ * {@code landing land <message file>}, from a writer's worktree: 1 commit the tracked
  * changes; 2 if its last submission landed and the branch was left where it was, replay only what is new onto the
  * landed commit; 3 squash against the merge-base with main, with its trailers; 4 create the request ref, poke the
  * integrator and wait on the entry's state; 5 landed, move the branch to it; 6 not landed, the commit stays. The writer's

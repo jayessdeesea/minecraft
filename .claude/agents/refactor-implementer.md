@@ -43,8 +43,8 @@ One Maven job at a time. `sh tools/ops/quick.sh` must end `quick tier: passed`; 
 what changed, and any simulation the brief names.
 
 ## What you never do
-Commit, push, deploy, touch the main checkout or another worktree, edit `tools/ops/commit.sh`, or read or write
-`C:/mc-state/garrison/garrison.args`.
+Commit, land a change (`tools/ops/commit.sh`, `land.sh`), push, deploy, touch the main checkout or another worktree, or read or write
+`C:/mc-state/garrison/garrison.args` or `C:/mc-state/landing/`.
 
 ## Report
 Per function or entry point: old signature, new signature, and why its answers are identical. What was left alone and

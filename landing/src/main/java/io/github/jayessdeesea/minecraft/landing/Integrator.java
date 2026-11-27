@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.TreeSet;
 
 /**
- * The integrator's decision, one step at a time (design sections 3 and 5, amendment 1). In order: halted, attempt
+ * The integrator's decision, one step at a time. In order: halted, attempt
  * nothing; settle what is settled - landed on main, recorded, withdrawn, or over a cap; wait out an integrator fault's
  * back-off; attempt again an entry with an attempt and no outcome; attempt the oldest request; else idle. An entry is
  * charged only for what is its own: it fails at its fifth try ({@link Entries#tries}), its second verify timeout or the

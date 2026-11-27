@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * {@code landing audit}: the invariants of design section 4 checked over what the shell gathered, each one broken a
+ * {@code landing audit}: the invariants of docs/conventions.md, "Landing a change", checked over what the shell gathered, each one broken a
  * {@link Violation}. The journal is one sequence, kept whole, and given whole; K, the cutover commit, is its last
  * {@code Cutover}. With none, main's invariants (I1 to I3) and the hook (I8) are not yet the queue's to keep, and the
  * report says so rather than passing them in silence.

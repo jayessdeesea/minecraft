@@ -262,13 +262,28 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
 `GARRISON_RUNS`, default `C:/mc-state/garrison`, outside any cloud-sync folder):
 - `hotspots.sh [commits]` is where the code is hard to change, counted: churn x size, files returned to, files that
   change together, long lines, and the last verify's slowest tests - what a refactor pass reads first
-  (docs/conventions.md, "Refactor every sixteenth commit, between profiles").
+  (docs/conventions.md, "Refactor every sixteenth commit, between profiles"). The slowest tests are read from the
+  landing queue's worktree, or the one `REPORTS_WORKTREE` names; `hotspots.sh --slowest` prints them alone.
 - `quick.sh [mvn arguments]` runs every module's tests but those tagged `slow` - the simulations, the stuck evals and
   the combat matrices, nearly all of the suite's time - for the loop while a change is being made.
-- `commit.sh <message file>` commits the tracked changes (`git add` new files first), verifies that commit with the
-  whole suite (`verify.sh`) in a worktree of its own (`VERIFY_WORKTREE`, default `C:/mc-worktrees/verify`), and
-  pushes it only on BUILD SUCCESS. The tree is free to work in meanwhile; a commit that fails is taken back, its
-  changes left staged. It says when the commit count makes a profile due.
+- `verify.sh` is the whole suite as the gate runs it - from clean classes, every module, offline. It prints the failures
+  and the `BUILD` line; Maven's whole output goes to the file `VERIFY_LOG` names, else to a temp file gone when it exits.
+  Its exit is Maven's.
+- `install-landing.sh [--dry-run]` installs the landing queue from `origin/main` into `C:/mc-state/landing/` - the jar,
+  its `config` (written by the tool alone, what is there kept), `land.sh` - makes the worktree `C:/mc-worktrees/landing`
+  and registers the scheduled task `mc-landing` again, its enabled state kept. Run it from a shell that is not elevated,
+  when nothing is landing; again after a change under `landing/` lands, a JDK moves, or `run.budget.minutes` changes. It
+  worked when its last line is `== installed, the task enabled: every question yes, the audit clean` - or `the task
+  disabled`, on a first install or when the task was disabled, which it keeps. The task's own
+  output is `landing-task.log` there; the last verify's is `verify.log`.
+- `commit.sh <message file> [--timeout <minutes>]` lands this worktree's change through the landing queue: it commits
+  the tracked changes (`git add` new files first), squashes the branch into one commit under that message, and waits
+  while the queue verifies it on main with the whole suite (`verify.sh`) in the queue's own worktree and pushes it. The
+  tree is free to work in meanwhile; what changes during the wait is the next landing's. A change that fails stays
+  as committed: fix it and land again. Its exit says how it ended
+  (docs/conventions.md, "Landing a change"): 0 is landed, and it then prints the commit count, whether that makes a
+  profile or a refactor pass due, and the slowest tests of the last verify. With no queue installed it exits 6 and names
+  `install-landing.sh`.
 - `profile.sh [seconds]` records the running garrison with Flight Recorder and prints its hot spots;
   `profile.sh --read <file.jfr>` reads one already made (docs/conventions.md, "Profile every sixteenth commit").
 - `deploy.sh [<run>]` builds `origin/main` - what's verified and pushed, whatever state the tree here is in - in a

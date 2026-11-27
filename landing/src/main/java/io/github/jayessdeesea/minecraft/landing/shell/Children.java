@@ -2,7 +2,7 @@ package io.github.jayessdeesea.minecraft.landing.shell;
 
 /**
  * Ends what a {@code landing} process started: a child and all it started in turn. In the tool this is the job object
- * ({@link Job}); a kill that cannot prove them gone says so, and the caller ends its run (amendment 2, R5).
+ * ({@link Job}); a kill that cannot prove them gone says so, and the caller ends its run.
  */
 public interface Children {
 

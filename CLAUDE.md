@@ -18,11 +18,12 @@ rules. What is wired for Claude Code alone lives under `.claude/` and is listed 
 | `behaviour-implementer` | `.claude/agents/` | Writes one change of behaviour from a design, rows first, in its own worktree; never commits. |
 | Agent ledger | `C:/mc-state/garrison/agent-ledger.md` | A line a run: what each agent cost and whether it held. |
 | `adversary-tester` | `.claude/agents/` | Tests only, in its own worktree: hunts the input whose answer breaks a written rule, pinned as a row with today's answer. |
-| Denied edits | `.claude/settings.json` | The operator's `garrison.args`. |
+| Denied edits | `.claude/settings.json` | The operator's `garrison.args`, and the landing queue's state under `C:/mc-state/landing/`. |
 
 ## Delegating
-- One writer to the main checkout: the session that runs `tools/ops/commit.sh`. An agent that writes does it in its own
-  worktree and reports; its diff is reviewed, brought over when no verify is running, and committed alone.
+- One writer to a worktree: the session whose stream it is, which lands it (docs/conventions.md, "Landing a change"). An
+  agent that writes does it in its own worktree and reports; its diff is reviewed, brought over when that stream has no
+  landing in flight, and landed alone.
 - Every diff is reviewed by `equivalence-reviewer` before commit, given the diff and its claims part by part, not the
   reasoning behind them. A diff of some size is saved first (`git diff > <scratchpad>/prereview-<commit>.patch`): the
   same diff given to another model is how the reviewer's model is chosen.
@@ -34,7 +35,7 @@ rules. What is wired for Claude Code alone lives under `.claude/` and is listed 
 - `field-tracer` takes one symptom each; two or three at once at most.
 - `adversary-tester` is given a target and where its rule is written; what it finds with no rule to judge by is a
   question for the operator, not a test.
-- No agent commits, pushes, deploys, or sends the garrison an order.
+- No agent commits, pushes, deploys, sends the garrison an order, lands a change, or writes under C:/mc-state/landing/.
 - Design before build (operator, 2026-11-26, from the ledger: building first cost ~1.7M tokens in held work in a day): a
   change of behaviour that touches shared state - the register, which ground or chunk a squad works, counts, a
   scheduler, what an echelon owns - is `designer`'s first, the operator's decisions taken, then `behaviour-implementer`'s.
@@ -46,7 +47,7 @@ rules. What is wired for Claude Code alone lives under `.claude/` and is listed 
 - The ledger's tokens are per run (a resumed agent's round, not its running total), and the orchestrating session's own
   use is a line at the handoff.
 - The orchestrating session reads agents' summaries, never their diffs or logs whole; a task of its own goes to a session
-  of its own with a written brief, and the orchestrator keeps the verify slot (one `commit.sh` at a time).
+  of its own with a written brief, which lands its own change: one landing in flight a worktree, their order the queue's.
 - Models (operator, 2026-11-25): the session that orchestrates runs on Opus; `refactor-implementer`, `adversary-tester`
   and a symptom's first `field-tracer` on Sonnet; `behaviour-implementer` on Opus; `equivalence-reviewer` on the top
   model for a change of behaviour (on Opus for a refactor, above), and so a second trace of a symptom the first didn't

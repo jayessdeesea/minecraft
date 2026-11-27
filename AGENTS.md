@@ -55,6 +55,8 @@ Each points to its home, which has the reasons.
 - **Every commit closes its loop:** a backlog item it finishes is deleted, one it advances is
   trimmed to what's left, and the docs it touches are checked against the code and made current
   in the same commit. [docs/conventions.md](docs/conventions.md#docs)
+- **A change lands through the queue:** one command from the stream's own worktree, verified on the main it lands on;
+  nothing else pushes main. [docs/conventions.md](docs/conventions.md#landing-a-change)
 - **Check the outcome of what the force is sent to do:** a task that should yield is checked
   against what it yielded, and a miss is dug into. [docs/conventions.md](docs/conventions.md#check-the-outcome-of-what-the-force-is-sent-to-do)
 - **A contact met live is a row first:** a combination of weapon, armour, health, hostile and ground not in the table

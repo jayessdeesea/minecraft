@@ -12,6 +12,6 @@ public enum BounceReason {
     CONFLICT,
     /** Its source carries a change that landed since its base: sync, then submit. */
     CARRIES_LANDED,
-    /** Its {@code base..source} holds a merge commit: rebase only (operator's decision 7). */
+    /** Its {@code base..source} holds a merge commit: rebase only. */
     MERGE_COMMIT
 }

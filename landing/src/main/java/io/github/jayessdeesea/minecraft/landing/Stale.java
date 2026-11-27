@@ -7,7 +7,7 @@ import java.util.Set;
 
 /**
  * The checks on a request before it is merged: that it is a request git can read and that it lands its own id alone,
- * and that it is not built on what main has since moved past (rebase only, operator's decision 7) - a request whose source carries a change that landed
+ * and that it is not built on what main has since moved past (rebase only) - a request whose source carries a change that landed
  * after its base would land that change twice, or bring back what was reverted.
  */
 public final class Stale {

@@ -141,7 +141,71 @@ with another:
 So the suite takes about as long as its slowest tests, not the sum of them. A test class that takes
 ten seconds or more is tagged `@Tag("slow")`: the simulations, the stuck evals, the combat matrices.
 While working on a change, run its own tests (`-Dtest=...`) and the quick tier - everything not
-tagged slow, `tools/ops/quick.sh`; the whole suite gates every push (`tools/ops/commit.sh`).
+tagged slow, `tools/ops/quick.sh`; the whole suite gates every landing ([Landing a change](#landing-a-change)).
+
+## Landing a change
+
+A change reaches main one way: through the landing queue (module `landing`). Work comes in streams - an idea, a
+watch's run - each in a session and a worktree of its own, serial within; streams meet only at the queue, which takes
+one entry at a time, the oldest first. The queue runs only from its installed jar (`C:/mc-state/landing/`), never from
+a worktree's own tree: a stale branch would bring its own gatekeeper.
+
+**To land**, from the stream's worktree: `sh tools/ops/commit.sh <message file> [--timeout <minutes>]` (on a branch
+older than the queue, `sh C:/mc-state/landing/land.sh`, the same). It commits the tracked changes - `git add` new
+files first - squashes all the branch has that main has not into one commit under that message, queues it and waits.
+The integrator - whoever holds the kernel's lock on `integrator.lock`, started by the scheduled task `mc-landing` and
+no session's child - builds that change on main as main then is, verifies the result with the whole suite
+(`tools/ops/verify.sh`) in a worktree of its own, and pushes the commit it verified, nothing read back. Landed, the
+branch is moved to the landed commit. A worktree has one landing in flight: `land` run again while it is unsettled
+waits on it again, and what was changed meanwhile is the next landing's. After a landing a branch is brought up by
+rebase only, never a merge.
+
+| Exit | The answer | Then |
+|---|---|---|
+| 0 | Landed, and nothing more in the worktree | The branch is the landed commit. |
+| 1 | Failed: the verify failed, timed out twice, main moved under its push three times, or five attempts had no outcome | The commit stays where it is - nothing is taken back. Fix and land again. |
+| 2 | Usage, or nothing to land: the change is main's already | |
+| 3 | Bounced or withdrawn: it conflicts with main (the files named), carries a change that landed since its base, holds a merge commit, has a message with a `Landing-Id` already in it, or is malformed; or the replay onto its last landed change could not be made | Rebase onto `origin/main`, land again. |
+| 4 | Halted: the queue attempts nothing; the entry stays queued | The operator's to resume. |
+| 5 | Land again: still queued at `--timeout`, or landed with more in the worktree since | Run it again. |
+| 6 | Landing itself failed - not installed, a fetch, anything thrown; the entry, if any, may still be queued | `landing state <id>`. Never read as 1. |
+
+The table is `landing.ExitCode`'s. An entry is charged only for its own faults; the integrator's - three running, a
+fetch's aside - halt the queue and fail no entry.
+
+`landing <command>` is `java -jar C:/mc-state/landing/landing.jar <command>`:
+- `landing audit` - checks the invariants below: 0 clean, 1 with a `[Fault]` line for each one broken, and
+  `[Fault] HALTED: <reason>` for a halt in force. Each is journaled once, and only when the audit holds the lock; an
+  audit that finds the lock held notes "I7 not checked" and says nothing of a halt. Run at the start and end of every
+  integrator run and at the start of every watch's pass.
+- `landing state <id>` - an entry's state, as a waiter's exit.
+- `landing withdraw <id>` - asks the integrator to take an entry out, a bad one that halts the queue included.
+- `landing resume <reason>` - lifts a halt; the next run attempts at once. The operator's.
+- `landing adopt <sha> <reason>` - accepts a commit that reached main from outside the queue, which is a `[Fault]` at
+  every audit until then. The operator's.
+
+Where the queue's facts are, each with one writer: a request is the ref `refs/queue/<id>` (the submitter creates it,
+the integrator deletes it); attempts, verifies, failures, bounces, faults and halts are lines of
+`C:/mc-state/landing/journal.jsonl`, written only under the lock and kept whole; landed is a fact of main - the commit
+carries `Landing-Id: <id>` - and nothing is recorded after the push. An entry's state is computed from those
+(`landing.Entries.state`), never stored; a trailer on main wins.
+
+The invariants, K the commit of the journal's last `Cutover` (with none, the audit notes that I1 to I3 and I8's hook
+are not checked):
+
+| # | Invariant | Check |
+|---|---|---|
+| I1 | Main is linear | No commit in `K..origin/main` has two parents |
+| I2 | Every commit in `K..main` has exactly one `Landing-Id`, and the journal holds `Verified` for that id with that commit, or `Adopted` | The commit fixes its parent: verified on the main it landed on |
+| I3 | No id is on two commits of main | Trailer scan |
+| I4 | At most one settled record an id; none for an id on main; no `Attempt` after a settled record | Journal fold |
+| I5 | Records of two integrator runs never interleave | Each record carries its run's token |
+| I6 | Main is never rewound | Each `SeenMain` is an ancestor of the next |
+| I7 | `refs/queue/*` are the unsettled ids; with the lock free and no halt, no ref sits 30 minutes with nothing journaled | Refs against the fold |
+| I8 | The pre-push hook is installed with the installed hash; the jar's last `landing/` change is main's | File hash; `git log -1 -- landing` |
+
+A change under `landing/` takes effect at a reinstall (`tools/ops/install-landing.sh`), not when it lands: I8 says so
+until then.
 
 ## Check the outcome of what the force is sent to do
 
@@ -194,7 +258,7 @@ from one soldier to another every two minutes for five hours.
 
 ## Profile every sixteenth commit
 
-When the commit count on main (`git rev-list --count HEAD`) is a multiple of 16, the live
+When the commit count on main (`git rev-list --count origin/main`) is a multiple of 16, the live
 garrison is profiled before the next change is started (operator, 2026-11-15), and the worst
 offenders are fixed where it makes sense to:
 - **Record** three minutes of the running garrison with Java Flight Recorder, which attaches to the
@@ -211,7 +275,8 @@ offenders are fixed where it makes sense to:
 
 The operator's (2026-11-24): the code base is made easy to change - for whichever model is changing it - on a
 schedule, as its speed is - tick and tock: a profile at every multiple of 16 commits, a refactor pass 8 past it. When
-the commit count on main is 8 past a multiple of 16 (`tools/ops/commit.sh` says so), the next commit is a refactor
+the commit count on main is 8 past a multiple of 16 (`tools/ops/commit.sh` says so of a landing it waited out to 0;
+otherwise `git rev-list --count origin/main`), the next commit is a refactor
 pass, before the next change is started:
 - **Measure** with `sh tools/ops/hotspots.sh`: the main sources by churn x size over the last 64 commits; the ones
   returned to in three of the last eight; the pairs that change together; the long lines; the slowest tests of the

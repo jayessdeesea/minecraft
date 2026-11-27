@@ -1,6 +1,6 @@
 package io.github.jayessdeesea.minecraft.landing;
 
-/** Why a request was refused after an attempt: the author's commit stays where it is (operator's decision 6). */
+/** Why a request was refused after an attempt: the author's commit stays where it is. */
 public enum FailReason {
     /** The verify said BUILD FAILURE. */
     BUILD_FAILED,

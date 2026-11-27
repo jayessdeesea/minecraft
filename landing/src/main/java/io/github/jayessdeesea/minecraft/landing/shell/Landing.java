@@ -118,10 +118,10 @@ public final class Landing {
         try {
             Children job = enter.get();
             Path file = Config.file(Optional.ofNullable(env.get("LANDING_CONFIG")), jar);
-            Config config = Config.load(file);
             if (args.length > 0 && args[0].equals("install")) {
-                return Installer.install(config, file, Arrays.asList(args).subList(1, args.length), said);
+                return Installer.install(file, Arrays.asList(args).subList(1, args.length), said);
             }
+            Config config = Config.load(file);
             Map<String, String> children = childrensEnvironment(config, env);
             Git.Tool git = new Git.Tool(List.of(Programs.resolve("git", config.toolPath(), Files::isRegularFile)), children,
                     config.gitTimeout(), config.gitRemoteTimeout(), job);

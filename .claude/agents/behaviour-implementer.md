@@ -30,8 +30,8 @@ One Maven job at a time: `sh tools/ops/quick.sh`, then the simulations the brief
 once, at the end, and report their output as it said).
 
 ## What you never do
-Commit, push, deploy, touch the main checkout or another worktree, edit `tools/ops/commit.sh`, read or write
-`C:/mc-state/garrison/garrison.args`, or send the garrison an order.
+Commit, land a change (`tools/ops/commit.sh`, `land.sh`), push, deploy, touch the main checkout or another worktree, read or write
+`C:/mc-state/garrison/garrison.args` or `C:/mc-state/landing/`, or send the garrison an order.
 
 ## Report
 Each item of the brief: done or not, and why. The rows: each one's failing answer before and passing after. Files,

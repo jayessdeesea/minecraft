@@ -19,6 +19,8 @@ reading it - not by rediscovering it:
 - **The watch log** - `C:/mc-state/garrison/watch-log.md`, its last entries: what the last pass found, changed and left.
 - **The repository** - `git log --oneline -8` and `git status`: what's committed, what's pushed, what's still in the tree.
 - **The running build** - the last line of `C:/mc-state/garrison/runs.log` against `origin/main`.
+- **The queue** - `landing audit` (docs/conventions.md, "Landing a change"): each `[Fault]` it prints goes in the watch
+  log for the operator before anything is landed; a halted queue lands nothing until the operator resumes it.
 Then a health check before any new work: the garrison answers (`GET /clock`), the Minecraft server is up, and the
 build running is the one last deployed. A pass that finds the last one's work broken mends that first.
 
@@ -84,13 +86,16 @@ build running is the one last deployed. A pass that finds the last one's work br
    not the theory.
 5. **Prove it before the verify.** `sh tools/ops/quick.sh`, then the slow simulations the change touches, by name: a
    verify takes 28 minutes, and one failed on a test that could have been run first is half an hour lost.
-6. **Commit** with `sh tools/ops/commit.sh <message file>` - docs and backlog in the same commit. Serial: never two at
-   once, and the tree isn't edited while a queued commit is about to stage it.
-7. **Deploy** with `sh tools/ops/deploy.sh`, only a verified commit, and not more than once in 45 minutes: every
+6. **Land** with `sh tools/ops/commit.sh <message file>` - docs and backlog in the same change - and read its exit by
+   the table (docs/conventions.md, "Landing a change"). One landing in flight; what is edited while it waits is the
+   next landing's. Halted (4) or landing itself failed (6) is written in the watch log for the operator, and the pass
+   goes on with what needs no landing.
+7. **Deploy** with `sh tools/ops/deploy.sh`, only what has landed, and not more than once in 45 minutes: every
    restart takes the squads off their work. Fixes are batched into one restart where they can be.
 8. **Canary.** Read once the run is ten minutes old or more - earlier, the checks that need time (counts falling,
    reviews, orders) can't be judged yet: faults, loops, retries, deaths and each goal's rate against before
-   it. Clearly worse, the commit is reverted through `commit.sh`, redeployed, and why is written down.
+   it. Clearly worse, the commit is reverted (`git revert`), the revert landed the same way and redeployed, and why is
+   written down.
 9. **The watch log, and the goals.** One dated entry a pass, appended to `C:/mc-state/garrison/watch-log.md`: the
    stats, what was found, what was changed, what was deployed, deaths and their causes, and what needs the operator's
    decision - with the lines it rests on quoted, a test's pass or fail as its output said it, not as remembered. It's
@@ -99,12 +104,12 @@ build running is the one last deployed. A pass that finds the last one's work br
    progress is visible.
 
 ## Stopping
-All the goals met; or three verifies failed in a row; or the garrison or the Minecraft server down and a restart not
+All the goals met; or three landings failed in a row (exit 1); or the garrison or the Minecraft server down and a restart not
 bringing it back; or six passes running in which no goal's measure moved - the loop is then spending the operator's
 time and money on nothing, and says what it tried. Stopped, the loop says why in the watch log and to the operator.
 
 ## Pacing
-A pass ends by scheduling the next: when a commit's verify or a deploy's canary is due, else in 20 to 30 minutes. A
+A pass ends by scheduling the next: when a landing's answer or a deploy's canary is due, else in 20 to 30 minutes. A
 background job finishing wakes it sooner. The loop runs only while its session and the machine stay up, and a
 self-paced loop isn't restored when a session is resumed: it's started again. A bare `/loop`, with no prompt, runs
 `.claude/loop.md`, which points here and at the goals file; `/loop` with a prompt ignores that file, so a run's

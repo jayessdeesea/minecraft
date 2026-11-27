@@ -18,7 +18,7 @@ simulations run those phases again - and a mission test that flattens a chunk be
 
 ## Done when
 - **The verify says where its time went, against the run before.** Built: `tools/ops/hotspots.sh` lists the last
-  verify's slowest fifteen and the sum, and `commit.sh` prints them after each verify. Left: each one's change against
+  verify's slowest fifteen and the sum, and `commit.sh` prints them after a landing. Left: each one's change against
   the run before, so growth shows in the commit that caused it.
 - **A test's time is capped**, a ratchet in `ArchitectureTest` like the line caps: a simulation over the cap is
   justified or cut down, and a cap only comes down.

@@ -159,8 +159,8 @@ class ScriptsTest {
                 .directory(OPS.toFile()).start().getInputStream().readAllBytes(), StandardCharsets.UTF_8).strip();
         String mainCheckout = ScratchRepo.slash(Path.of(common).getParent());
         for (String said : List.of("in <a new temp dir, made at install>", "would: git worktree add -q --detach",
-                "mvn' -o -q -pl landing package -DskipTests", "would write " + ScratchRepo.slash(state) + "/config",
-                "  repo=" + mainCheckout + "\n", "  poke=schtasks /run /tn mc-landing-dry-run", " install ",
+                "mvn' -o -q -pl landing package -DskipTests", " repo=" + mainCheckout + " ",
+                "poke=schtasks /run /tn mc-landing-dry-run", "hook=", " install ",
                 ScratchRepo.slash(state) + "/landing.jar", "/land.sh", "javaw", "-jar ", " integrate", "time limit PT210M",
                 "/create /tn mc-landing-dry-run", "/f", "disabled",
                 "whoami /groups", "job-check", "schtasks /run without elevation", "enters its job",
@@ -260,5 +260,113 @@ class ScriptsTest {
                 fakeJava().toString(), "MAY_PUSH", "1"), "refs/heads/x " + LOCAL + " " + MAIN + " " + REMOTE, "origin", "url");
         assertEquals(1, ran.exit(), ran.out());
         assertEquals(List.of("-jar " + jarFile + " may-push " + LOCAL + " " + REMOTE), calls());
+    }
+
+    /** A fake land.sh: notes its arguments, exits LAND_EXIT. */
+    private Path fakeLand() throws IOException {
+        Path fake = dir.resolve("land.sh");
+        Files.writeString(fake, "#!/bin/sh\necho \"$*\" >> '" + ScratchRepo.slash(dir.resolve("calls")) + "'\nexit \"$LAND_EXIT\"\n");
+        return fake;
+    }
+
+    /** This test's dir a git repository of {@code commits} empty commits, as commit.sh's cwd. */
+    private void repoOf(int commits) throws IOException, InterruptedException {
+        Path script = dir.resolve("make-repo.sh");
+        Files.writeString(script, "git init -q . && i=0; while [ $i -lt " + commits + " ]; do i=$((i + 1)); "
+                + "git -c user.name=t -c user.email=t@t commit -q --allow-empty -m c$i || exit 1; done\n");
+        assertEquals(0, sh(script, Map.of(), "").exit());
+    }
+
+    /** commit.sh with a fake land.sh exiting {@code exit}, the reports read from an empty dir unless one is given. */
+    private Ran commitSh(String exit, Map<String, String> more, String... args) throws IOException, InterruptedException {
+        Path reports = dir.resolve("reports");
+        Files.createDirectories(reports);
+        Map<String, String> env = new java.util.HashMap<>(Map.of("LANDING_LAND", ScratchRepo.slash(fakeLand()), "LAND_EXIT", exit,
+                "REPORTS_WORKTREE", ScratchRepo.slash(reports)));
+        env.putAll(more);
+        return sh(OPS.resolve("commit.sh"), env, "", args);
+    }
+
+    /** commit.sh with no landing installed: 6, naming where land.sh would be; nothing called. */
+    @Test
+    void commitShWithNoLandingInstalledIsSix() throws IOException, InterruptedException {
+        String none = ScratchRepo.slash(dir.resolve("no-such/land.sh"));
+        Ran ran = sh(OPS.resolve("commit.sh"), Map.of("LANDING_LAND", none), "", "m.txt");
+        assertEquals(6, ran.exit(), ran.out());
+        assertTrue(ran.out().contains(none), ran.out());
+        assertEquals(List.of(), calls());
+    }
+
+    /** Every exit of land.sh but 0 is commit.sh's own, and no count follows it. */
+    @ParameterizedTest
+    @CsvSource({"1", "2", "3", "4", "5", "6"})
+    void commitShExitsAsLandDoes(int exit) throws IOException, InterruptedException {
+        repoOf(8);
+        Ran ran = commitSh(String.valueOf(exit), Map.of(), "m.txt");
+        assertEquals(exit, ran.exit(), ran.out());
+        assertFalse(ran.out().lines().anyMatch(l -> l.strip().equals("8")), ran.out());
+        assertFalse(ran.out().contains("is due"), ran.out());
+        assertFalse(ran.out().contains("the slowest tests"), ran.out());
+    }
+
+    /** commit.sh passes its arguments to land.sh untouched. */
+    @Test
+    void commitShPassesItsArgumentsThrough() throws IOException, InterruptedException {
+        assertEquals(3, commitSh("3", Map.of(), "m.txt", "--timeout", "1").exit());
+        assertEquals(List.of("m.txt --timeout 1"), calls());
+    }
+
+    /** VERIFY_WORKTREE is said to be unread, and the landing goes on. */
+    @Test
+    void commitShSaysVerifyWorktreeIsNotRead() throws IOException, InterruptedException {
+        Ran ran = commitSh("3", Map.of("VERIFY_WORKTREE", ScratchRepo.slash(dir.resolve("verify"))), "m.txt");
+        assertEquals(3, ran.exit(), ran.out());
+        assertTrue(ran.out().contains("VERIFY_WORKTREE is not read"), ran.out());
+        assertEquals(List.of("m.txt"), calls());
+    }
+
+    /** Landed (0): the count on main, and the pass that count makes due - a refactor at 8, a profile at 16, none at 9. */
+    @ParameterizedTest
+    @CsvSource({
+            "8, a refactor pass is due",
+            "9, ''",
+            "16, a profile is due"})
+    void commitShLandedSaysTheCountAndWhatIsDue(int commits, String due) throws IOException, InterruptedException {
+        repoOf(commits);
+        Ran ran = commitSh("0", Map.of(), "m.txt");
+        assertEquals(0, ran.exit(), ran.out());
+        assertTrue(ran.out().lines().anyMatch(l -> l.strip().equals(String.valueOf(commits))), ran.out());
+        if (due.isEmpty()) {
+            assertFalse(ran.out().contains("is due"), ran.out());
+        } else {
+            assertTrue(ran.out().contains("commit " + commits + ": " + due), ran.out());
+        }
+    }
+
+    /** Landed (0): the last verify's slowest tests, and none of hotspots.sh's other sections. */
+    @Test
+    void commitShLandedSaysTheSlowestTestsAlone() throws IOException, InterruptedException {
+        repoOf(1);
+        Path surefire = dir.resolve("reports/m/target/surefire-reports");
+        Files.createDirectories(surefire);
+        Files.writeString(surefire.resolve("TEST-a.xml"), "<testsuite><testcase name=\"t\" classname=\"p.C\" time=\"1.5\"/>"
+                + "</testsuite>\n");
+        Ran ran = commitSh("0", Map.of(), "m.txt");
+        assertEquals(0, ran.exit(), ran.out());
+        assertTrue(ran.out().contains("the slowest tests") && ran.out().contains("1.5 C.t"), ran.out());
+        for (String other : List.of("churn x size", "returned to", "changed together", "lines over 200")) {
+            assertFalse(ran.out().contains(other), other + ":\n" + ran.out());
+        }
+    }
+
+    /** hotspots.sh --slowest with no reports says so, and is 0. */
+    @Test
+    void theSlowestWithNoReportsSaysSo() throws IOException, InterruptedException {
+        Path reports = dir.resolve("reports");
+        Files.createDirectories(reports);
+        Ran ran = sh(OPS.resolve("hotspots.sh"), Map.of("REPORTS_WORKTREE", ScratchRepo.slash(reports)), "", "--slowest");
+        assertEquals(0, ran.exit(), ran.out());
+        assertTrue(ran.out().contains("no surefire reports under " + ScratchRepo.slash(reports)), ran.out());
+        assertFalse(ran.out().contains("churn x size"), "the slowest alone: " + ran.out());
     }
 }

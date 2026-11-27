@@ -29,8 +29,8 @@ import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 
 /**
- * {@code landing integrate}: whoever holds the lock integrates, until the queue is empty, a back-off or a halt
- * (design section 3). Each pass: 1 fetch; 2 the core's next step; for an attempt, 3 the request and stale checks, 4
+ * {@code landing integrate}: whoever holds the lock integrates, until the queue is empty, a back-off or a halt.
+ * Each pass: 1 fetch; 2 the core's next step; for an attempt, 3 the request and stale checks, 4
  * merge-tree and commit-tree into a candidate held as a value, 5 the Attempt journaled, 6 the candidate checked out in
  * the landing worktree and verified, 7 the Verified journaled, 8 the push, 9 a fetch and the push classified by what it
  * found, 10 the request's refs deleted. A crash anywhere is the next run's to reconcile. Audited at the start and the
