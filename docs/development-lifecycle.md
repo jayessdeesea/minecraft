@@ -5,12 +5,12 @@ where the table points; this file only puts them in order.
 
 ## A day of it
 
-Alice, the operator, has six ideas before lunch: a squad that idles at dusk, a slow pathfinder, a doc that's drifted,
-three more. She opens an assistant session for each and gives it a sentence. She doesn't order them or wait on them:
-each works alone in a worktree of its own, and what it can't decide comes back to her as a question, not a guess.
+The operator has six ideas before lunch: a squad that idles at dusk, a slow pathfinder, a doc that's drifted,
+three more. They open an assistant session for each and give it a sentence. They don't order them or wait on them:
+each works alone in a worktree of its own, and what it can't decide comes back to them as a question, not a guess.
 
-She reads answers, not logs. A session's last message lists what's outstanding and who acts next on each; one that
-ends `Done: nothing outstanding.` she closes, with its worktree
+They read answers, not logs. A session's last message lists what's outstanding and who acts next on each; one that
+ends `Done: nothing outstanding.` they close, with its worktree
 ([conventions.md, "Retiring a stream"](conventions.md#retiring-a-stream)). A new idea is a new session
 (["Landing a change"](conventions.md#landing-a-change)), or a backlog item if it isn't for now.
 
