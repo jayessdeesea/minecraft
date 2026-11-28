@@ -49,7 +49,6 @@ import java.util.Set;
 import java.util.OptionalInt;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -525,16 +524,10 @@ public class ChainOfCommand implements DisposableBean {
     }
 
     /** Operator orders being followed down the chain - each is dropped once carried out or superseded. */
-    private final List<OrderTrace> traces = new CopyOnWriteArrayList<>();
-    private final AtomicInteger traceIds = new AtomicInteger();
+    private final OperatorTraces traces = new OperatorTraces(this::millis, this::traced);
 
-    /** A trace for the operator's new order: the ones before it, not yet carried out, are superseded. */
     private OrderTrace trace(String operator, String order, int version) {
-        traces.forEach(t -> t.supersede().ifPresent(line -> traced(operator, line)));
-        traces.removeIf(OrderTrace::closed);
-        OrderTrace trace = new OrderTrace("OP-" + traceIds.incrementAndGet(), operator, order, clockwork.millis(), version);
-        traces.add(trace);
-        return trace;
+        return traces.open(operator, order, version);
     }
 
     /** A hop of an order's trace: in the log, and on the radio to the operator who gave it. */
@@ -853,13 +846,7 @@ public class ChainOfCommand implements DisposableBean {
         requestTracking.track(sitreps, requests, this::wake, clockwork.millis());
         objectiveBook.ifPresent(b -> sitreps.forEach(s -> b.sitrep(s.squad(), squads.get(s.squad()).report(), s.progress(), clockwork.millis()))); // pushed up as it comes
         long traceNow = clockwork.millis();
-        for (OrderTrace trace : traces) {
-            for (Sitrep sitrep : sitreps) {
-                trace.sitrep(sitrep.squad(), squads.get(sitrep.squad()).lastFrago(), sitrep.soldiers(), traceNow)
-                        .forEach(line -> traced(trace.operator, line));
-            }
-        }
-        traces.removeIf(OrderTrace::closed);
+        traces.sitreps(sitreps, squad -> squads.get(squad).lastFrago(), traceNow);
         long now = clockwork.millis();
         List<Sitrep> underPlatoonLeader = sitreps.stream().filter(s -> squads.get(s.squad()).escort().isEmpty()).toList();
         for (Sitrep sitrep : underPlatoonLeader) {
@@ -972,8 +959,7 @@ public class ChainOfCommand implements DisposableBean {
                     objectiveBook.ifPresent(b -> b.given(name, given, clockwork.millis()));
                 }
                 long decidedAt = clockwork.millis();
-                traces.stream().filter(t -> t.version == missionAsked)
-                        .forEach(t -> t.decided(decided, decidedAt).forEach(line -> traced(t.operator, line)));
+                traces.decided(missionAsked, decided, decidedAt);
             } catch (RuntimeException e) {
                 deciding.failed(e, () -> LOG.error("[PL] no decision - keeping the current objectives: {}", e.getMessage(), e));
             } finally {
