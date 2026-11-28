@@ -2,7 +2,6 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
-import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
@@ -16,7 +15,6 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
-import org.springframework.core.io.ClassPathResource;
 
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -110,12 +108,10 @@ class ArmourCheckSimulationTest {
     /** {@code roster} on a task at the camp, no leave to rearm, each carrying a stone sword and pickaxe, bread, logs, cobblestone and {@code more}; run. */
     private void run(SimClock clock, SimServer server, String roster, String camp, java.util.function.Function<String, List<int[]>> more) {
         Roster soldiers = new Roster(roster);
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Secure the camp", CAMP,
-                "Security", new Objective.Task.Secure())), squadLeaderOnTask(),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), soldiers, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", soldiers, false, camp, state.toString())
-                .simulated(clock, server.connector(n -> new PlayerPosition(0.5, GROUND + 1, 0.5), n -> {
+        SimSquad.of(clock, server, soldiers)
+                .orders(s -> new Objective("Secure the camp", CAMP,
+                "Security", new Objective.Task.Secure())).leader(squadLeaderOnTask()).home(camp)
+                .connector(n -> new PlayerPosition(0.5, GROUND + 1, 0.5), n -> {
                     List<int[]> kit = new java.util.ArrayList<>(List.of(
                             new int[]{36, SimServer.itemNamedOrMinus("stone_sword"), 1},
                             new int[]{37, SimServer.ITEM_STONE_PICKAXE, 1},
@@ -124,8 +120,8 @@ class ArmourCheckSimulationTest {
                             new int[]{12, SimServer.ITEM_COBBLESTONE, 16}));
                     kit.addAll(more.apply(n));
                     return kit;
-                }))
-                .run();
+                })
+                .start(state);
         clock.advance(10 * 60_000);
     }
 

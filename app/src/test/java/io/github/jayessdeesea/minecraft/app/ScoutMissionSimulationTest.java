@@ -4,8 +4,6 @@ import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
-import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
-import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,7 +11,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -52,14 +49,14 @@ class ScoutMissionSimulationTest {
     private SimServer run(SimClock clock, SimServer.Terrain ground, List<int[]> kit, List<double[]> sheep, long minutes) {
         SimServer server = new SimServer(clock, ground, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP, "Nothing else to do")),
-                SquadSimulationTest.squadLeader(CAMP), SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
-        runner.simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit)).run();
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Hold the camp", CAMP, "Nothing else to do")).leaderAt(CAMP)
+                .kit(kit)
+                .build(state);
+        sim.run();
         clock.advance(20_000);
         sheep.forEach(at -> server.spawnSheep(at[0], GROUND + 1, at[1]));
-        String wilco = new ChatCommands(chain).giveScoutMission("sheep", 40, 8, 4, 4);
+        String wilco = new ChatCommands(sim.chain).giveScoutMission("sheep", 40, 8, 4, 4);
         assertTrue(wilco.startsWith("WILCO: scout for sheep round (40, 8), bring them to (4, 4)"), wilco);
         clock.advance(minutes * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
@@ -109,14 +106,14 @@ class ScoutMissionSimulationTest {
         server.stockedChest(3, GROUND + 1, 3, SimServer.itemOf(ItemClass.WHEAT), 64);
         Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0],[3,64,3,0,0,0,0,0,0,0,0,64,0,0]]"); // as the force last saw them
         Roster roster = new Roster("Alpha:Alice,Bob");
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP, "Nothing else to do")),
-                SquadSimulationTest.squadLeader(CAMP), SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
-        runner.simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit)).run();
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Hold the camp", CAMP, "Nothing else to do")).leaderAt(CAMP)
+                .kit(kit)
+                .build(state);
+        sim.run();
         clock.advance(60_000);
         server.spawnSheep(30.5, GROUND + 1, 20.5);
-        new ChatCommands(chain).giveScoutMission("sheep", 40, 8, 4, 4);
+        new ChatCommands(sim.chain).giveScoutMission("sheep", 40, 8, 4, 4);
         clock.advance(14 * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
 

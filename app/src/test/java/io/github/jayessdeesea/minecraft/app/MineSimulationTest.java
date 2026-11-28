@@ -28,8 +28,8 @@ import java.util.Optional;
 
 import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.GROUND;
 import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.flat;
-import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.scripted;
-import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.squadLeader;
+import static io.github.jayessdeesea.minecraft.app.SimSquad.scripted;
+import static io.github.jayessdeesea.minecraft.app.SimSquad.squadLeader;
 import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.pitInCamp;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -71,13 +71,12 @@ class MineSimulationTest {
         SimServer server = new SimServer(clock, ground, 1000); // morning
         Position head = new Position(4, 16, 4);
         Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", head,
-                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit));
-        runner.run();
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Cut the mine down to the iron", head,
+                "Stone and iron for the camp", new Objective.Task.Mine())).leaderAt(new Position(4, GROUND + 1, 4)).home("")
+                .kit(kit)
+                .build(state);
+        sim.runner.run();
         if (usesLeft != Integer.MAX_VALUE) {
             clock.advance(1_000); // joined
             ALPHA.forEach(n -> server.wear(n, usesLeft));
@@ -114,16 +113,13 @@ static void assertMinedToTheIron(SimServer server) {
                 ? SimServer.AIR : flat(x, y, z), 1000);
         Position head = new Position(4, 16, 4);
         Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", head,
-                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(
-                        n -> n.equals("Dana") ? new PlayerPosition(40.5, GROUND - 25, 40.5) : new PlayerPosition(0.5, GROUND + 1, 0.5),
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Cut the mine down to the iron", head,
+                "Stone and iron for the camp", new Objective.Task.Mine())).leaderAt(new Position(4, GROUND + 1, 4)).home("")
+                .connector(n -> n.equals("Dana") ? new PlayerPosition(40.5, GROUND - 25, 40.5) : new PlayerPosition(0.5, GROUND + 1, 0.5),
                         n -> List.of(new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                                new int[]{38, SimServer.ITEM_BREAD, 16})))
-                .run();
+                                new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .start(state);
 
         clock.advance(15 * 60_000);
 
@@ -189,18 +185,17 @@ static void assertMinedToTheIron(SimServer server) {
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 11_000); // an hour before dusk
         Roster roster = new Roster("Alpha:Alice,Bob;Bravo:Carol,Dana");
         Position camp = new Position(0, GROUND + 1, 0);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
-                new Objective.Task.None())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, true, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())).leaderAt(camp).shelterAtNight(true)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
                         new int[]{9, SimServer.ITEM_OAK_LOG, 16},
-                        new int[]{10, SimServer.ITEM_DIRT, 64})));
-        runner.run();
+                        new int[]{10, SimServer.ITEM_DIRT, 64}))
+                .build(state);
+        sim.runner.run();
 
         // To midnight: dusk is at tick 13178, an hour of game time is 1000 ticks.
         clock.advance((18_000 - 11_000) * 50L);
@@ -232,16 +227,15 @@ static void assertMinedToTheIron(SimServer server) {
         SimServer server = new SimServer(clock, SquadSimulationTest::pitInCamp, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0, GROUND + 1, 0);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
-                new Objective.Task.None())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())).leaderAt(camp)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
-                        new int[]{10, SimServer.ITEM_DIRT, 64})));
-        runner.run();
+                        new int[]{10, SimServer.ITEM_DIRT, 64}))
+                .build(state);
+        sim.runner.run();
 
         clock.advance(4 * 60_000);
 
@@ -260,16 +254,15 @@ static void assertMinedToTheIron(SimServer server) {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, KeptStairs::keptStairsCut, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
-                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
+                "Stone and iron for the camp", new Objective.Task.Mine())).leaderAt(new Position(4, GROUND + 1, 4))
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})));
-        runner.run();
+                        new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .build(state);
+        sim.runner.run();
 
         clock.advance(10 * 60_000);
 
@@ -293,16 +286,15 @@ static void assertMinedToTheIron(SimServer server) {
         SimServer server = new SimServer(clock, KeptStairs::keptStairsCut, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         // 16 blocks from the kept head each way - beyond where a staircase is sited round a point.
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut a mine shaft near the camp", new Position(-12, 16, -12),
-                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Cut a mine shaft near the camp", new Position(-12, 16, -12),
+                "Stone and iron for the camp", new Objective.Task.Mine())).leaderAt(new Position(4, GROUND + 1, 4))
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})));
-        runner.run();
+                        new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .build(state);
+        sim.runner.run();
 
         clock.advance(60_000);
 
@@ -320,18 +312,17 @@ static void assertMinedToTheIron(SimServer server) {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, KeptStairs::keptStairsAllCut, 14_000); // an hour after dusk
         Roster roster = new Roster("Alpha:Alice,Bob");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
-                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
+                "Stone and iron for the camp", new Objective.Task.Mine())).leaderAt(new Position(4, GROUND + 1, 4))
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
                         // Spares: a pickaxe worn out by the day's dig leaves one up top by night (no pickaxe, no mine).
-                        new int[]{39, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{40, SimServer.ITEM_STONE_PICKAXE, 1})));
-        runner.run();
+                        new int[]{39, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{40, SimServer.ITEM_STONE_PICKAXE, 1}))
+                .build(state);
+        sim.runner.run();
 
         clock.advance(4 * 60_000);
 
@@ -362,23 +353,22 @@ static void assertMinedToTheIron(SimServer server) {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, KeptStairs::keptStairsAllCutInALitCamp, 14_000); // an hour after dusk
         Roster roster = new Roster("Alpha:Alice,Bob");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
-                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
+                "Stone and iron for the camp", new Objective.Task.Mine())).leaderAt(new Position(4, GROUND + 1, 4))
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
                         // Spares: a pickaxe worn out by the day's dig leaves one up top by night (no pickaxe, no mine).
-                        new int[]{39, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{40, SimServer.ITEM_STONE_PICKAXE, 1})));
-        runner.run();
+                        new int[]{39, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{40, SimServer.ITEM_STONE_PICKAXE, 1}))
+                .build(state);
+        sim.runner.run();
 
         clock.advance(6 * 60_000);
 
         // Handed the camp's dig on the surface, as they joined, is fair; held on to down the mine isn't.
-        List<String> held = runner.taskings("Alpha").stream().filter(t -> t.task().equals("dig the camp's ground"))
+        List<String> held = sim.runner.taskings("Alpha").stream().filter(t -> t.task().equals("dig the camp's ground"))
                 .map(t -> t.line(0)).toList();
         assertEquals(List.of(), held, "the camp's dig held by soldiers down the mine");
         for (String name : List.of("Alice", "Bob")) {
@@ -398,18 +388,16 @@ static void assertMinedToTheIron(SimServer server) {
         SimServer server = new SimServer(clock, KeptStairs::keptStairsAllCut, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0.5, GROUND + 1, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
-                new Objective.Task.None())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())).leaderAt(camp)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})))
-                .run();
+                        new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .start(state);
         clock.advance(2 * 60_000);
 
-        Foothold.Standard mined = chain.foothold().orElseThrow().standards().stream()
+        Foothold.Standard mined = sim.chain.foothold().orElseThrow().standards().stream()
                 .filter(s -> s.name().equals("stone and iron")).findFirst().orElseThrow();
         assertTrue(mined.met(), "the camp's mine: " + mined.status());
     }
@@ -425,18 +413,17 @@ static void assertMinedToTheIron(SimServer server) {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, KeptStairs::keptStairsCutLandingHoled, 14_000); // an hour after dusk
         Roster roster = new Roster("Alpha:Alice,Bob");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
-                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
+                "Stone and iron for the camp", new Objective.Task.Mine())).leaderAt(new Position(4, GROUND + 1, 4))
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
                         // Spares: a pickaxe worn out by the day's dig leaves one up top by night (no pickaxe, no mine).
-                        new int[]{39, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{40, SimServer.ITEM_STONE_PICKAXE, 1})));
-        runner.run();
+                        new int[]{39, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{40, SimServer.ITEM_STONE_PICKAXE, 1}))
+                .build(state);
+        sim.runner.run();
 
         clock.advance(5 * 60_000);
 
@@ -489,31 +476,30 @@ static void assertMinedToTheIron(SimServer server) {
         SimServer server = new SimServer(clock, KeptStairs::keptStairsAllCut, 14_000); // an hour after dusk
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0, GROUND + 1, 0);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
-                new Objective.Task.None())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, true, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())).leaderAt(camp).shelterAtNight(true)
+                .kit(List.of(
                         new int[]{36, SimServer.itemNamedOrMinus("iron_pickaxe"), 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16}, new int[]{9, SimServer.itemNamedOrMinus("iron_ingot"), 64},
                         new int[]{5, SimServer.itemNamedOrMinus("iron_helmet"), 1},
                         new int[]{6, SimServer.itemNamedOrMinus("iron_chestplate"), 1},
                         new int[]{7, SimServer.itemNamedOrMinus("iron_leggings"), 1},
-                        new int[]{8, SimServer.itemNamedOrMinus("iron_boots"), 1})));
-        runner.run();
+                        new int[]{8, SimServer.itemNamedOrMinus("iron_boots"), 1}))
+                .build(state);
+        sim.runner.run();
         Position first = new Position(ChainOfCommand.MINE_HEAD_DX, ChainOfCommand.MINE_DEPTH, ChainOfCommand.MINE_HEAD_DZ);
 
         clock.advance(6 * 60_000);
 
         String mission = "Cut the camp's mine down to the iron through the night";
-        List<io.github.jayessdeesea.minecraft.command.ObjectiveRecord> given = chain.objectiveBook.orElseThrow().registers().objectives().stream()
+        List<io.github.jayessdeesea.minecraft.command.ObjectiveRecord> given = sim.chain.objectiveBook.orElseThrow().registers().objectives().stream()
                 .filter(r -> r.mission().equals(mission)).toList();
         long atFirst = given.stream().filter(r -> r.chunkX() == Math.floorDiv(ChainOfCommand.MINE_HEAD_DX, 16)
                 && r.chunkZ() == Math.floorDiv(ChainOfCommand.MINE_HEAD_DZ, 16)).count();
         assertTrue(atFirst <= 1, "the night's mining given for the cut-out mine " + atFirst + " times: " + given);
-        assertEquals(first, chain.campMines.site(camp), "the camp's mine run on where it is, not left");
+        assertEquals(first, sim.chain.campMines.site(camp), "the camp's mine run on where it is, not left");
     }
 
     /** The camp's mine as it stands, and the sites it has left, are read back at start-up: not sent back to the first. */
@@ -542,16 +528,15 @@ static void assertMinedToTheIron(SimServer server) {
         SimServer server = new SimServer(clock, MineSimulationTest::shaftAtTheMineHead, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0, GROUND + 1, 0);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
-                new Objective.Task.None())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())).leaderAt(camp)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
-                        new int[]{10, SimServer.ITEM_DIRT, 64})));
-        runner.run();
+                        new int[]{10, SimServer.ITEM_DIRT, 64}))
+                .build(state);
+        sim.runner.run();
 
         clock.advance(4 * 60_000);
 

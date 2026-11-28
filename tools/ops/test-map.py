@@ -290,7 +290,8 @@ def kind_of(t, names):
     if t["name"] == "ArchitectureTest":
         return "architecture"
     if t["uses"] & SIM:
-        return "squad sim" if "SimServer" in t["uses"] and "SoldierRunner" in names else "sim part"
+        runs_a_squad = "SoldierRunner" in names or "SimSquad" in t["uses"]
+        return "squad sim" if "SimServer" in t["uses"] and runs_a_squad else "sim part"
     if t["uses"] & FAKES:
         return "soldier sim"
     return "unit/table"

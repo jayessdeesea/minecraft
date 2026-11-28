@@ -3,8 +3,6 @@ package io.github.jayessdeesea.minecraft.app;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
-import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
-import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,18 +10,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.model.Generation;
-import org.springframework.core.io.ClassPathResource;
 
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -49,21 +40,6 @@ class FarmDutiesSimulationTest {
         ThreadContext.remove("scenario");
     }
 
-    /** Flat, with a pond of one block ten east of the camp. */
-    static int pond(int x, int y, int z) {
-        return y == GROUND && x == 10 && z == 0 ? SimServer.WATER : SquadSimulationTest.flat(x, y, z);
-    }
-
-    /** A squad leader that keeps the squad at {@code at}. */
-    private static ChatClient squadLeader(Position at) {
-        String reply = String.format(Locale.ROOT, """
-                {"x": %.1f, "y": %.1f, "z": %.1f, "formation": "WEDGE", "interval": "NORMAL",
-                 "verticalTolerance": 4, "risk": "LOW", "soldierRisks": [], "rearm": true,
-                 "intent": "work the objective", "cantco": "", "roleChanges": [], "detached": []}
-                """, at.x(), at.y(), at.z());
-        return ChatClient.create((ChatModel) prompt -> new ChatResponse(List.of(new Generation(new AssistantMessage(reply)))));
-    }
-
     /**
      * Four on the farm: the first three harvest, none of them a crop another took, and the fourth, the
      * baker, harvests none (operator, 2026-11-18: farmers harvesting, a baker turning the wheat into bread).
@@ -71,21 +47,15 @@ class FarmDutiesSimulationTest {
     @Test
     void harvestersWorkTheirOwnSharesAndTheBakerNone() throws java.io.IOException {
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, FarmDutiesSimulationTest::pond, 24_000);
-        List<String> squad = List.of("Alice", "Bob", "Carl", "Dana");
-        Roster roster = new Roster("Alpha:" + String.join(",", squad));
-        Position farm = new Position(10.5, GROUND + 1, 2.5);
-        Objective toFarm = new Objective("Farm", farm, "Bread for the depot", new Objective.Task.Farm());
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> toFarm), squadLeader(farm),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimServer server = new SimServer(clock, SimSquad::pond, 24_000);
+        List<String> squad = SimSquad.FARM_SQUAD;
+        SimSquad.farmSquad(clock, server)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
-                        new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32})))
-                .run();
+                        new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32}))
+                .start(state);
 
         clock.advance(20 * 60_000);
 
@@ -121,20 +91,7 @@ class FarmDutiesSimulationTest {
 
     /** The camp's table, at (1, 64, -2), on the pond's ground: the one a farm's baker's order names. */
     static int campTable(int x, int y, int z) {
-        return x == 1 && z == -2 && y == GROUND + 1 ? SimServer.CRAFTING_TABLE : pond(x, y, z);
-    }
-
-    /** Alpha's four on the farm - Dana its baker - each with {@code kit}, run on {@code server}. */
-    private void farmSquad(SimClock clock, SimServer server, List<int[]> kit) {
-        List<String> squad = List.of("Alice", "Bob", "Carl", "Dana");
-        Roster roster = new Roster("Alpha:" + String.join(",", squad));
-        Position farm = new Position(10.5, GROUND + 1, 2.5);
-        Objective toFarm = new Objective("Farm", farm, "Bread for the depot", new Objective.Task.Farm());
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> toFarm), squadLeader(farm),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit)).run();
+        return x == 1 && z == -2 && y == GROUND + 1 ? SimServer.CRAFTING_TABLE : SimSquad.pond(x, y, z);
     }
 
     /** A baker's kit, as live: a full basic load - the batches past it are the stores' - and logs for its workshop's chest. */
@@ -162,7 +119,7 @@ class FarmDutiesSimulationTest {
         SimServer server = new SimServer(clock, (x, y, z) -> x == 5 && z == 1 && y == GROUND + 1 ? SimServer.CRAFTING_TABLE : campTable(x, y, z), 24_000);
         server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64);
         java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0]]");
-        farmSquad(clock, server, bakersKit(15));
+        SimSquad.farmSquad(clock, server).kit(bakersKit(15)).start(state);
 
         clock.advance(10 * 60_000);
 
@@ -187,7 +144,7 @@ class FarmDutiesSimulationTest {
     void aBakerWithNoWheatAnywhereIsReportedIdleNotBehind() throws java.io.IOException {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, FarmDutiesSimulationTest::campTable, 24_000);
-        farmSquad(clock, server, bakersKit(0));
+        SimSquad.farmSquad(clock, server).kit(bakersKit(0)).start(state);
 
         clock.advance(4 * 60_000);
 
@@ -208,9 +165,9 @@ class FarmDutiesSimulationTest {
         SimServer server = new SimServer(clock, FarmDutiesSimulationTest::campTable, 24_000);
         server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64);
         java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0]]");
-        farmSquad(clock, server, List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
+        SimSquad.farmSquad(clock, server).kit(List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
                 new int[]{38, SimServer.ITEM_BREAD, 64}, new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32},
-                new int[]{12, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 15}));
+                new int[]{12, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 15})).start(state);
 
         String scenario = "aBakersTableDugIsItsCantcoAnsweredUpTheChain";
         for (int s = 0; s < 60 && log(scenario).stream().noneMatch(l -> l.contains("-> Dana] DUTY: baker") && l.contains("at the table at (1, 64, -2)")); s++) {
@@ -235,7 +192,7 @@ class FarmDutiesSimulationTest {
         SimServer server = new SimServer(clock, FarmDutiesSimulationTest::campTable, 24_000);
         server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64);
         java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0]]");
-        farmSquad(clock, server, bakersKit(15));
+        SimSquad.farmSquad(clock, server).kit(bakersKit(15)).start(state);
 
         for (int i = 0; i < 240; i++) { // a zombie by its table every second, from the start, for four minutes: the fight unbroken
             server.spawnZombie(2.5, GROUND + 1, -0.5);
@@ -261,25 +218,18 @@ class FarmDutiesSimulationTest {
     @Test
     void aBakerShortOfABatchDrawsTheRestAndBakes() throws java.io.IOException {
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, (x, y, z) -> x == 1 && z == -2 && y == GROUND + 1 ? SimServer.CRAFTING_TABLE : pond(x, y, z), 24_000); // the camp's table
+        SimServer server = new SimServer(clock, FarmDutiesSimulationTest::campTable, 24_000); // the camp's table
         server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64); // the dump's chest, wheat in it
         java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0]]"); // known from before a restart, as live
-        List<String> squad = List.of("Alice", "Bob", "Carl", "Dana");
-        Roster roster = new Roster("Alpha:" + String.join(",", squad));
-        Position farm = new Position(10.5, GROUND + 1, 2.5);
-        Objective toFarm = new Objective("Farm", farm, "Bread for the depot", new Objective.Task.Farm());
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> toFarm), squadLeader(farm),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.farmSquad(clock, server)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
                         new int[]{38, SimServer.ITEM_BREAD, 64}, // a full basic load, as live: the batches past it are the stores'
                         new int[]{39, SimServer.ITEM_OAK_LOG, 8}, // the workshop's chest, the stockpile - as live
                         new int[]{12, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 15},
-                        new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32})))
-                .run();
+                        new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32}))
+                .start(state);
 
         clock.advance(10 * 60_000);
 
@@ -303,25 +253,18 @@ class FarmDutiesSimulationTest {
     @Test
     void aBakersSourceRunDryIsRepointedToTheNextChest() throws java.io.IOException {
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, (x, y, z) -> x == 1 && z == -2 && y == GROUND + 1 ? SimServer.CRAFTING_TABLE : pond(x, y, z), 24_000);
+        SimServer server = new SimServer(clock, FarmDutiesSimulationTest::campTable, 24_000);
         server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 20);
         server.stockedChest(6, GROUND + 1, -3, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64);
         java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"),
                 "[[3,64,1,0,0,0,0,0,0,0,0,20,0,0],[6,64,-3,0,0,0,0,0,0,0,0,64,0,0]]"); // both known from before a restart
-        List<String> squad = List.of("Alice", "Bob", "Carl", "Dana");
-        Roster roster = new Roster("Alpha:" + String.join(",", squad));
-        Position farm = new Position(10.5, GROUND + 1, 2.5);
-        Objective toFarm = new Objective("Farm", farm, "Bread for the depot", new Objective.Task.Farm());
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> toFarm), squadLeader(farm),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.farmSquad(clock, server)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
-                        new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32})))
-                .run();
+                        new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32}))
+                .start(state);
 
         clock.advance(12 * 60_000);
 

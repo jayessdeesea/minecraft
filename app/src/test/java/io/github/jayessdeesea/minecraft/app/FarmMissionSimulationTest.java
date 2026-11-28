@@ -10,7 +10,6 @@ import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.ObjectiveRecord;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Slopes;
-import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
@@ -19,7 +18,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -68,7 +66,7 @@ class FarmMissionSimulationTest {
      * ground, and a ridge four over it from a block east of the chunk out, which the east slope cuts into.
      */
     static int hills(int x, int y, int z) {
-        if (y == GROUND && x == 10 && z == 0) {
+        if (SimSquad.isCampPond(x, y, z)) {
             return SimServer.WATER;
         }
         boolean mound = x >= 36 && x <= 44 && z >= 4 && z <= 12 && y > GROUND && y <= GROUND + 3;
@@ -95,16 +93,16 @@ class FarmMissionSimulationTest {
         SimServer server = new SimServer(clock, world, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
         Position chunk = FARM.centre(FARM.steps().getFirst());
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
-                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, camp, state.toString());
-        chain.onOperatorFarm("Pat", FARM);
-        runner.simulated(clock, server.connector(spawn, kit)).run();
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())).leaderAt(chunk).home(camp)
+                .connector(spawn, kit)
+                .build(state);
+        sim.chain.onOperatorFarm("Pat", FARM);
+        sim.run();
         clock.advance(minutes * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
-        assertEquals(0, runner.afterActionReview.errands.loops(), "no soldier walking trip after trip for nothing (ErrandLedger.LOOP_TRIPS)");
+        assertEquals(0, sim.runner.afterActionReview.errands.loops(), "no soldier walking trip after trip for nothing (ErrandLedger.LOOP_TRIPS)");
         return server;
     }
 
@@ -155,19 +153,19 @@ class FarmMissionSimulationTest {
         SimServer server = new SimServer(clock, FarmMissionSimulationTest::hills, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
         Position chunk = TREES.centre(TREES.steps().getFirst());
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
-                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
-        chain.onOperatorFarm("Pat", TREES);
-        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())).leaderAt(chunk)
+                .connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
                 new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.itemNamedOrMinus("spruce_sapling"), 64},
                 new int[]{10, SimServer.itemNamedOrMinus("torch"), 16}, new int[]{11, SimServer.itemNamedOrMinus("chest"), 1},
                 new int[]{12, SimServer.ITEM_COBBLESTONE, 64}, new int[]{13, SimServer.ITEM_COBBLESTONE, 64},
-                new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_DIRT, 64}))).run();
+                new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_DIRT, 64}))
+                .build(state);
+        sim.chain.onOperatorFarm("Pat", TREES);
+        sim.run();
         clock.advance(120 * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aTreeFarmIsFlattenedPlantedLitAndItsChestPutUp.log"));
@@ -245,13 +243,13 @@ class FarmMissionSimulationTest {
         SimServer server = new SimServer(clock, FarmMissionSimulationTest::pit, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
         Position chunk = mission.centre(mission.steps().getFirst());
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
-                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
-        chain.onOperatorFarm("Pat", mission);
-        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), kit)).run();
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())).leaderAt(chunk)
+                .connector(new PlayerPosition(30.5, GROUND + 1, 8.5), kit)
+                .build(state);
+        sim.chain.onOperatorFarm("Pat", mission);
+        sim.run();
         clock.advance(minutes * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         return server;
@@ -317,18 +315,18 @@ class FarmMissionSimulationTest {
         Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
         io.github.jayessdeesea.minecraft.bot.farm.MineHead head = new io.github.jayessdeesea.minecraft.bot.farm.MineHead(MINESHAFT.chunkX(), MINESHAFT.chunkZ(), GROUND);
         Position chunk = new Position(head.shaft().x() + 0.5, GROUND + 1, head.shaft().z() + 0.5);
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
-                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
-        chain.onOperatorFarm("Pat", MINESHAFT);
-        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())).leaderAt(chunk)
+                .connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
                 new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.ITEM_COBBLESTONE, 64},
                 new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 32}, new int[]{10, SimServer.ITEM_OAK_LOG, 64},
-                new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_COBBLESTONE, 64}))).run();
+                new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_COBBLESTONE, 64}))
+                .build(state);
+        sim.chain.onOperatorFarm("Pat", MINESHAFT);
+        sim.run();
         clock.advance(120 * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aMineshaftsHeadIsPutUpAndItsSquadGoesDownIt.log"));
@@ -383,18 +381,18 @@ class FarmMissionSimulationTest {
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
         Position chunk = placeholder.centre(placeholder.steps().getFirst());
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
-                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
-        chain.onOperatorFarm("Pat", placeholder);
-        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())).leaderAt(chunk)
+                .connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
                 new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.ITEM_COBBLESTONE, 64},
                 new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 32},
-                new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_COBBLESTONE, 64}))).run();
+                new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_COBBLESTONE, 64}))
+                .build(state);
+        sim.chain.onOperatorFarm("Pat", placeholder);
+        sim.run();
         clock.advance(90 * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aPlaceholderChunkIsPavedFencedGatedAndLit.log"));
@@ -437,18 +435,18 @@ class FarmMissionSimulationTest {
         SimServer server = new SimServer(clock, FarmMissionSimulationTest::hills, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
         Position chunk = sheepFarm.centre(sheepFarm.steps().getFirst());
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
-                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
-        chain.onOperatorFarm("Pat", sheepFarm);
-        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())).leaderAt(chunk)
+                .connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
                 new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.ITEM_COBBLESTONE, 64}, new int[]{10, SimServer.ITEM_COBBLESTONE, 64},
                 new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 32},
-                new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_DIRT, 64}, new int[]{15, SimServer.ITEM_DIRT, 64}))).run();
+                new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_DIRT, 64}, new int[]{15, SimServer.ITEM_DIRT, 64}))
+                .build(state);
+        sim.chain.onOperatorFarm("Pat", sheepFarm);
+        sim.run();
         clock.advance(120 * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aSheepFarmIsFlattenedFlooredLaidInDirtFencedGatedAndLit.log"));
@@ -485,18 +483,18 @@ class FarmMissionSimulationTest {
         SimServer server = new SimServer(clock, FarmMissionSimulationTest::hills, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
         Position chunk = STORES.centre(STORES.steps().getFirst());
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
-                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
-        chain.onOperatorFarm("Pat", STORES);
-        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())).leaderAt(chunk)
+                .connector(new PlayerPosition(30.5, GROUND + 1, 8.5), List.of(
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
                 new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.ITEM_COBBLESTONE, 64}, new int[]{10, SimServer.ITEM_COBBLESTONE, 64},
                 new int[]{11, SimServer.ITEM_OAK_LOG, 64}, new int[]{12, SimServer.ITEM_TORCH, 16},
-                new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_COBBLESTONE, 64}))).run();
+                new int[]{13, SimServer.ITEM_COBBLESTONE, 64}, new int[]{14, SimServer.ITEM_COBBLESTONE, 64}))
+                .build(state);
+        sim.chain.onOperatorFarm("Pat", STORES);
+        sim.run();
         clock.advance(120 * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aSupplyPointIsFlattenedPavedLitAndItsFirstRowsPutUp.log"));
@@ -514,7 +512,7 @@ class FarmMissionSimulationTest {
         long chests = io.github.jayessdeesea.minecraft.bot.farm.StoresChunk.FIRST_ROWS.stream().flatMap(row -> template.chests(row).stream())
                 .filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.CHEST).count();
         assertEquals(24, chests, "the chests of its food and building rows" + missionLines);
-        assertEquals(0, runner.afterActionReview.errands.loops(), "no soldier walking trip after trip for nothing");
+        assertEquals(0, sim.runner.afterActionReview.errands.loops(), "no soldier walking trip after trip for nothing");
         // Its gates kept shut (operator, 2026-11-22: a habit of keeping them shut): put up shut, opened only on the way through.
         assertEquals(List.of(), template.grid().gates().stream().filter(g -> server.block(g.x(), g.y(), g.z()) == SimItems.GATE_OPEN).toList(), "no gate left open" + missionLines);
 
@@ -623,7 +621,7 @@ class FarmMissionSimulationTest {
 
     /** Flat by the camp's pond, the mission's chunk built up to {@link #HIGH}'s floor and its ground farmland, wheat on it. */
     static int raisedFarm(int x, int y, int z) {
-        if (y == GROUND && x == 10 && z == 0) {
+        if (SimSquad.isCampPond(x, y, z)) {
             return SimServer.WATER;
         }
         BlockPos c = new BlockPos(x, y, z);
@@ -768,19 +766,19 @@ class FarmMissionSimulationTest {
         Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
         // The squad's own objective at its camp, east: nobody's way crosses the farm beside, and it is ground the simulated
         // server serves - it sends the chunks round the spawn once, and a place west of x=16 is never in a soldier's world.
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(72.5, GROUND + 1, 8.5),
-                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(TREES.centre(TREES.steps().getFirst())),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "72,8", state.toString());
-        chain.onOperatorFarm("Pat", TREES);
-        runner.simulated(clock, server.connector(new PlayerPosition(68.5, GROUND + 1, 8.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Keep the camp's farm", new Position(72.5, GROUND + 1, 8.5),
+                "Food for the force", new Objective.Task.Farm())).leaderAt(TREES.centre(TREES.steps().getFirst())).home("72,8")
+                .connector(new PlayerPosition(68.5, GROUND + 1, 8.5), List.of(
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                 new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_axe"), 1},
                 new int[]{40, SimServer.ITEM_BREAD, 64}, new int[]{9, SimServer.itemNamedOrMinus("spruce_sapling"), 64},
                 new int[]{10, SimServer.itemNamedOrMinus("torch"), 16}, new int[]{11, SimServer.itemNamedOrMinus("chest"), 1},
                 new int[]{12, SimServer.ITEM_COBBLESTONE, 64}, new int[]{13, SimServer.ITEM_COBBLESTONE, 64},
-                new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_DIRT, 64}))).run();
+                new int[]{14, SimServer.ITEM_COBBLESTONE, 64}, new int[]{15, SimServer.ITEM_DIRT, 64}))
+                .build(state);
+        sim.chain.onOperatorFarm("Pat", TREES);
+        sim.run();
         clock.advance(120 * 60_000);
         server.dumpLog(String.valueOf(ThreadContext.get("scenario")));
 
@@ -823,21 +821,20 @@ class FarmMissionSimulationTest {
         SimServer server = new SimServer(clock, FarmMissionSimulationTest::hills, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob;Bravo:Carl,Dana");
         java.util.concurrent.atomic.AtomicInteger asked = new java.util.concurrent.atomic.AtomicInteger();
-        io.github.jayessdeesea.minecraft.command.PlatoonLeader model = SquadSimulationTest.scripted(s -> {
+        io.github.jayessdeesea.minecraft.command.PlatoonLeader model = SimSquad.scripted(s -> {
             asked.incrementAndGet();
             return new Objective("Mine stone", new Position(0.5, GROUND + 1, 0.5), "a model's order", new Objective.Task.Mine());
         });
         io.github.jayessdeesea.minecraft.command.BasePlan base = new io.github.jayessdeesea.minecraft.command.BasePlan(-4, 3, GROUND);
         FarmMission first = base.next(Set.of(), Set.of(), Set.of()).orElseThrow();
         assertEquals(new FarmMission(-1, -1, GROUND, FarmMission.Crop.WHEAT), first);
-        ChainOfCommand chain = new ChainOfCommand(new RulesPlatoonLeader(model), SquadSimulationTest.squadLeader(first.centre(first.steps().getFirst())),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        chain.farmMissions.works(base);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
-        runner.simulated(clock, server.connector(new PlayerPosition(4.5, GROUND + 1, 4.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .platoon(new RulesPlatoonLeader(model)).leaderAt(first.centre(first.steps().getFirst()))
+                .beforeRunner(chain -> chain.farmMissions.works(base))
+                .connector(new PlayerPosition(4.5, GROUND + 1, 4.5), List.of(
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
-                new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{40, SimServer.ITEM_BREAD, 64}))).run();
+                new int[]{38, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{40, SimServer.ITEM_BREAD, 64}))
+                .start(state);
         clock.advance(20 * 60_000);
         List<String> log = Files.readAllLines(Path.of("target", "sim", "aPlatoonDecidingByRulesBeginsTheBaseUnasked.log"));
         String missionLines = "; the mission: " + log.stream().filter(l -> l.contains("[Mission]") || l.contains("[Objectives]") || l.contains("[Plan]")).limit(40).toList();

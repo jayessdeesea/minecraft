@@ -7,7 +7,6 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
-import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
@@ -16,7 +15,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.core.io.ClassPathResource;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -29,8 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.GROUND;
 import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.flat;
-import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.scripted;
-import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.squadLeader;
 
 /** The camp's wall in the squad simulation, where FORTIFY is ordered: paved, rebuilt in stone, quarried for, on a slope. */
 @Tag("slow")
@@ -95,18 +91,16 @@ class WallSimulationTest {
         SimServer server = new SimServer(clock, WallSimulationTest::walledCamp, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0, GROUND + 1, 0);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
-                new Objective.Task.Fortify())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
+                new Objective.Task.Fortify())).leaderAt(camp)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
                         new int[]{9, SimServer.ITEM_COBBLESTONE, 64},
-                        new int[]{10, SimServer.ITEM_COBBLESTONE, 64})))
-                .run();
+                        new int[]{10, SimServer.ITEM_COBBLESTONE, 64}))
+                .start(state);
 
         clock.advance(6 * 60_000);
 
@@ -116,7 +110,7 @@ class WallSimulationTest {
                 paved += server.block(x, GROUND, z) == SimServer.COBBLESTONE ? 1 : 0;
             }
         }
-        Foothold.Standard floor = chain.foothold().orElseThrow().standards().stream()
+        Foothold.Standard floor = sim.chain.foothold().orElseThrow().standards().stream()
                 .filter(s -> s.name().equals("the camp's floor paved")).findFirst().orElseThrow();
         assertTrue(paved >= 20, paved + " of the floor's cells paved; the standard: " + floor.status() + "; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
@@ -139,17 +133,15 @@ class WallSimulationTest {
         SimServer server = new SimServer(clock, WallSimulationTest::walledCampOneDirt, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position point = new Position(2.5, GROUND + 1, 2.5);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Wall the camp in", point, "Nothing walks in",
-                new Objective.Task.Fortify())), squadLeader(point),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Wall the camp in", point, "Nothing walks in",
+                new Objective.Task.Fortify())).leaderAt(point)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
-                        new int[]{9, SimServer.ITEM_COBBLESTONE, 64})))
-                .run();
+                        new int[]{9, SimServer.ITEM_COBBLESTONE, 64}))
+                .start(state);
         clock.advance(5 * 60_000);
 
         assertEquals(SimServer.COBBLESTONE, server.block(DIRT_IN_WALL.x(), DIRT_IN_WALL.y(), DIRT_IN_WALL.z()),
@@ -169,18 +161,17 @@ class WallSimulationTest {
         SimServer server = new SimServer(clock, WallSimulationTest::dirtWall, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
         Position camp = new Position(0, GROUND + 1, 0);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
-                new Objective.Task.Fortify())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
+                new Objective.Task.Fortify())).leaderAt(camp)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
                         new int[]{9, SimServer.ITEM_COBBLESTONE, 64},
                         new int[]{10, SimServer.ITEM_COBBLESTONE, 64},
-                        new int[]{11, SimServer.ITEM_COBBLESTONE, 64})));
+                        new int[]{11, SimServer.ITEM_COBBLESTONE, 64}))
+                .build(state);
         // The wall as it was laid out, on the flat ground, before it was built of dirt - as the
         // garrison keeps it on disk; laid out over the dirt, it would stand on top of it.
         WorldView ground = new WorldView() {
@@ -202,7 +193,7 @@ class WallSimulationTest {
         List<BlockPos> layout = Perimeter.layout(ground,
                 new BlockPos(0, GROUND + 1, 0), 8);
         new WallStore(state).save("0,0", layout);
-        runner.run();
+        sim.runner.run();
 
         clock.advance(9 * 60_000); // by dusk
 
@@ -230,18 +221,17 @@ class WallSimulationTest {
         SimServer server = new SimServer(clock, WallSimulationTest::dirtWallAndStone, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0, GROUND + 1, 0);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
-                new Objective.Task.Fortify())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
+                new Objective.Task.Fortify())).leaderAt(camp)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+                        new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .build(state);
         List<BlockPos> layout = List.copyOf(CAMP_WALL);
         new WallStore(state).save("0,0", layout);
-        runner.run();
+        sim.runner.run();
 
         clock.advance(8 * 60_000);
 
@@ -267,19 +257,18 @@ class WallSimulationTest {
         SimServer server = new SimServer(clock, WallSimulationTest::dirtWallStoneAndPit, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0, GROUND + 1, 0);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
-                new Objective.Task.Fortify())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
+                new Objective.Task.Fortify())).leaderAt(camp)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
-                        new int[]{9, SimServer.ITEM_DIRT, 64})));
+                        new int[]{9, SimServer.ITEM_DIRT, 64}))
+                .build(state);
         List<BlockPos> layout = List.copyOf(CAMP_WALL);
         new WallStore(state).save("0,0", layout);
-        runner.run();
+        sim.runner.run();
 
         clock.advance(8 * 60_000);
 
@@ -316,22 +305,21 @@ class WallSimulationTest {
         SimServer server = new SimServer(clock, WallSimulationTest::slopeLevelInside, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
         Position camp = new Position(0, GROUND + 3, 0);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Wall the camp in", camp, "Nothing walks in",
-                new Objective.Task.Fortify())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 3, 0.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Wall the camp in", camp, "Nothing walks in",
+                new Objective.Task.Fortify())).leaderAt(camp)
+                .connector(new PlayerPosition(0.5, GROUND + 3, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})));
-        runner.run();
+                        new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .build(state);
+        sim.runner.run();
 
         clock.advance(30 * 60_000); // its dirt dug off base, a trip at a time
 
         // Closed - of dirt, with no stone to hand.
         server.dumpLog("aSquadWallsInTheCampOnASlope");
-        assertEquals(OptionalInt.of(0), runner.wallLeft("Alpha"));
+        assertEquals(OptionalInt.of(0), sim.runner.wallLeft("Alpha"));
     }
 
     /** A pillar a route put down and left, two high, just outside the camp's wall. */
@@ -355,16 +343,14 @@ class WallSimulationTest {
         SimServer server = new SimServer(clock, WallSimulationTest::walledCampLittered, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0.5, GROUND + 1, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Wall the camp in", camp, "Nothing walks in",
-                new Objective.Task.Fortify())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Wall the camp in", camp, "Nothing walks in",
+                new Objective.Task.Fortify())).leaderAt(camp)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})))
-                .run();
+                        new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .start(state);
 
         clock.advance(6 * 60_000);
 

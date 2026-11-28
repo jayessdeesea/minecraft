@@ -6,8 +6,6 @@ import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Resource;
 import io.github.jayessdeesea.minecraft.command.WoodDuties;
-import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
-import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,18 +13,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.model.Generation;
-import org.springframework.core.io.ClassPathResource;
 
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -59,16 +50,6 @@ class WoodDutiesSimulationTest {
         return column && y > GROUND && y <= GROUND + 6 ? SimServer.OAK_LOG : SquadSimulationTest.flat(x, y, z);
     }
 
-    /** A squad leader that keeps the squad at {@code at}. */
-    private static ChatClient squadLeader(Position at) {
-        String reply = String.format(Locale.ROOT, """
-                {"x": %.1f, "y": %.1f, "z": %.1f, "formation": "WEDGE", "interval": "NORMAL",
-                 "verticalTolerance": 4, "risk": "LOW", "soldierRisks": [], "rearm": true,
-                 "intent": "work the objective", "cantco": "", "roleChanges": [], "detached": []}
-                """, at.x(), at.y(), at.z());
-        return ChatClient.create((ChatModel) prompt -> new ChatResponse(List.of(new Generation(new AssistantMessage(reply)))));
-    }
-
     /**
      * Four sent for wood: the first three each fell the trees of their own strip and nobody else's, and
      * the fourth, the planter, fells none (operator, 2026-11-18: woodcutters each in a specific area). Each
@@ -83,15 +64,13 @@ class WoodDutiesSimulationTest {
         Roster roster = new Roster("Alpha:" + String.join(",", squad));
         Position camp = new Position(0.5, GROUND + 1, 0.5);
         Objective forWood = new Objective("Cut wood", camp, "Logs for the depot", new Objective.Task.Gather(Resource.WOOD));
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> forWood), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> forWood).leaderAt(camp)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.SHOVEL), 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})))
-                .run();
+                        new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .start(state);
 
         clock.advance(10 * 60_000);
 
@@ -144,15 +123,13 @@ class WoodDutiesSimulationTest {
         Roster roster = new Roster("Alpha:" + String.join(",", squad));
         Position camp = new Position(0.5, GROUND + 1, 0.5);
         Objective forWood = new Objective("Cut wood", camp, "Logs for the depot", new Objective.Task.Gather(Resource.WOOD));
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> forWood), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> forWood).leaderAt(camp)
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.SHOVEL), 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})))
-                .run();
+                        new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .start(state);
 
         clock.advance(6 * 60_000);
 

@@ -4,7 +4,6 @@ import io.github.jayessdeesea.minecraft.command.DrillSquadLeader;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
-import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
@@ -13,7 +12,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.core.io.ClassPathResource;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -57,16 +55,14 @@ class BuilderSimulationTest {
         SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 10 ? SimServer.GLASS
                 : x == -5 && z == -5 && y == GROUND + 1 ? SimServer.DIRT : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
-                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())).leaderAt(Keep.CENTRE).home("")
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
                         new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
-                        new int[]{10, SimServer.ITEM_DIRT, 64})))
-                .run();
+                        new int[]{10, SimServer.ITEM_DIRT, 64}))
+                .start(state);
 
         clock.advance(4 * 60_000);
 
@@ -109,17 +105,17 @@ class BuilderSimulationTest {
         SimServer server = new SimServer(clock, (x, y, z) -> x >= -12 && x <= 11 && z >= -12 && z <= 11 && y > GROUND && y <= GROUND + 3
                 ? SimServer.DIRT : x == dx + 1 && y == GROUND + 1 && z == dz ? SimServer.CRAFTING_TABLE : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice");
-        ChainOfCommand chain = new ChainOfCommand(scripted(st -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
-                new Objective.Task.Keep())), DrillSquadLeader::new, roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(-14.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(st -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())).leaders(DrillSquadLeader::new).home("")
+                .connector(new PlayerPosition(-14.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.itemNamedOrMinus("stone_sword"), 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
                         new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
                         new int[]{39, SimServer.itemNamedOrMinus("stone_shovel"), 1},
                         new int[]{10, SimServer.itemNamedOrMinus("cobblestone"), 64},
                         new int[]{11, SimServer.itemNamedOrMinus("oak_log"), 8},
-                        new int[]{12, SimServer.itemNamedOrMinus("copper_ingot"), 24})))
-                .run();
+                        new int[]{12, SimServer.itemNamedOrMinus("copper_ingot"), 24}))
+                .start(state);
 
         clock.advance(4 * 60_000);
 
@@ -143,15 +139,13 @@ class BuilderSimulationTest {
                 : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0.5, GROUND + 1, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
-                new Objective.Task.None())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(name -> name.equals("Alice") ? new PlayerPosition(6.5, GROUND + 17, 6.5)
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())).leaderAt(camp).home("")
+                .connector(name -> name.equals("Alice") ? new PlayerPosition(6.5, GROUND + 17, 6.5)
                         : new PlayerPosition(0.5, GROUND + 1, 0.5), name -> List.of(
-                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16})))
-                .run();
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16}))
+                .start(state);
 
         clock.advance(4 * 60_000);
 
@@ -176,15 +170,13 @@ class BuilderSimulationTest {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 10 ? SimServer.GLASS : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
-                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())).leaderAt(Keep.CENTRE).home("")
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
-                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1})))
-                .run();
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}))
+                .start(state);
 
         clock.advance(6 * 60_000);
 
@@ -204,15 +196,13 @@ class BuilderSimulationTest {
         SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 10 ? SimServer.GLASS
                 : x >= 6 && x <= 7 && z >= 6 && z <= 7 && y == GROUND + 1 ? SimServer.DIRT : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
-                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())).leaderAt(Keep.CENTRE).home("")
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
-                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}, new int[]{10, SimServer.ITEM_DIRT, 64})))
-                .run();
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}, new int[]{10, SimServer.ITEM_DIRT, 64}))
+                .start(state);
 
         clock.advance(8 * 60_000);
 
@@ -237,15 +227,13 @@ class BuilderSimulationTest {
         SimServer server = new SimServer(clock, (x, y, z) -> z == Keep.MAX && x >= -1 && x <= 1 && y > GROUND && y <= GROUND + 7
                 ? SimServer.DIRT : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
-                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())).leaderAt(Keep.CENTRE).home("")
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
-                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}, new int[]{10, SimServer.ITEM_DIRT, 64})))
-                .run();
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}, new int[]{10, SimServer.ITEM_DIRT, 64}))
+                .start(state);
 
         clock.advance(10 * 60_000);
 
@@ -279,15 +267,13 @@ class BuilderSimulationTest {
                 : z == Keep.MIN - 1 && x > Keep.MAX + 2 && y > GROUND && y <= GROUND + Math.min(12, x - Keep.MAX - 2) ? SimServer.DIRT // its ramp
                 : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
-                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())).leaderAt(Keep.CENTRE).home("")
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
-                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1})))
-                .run();
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}))
+                .start(state);
 
         clock.advance(8 * 60_000);
 
@@ -308,14 +294,12 @@ class BuilderSimulationTest {
                 : x < 0 && y <= GROUND && y > -64 ? SimServer.STONE // west, as far as a fetch there looks: rock, no soil
                 : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
-                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
-                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64})))
-                .run();
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())).leaderAt(Keep.CENTRE).home("")
+                .kit(List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64}))
+                .start(state);
 
         clock.advance(8 * 60_000);
 
@@ -340,15 +324,12 @@ class BuilderSimulationTest {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, KeepSimulationTest::deepPocketBelowAMound, 1000);
         Roster roster = new Roster("Alpha:Alice,Dana");
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
-                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(
-                        n -> n.equals("Dana") ? new PlayerPosition(10.5, GROUND - 25, 0.5) : new PlayerPosition(0.5, GROUND + 1, 0.5),
-                        n -> List.of(new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{37, SimServer.ITEM_BREAD, 16})))
-                .run();
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())).leaderAt(Keep.CENTRE).home("")
+                .connector(n -> n.equals("Dana") ? new PlayerPosition(10.5, GROUND - 25, 0.5) : new PlayerPosition(0.5, GROUND + 1, 0.5),
+                        n -> List.of(new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{37, SimServer.ITEM_BREAD, 16}))
+                .start(state);
 
         clock.advance(10 * 60_000);
 

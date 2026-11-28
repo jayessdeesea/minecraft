@@ -5,7 +5,6 @@ import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.command.FarmMission;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
-import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
@@ -14,7 +13,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -58,7 +56,7 @@ class FlattenTopsSimulationTest {
     /** Flat, the camp's pond by it, and {@code top} standing in the chunk. */
     private static SimServer.Terrain with(SimServer.Terrain top) {
         return (x, y, z) -> {
-            if (y == GROUND && x == 10 && z == 0) {
+            if (SimSquad.isCampPond(x, y, z)) {
                 return SimServer.WATER;
             }
             int b = top.at(x, y, z);
@@ -70,13 +68,13 @@ class FlattenTopsSimulationTest {
     private List<String> run(SimServer server, SimClock clock, List<int[]> kit, long minutes) throws IOException {
         Roster roster = new Roster("Alpha:Alice,Bob,Carl,Dana");
         Position chunk = FARM.centre(FARM.steps().getFirst());
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
-                "Food for the force", new Objective.Task.Farm())), SquadSimulationTest.squadLeader(chunk),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString());
-        chain.onOperatorFarm("Pat", FARM);
-        runner.simulated(clock, server.connector(new PlayerPosition(30.5, GROUND + 1, 8.5), kit)).run();
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Keep the camp's farm", new Position(10.5, GROUND + 1, 2.5),
+                "Food for the force", new Objective.Task.Farm())).leaderAt(chunk)
+                .connector(new PlayerPosition(30.5, GROUND + 1, 8.5), kit)
+                .build(state);
+        sim.chain.onOperatorFarm("Pat", FARM);
+        sim.run();
         clock.advance(minutes * 60_000);
         String scenario = String.valueOf(ThreadContext.get("scenario"));
         server.dumpLog(scenario);

@@ -3,14 +3,12 @@ package io.github.jayessdeesea.minecraft.app;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
-import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import java.io.IOException;
@@ -64,15 +62,13 @@ class StuckTriageIT {
                 SimServer server = new SimServer(clock, SimWorlds.replay(ground), 1000);
                 Roster roster = new Roster("Alpha:" + c.soldier());
                 Position goal = new Position(c.goal()[0], c.goal()[1], c.goal()[2]);
-                ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("The case's goal", goal, "There",
-                        new Objective.Task.None())), RoutingSimulationTest.squadLeader(goal),
-                        SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                                new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
                 Path dir = Files.createDirectories(state.resolve(name));
-                new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", dir.toString())
-                        .simulated(clock, server.connector(new PlayerPosition(c.at()[0], c.at()[1], c.at()[2]),
-                                c.kit().stream().map(i -> new int[]{i.slot(), i.id(), i.count()}).toList()))
-                        .run();
+                SimSquad.of(clock, server, roster)
+                        .orders(s -> new Objective("The case's goal", goal, "There",
+                        new Objective.Task.None())).leader(RoutingSimulationTest.squadLeader(goal)).home("")
+                        .connector(new PlayerPosition(c.at()[0], c.at()[1], c.at()[2]),
+                                c.kit().stream().map(i -> new int[]{i.slot(), i.id(), i.count()}).toList())
+                        .start(dir);
                 clock.advance(c.withinMinutes() * 60_000L);
                 PlayerPosition p = server.position(c.soldier());
                 boolean correct = Math.hypot(p.x() - goal.x(), p.z() - goal.z()) <= c.radius() && Math.abs(p.y() - goal.y()) <= 2;

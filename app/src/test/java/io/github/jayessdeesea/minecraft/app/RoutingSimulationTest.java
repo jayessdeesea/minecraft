@@ -2,7 +2,6 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
-import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
@@ -16,7 +15,6 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
-import org.springframework.core.io.ClassPathResource;
 
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -70,16 +68,14 @@ class RoutingSimulationTest {
         SimServer server = new SimServer(clock, RoutingSimulationTest::wallWithAGap, 1000);
         Roster roster = new Roster("Alpha:Alice");
         Position beyond = new Position(10.5, GROUND + 1, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Beyond the wall", beyond, "There",
-                new Objective.Task.None())), squadLeader(beyond),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Beyond the wall", beyond, "There",
+                new Objective.Task.None())).leader(squadLeader(beyond)).home("")
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{37, SimServer.ITEM_BREAD, 16},
-                        new int[]{38, SimServer.ITEM_COBBLESTONE, 32})))
-                .run();
+                        new int[]{38, SimServer.ITEM_COBBLESTONE, 32}))
+                .start(state);
 
         clock.advance(2 * 60_000);
 
@@ -100,14 +96,12 @@ class RoutingSimulationTest {
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
         Roster roster = new Roster("Alpha:Alice");
         Position far = new Position(120.5, GROUND + 1, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Far out", far, "There",
-                new Objective.Task.None())), squadLeader(far),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
-                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16})))
-                .run();
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Far out", far, "There",
+                new Objective.Task.None())).leader(squadLeader(far)).home("")
+                .kit(List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16}))
+                .start(state);
 
         clock.advance(4 * 60_000);
 
@@ -132,16 +126,14 @@ class RoutingSimulationTest {
         SimServer server = new SimServer(clock, RoutingSimulationTest::wallWithAFarGap, 1000);
         Roster roster = new Roster("Alpha:Alice");
         Position beyond = new Position(10.5, GROUND + 1, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Beyond the wall", beyond, "There",
-                new Objective.Task.None())), squadLeader(beyond),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Beyond the wall", beyond, "There",
+                new Objective.Task.None())).leader(squadLeader(beyond)).home("")
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{37, SimServer.ITEM_BREAD, 16},
-                        new int[]{38, SimServer.ITEM_COBBLESTONE, 32})))
-                .run();
+                        new int[]{38, SimServer.ITEM_COBBLESTONE, 32}))
+                .start(state);
 
         clock.advance(3 * 60_000);
 
@@ -170,16 +162,14 @@ class RoutingSimulationTest {
         SimServer server = new SimServer(clock, RoutingSimulationTest::ledgeWithARamp, 1000);
         Roster roster = new Roster("Alpha:Alice");
         Position up = new Position(10.5, GROUND + 3, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Up on the ledge", up, "There",
-                new Objective.Task.None())), squadLeader(up),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "-20,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Up on the ledge", up, "There",
+                new Objective.Task.None())).leader(squadLeader(up)).home("-20,0")
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{37, SimServer.ITEM_BREAD, 16},
-                        new int[]{38, SimServer.ITEM_COBBLESTONE, 32})))
-                .run();
+                        new int[]{38, SimServer.ITEM_COBBLESTONE, 32}))
+                .start(state);
 
         clock.advance(2 * 60_000);
 
@@ -208,16 +198,14 @@ class RoutingSimulationTest {
         SimServer server = new SimServer(clock, RoutingSimulationTest::hillWithAStair, 1000);
         Roster roster = new Roster("Alpha:Alice");
         Position up = new Position(10.5, GROUND + 5, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Up on the hill", up, "There",
-                new Objective.Task.None())), squadLeader(up),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "-20,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Up on the hill", up, "There",
+                new Objective.Task.None())).leader(squadLeader(up)).home("-20,0")
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{37, SimServer.ITEM_BREAD, 16},
-                        new int[]{38, SimServer.ITEM_COBBLESTONE, 32})))
-                .run();
+                        new int[]{38, SimServer.ITEM_COBBLESTONE, 32}))
+                .start(state);
 
         clock.advance(2 * 60_000);
 
@@ -246,16 +234,14 @@ class RoutingSimulationTest {
         SimServer server = new SimServer(clock, RoutingSimulationTest::galleryWithAGap, 1000);
         Roster roster = new Roster("Alpha:Alice");
         Position beyond = new Position(11.5, GROUND + 1, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Along the gallery", beyond, "There",
-                new Objective.Task.None())), squadLeader(beyond),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(1.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Along the gallery", beyond, "There",
+                new Objective.Task.None())).leader(squadLeader(beyond)).home("")
+                .connector(new PlayerPosition(1.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})))
-                .run();
+                        new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .start(state);
 
         clock.advance(5 * 60_000);
 
@@ -278,18 +264,16 @@ class RoutingSimulationTest {
         SimServer server = new SimServer(clock, SimWorlds.replay(ground), 1000);
         Roster roster = new Roster("Alpha:Eli");
         Position branch = new Position(-18.5, 20, 96.5);
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("To the branch", branch, "There",
-                new Objective.Task.None())), squadLeader(branch),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(-19.6, 20, 91.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("To the branch", branch, "There",
+                new Objective.Task.None())).leader(squadLeader(branch)).home("")
+                .connector(new PlayerPosition(-19.6, 20, 91.5), List.of(
                         // His kit live (field536): logs to make a stone sword with, and no cobblestone for its blade.
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
-                        new int[]{9, SimServer.ITEM_OAK_LOG, 62})))
-                .run();
+                        new int[]{9, SimServer.ITEM_OAK_LOG, 62}))
+                .start(state);
 
         clock.advance(15 * 60_000);
 
@@ -312,16 +296,14 @@ class RoutingSimulationTest {
         SimServer server = new SimServer(clock, SimWorlds.replay(ground), 1000);
         Roster roster = new Roster("Alpha:Alice");
         Position camp = new Position(24.5, 72, 88.5);
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", camp, "There",
-                new Objective.Task.None())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "24,88,64", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(22.5, 72, 87.5), List.of(
+        SimSquad sim = SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Hold the camp", camp, "There",
+                new Objective.Task.None())).leader(squadLeader(camp)).home("24,88,64")
+                .connector(new PlayerPosition(22.5, 72, 87.5), List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})))
-                .run();
+                        new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .start(state);
         java.util.function.IntSupplier heaped = () -> {
             int n = 0;
             for (int x = 16; x <= 32; x++) {
@@ -337,7 +319,7 @@ class RoutingSimulationTest {
 
         clock.advance(10 * 60_000);
 
-        assertEquals(64.0, chain.foothold().orElseThrow().camp().y(), "the camp's ground where it was set");
+        assertEquals(64.0, sim.chain.foothold().orElseThrow().camp().y(), "the camp's ground where it was set");
         assertTrue(heaped.getAsInt() < before, "the heaps dug down: " + heaped.getAsInt() + " of " + before + " blocks over the ground left");
     }
 
@@ -352,16 +334,14 @@ class RoutingSimulationTest {
                 ? SimServer.DIRT : SquadSimulationTest.flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice");
         Position camp = new Position(0.5, GROUND + 1, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", camp, "There",
-                new Objective.Task.None())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0," + (GROUND + 1), state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+        SimSquad.of(clock, server, roster)
+                .orders(s -> new Objective("Hold the camp", camp, "There",
+                new Objective.Task.None())).leader(squadLeader(camp)).home("0,0," + (GROUND + 1))
+                .kit(List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})))
-                .run();
+                        new int[]{38, SimServer.ITEM_BREAD, 16}))
+                .start(state);
 
         clock.advance(10 * 60_000);
 

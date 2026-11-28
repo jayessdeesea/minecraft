@@ -258,6 +258,9 @@ farm's and the wood's duties, routing), each under the 1000-line limit:
   doesn't model throws, naming the action.
 - **The platoon leader and squad leader are scripted**: a `PlatoonLeader` that hands out a fixed objective, and
   a `ChatModel` that answers a fixed `SquadOrder`.
+- **One builder wires the squad**: `SimSquad` takes the ground's server and clock, the roster, the kit, the scripted
+  leaders and the runner's options, and builds the chain of command and the runner as the app does; a scenario is
+  its world, its squad and its outcome. A sim wires its own only where `SimSquad` has no option for it.
 
 A live failure becomes a scenario there first: the world that caused it, and the outcome the
 squad should reach (cobblestone and raw iron carried, say), not the steps it should take. Each
