@@ -218,7 +218,9 @@ are not checked):
 | I8 | The pre-push hook is installed with the installed hash; the jar's last `landing/` change is main's | File hash; `git log -1 -- landing` |
 
 A change under `landing/` takes effect at a reinstall (`tools/ops/install-landing.sh`), not when it lands: I8 says so
-until then.
+until then. The pre-push hook is `tools/ops/landing-pre-push`, copied as `pre-push` into the shared hooks directory
+(the main checkout's `.git/hooks`), its SHA-256 written as `hook.hash` in `C:/mc-state/landing/config` by the operator:
+a change to it takes effect when copied and its hash written, and I8 says so until then.
 
 ## Retiring a stream
 
