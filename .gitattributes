@@ -1,3 +1,6 @@
+# LF in the index and in every working tree, whatever a machine's core.autocrlf says: the tools that write files here
+# write LF, so a CRLF checkout means a warning on every add. Git's own binary detection still applies.
+* text=auto eol=lf
 # Shell scripts run inside Linux containers - CRLF would break them.
 *.sh text eol=lf
 # the pre-push hook's source, a shell script with no extension

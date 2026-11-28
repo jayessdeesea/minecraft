@@ -42,7 +42,7 @@ question for the operator, reported and not written as a test. Kinds worth hunti
 - What an invariant states for every input ("`and` never un-keeps a cell") is a property test's, not a row's: name it
   in your report for backlog/property-tests.md rather than writing cases.
 - One Maven job at a time; `sh tools/ops/quick.sh` must end `quick tier: passed` with your tests in.
-- Sources are CRLF: keep line endings; confirm with `git diff --stat`.
+- Line endings are LF, set by `.gitattributes`; confirm with `git diff --stat` that only the intended lines changed.
 - Never: main code, a commit, a push, the main checkout, an order to the garrison, `garrison.args`.
 
 ## Report

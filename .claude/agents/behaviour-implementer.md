@@ -22,7 +22,7 @@ The project's rules are in `AGENTS.md` and `docs/conventions.md`; they are loade
 - **Caps only come down** (`ArchitectureTest`): where you add lines to a file at its cap, take some out - lift a
   piece to where it belongs, never join lines just to fit.
 - **Hot paths cost what they did**; say what was added where it was unavoidable.
-- **Line endings stay** (CRLF; no `sed -i` on Java).
+- **Line endings are LF**, set by `.gitattributes`; confirm with `git diff --stat` that only the intended lines changed.
 - Docs and the backlog item made current in the same diff.
 
 ## Checking

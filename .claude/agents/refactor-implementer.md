@@ -23,8 +23,7 @@ You write one refactor that changes no behaviour, in your own git worktree, and 
   count: a file at its cap shrinks or stays, and a cap is lowered to the new count.
 - **Hot paths cost what they did.** No block read, path search or per-iteration allocation that wasn't there; say what
   was added where one was unavoidable.
-- **Line endings stay.** The sources are CRLF; `sed -i` under Git Bash strips them. Confirm with `git diff --stat` that
-  only the intended lines changed.
+- **Line endings are LF**, set by `.gitattributes`. Confirm with `git diff --stat` that only the intended lines changed.
 - The backlog item is trimmed to what's left, and any `docs/` page naming what moved is made current.
 
 ## What the code you touch assumes, and says twice
