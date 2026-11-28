@@ -94,5 +94,6 @@ Each points to its home, which has the reasons.
 | [docs/world-data-spec.md](docs/world-data-spec.md) | Chunk, block-state and light data the client decodes. |
 | [docs/entry-docs.md](docs/entry-docs.md) | Before editing README.md or DEVELOPMENT.md. |
 | [docs/test-map.md](docs/test-map.md) | Before adding a test: the tiers of the code, the kinds of test, every test class and where it sits. |
+| [docs/development-lifecycle.md](docs/development-lifecycle.md) | How a change goes from an idea to the running garrison: streams, the queue, deploy and watch. |
 | [docs/watches/](docs/watches/README.md) | The watches: what each keeps on course, pass after pass - the running garrison, toward the operator's goals. |
 | [backlog/](backlog/README.md) | Choosing work, and the procedure for "work on the backlog". |

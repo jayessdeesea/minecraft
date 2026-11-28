@@ -1,7 +1,7 @@
 # Development
 
 How to get from a fresh clone to a running squad. What the project is and why it's shaped this
-way: [README.md](README.md) and [docs/architecture.md](docs/architecture.md). What's planned: [backlog/](backlog/README.md). Past changes: `git log`.
+way: [README.md](README.md) and [docs/architecture.md](docs/architecture.md). How a change is made, from an idea to the running garrison: [docs/development-lifecycle.md](docs/development-lifecycle.md). What's planned: [backlog/](backlog/README.md). Past changes: `git log`.
 
 ## Prerequisites
 

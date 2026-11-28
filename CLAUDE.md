@@ -45,11 +45,11 @@ rules. What is wired for Claude Code alone lives under `.claude/` and is listed 
   token; a change of behaviour or a design on the top model.
 - A canary is read at the window of [docs/watches/garrison.md](docs/watches/garrison.md), step 8, named in the brief.
 - The ledger's tokens are per run (a resumed agent's round, not its running total), and the orchestrating session's own
-  use is a line at the handoff.
+  use is a line when the session ends.
 - The orchestrating session reads agents' summaries, never their diffs or logs whole; a task of its own goes to a session
   of its own with a written brief, which lands its own change: one landing in flight a worktree, their order the queue's.
 - Models (operator, 2026-11-25): the session that orchestrates runs on Opus; `refactor-implementer`, `adversary-tester`
   and a symptom's first `field-tracer` on Sonnet; `behaviour-implementer` on Opus; `equivalence-reviewer` on the top
   model for a change of behaviour (on Opus for a refactor, above), and so a second trace of a symptom the first didn't
   explain, `designer`, or the design of a new rule, as an agent with a written brief (`model: fable`).
-  One task a session, started from the handoff.
+  One task a session, from the operator's words or a written brief, ending by [docs/conventions.md, "Retiring a stream"](docs/conventions.md#retiring-a-stream).

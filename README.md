@@ -102,6 +102,8 @@ Module layout and the rules that keep it legible: [docs/architecture.md](docs/ar
 - [docs/protocol-spec.md](docs/protocol-spec.md): the Minecraft wire protocol as implemented here.
 - [docs/world-data-spec.md](docs/world-data-spec.md): the chunk, block and light formats the client
   decodes.
+- [docs/development-lifecycle.md](docs/development-lifecycle.md): how a change is made, from an idea
+  to the running garrison, many at once.
 - [docs/entry-docs.md](docs/entry-docs.md): how to keep this file and DEVELOPMENT.md current.
 - [backlog/](backlog/README.md): planned and open work.
 
