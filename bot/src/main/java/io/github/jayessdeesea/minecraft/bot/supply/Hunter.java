@@ -1,6 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
-import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
+import io.github.jayessdeesea.minecraft.bot.BodyMeasures;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -152,7 +152,7 @@ public final class Hunter {
                 .filter(e -> e.entityId() == quarry).findFirst();
         if (seen.isEmpty()) {
             // Gone from the tracker: killed, most likely, if it was within reach last we saw it.
-            if (++unseenTicks > LOST_TICKS || distance(soldier, lastSeen) <= DeterministicSoldier.ATTACK_REACH + 1) {
+            if (++unseenTicks > LOST_TICKS || distance(soldier, lastSeen) <= BodyMeasures.ATTACK_REACH + 1) {
                 LOG.info("{} {} the animal it hunted at {}", name, unseenTicks > LOST_TICKS ? "lost" : "killed", lastSeen);
                 claims.remove(quarry, name);
                 quarry = null;
@@ -174,7 +174,7 @@ public final class Hunter {
             stop();
             return OptionalInt.empty();
         }
-        if (distance(soldier, lastSeen) <= DeterministicSoldier.ATTACK_REACH && chargeTicks == 0) {
+        if (distance(soldier, lastSeen) <= BodyMeasures.ATTACK_REACH && chargeTicks == 0) {
             chargeTicks = charge;
             return OptionalInt.of(quarry);
         }

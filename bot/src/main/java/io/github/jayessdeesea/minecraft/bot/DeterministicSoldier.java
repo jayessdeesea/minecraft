@@ -27,6 +27,9 @@ import java.util.stream.Stream;
 
 import static io.github.jayessdeesea.minecraft.bot.Body.*;
 import static io.github.jayessdeesea.minecraft.bot.Gait.*;
+import static io.github.jayessdeesea.minecraft.bot.BodyMeasures.*;
+import static io.github.jayessdeesea.minecraft.bot.MovementRates.*;
+import static io.github.jayessdeesea.minecraft.bot.ContactThresholds.*;
 
 /**
  * The {@code bot} module's implementation of {@link Soldier}: a deterministic, non-LLM per-tick
@@ -41,17 +44,6 @@ import static io.github.jayessdeesea.minecraft.bot.Gait.*;
  * gives you, without needing one.
  */
 public final class DeterministicSoldier extends Mover implements Soldier {
-
-    /**
-     * Sprinting, vanilla's 5.6 blocks/s: only when the time is worth the food - an urgent move to a
-     * goal more than {@link #SPRINT_DISTANCE} away, closing on a hostile it fights, moving under fire.
-     * A routine walk is walked.
-     */
-    static final double SPRINT_STEP = 0.28;
-    /** Far enough from its goal that a soldier sprints to catch up - a moving principal, a distant slot. */
-    static final double SPRINT_DISTANCE = 8;
-    /** At this food level or below a player can't sprint. */
-    static final int SPRINT_FOOD_FLOOR = 6;
 
     /**
      * Whether the soldier is sprinting - to be told to the server, which charges sprinting's food cost
@@ -100,13 +92,11 @@ public final class DeterministicSoldier extends Mover implements Soldier {
      * measured in {@code CombatScenarioTest}, holding it up longer only loses ground.
      */
     static final int SHIELD_HOLD_TICKS = 1;
-    /** A player with an item in use moves at a fifth of its speed - the vanilla client's rule. */
-    static final double SHIELD_SLOWDOWN = 0.2;
 
     /**
      * Whether the soldier holds its shield up - to be told to the server (raise it, or release it).
      * Up while arrows fly near it, for {@link #SHIELD_HOLD_TICKS} after the last; meanwhile it walks
-     * at {@link #SHIELD_SLOWDOWN} of its pace and doesn't swing, as the vanilla client can't. An
+     * at {@link MovementRates#SHIELD_SLOWDOWN} of its pace and doesn't swing, as the vanilla client can't. An
      * arrow seen counts as being shot at, as a hit does: the soldier goes for the archer.
      */
     @Override
@@ -114,11 +104,6 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         return shieldTicks > 0 && !drawing;
     }
 
-    /**
-     * Beyond this range a soldier with a bow and arrows shoots rather than closing: a sword's reach
-     * is three blocks, and every block closed under an archer's fire is a block it shoots back.
-     */
-    static final double SHOOT_BEYOND = 5;
     /** How far a soldier with a bow engages what it sees: far enough to answer a skeleton's 15 blocks. */
     static final double BOW_RANGE = 16;
     /** Ticks a bow takes to draw to full power, which the arrow needs to fly true at range. */
@@ -142,7 +127,6 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     private volatile boolean loose;
     /** Ticks the bow has been drawn. Tick loop only. */
     private int drawTicks;
-
 
     /** Whether it carries what shooting takes: a bow, and arrows for it. */
     private boolean canShoot() {
@@ -198,18 +182,10 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     /** Ticks left with the shield up; 0 when it's down. */
     private int shieldTicks;
 
-    static final double BODY_HEIGHT = 1.8;
     static final double HALF_WIDTH = 0.3; // a player's box is 0.6 x 1.8 x 0.6
 
-    static final double EPSILON = 1e-9;
     /** Feet this far up a solid cell are on its top: farmland and paths are 15/16 high. */
     static final double PARTIAL_BLOCK_TOP = Pathfinder.PARTIAL_BLOCK_TOP;
-    /** Swimming at the surface, blocks per tick: about vanilla's 2 blocks/s, half a walk. */
-    static final double SWIM_STEP = 0.1;
-    /** Afloat, the feet this far into the top block of water: the head stays out, so no drowning. */
-    static final double SWIM_FLOAT = 0.2;
-    /** Blocks per tick rising or settling in water, and climbing out onto a bank. */
-    static final double SWIM_RISE = 0.2;
 
     private final AtomicReference<Position> pendingCorrection = new AtomicReference<>();
     private volatile Report task;
@@ -293,11 +269,6 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         return pitch;
     }
 
-    /** Eye height of a standing player, and the height a hostile is looked at - roughly its chest. */
-    public static final double EYE_HEIGHT = 1.62;
-    public static final double TARGET_HEIGHT = 1.2;
-
-
     /** Whether the last tick ended standing on something - reported to the server with each move. */
     public boolean onGround() {
         return gait.onGround;
@@ -318,23 +289,9 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     }
 
     /**
-     * Ballpark starting value, not tuned against real mob behavior - vanilla hostiles typically
-     * notice a player around 16 blocks out, so this reacts well inside that. Revisit once a live
-     * run shows soldiers reacting too late or too skittishly.
-     */
-    public static final double CONTACT_RADIUS = 8.0;
-
-    /**
-     * Centre-to-centre distance a soldier swings at. The server's check (eye to target hitbox,
-     * {@code isWithinAttackRange}) is more generous; staying inside it avoids attacks it would
-     * silently drop.
-     */
-    public static final double ATTACK_REACH = 3.0;
-
-    /**
      * Closer than this, back off: outside a zombie's own reach (about 1.5) but inside ours, so a
      * soldier striking each time its weapon recharges, with knockback, keeps it from landing a
-     * hit. Between this and {@link #ATTACK_REACH} the soldier holds its ground.
+     * hit. Between this and {@link BodyMeasures#ATTACK_REACH} the soldier holds its ground.
      */
     static final double KEEP_AWAY = 2.5;
 
@@ -349,8 +306,8 @@ public final class DeterministicSoldier extends Mover implements Soldier {
 
     /**
      * One tick of movement. First the "actions on contact" reflex: if a hostile is within {@link
-     * #CONTACT_RADIUS}, the current order is set aside and the soldier fights the nearest one at
-     * arm's length - closing to {@link #ATTACK_REACH}, striking whenever the attack has recharged,
+     * ContactThresholds#CONTACT_RADIUS}, the current order is set aside and the soldier fights the nearest one at
+     * arm's length - closing to {@link BodyMeasures#ATTACK_REACH}, striking whenever the attack has recharged,
      * backing off inside {@link #KEEP_AWAY}, holding its ground in between. A creeper is the
      * exception: the soldier gets away from it. Decided here at tick speed with no squad leader
      * involved. Running from a zombie can't break contact - it chases as fast as a soldier walks -
@@ -402,13 +359,11 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         // feet to feet - live, a phantom two blocks over a squadmate's feet was swung at, and the
         // sweep killed the squadmate at a heart.
         return others.anyMatch(p -> Math.abs(p.x() - target.x()) <= SWEEP_REACH && Math.abs(p.z() - target.z()) <= SWEEP_REACH
-                && target.y() - SWEEP_RISE <= p.y() + PLAYER_HEIGHT && p.y() <= target.y() + TALLEST_MOB + SWEEP_RISE);
+                && target.y() - SWEEP_RISE <= p.y() + BODY_HEIGHT && p.y() <= target.y() + TALLEST_MOB + SWEEP_RISE);
     }
 
     /** How far a sweep grows its target's box up and down. */
     static final double SWEEP_RISE = 0.25;
-    /** A player's box, feet to crown. */
-    static final double PLAYER_HEIGHT = 1.8;
     /** The tallest box a soldier swings at, an enderman's: what the target reaches above its feet, at most. */
     static final double TALLEST_MOB = 2.9;
 
@@ -718,12 +673,6 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         return in;
     }
 
-    /**
-     * Under this health an archer it can't close on isn't let be between its shots: kept out of its sight, as one with no
-     * weapon keeps out of it. Live (field568), Eli at 1 health walked back to his cave edge in a skeleton's line, "carries
-     * on", and was shot dead.
-     */
-    static final double HURT_HEALTH = 10;
     /** The exchange with one that fights hand to hand {@code range} off (Engagement.melee). */
     private Engagement.Kind meleeExchange(double range) {
         return Engagement.melee(lastReportedHealth, kit, range, contactTicks > BEGUN_TICKS, Contact.pace(boxedIn, false, canSprint()));
@@ -822,33 +771,17 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         return true;
     }
 
-    /** How far a soldier fleeing an archer runs before it's fled: past a skeleton's 15 blocks of range. */
-    static final double FLED_PAST = 20;
     /** The archer it's fleeing with no melee weapon, or -1. */
     private int fleeingFrom = -1;
 
     /** How far off an archer in sight is closed on by a soldier armed for melee, shooting or not. */
     static final double ARCHER_ENGAGE = 16;
 
-    /** How far below a soldier an archer is out of its reach for a sword, however a route might go down to it. */
-    static final double ARCHER_BELOW = 4;
-
-    /** Ticks a creeper holds a soldier inside its blast's reach before it's engaged: ten seconds. */
-    static final int CREEPER_STANDOFF_TICKS = 200;
     /** How long the creeper it's backing off from has held it, and which one. */
     private int creeperStandoff;
     private int standoffWith = -1;
 
-    /** How far off a creeper is shot at by a soldier with a bow: outside where it lights. */
-    static final double CREEPER_CLEAR = 4.5;
-    /**
-     * How far off a creeper stops being contact: past where its fuse, once lit, goes out - 7 in vanilla - so a lit one
-     * is never left burning within the 6 of its blast. In the combat eval matrix every creeper fight blew with the
-     * soldier at 4.5-6, backed off only that far and gone back to its order; live (field554), 367 contacts in an hour
-     * got clear only to step back in.
-     */
-    static final double CREEPER_DEFUSE = 7.5;
-    /** The creeper it's getting clear of, once come within {@link #CREEPER_CLEAR} of it - till past {@link #CREEPER_DEFUSE}. */
+    /** The creeper it's getting clear of, once come within {@link ContactThresholds#CREEPER_CLEAR} of it - till past {@link ContactThresholds#CREEPER_DEFUSE}. */
     private int clearingFrom = -1;
 
     /** Whether the last walk-only check found no way to the hostile, and ticks until the next. */
@@ -924,8 +857,6 @@ public final class DeterministicSoldier extends Mover implements Soldier {
 
     /** Ticks left holding cover from an archer, once out of its sight. */
     private int holdCoverTicks;
-    /** How far a soldier looks for cover from an archer. */
-    static final int COVER_RADIUS = 6;
 
     /** Whether the soldier holds a melee weapon - with only its hands (or a bow), an archer out-fights it. */
     /** Lowers the bow, if it's drawn. Always true, to chain in a condition. */
@@ -957,10 +888,6 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         return hostiles.stream().filter(hostile -> lineOfSight(world, eye,
                 new Position(hostile.position().x(), hostile.position().y() + TARGET_HEIGHT, hostile.position().z()))).toList();
     }
-
-    /** Sampling step along a sight line: fine enough not to step over the corner of a block. */
-    static final double SIGHT_STEP = 0.2;
-
 
     private void look(Position target) {
         double dx = target.x() - gait.position.x();

@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.BodyMeasures;
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry;
@@ -47,10 +48,10 @@ class RecordedContactTest {
             mia.tick(world);
         }
         Position at = mia.status().position();
-        Position eye = new Position(skeleton.x(), skeleton.y() + DeterministicSoldier.EYE_HEIGHT, skeleton.z());
+        Position eye = new Position(skeleton.x(), skeleton.y() + BodyMeasures.EYE_HEIGHT, skeleton.z());
         System.out.printf("[Eval] contact/mia-field602: Mia at %s, %s%n", at, mia.status().report());
-        boolean hidden = !DeterministicSoldier.lineOfSight(world, eye, new Position(at.x(), at.y() + DeterministicSoldier.TARGET_HEIGHT, at.z()));
-        boolean atIt = at.distanceTo(skeleton) <= DeterministicSoldier.ATTACK_REACH;
+        boolean hidden = !DeterministicSoldier.lineOfSight(world, eye, new Position(at.x(), at.y() + BodyMeasures.TARGET_HEIGHT, at.z()));
+        boolean atIt = at.distanceTo(skeleton) <= BodyMeasures.ATTACK_REACH;
         assertTrue(hidden || atIt, "Mia out of the skeleton's sight, or at it, a minute on: at " + at + ", " + mia.status().report());
     }
 
@@ -79,12 +80,12 @@ class RecordedContactTest {
         double health = 15;
         mia.reportHealth(health, 17);
         mia.receiveOrder(new Order.MoveTo(-1.2, 62.2, 175.8, 1.5, 3.0, Risk.LOW)); // her post
-        Position eye = new Position(drowned.x(), drowned.y() + DeterministicSoldier.EYE_HEIGHT, drowned.z());
+        Position eye = new Position(drowned.x(), drowned.y() + BodyMeasures.EYE_HEIGHT, drowned.z());
         for (int tick = 0; tick < 1200 && health > 0; tick++) {
             mia.tick(world);
             Position at = mia.status().position();
             if (tick % 30 == 0 && at.distanceTo(drowned) <= 24
-                    && DeterministicSoldier.lineOfSight(world, eye, new Position(at.x(), at.y() + DeterministicSoldier.TARGET_HEIGHT, at.z()))) {
+                    && DeterministicSoldier.lineOfSight(world, eye, new Position(at.x(), at.y() + BodyMeasures.TARGET_HEIGHT, at.z()))) {
                 health -= 4;
                 mia.reportHealth(Math.max(0, health), 17);
             }
@@ -156,12 +157,12 @@ class RecordedContactTest {
         double health = 1;
         eli.reportHealth(health, 15);
         eli.receiveOrder(new Order.MoveTo(-22.1, 20.0, 91.5, 1.5, 3.0, Risk.LOW));
-        Position eye = new Position(skeleton.x(), skeleton.y() + DeterministicSoldier.EYE_HEIGHT, skeleton.z());
+        Position eye = new Position(skeleton.x(), skeleton.y() + BodyMeasures.EYE_HEIGHT, skeleton.z());
         for (int tick = 0; tick < 1200 && health > 0; tick++) {
             eli.tick(world);
             Position at = eli.status().position();
             if (tick % 30 == 29 && at.distanceTo(skeleton) <= 16
-                    && DeterministicSoldier.lineOfSight(world, eye, new Position(at.x(), at.y() + DeterministicSoldier.TARGET_HEIGHT, at.z()))) {
+                    && DeterministicSoldier.lineOfSight(world, eye, new Position(at.x(), at.y() + BodyMeasures.TARGET_HEIGHT, at.z()))) {
                 health -= 4;
                 eli.reportHealth(Math.max(0, health), 15);
             }

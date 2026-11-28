@@ -156,7 +156,7 @@ public final class Engagement {
         io.github.jayessdeesea.minecraft.bot.world.WeaponStats.Stats held = io.github.jayessdeesea.minecraft.bot.world.WeaponStats.melee(
                 kit == null ? java.util.Optional.empty() : kit.weapon());
         double armour = kit == null ? 0 : kit.armour() * ARMOUR_A_PIECE;
-        return new Soldier(health, armour, 0, held.damage(), held.attacksPerSecond(), DeterministicSoldier.ATTACK_REACH, speed);
+        return new Soldier(health, armour, 0, held.damage(), held.attacksPerSecond(), BodyMeasures.ATTACK_REACH, speed);
     }
 
     /**

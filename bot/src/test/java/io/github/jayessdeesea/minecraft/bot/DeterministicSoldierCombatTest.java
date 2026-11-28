@@ -98,13 +98,13 @@ class DeterministicSoldierCombatTest {
     void aSoldierAtFoodSixOrBelowCantSprint() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
         alice.reportKit(RATIONED);
-        alice.reportHealth(20, DeterministicSoldier.SPRINT_FOOD_FLOOR);
+        alice.reportHealth(20, MovementRates.SPRINT_FOOD_FLOOR);
         alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW));
         alice.tick(terrain(false));
         double before = alice.status().position().x();
         alice.tick(terrain(false));
 
-        assertTrue(before - alice.status().position().x() < DeterministicSoldier.SPRINT_STEP - 1e-6, "too hungry: walks");
+        assertTrue(before - alice.status().position().x() < MovementRates.SPRINT_STEP - 1e-6, "too hungry: walks");
         assertTrue(!alice.sprinting());
     }
 
@@ -601,7 +601,7 @@ class DeterministicSoldierCombatTest {
         }
 
         assertTrue(alice.status().position().x() >= 19, "it gets there: " + alice.status().position());
-        assertTrue(closest > DeterministicSoldier.CREEPER_CLEAR, "never inside the blast on the way: " + closest);
+        assertTrue(closest > ContactThresholds.CREEPER_CLEAR, "never inside the blast on the way: " + closest);
     }
 
     @Test
@@ -691,10 +691,10 @@ class DeterministicSoldierCombatTest {
         };
 
         boolean struck = false;
-        for (int tick = 0; tick < DeterministicSoldier.CREEPER_STANDOFF_TICKS + 40 && !struck; tick++) {
+        for (int tick = 0; tick < ContactThresholds.CREEPER_STANDOFF_TICKS + 40 && !struck; tick++) {
             struck = alice.tick(tunnel).isPresent();
             at.set(alice.status().position());
-            if (tick < DeterministicSoldier.CREEPER_STANDOFF_TICKS - 1) {
+            if (tick < ContactThresholds.CREEPER_STANDOFF_TICKS - 1) {
                 assertFalse(struck, "not before the standoff has gone on, tick " + tick);
             }
         }
@@ -825,7 +825,7 @@ class DeterministicSoldierCombatTest {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
         alice.receiveOrder(new Order.MoveTo(10, GROUND, 0, 1, 256, Risk.LOW));
 
-        alice.tick(withHostileAt(new Position(DeterministicSoldier.CONTACT_RADIUS + 1, 64, 0), false));
+        alice.tick(withHostileAt(new Position(ContactThresholds.CONTACT_RADIUS + 1, 64, 0), false));
 
         assertTrue(alice.status().position().x() > 0, "a distant hostile shouldn't interrupt the order");
     }

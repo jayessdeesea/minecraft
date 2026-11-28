@@ -27,7 +27,8 @@ import java.util.Set;
 
 import static io.github.jayessdeesea.minecraft.bot.Body.*;
 import static io.github.jayessdeesea.minecraft.bot.Gait.*;
-import static io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.*;
+import static io.github.jayessdeesea.minecraft.bot.BodyMeasures.*;
+import static io.github.jayessdeesea.minecraft.bot.MovementRates.*;
 
 /**
  * The {@code bot} module's implementation of {@link Soldier}: a deterministic, non-LLM per-tick
@@ -61,7 +62,7 @@ abstract class Mover {
     volatile Kit kit; // written only by the connection's thread (reportKit)
     int underFireTicks; // tick-loop only
 
-    /** Whether its shield is up: it moves at {@link DeterministicSoldier#SHIELD_SLOWDOWN} of its pace. */
+    /** Whether its shield is up: it moves at {@link MovementRates#SHIELD_SLOWDOWN} of its pace. */
     public abstract boolean shieldRaised();
 
     Mover(String name, Position start) {
@@ -139,7 +140,9 @@ abstract class Mover {
             snagTries.remove(failed);
         }
     }
-    static final Logger LOG = LogManager.getLogger(DeterministicSoldier.class);
+    /** The soldier's log name, which every line prints through {@code %c}: log greps depend on it, so it is spelled out and not read off a class. */
+    static final String LOG_NAME = "io.github.jayessdeesea.minecraft.bot.DeterministicSoldier";
+    static final Logger LOG = LogManager.getLogger(LOG_NAME);
     int navTicks;
     /** Cell visits per plan - bounds the planning cost per tick (see {@link Pathfinder}). */
     static final int PLAN_BUDGET = 4000;
@@ -181,8 +184,6 @@ abstract class Mover {
     boolean onLeg;
     /** Blocks nearer the goal a leg must end, to be one. */
     static final int LEG_GAIN = 8;
-    /** How far under its column's surface a cell is under the ground: a cave's, not the surface's. */
-    static final int UNDER_THE_SURFACE = 8;
     static final double WAYPOINT_REACHED = 0.25;
 
     // Navigation state - tick-loop only, like gait.verticalVelocity.
@@ -451,7 +452,7 @@ abstract class Mover {
     }
 
     /**
-     * Whether the game lets it sprint: not at food {@link #SPRINT_FOOD_FLOOR} or below, and not with
+     * Whether the game lets it sprint: not at food {@link MovementRates#SPRINT_FOOD_FLOOR} or below, and not with
      * its shield up - an item in use slows a player and stops a sprint.
      */
     boolean canSprint() {
@@ -765,13 +766,7 @@ abstract class Mover {
         gait.step(world, targetX, targetZ, (shieldRaised() ? pace * SHIELD_SLOWDOWN : pace));
     }
 
-    /**
-     * The deepest drop a step in a fight may leave the soldier over: one the server charges no
-     * health for. Live, a soldier at 1 health fighting a phantom on a hut roof backed off its edge.
-     */
-    static final int FIGHT_DROP = Pathfinder.MAX_DROP;
-
-    /** As {@link #stepToward(WorldView, double, double, double)}, not taken if it would leave the soldier over a deeper drop than {@link #FIGHT_DROP}. */
+    /** As {@link #stepToward(WorldView, double, double, double)}, not taken if it would leave the soldier over a deeper drop than {@link ContactThresholds#FIGHT_DROP}. */
     void stepGuarded(WorldView world, double targetX, double targetZ) {
         stepGuarded(world, targetX, targetZ, STEP);
     }

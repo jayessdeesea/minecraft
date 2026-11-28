@@ -18,7 +18,7 @@ when and whether to break contact is backlog/engagement-doctrine.md's.
   under it, a hasty fighting position the archer can't see into. The combat simulator doesn't model digging: that
   comes first.
 - **Bare hands against a pillager in the open, on hills and in a pond**: a third or less come through in
-  `CombatMatrixTest` - its follow range is 32, past the flight's 20 (`DeterministicSoldier.FLED_PAST`) - and the
+  `CombatMatrixTest` - its follow range is 32, past the flight's 20 (`ContactThresholds.FLED_PAST`) - and the
   soldier's order takes it back past the archer. Held off it, or routed round, till the archer's gone.
 - **Withdrawing toward the squad**, not only to cover or the heading that gains most (`Engagement.withdrawal`) - the
   drill itself is backlog/engagement-doctrine.md's.

@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import io.github.jayessdeesea.minecraft.bot.BodyMeasures;
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
@@ -105,7 +106,7 @@ class CombatPairsMatrixTest {
             OptionalInt attack = soldier.tick(battle);
             Position now = soldier.status().position();
             if (attack.isPresent() && !body.eating()) { // no swing while it eats
-                battle.strike(attack.getAsInt(), now, DeterministicSoldier.ATTACK_REACH, blow);
+                battle.strike(attack.getAsInt(), now, BodyMeasures.ATTACK_REACH, blow);
                 body.attacked();
             }
             shieldUp = soldier.shieldRaised() ? shieldUp + 1 : 0;

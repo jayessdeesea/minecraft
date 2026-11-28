@@ -9,14 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.ARCHER_BELOW;
-import static io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.ATTACK_REACH;
-import static io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.CONTACT_RADIUS;
-import static io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.CREEPER_CLEAR;
-import static io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.CREEPER_DEFUSE;
-import static io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.CREEPER_STANDOFF_TICKS;
-import static io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.HURT_HEALTH;
-import static io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.SHOOT_BEYOND;
+import static io.github.jayessdeesea.minecraft.bot.ContactThresholds.ARCHER_BELOW;
+import static io.github.jayessdeesea.minecraft.bot.BodyMeasures.ATTACK_REACH;
+import static io.github.jayessdeesea.minecraft.bot.ContactThresholds.CONTACT_RADIUS;
+import static io.github.jayessdeesea.minecraft.bot.ContactThresholds.CREEPER_CLEAR;
+import static io.github.jayessdeesea.minecraft.bot.ContactThresholds.CREEPER_DEFUSE;
+import static io.github.jayessdeesea.minecraft.bot.ContactThresholds.CREEPER_STANDOFF_TICKS;
+import static io.github.jayessdeesea.minecraft.bot.ContactThresholds.HURT_HEALTH;
+import static io.github.jayessdeesea.minecraft.bot.ContactThresholds.SHOOT_BEYOND;
 
 /**
  * A soldier's response to the hostiles in contact, pure: which of them it answers first, and what it does about that
@@ -43,7 +43,7 @@ public final class Contact {
         PAST_CREEPER("carries on: a creeper outside its blast"),
         /** A creeper within its blast is got clear of - struck only when boxed in, to knock it back. */
         CLEAR_OF_BLAST("gets clear of the creeper's blast"),
-        /** A creeper that has held it backing off past {@link DeterministicSoldier#CREEPER_STANDOFF_TICKS} is closed on. */
+        /** A creeper that has held it backing off past {@link ContactThresholds#CREEPER_STANDOFF_TICKS} is closed on. */
         CREEPER_STANDOFF("closes on the creeper holding it in a standoff"),
         /** One fought only in self-defense, with no weapon to fight it with: stepped away from. */
         BACKS_OFF("backs off: no weapon against one that fights only at hand"),
@@ -205,7 +205,7 @@ public final class Contact {
      * holds:
      * <ol>
      * <li>One that doesn't shoot, out of reach with no walk to it, or in the air overhead (not a creeper): no contact.
-     * <li>With a bow and arrows, outside a creeper's blast: shoot what is beyond {@link DeterministicSoldier#SHOOT_BEYOND} - every block
+     * <li>With a bow and arrows, outside a creeper's blast: shoot what is beyond {@link ContactThresholds#SHOOT_BEYOND} - every block
      *     closed under fire is a block shot back over - or anything with no melee weapon, or an archer it can't walk to.
      * <li>A creeper: gone past outside its blast, got clear of within it, closed on once it has held the soldier there.
      * <li>One fought only at hand, and no weapon: backed off from.

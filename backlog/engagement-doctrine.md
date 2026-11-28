@@ -53,7 +53,7 @@ it's doing, and nothing of a contact goes up the chain.
 - **Reports up the chain.** A contact is logged at the soldier (`bot.ContactLog`, `[Contact]`); the contact and
   capability-gap reports to the squad leader, and the platoon sergeant's answer to repeated gaps, aren't built.
 - **The rest of the fight on the exchange.** A health line still gates closing on an archer
-  (`DeterministicSoldier.HURT_HEALTH`). Creepers, several hostiles at once and the bow aren't on the exchange. A
+  (`ContactThresholds.HURT_HEALTH`). Creepers, several hostiles at once and the bow aren't on the exchange. A
   pillager is reckoned as a skeleton and wants to be its own archer - 6 off, following at a walk, a crossbow's 8.
 - **The matrices' known cells** (`CombatMatrixTest`, `CombatConditionMatrixTest`, `CombatPairsMatrixTest`,
   `CombatPairsConditionMatrixTest` - each one's `KNOWN`): the creeper short on every ground but the flat and the

@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import io.github.jayessdeesea.minecraft.bot.BodyMeasures;
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
 import io.github.jayessdeesea.minecraft.command.Kit;
@@ -95,7 +96,7 @@ class WaterCombatScenarioTest {
         for (int tick = 0; tick < TICKS; tick++) {
             OptionalInt attack = soldier.tick(battle);
             Position now = soldier.status().position();
-            attack.ifPresent(id -> battle.strike(id, now, DeterministicSoldier.ATTACK_REACH, blow));
+            attack.ifPresent(id -> battle.strike(id, now, BodyMeasures.ATTACK_REACH, blow));
             health -= battle.step(now);
             soldier.reportHealth(Math.max(0, health), 20);
             if (health <= 0) {

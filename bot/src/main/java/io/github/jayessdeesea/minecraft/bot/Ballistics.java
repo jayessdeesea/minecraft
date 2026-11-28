@@ -61,14 +61,14 @@ final class Ballistics {
      */
     static boolean inTheLine(io.github.jayessdeesea.minecraft.command.Position from, io.github.jayessdeesea.minecraft.command.Position target,
                              java.util.List<io.github.jayessdeesea.minecraft.command.Position> others) {
-        double ex = from.x(), ey = from.y() + DeterministicSoldier.EYE_HEIGHT, ez = from.z();
-        double tx = target.x() - ex, ty = target.y() + DeterministicSoldier.TARGET_HEIGHT - ey, tz = target.z() - ez;
+        double ex = from.x(), ey = from.y() + BodyMeasures.EYE_HEIGHT, ez = from.z();
+        double tx = target.x() - ex, ty = target.y() + BodyMeasures.TARGET_HEIGHT - ey, tz = target.z() - ez;
         double length2 = tx * tx + ty * ty + tz * tz;
         if (length2 == 0) {
             return false;
         }
         for (io.github.jayessdeesea.minecraft.command.Position p : others) {
-            double px = p.x() - ex, py = p.y() + DeterministicSoldier.PLAYER_HEIGHT / 2 - ey, pz = p.z() - ez;
+            double px = p.x() - ex, py = p.y() + BodyMeasures.BODY_HEIGHT / 2 - ey, pz = p.z() - ez;
             double along = (px * tx + py * ty + pz * tz) / length2;
             if (along <= 0 || along >= 1) {
                 continue;

@@ -621,7 +621,7 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   the mark (`Ballistics.inTheLine`): live (field463), Ned was killed by Alice's arrow at a mob beyond him.
 - **A creeper is got clear of at a sprint, past where its fuse goes out** - 7.5 off, not the 4.5 of where it
   lights: a creeper walks faster than a soldier backs off at a walk, and a lit one stands while it swells, so a
-  sprint of its 1.5-second fuse outruns the blast (`DeterministicSoldier.CREEPER_DEFUSE`) - once it's come within
+  sprint of its 1.5-second fuse outruns the blast (`ContactThresholds.CREEPER_DEFUSE`) - once it's come within
   4.5, where one lights; one never come that close is gone round, the route kept. Held within reach ten seconds
   all the same - followed down a tunnel - it's closed on. A soldier afloat can't sprint, so in water
   it doesn't get clear (the matrix's pond cells); and one followed keeps getting clear rather than working. One
@@ -630,7 +630,7 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   live (field598, field602), Jack, Mia and Ned stood "fighting hand to hand" a zombie 5 above or below them while a
   skeleton shot them dead - replayed on Mia's kept ground (`app.RecordedContactTest`), she stood; now she goes at it.
 - **A soldier with a bow shoots far-away enemies** (operator, 2026-11-18) - a creeper too, from outside its
-  blast (past `DeterministicSoldier.CREEPER_CLEAR`); one at arm's length is still got away from. Live, six
+  blast (past `ContactThresholds.CREEPER_CLEAR`); one at arm's length is still got away from. Live, six
   soldiers were killed by creepers in melee in a few nights.
 - **Boxed in within 4 blocks of an archer, it assaults** (`Contact.NEAR_AMBUSH`; ATP 3-21.8, react to a near
   ambush: in the kill zone with no cover to get to, assault through): hurt where it has stood a second with no step
@@ -644,7 +644,7 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   cover inside the contact radius, carrying on outside it, as the skeleton shuffled across the line, her squad in
   contact all the while.
 - **With no melee weapon an archer is fled at a sprint** - to cover in reach, else straight away - and on past
-  its range, to 20 off, before the soldier goes back to its order (`DeterministicSoldier.FLED_PAST`): a walk away
+  its range, to 20 off, before the soldier goes back to its order (`ContactThresholds.FLED_PAST`): a walk away
   stays inside a skeleton's 15 blocks, and one that left contact at 9 off walked back into its arrows. In the
   combat eval matrix, bare hands against a skeleton come through 11 or 12 times in 12 on every ground - its
   follow range 16, so a flight past 20 breaks contact - and against a pillager among trees; against a pillager in
@@ -679,7 +679,7 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   nothing to heal on (below 18 food, none carried) the withdrawal is over: no soldier holds for good.
 - **An archer well below** - more than 4 blocks under the soldier, across a cave's drop - is out of a sword's
   reach whatever route might go down to it: the soldier takes cover and carries on, as from one it has no route
-  to (the engagement doctrine's it-can-I-can't cell; `DeterministicSoldier.ARCHER_BELOW`). Live, three miners
+  to (the engagement doctrine's it-can-I-can't cell; `ContactThresholds.ARCHER_BELOW`). Live, three miners
   closed on skeletons in the caves under their faces and were shot 12-28 blocks down.
 - **In water too.** A hostile treading water is closed on by swimming, as on foot: in the bot's battle
   simulation a soldier with a stone sword on a bank kills a pillager in a pond 1-4 deep wherever it is
@@ -688,7 +688,7 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   pillager, past the 8 blocks of contact (operator, 2026-11-20; `DeterministicSoldier.ARCHER_ENGAGE`): live,
   pillagers floating in a pond held soldiers off their work, fought by none. One it can't close on - below,
   or no route - that's out of contact and not shooting is let be, and the work goes on: not hidden from - but by a
-  soldier under half health it is, as by one with no weapon (`DeterministicSoldier.HURT_HEALTH`; live, field568,
+  soldier under half health it is, as by one with no weapon (`ContactThresholds.HURT_HEALTH`; live, field568,
   Eli at 1 health walked back to his cave edge in a skeleton's line between its shots and was shot dead).
 - **One that fights hand to hand, in the air overhead and higher than a sword reaches, is let be** till it comes
   down within reach - a phantom circling: a walk to under it is no way to it (`DeterministicSoldier.overhead`). One on
@@ -750,7 +750,7 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   between. It gets away from creepers instead: of the headings round straight away, the one that
   gains it the most distance, so a wall at its back turns it sideways, and when no heading gains
   any it strikes the creeper, knocking it back out of its blast's reach. One that holds it inside
-  its reach for ten seconds (`DeterministicSoldier.CREEPER_STANDOFF_TICKS`) - in a tunnel it can't
+  its reach for ten seconds (`ContactThresholds.CREEPER_STANDOFF_TICKS`) - in a tunnel it can't
   be gone round, and backing off only keeps the distance - it engages: closes, and strikes (the
   engagement doctrine: both can reach, blocking the path; live, a miner stood a minute 2.9 blocks
   from one in a one-wide tunnel). No step in a fight -
@@ -796,7 +796,7 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   its order, and closing inside that, it backs off. Its route goes round a creeper (operator,
   2026-11-16, the engagement doctrine: bypass): every cell within 5 blocks of one within 24 costs
   a route more, so a way round is taken where there's one, and a creeper newly in range has the
-  route planned again (`DeterministicSoldier.CREEPER_BERTH`). Without it, a soldier walking past
+  route planned again (`Mover.CREEPER_BERTH`). Without it, a soldier walking past
   one closed to its blast, backed off, and never got by.
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.

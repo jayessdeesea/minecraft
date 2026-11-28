@@ -4,7 +4,8 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 
 import static io.github.jayessdeesea.minecraft.bot.Body.*;
-import static io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.*;
+import static io.github.jayessdeesea.minecraft.bot.BodyMeasures.*;
+import static io.github.jayessdeesea.minecraft.bot.MovementRates.*;
 
 /**
  * A soldier's body moving through the world, a tick at a time: where it is, how it's falling, swimming or climbing out

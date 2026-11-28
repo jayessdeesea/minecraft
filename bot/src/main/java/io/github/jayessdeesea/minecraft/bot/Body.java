@@ -29,7 +29,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
-import static io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.*;
+import static io.github.jayessdeesea.minecraft.bot.BodyMeasures.*;
+import static io.github.jayessdeesea.minecraft.bot.ContactThresholds.*;
 
 /**
  * The soldier's body against the world, pure: whether it fits a cell, what hazard or solid block is under or beside its
@@ -41,7 +42,7 @@ final class Body {
     }
 
     /**
-     * The nearest standing cell within {@link DeterministicSoldier#COVER_RADIUS} of {@code at} that {@code shooter} can't see - nothing
+     * The nearest standing cell within {@link ContactThresholds#COVER_RADIUS} of {@code at} that {@code shooter} can't see - nothing
      * solid between its eyes and the soldier's - if there's one.
      */
     static Optional<Position> coverFrom(WorldView world, Position at, Position shooter) {
@@ -129,7 +130,7 @@ final class Body {
         return false;
     }
 
-    /** Whether nothing - no ground, no water - lies under {@code at} within {@link #FIGHT_DROP} blocks of its feet. */
+    /** Whether nothing - no ground, no water - lies under {@code at} within {@link ContactThresholds#FIGHT_DROP} blocks of its feet. */
     static boolean overDrop(WorldView world, Position at) {
         int feet = (int) Math.floor(at.y() + EPSILON);
         for (int y = feet - 1; y >= feet - 1 - FIGHT_DROP; y--) {

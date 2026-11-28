@@ -1189,7 +1189,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** What each soldier's squad is gathering, and around where - squad loop writes, tick reads; absent when nothing. */
     private final Map<String, Objective> gathering = new ConcurrentHashMap<>();
     /** No hostile in sight within the soldier's own contact radius before its work goes on: field654, Eli's mine held 23 minutes by zombies 9 off, out of contact. */
-    private static final double REARM_CLEAR_RADIUS = DeterministicSoldier.CONTACT_RADIUS;
+    private static final double REARM_CLEAR_RADIUS = io.github.jayessdeesea.minecraft.bot.ContactThresholds.CONTACT_RADIUS;
     /** How far from the platoon leader's farm objective the plot's water may be, across and up or down. */
     private static final int FARM_SITE_RADIUS = 8;
     /** How far from its hut a soldier short of blocks digs dirt: clear of the walls and the ground under them. */

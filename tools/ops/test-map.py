@@ -39,8 +39,8 @@ TIERS = [("Foundations", ["values", "contract", "wire", "world-model"]),
 AREAS = {
     "contract": "Order Report SoldierStatus Soldier Progress DutyOrder DutyYield Kit Script Setbacks Directive "
                 "SquadOrder Supply",
-    "movement": "Gait Mover Body Trip GateHabit Hands",
-    "combat": "Contact Engagement Ballistics Strike ContactLog Quiver ReactToContact SquadContact HostileMobRegistry "
+    "movement": "Gait Mover Body Trip GateHabit Hands BodyMeasures MovementRates",
+    "combat": "ContactThresholds Contact Engagement Ballistics Strike ContactLog Quiver ReactToContact SquadContact HostileMobRegistry "
               "WeaponStats",
     "navigation": "Clearing Kept Footing Stairway AccessRoute WayOut RouteEffort PlanMemo TerrainSurveyor",
     "dig-build": "Digger Miner Breacher Staircase Clearer Filler Mason Builder Lighting Lamplighter Torchmaker "

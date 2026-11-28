@@ -73,18 +73,18 @@ final class ContactLog {
     }
 
     /**
-     * Hurt with nothing in contact: what's round it out to {@link DeterministicSoldier#FLED_PAST}, {@code near}, seen or not,
+     * Hurt with nothing in contact: what's round it out to {@link ContactThresholds#FLED_PAST}, {@code near}, seen or not,
      * for the eval - live (field605), Olga was shot dead by a skeleton no [Contact] line named, fighting zombies out of
      * reach, and its place couldn't be replayed.
      */
     void hurtWithNothing(WorldView world, Position at, double health, List<TrackedEntity> near) {
         LOG.info("[Contact] {} at ({}, {}, {}) hurt, {} health, with nothing in contact - round it out to {}: {}", name,
                 String.format(Locale.ROOT, "%.1f", at.x()), String.format(Locale.ROOT, "%.1f", at.y()),
-                String.format(Locale.ROOT, "%.1f", at.z()), (int) health, (int) DeterministicSoldier.FLED_PAST,
+                String.format(Locale.ROOT, "%.1f", at.z()), (int) health, (int) ContactThresholds.FLED_PAST,
                 near.isEmpty() ? "none" : near.stream().map(t -> String.format(Locale.ROOT, "%s at (%.1f, %.1f, %.1f) %.1f off%s",
                         HostileMobRegistry.nameOf(t.typeId()), t.position().x(), t.position().y(), t.position().z(), at.distanceTo(t.position()),
-                        Body.lineOfSight(world, new Position(t.position().x(), t.position().y() + DeterministicSoldier.EYE_HEIGHT, t.position().z()),
-                                new Position(at.x(), at.y() + DeterministicSoldier.TARGET_HEIGHT, at.z())) ? ", in sight" : ", out of sight"))
+                        Body.lineOfSight(world, new Position(t.position().x(), t.position().y() + BodyMeasures.EYE_HEIGHT, t.position().z()),
+                                new Position(at.x(), at.y() + BodyMeasures.TARGET_HEIGHT, at.z())) ? ", in sight" : ", out of sight"))
                         .collect(Collectors.joining("; ")));
     }
 

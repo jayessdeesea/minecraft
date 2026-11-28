@@ -92,8 +92,8 @@ final class Body {
         }
         io.github.jayessdeesea.minecraft.command.Position at = soldier.status().position();
         io.github.jayessdeesea.minecraft.command.Position eyes = new io.github.jayessdeesea.minecraft.command.Position(at.x(),
-                at.y() + io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.EYE_HEIGHT, at.z());
-        return soldier.lettingBe() || world.nearbyHostiles(at, io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.CONTACT_RADIUS)
+                at.y() + io.github.jayessdeesea.minecraft.bot.BodyMeasures.EYE_HEIGHT, at.z());
+        return soldier.lettingBe() || world.nearbyHostiles(at, io.github.jayessdeesea.minecraft.bot.ContactThresholds.CONTACT_RADIUS)
                 .stream().noneMatch(h -> io.github.jayessdeesea.minecraft.bot.DeterministicSoldier.lineOfSight(world, eyes,
                         new io.github.jayessdeesea.minecraft.command.Position(h.position().x(), h.position().y() + 1, h.position().z())));
     }

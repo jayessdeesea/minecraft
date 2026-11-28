@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import io.github.jayessdeesea.minecraft.bot.BodyMeasures;
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.Strike;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
@@ -102,7 +103,7 @@ class CombatSquadMatrixTest {
                 Position now = s.status().position();
                 since[i]++;
                 if (attack.isPresent() && !bodies[i].eating()) { // no swing while it eats
-                    double[] hit = battle.swing(attack.getAsInt(), now, DeterministicSoldier.ATTACK_REACH, kind, weapon, blow, since[i], at);
+                    double[] hit = battle.swing(attack.getAsInt(), now, BodyMeasures.ATTACK_REACH, kind, weapon, blow, since[i], at);
                     bodies[i].attacked();
                     for (int j = 0; j < size; j++) {
                         if (hit[j] > 0) {

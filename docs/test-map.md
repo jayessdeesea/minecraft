@@ -13,7 +13,7 @@ reached through a dot (`Digger.Progress`) is the outer type's. A main class no r
 name in `AREAS` that names no class as stale.
 
 <!-- generated:totals -->
-316 test files: 291 test classes and 25 support classes; 52762 lines of tests against 64461 of main code, 439 main classes in 13 layers once each cycle is taken as one.
+318 test files: 293 test classes and 25 support classes; 53030 lines of tests against 64598 of main code, 443 main classes in 13 layers once each cycle is taken as one.
 <!-- /generated:totals -->
 
 ## The hierarchy
@@ -39,24 +39,24 @@ tiers above it, not on those below, except within a cycle and along the edges "T
 <!-- generated:tiers -->
 | Tier | Area | Main classes | Main lines | Own test classes | Test lines | Test classes reaching it |
 |---|---|---|---|---|---|---|
-| Foundations | values | 18 | 825 | 5 | 245 | 205 |
-| Foundations | contract | 13 | 1220 | 5 | 347 | 171 |
-| Foundations | wire | 96 | 4812 | 32 | 2474 | 117 |
-| Foundations | world-model | 11 | 2381 | 7 | 761 | 151 |
-| Getting about | navigation | 14 | 2506 | 11 | 3433 | 130 |
-| Getting about | movement | 6 | 1387 | 4 | 428 | 77 |
-| Fighting | combat | 10 | 1216 | 14 | 1870 | 181 |
+| Foundations | values | 18 | 825 | 5 | 245 | 204 |
+| Foundations | contract | 13 | 1220 | 5 | 347 | 169 |
+| Foundations | wire | 96 | 4812 | 31 | 2215 | 117 |
+| Foundations | world-model | 11 | 2381 | 7 | 761 | 150 |
+| Getting about | navigation | 14 | 2506 | 11 | 3433 | 128 |
+| Getting about | movement | 8 | 1454 | 3 | 368 | 77 |
+| Fighting | combat | 11 | 1277 | 14 | 1875 | 181 |
 | Trades | dig-build | 14 | 4955 | 13 | 4841 | 75 |
 | Trades | craft | 8 | 1974 | 6 | 1045 | 69 |
 | Trades | stores-supply | 14 | 3575 | 10 | 1317 | 63 |
-| Trades | food-farm | 17 | 3593 | 20 | 4995 | 125 |
-| Trades | wood | 4 | 776 | 5 | 684 | 121 |
-| The soldier | soldier | 4 | 1170 | 11 | 2760 | 75 |
-| Command | squad | 18 | 2446 | 20 | 3952 | 136 |
-| Command | platoon | 28 | 3241 | 21 | 4325 | 130 |
+| Trades | food-farm | 17 | 3593 | 20 | 4995 | 122 |
+| Trades | wood | 4 | 776 | 5 | 684 | 117 |
+| The soldier | soldier | 4 | 1097 | 13 | 3080 | 71 |
+| Command | squad | 18 | 2446 | 20 | 3952 | 132 |
+| Command | platoon | 28 | 3241 | 21 | 4325 | 126 |
 | Command | model | 13 | 1736 | 5 | 976 | 56 |
 | Garrison shell | garrison-shell | 93 | 21042 | 69 | 7730 | 92 |
-| Landing queue | landing | 58 | 5606 | 28 | 5524 | 28 |
+| Landing queue | landing | 59 | 5688 | 30 | 5786 | 29 |
 | Test harness | simulator | 0 | 0 | 4 | 196 | 0 |
 | Test harness | suite | 0 | 0 | 1 | 321 | 0 |
 <!-- /generated:tiers -->
@@ -71,15 +71,15 @@ many name it directly.
 <!-- generated:key -->
 | Class | Area | Layer | Test classes reaching it | Naming it directly |
 |---|---|---|---|---|
-| `Pathfinder` | navigation | 3 | 111 | 14 |
+| `Pathfinder` | navigation | 3 | 109 | 14 |
 | `Footing` | navigation | 4 | 75 | 3 |
-| `Clearing` | navigation | 3 | 111 | 4 |
-| `Mover` | movement | 5 | 72 | 0 |
-| `Gait` | movement | 5 | 72 | 1 |
-| `Body` | movement | 5 | 72 | 0 |
-| `DeterministicSoldier` | soldier | 5 | 72 | 15 |
-| `Contact` | combat | 5 | 72 | 1 |
-| `Hardness` | world-model | 1 | 128 | 8 |
+| `Clearing` | navigation | 3 | 109 | 4 |
+| `Mover` | movement | 7 | 68 | 0 |
+| `Gait` | movement | 6 | 68 | 1 |
+| `Body` | movement | 5 | 68 | 0 |
+| `DeterministicSoldier` | soldier | 8 | 68 | 15 |
+| `Contact` | combat | 5 | 69 | 1 |
+| `Hardness` | world-model | 1 | 127 | 8 |
 | `Digger` | dig-build | 5 | 73 | 5 |
 | `Miner` | dig-build | 5 | 73 | 2 |
 | `Farmer` | food-farm | 7 | 58 | 3 |
@@ -95,7 +95,6 @@ The cycles in the main code. Each is a set of classes that can only be understoo
 
 <!-- generated:cycles -->
 - 32 classes (app): `CampGround`, `CampMineSites`, `ChainOfCommand`, `ChestStand`, `DayGuardrails`, `DayWorkRules`, `Engineer`, `FarmMissions`, `FlattenMeasures`, `FlattenWork`, `FlattenWorks`, `KeepWood`, `KeptGround`, `MineSiteBook`, `MineSites`, `NightRules`, `OperatorChat`, `PhaseBook`, `PlacementAudit`, `RequestTracking`, `ScoutMissions`, `SiteGeometry`, `SoldierErrands`, `SoldierRequests`, `SoldierRunner`, `SquadCommand`, `SquadState`, `StatusBoard`, `SupplyTrips`, `TemplateGround`, `TreeFelling`, `WoodsBook`
-- 8 classes (bot): `Ballistics`, `Body`, `Contact`, `ContactLog`, `DeterministicSoldier`, `Engagement`, `Gait`, `Mover`
 - 8 classes (command): `Flatten`, `Keep`, `PlatoonSergeant`, `ProductionLevels`, `Renewable`, `SquadStatus`, `Stockpile`, `Subsistence`
 - 5 classes (command): `Cohesion`, `CrossLevel`, `ReactToContact`, `Report`, `SoldierStatus`
 - 5 classes (landing): `Bounce`, `Faulted`, `MergeOutcome`, `PushOutcome`, `VerifyOutcome`
@@ -108,11 +107,10 @@ The cycles in the main code. Each is a set of classes that can only be understoo
 - 2 classes (protocol): `NettyPlaySession`, `PlayClientHandler`
 <!-- /generated:cycles -->
 
-- **Movement, combat and the soldier** form one cycle through `DeterministicSoldier`, which holds the soldier's
-  constants. `Gait`, `Mover` and `Body` read its body measures and its swimming, sprinting, shield, sight and cover
-  constants through
-  `import static DeterministicSoldier.*`. `Contact`, `ContactLog`, `Engagement` and `Ballistics` read its measures
-  and contact thresholds. `Mover` also logs under `DeterministicSoldier`'s logger.
+- **The soldier is above what it moves and fights with:** its constants live in `BodyMeasures`, `MovementRates` and
+  `ContactThresholds`, which name nothing of the soldier's, so no cycle runs through `DeterministicSoldier`.
+  Movement still reads combat, along the edges below: `Mover` asks `Ballistics`, and `Body` reads
+  `ContactThresholds` and `WeaponStats`.
 - **The `app` cycle** around `SoldierRunner` holds `ChainOfCommand`, the camp, mine and farm books, the day and night
   rules and `OperatorChat`.
 
@@ -126,12 +124,12 @@ it is a level reading one above its own.
 - `SquadOrder` (contract) reads `Formation` (squad), `Plan` (platoon)
 - `TrackedEntity` (world-model) reads `HostileMobRegistry` (combat)
 - `WorldModel` (world-model) reads `BlockPos` (navigation), `ChunkFarm` (food-farm)
-- `Body` (movement) reads `Keep` (platoon), `WeaponStats` (combat)
+- `Body` (movement) reads `ContactThresholds` (combat), `Keep` (platoon), `WeaponStats` (combat)
+- `Mover` (movement) reads `Ballistics` (combat)
 - `Clearer` (dig-build) reads `LevelPace` (platoon)
 - `Depositor` (stores-supply) reads `Stockpile` (platoon)
 - `FarmMission` (food-farm) reads `Flatten` (platoon)
 - `Handover` (stores-supply) reads `CrossLevel` (squad)
-- `Hunter` (food-farm) reads `DeterministicSoldier` (soldier)
 - `Ladder` (craft) reads `CrossLevel` (squad), `Site` (platoon)
 - `MetalPool` (stores-supply) reads `Stockpile` (platoon)
 - `ResourceSurveyor` (stores-supply) reads `ResourceSite` (platoon)
@@ -157,14 +155,14 @@ it is a level reading one above its own.
 <!-- generated:kinds -->
 | Tier | unit/table | soldier sim | sim part | squad sim | stuck replay | by-name IT | architecture | Test lines |
 |---|---|---|---|---|---|---|---|---|
-| Foundations | 42 | - | - | - | - | 7 | - | 3827 |
-| Getting about | 13 | 1 | - | 1 | - | - | - | 3861 |
-| Fighting | 7 | 7 | - | - | - | - | - | 1870 |
+| Foundations | 42 | - | - | - | - | 6 | - | 3568 |
+| Getting about | 12 | 1 | - | 1 | - | - | - | 3801 |
+| Fighting | 7 | 7 | - | - | - | - | - | 1875 |
 | Trades | 41 | 4 | 1 | 8 | - | - | - | 12882 |
-| The soldier | 10 | 1 | - | - | - | - | - | 2760 |
+| The soldier | 11 | 1 | - | - | - | 1 | - | 3080 |
 | Command | 35 | - | 2 | 7 | - | 2 | - | 9253 |
 | Garrison shell | 63 | - | 1 | - | 1 | 4 | - | 7730 |
-| Landing queue | 28 | - | - | - | - | - | - | 5524 |
+| Landing queue | 30 | - | - | - | - | - | - | 5786 |
 | Test harness | 1 | - | 3 | - | - | - | 1 | 517 |
 <!-- /generated:kinds -->
 
@@ -200,7 +198,7 @@ the server's rule its own way.
 | [SetbacksTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/supply/SetbacksTest.java) | unit/table | 80 | 5 |  | Setbacks |
 | [SupplyTest](../command/src/test/java/io/github/jayessdeesea/minecraft/command/SupplyTest.java) | unit/table | 45 | 3 |  | Supply |
 
-#### wire (32)
+#### wire (31)
 
 | Test | Kind | Lines | Tests | Slow | Subject |
 |---|---|---|---|---|---|
@@ -235,7 +233,6 @@ the server's rule its own way.
 | [StaircaseProbeIT](../app/src/test/java/io/github/jayessdeesea/minecraft/app/StaircaseProbeIT.java) | by-name IT | 54 | 1 |  | ? |
 | [StatusPingLiveIT](../protocol/src/test/java/io/github/jayessdeesea/minecraft/protocol/StatusPingLiveIT.java) | by-name IT | 38 | 1 |  | - |
 | [TerrainProbeIT](../app/src/test/java/io/github/jayessdeesea/minecraft/app/TerrainProbeIT.java) | by-name IT | 154 | 1 |  | ? |
-| [WorldProbeLiveIT](../app/src/test/java/io/github/jayessdeesea/minecraft/app/WorldProbeLiveIT.java) | by-name IT | 259 | 1 |  | ? |
 
 #### world-model (7)
 
@@ -267,13 +264,12 @@ the server's rule its own way.
 | [WayOutTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/supply/WayOutTest.java) | unit/table | 216 | 6 |  | WayOut |
 | [RoutingSimulationTest](../app/src/test/java/io/github/jayessdeesea/minecraft/app/RoutingSimulationTest.java) | squad sim | 380 | 9 | slow | - |
 
-#### movement (4)
+#### movement (3)
 
 | Test | Kind | Lines | Tests | Slow | Subject |
 |---|---|---|---|---|---|
 | [GateHabitTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/GateHabitTest.java) | unit/table | 129 | 4 |  | GateHabit |
 | [HandsTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/HandsTest.java) | unit/table | 95 | 5 |  | Hands |
-| [WedgedTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/WedgedTest.java) | unit/table | 60 | 3 |  | ? |
 | [MovementEfficiencyTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/MovementEfficiencyTest.java) | soldier sim | 144 | 1 |  | - |
 
 ### Fighting
@@ -292,10 +288,10 @@ the server's rule its own way.
 | [CombatConditionMatrixTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/CombatConditionMatrixTest.java) | soldier sim | 149 | 1 | slow | - |
 | [CombatMatrixTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/CombatMatrixTest.java) | soldier sim | 116 | 1 | slow | - |
 | [CombatPairsConditionMatrixTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/CombatPairsConditionMatrixTest.java) | soldier sim | 70 | 1 | slow | - |
-| [CombatPairsMatrixTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/CombatPairsMatrixTest.java) | soldier sim | 164 | 1 |  | - |
-| [CombatScenarioTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/CombatScenarioTest.java) | soldier sim | 343 | 4 | slow | - |
-| [CombatSquadMatrixTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/CombatSquadMatrixTest.java) | soldier sim | 202 | 1 |  | - |
-| [WaterCombatScenarioTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/WaterCombatScenarioTest.java) | soldier sim | 113 | 2 |  | - |
+| [CombatPairsMatrixTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/CombatPairsMatrixTest.java) | soldier sim | 165 | 1 |  | - |
+| [CombatScenarioTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/CombatScenarioTest.java) | soldier sim | 345 | 4 | slow | - |
+| [CombatSquadMatrixTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/CombatSquadMatrixTest.java) | soldier sim | 203 | 1 |  | - |
+| [WaterCombatScenarioTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/WaterCombatScenarioTest.java) | soldier sim | 114 | 2 |  | - |
 
 ### Trades
 
@@ -380,7 +376,7 @@ the server's rule its own way.
 
 ### The soldier
 
-#### soldier (11)
+#### soldier (13)
 
 | Test | Kind | Lines | Tests | Slow | Subject |
 |---|---|---|---|---|---|
@@ -390,11 +386,13 @@ the server's rule its own way.
 | [EndermanGazeTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/EndermanGazeTest.java) | unit/table | 36 | 2 |  | EndermanGaze |
 | [EndermanSelfDefenseTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/EndermanSelfDefenseTest.java) | unit/table | 72 | 2 |  | ? |
 | [PillarTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/PillarTest.java) | unit/table | 110 | 3 |  | ? |
-| [RecordedContactTest](../app/src/test/java/io/github/jayessdeesea/minecraft/app/RecordedContactTest.java) | unit/table | 173 | 4 |  | ? |
+| [RecordedContactTest](../app/src/test/java/io/github/jayessdeesea/minecraft/app/RecordedContactTest.java) | unit/table | 174 | 4 |  | ? |
 | [RecordedGroundEfficiencyTest](../app/src/test/java/io/github/jayessdeesea/minecraft/app/RecordedGroundEfficiencyTest.java) | unit/table | 190 | 1 |  | ? |
 | [SoldiersWorkshopTest](../app/src/test/java/io/github/jayessdeesea/minecraft/app/SoldiersWorkshopTest.java) | unit/table | 23 | 1 |  | - |
+| [WedgedTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/WedgedTest.java) | unit/table | 60 | 3 |  | ? |
 | [WideSearchBackoffTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/WideSearchBackoffTest.java) | unit/table | 58 | 1 |  | ? |
 | [SoldierScenarioTest](../bot/src/test/java/io/github/jayessdeesea/minecraft/bot/scenario/SoldierScenarioTest.java) | soldier sim | 197 | 1 |  | - |
+| [WorldProbeLiveIT](../app/src/test/java/io/github/jayessdeesea/minecraft/app/WorldProbeLiveIT.java) | by-name IT | 259 | 1 |  | ? |
 
 ### Command
 
@@ -537,7 +535,7 @@ the server's rule its own way.
 
 ### Landing queue
 
-#### landing (28)
+#### landing (30)
 
 | Test | Kind | Lines | Tests | Slow | Subject |
 |---|---|---|---|---|---|
@@ -553,11 +551,13 @@ the server's rule its own way.
 | [InterleavingTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/shell/InterleavingTest.java) | unit/table | 117 | 1 | slow | - |
 | [JobTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/shell/JobTest.java) | unit/table | 104 | 4 |  | Job |
 | [JournalCodecTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/JournalCodecTest.java) | unit/table | 141 | 3 |  | JournalCodec |
+| [MainReadsTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/MainReadsTest.java) | unit/table | 53 | 4 |  | MainReads |
+| [MainRefReadsTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/shell/MainRefReadsTest.java) | unit/table | 70 | 2 |  | - |
 | [MavenProgressTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/MavenProgressTest.java) | unit/table | 120 | 9 |  | MavenProgress |
 | [MergeOutcomeTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/MergeOutcomeTest.java) | unit/table | 63 | 1 |  | MergeOutcome |
 | [ProgramsTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/shell/ProgramsTest.java) | unit/table | 48 | 4 |  | Programs |
 | [PushOutcomeTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/PushOutcomeTest.java) | unit/table | 86 | 2 |  | PushOutcome |
-| [QueueTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/shell/QueueTest.java) | unit/table | 456 | 20 | slow | - |
+| [QueueTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/shell/QueueTest.java) | unit/table | 595 | 25 | slow | - |
 | [ReviewRowsTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/shell/ReviewRowsTest.java) | unit/table | 302 | 14 | slow | - |
 | [ScriptsTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/shell/ScriptsTest.java) | unit/table | 394 | 18 |  | - |
 | [ShellPartsTest](../landing/src/test/java/io/github/jayessdeesea/minecraft/landing/shell/ShellPartsTest.java) | unit/table | 521 | 26 |  | - |

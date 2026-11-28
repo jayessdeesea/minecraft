@@ -247,7 +247,7 @@ class DeterministicSoldierTest {
         alice.tick(terrain(false)); // plans
         double before = alice.status().position().x();
         alice.tick(terrain(false));
-        assertEquals(DeterministicSoldier.SPRINT_STEP, before - alice.status().position().x(), 1e-6, "30 blocks out: sprint");
+        assertEquals(MovementRates.SPRINT_STEP, before - alice.status().position().x(), 1e-6, "30 blocks out: sprint");
 
         DeterministicSoldier bob = new DeterministicSoldier("Bob", new Position(0.5, GROUND, 0.5));
         bob.reportKit(RATIONED);
@@ -255,7 +255,7 @@ class DeterministicSoldierTest {
         bob.tick(terrain(false));
         before = bob.status().position().x();
         bob.tick(terrain(false));
-        assertTrue(before - bob.status().position().x() < DeterministicSoldier.SPRINT_STEP - 1e-6, "5 blocks out: walk");
+        assertTrue(before - bob.status().position().x() < MovementRates.SPRINT_STEP - 1e-6, "5 blocks out: walk");
         assertTrue(alice.sprinting(), "the server is told, so it charges for it");
         assertTrue(!bob.sprinting());
     }

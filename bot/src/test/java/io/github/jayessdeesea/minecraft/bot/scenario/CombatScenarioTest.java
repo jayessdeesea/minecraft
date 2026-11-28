@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import io.github.jayessdeesea.minecraft.bot.BodyMeasures;
+import io.github.jayessdeesea.minecraft.bot.ContactThresholds;
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
@@ -28,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * One soldier on its way somewhere, met by one simulated hostile of each archetype ({@link Battle}),
  * across many seeds. Checks the contact reflex's contract in every variant - a hostile within
- * {@link DeterministicSoldier#CONTACT_RADIUS} means the soldier reports InContact - and prints how
+ * {@link ContactThresholds#CONTACT_RADIUS} means the soldier reports InContact - and prints how
  * each fight ends, so a change to the reflex shows up as a change in outcomes.
  *
  * <p>{@code -Dcombat.seeds=200} for a wider sweep.
@@ -157,7 +159,7 @@ class CombatScenarioTest {
                 OptionalInt attack = soldier.tick(battle);
                 Position now = soldier.status().position();
                 if (attack.isPresent() && !bodies[i].eating()) { // no swing while it eats
-                    battle.strike(attack.getAsInt(), now, DeterministicSoldier.ATTACK_REACH);
+                    battle.strike(attack.getAsInt(), now, BodyMeasures.ATTACK_REACH);
                     bodies[i].attacked();
                 }
                 positions.add(now);
@@ -305,10 +307,10 @@ class CombatScenarioTest {
         for (int tick = 0; tick < TICKS; tick++) {
             Position before = soldier.status().position();
             // A hostile in contact radius that the soldier can see - one behind a trunk isn't contact.
-            Position eye = new Position(before.x(), before.y() + DeterministicSoldier.EYE_HEIGHT, before.z());
-            boolean threatened = battle.nearbyHostiles(before, DeterministicSoldier.CONTACT_RADIUS).stream()
+            Position eye = new Position(before.x(), before.y() + BodyMeasures.EYE_HEIGHT, before.z());
+            boolean threatened = battle.nearbyHostiles(before, ContactThresholds.CONTACT_RADIUS).stream()
                     .anyMatch(h -> DeterministicSoldier.lineOfSight(scenario.world(), eye, new Position(h.position().x(),
-                            h.position().y() + DeterministicSoldier.TARGET_HEIGHT, h.position().z())));
+                            h.position().y() + BodyMeasures.TARGET_HEIGHT, h.position().z())));
             OptionalInt attack = soldier.tick(battle);
             // One it lets be - no way between them on foot, across a ravine - it carries on past (DeterministicSoldier.lettingBe).
             if (threatened && !soldier.lettingBe() && !(soldier.status().report() instanceof Report.InContact)) {
@@ -317,7 +319,7 @@ class CombatScenarioTest {
             }
             Position now = soldier.status().position();
             if (attack.isPresent() && !body.eating()) { // no swing while it eats
-                battle.strike(attack.getAsInt(), now, DeterministicSoldier.ATTACK_REACH, blow);
+                battle.strike(attack.getAsInt(), now, BodyMeasures.ATTACK_REACH, blow);
                 body.attacked();
             }
             shieldUp = soldier.shieldRaised() ? shieldUp + 1 : 0;

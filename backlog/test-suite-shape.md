@@ -3,7 +3,7 @@ status: ready
 priority: P2
 ---
 
-# The test suite: shared fixtures, a soldier without cycles, outcomes not log lines
+# The test suite: shared fixtures, one home for the body's measures, outcomes not log lines
 
 ## Why
 [docs/test-map.md](../docs/test-map.md) maps the suite. A read of the farming tests in depth - `FarmerTest`,
@@ -24,14 +24,10 @@ the squad sims' lines. A test that is mostly setup is one a smaller model can't 
    `FarmPlanTest`, `FarmerFixturesTest`, `CampFarmTest` and `FarmMissionsTest` each have their own. `SyntheticWorld`
    exists for this. The `item(...)`, `soldier(...)`, `world(...)` and `flat(...)` helpers are redefined in 7 to 13
    files each.
-3. **The soldier's constants off `DeterministicSoldier`.** Every constant that `Gait`, `Mover`, `Body`, `Contact`,
-   `ContactLog`, `Engagement` and `Ballistics` read from it goes to classes of their own, below those seven. That
-   covers the body's measures, swimming, sprinting, the shield's slowdown, sight and cover, and the contact
-   thresholds. Each of the seven's reads is checked to be gone, not only the ones a list names. `Mover`'s logger is
-   named after `DeterministicSoldier`, and every line prints it (`%c` in `log4j2-spring.xml` and `log4j2-test.xml`).
-   So it keeps that name, given as a string rather than `DeterministicSoldier.class`. Together these break the cycle
-   docs/test-map.md names, with no change of behaviour. `Mover` can then be tested on its own; today no test names
-   it, and only `WedgedTest` names `Gait`.
+3. **The body's measures in one home.** Eye height (1.62) is written out again in `craft/Crafter`,
+   `engineer/Clearing` (`EYES`), `supply/Builder`, `supply/Miner`, `supply/WaterCarrier`, `supply/Farmer` and
+   `SoldierRunner`; body height (1.8) in the tests' `scenario/Battle.PLAYER_HEIGHT` and
+   `SoldierScenarioTest.BODY_HEIGHT`. Each reads `BodyMeasures` instead.
 4. **One known-failure mechanism.**
    `FarmDutiesSimulationTest.aBakerPulledOffByAFightIsShortForThatCauseNotReordered` pins a bug by hand
    (`assertTrue(!correct)`), passing while it's broken. It becomes a `knownFailure` mark, as `StuckEvalsTest` has
@@ -49,7 +45,7 @@ the squad sims' lines. A test that is mostly setup is one a smaller model can't 
 
 ## Done when
 - A new squad sim is its world, its squad and its outcome, with no wiring of its own.
-- `python -I tools/ops/test-map.py` shows no cycle holding `Mover` and `DeterministicSoldier`.
+- No class but `BodyMeasures` holds a body measure.
 - No test asserts the inverse of what is correct.
 
 ## Notes
