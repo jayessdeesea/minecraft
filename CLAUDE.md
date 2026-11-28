@@ -52,4 +52,6 @@ rules. What is wired for Claude Code alone lives under `.claude/` and is listed 
   and a symptom's first `field-tracer` on Sonnet; `behaviour-implementer` on Opus; `equivalence-reviewer` on the top
   model for a change of behaviour (on Opus for a refactor, above), and so a second trace of a symptom the first didn't
   explain, `designer`, or the design of a new rule, as an agent with a written brief (`model: fable`).
+  For now the top model's agents run on Opus, set in their files, until the operator restores it (operator,
+  2026-11-27: tokens short).
   One task a session, from the operator's words or a written brief, ending by [docs/conventions.md, "Retiring a stream"](docs/conventions.md#retiring-a-stream).
